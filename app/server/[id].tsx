@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Switch,
+  SafeAreaView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -126,21 +127,21 @@ export default function EditServerScreen() {
   }
 
   return (
-    <>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <KeyboardAvoidingView 
-        style={[styles.container, { backgroundColor: colors.background }]}
+        style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButtonLeft}>
             <Text style={[styles.headerButtonText, { color: colors.primary }]}>Cancel</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Server</Text>
           <TouchableOpacity 
             onPress={handleSave} 
-            style={styles.headerButton}
+            style={styles.headerButtonRight}
             disabled={saving}
           >
             {saving ? (
@@ -276,12 +277,15 @@ export default function EditServerScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
   },
   center: {
@@ -294,12 +298,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 60,
+    paddingTop: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
-  headerButton: {
+  headerButtonLeft: {
     minWidth: 60,
+    alignItems: 'flex-start',
+  },
+  headerButtonRight: {
+    minWidth: 60,
+    alignItems: 'flex-end',
   },
   headerButtonText: {
     fontSize: 17,
