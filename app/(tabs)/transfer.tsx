@@ -887,7 +887,7 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     borderRadius: borderRadius.large,
     padding: spacing.xxl,
-  },
+    },
   modalTitle: {
     ...typography.h4,
     marginBottom: spacing.xs + 2,

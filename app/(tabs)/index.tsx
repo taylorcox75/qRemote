@@ -689,7 +689,7 @@ export default function TorrentsScreen() {
                         setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                       } else {
                         // Set new sort option with default direction (desc for most, asc for name)
-                        setSortBy(option.key);
+                      setSortBy(option.key);
                         setSortDirection(option.key === 'name' ? 'asc' : 'desc');
                       }
                       setShowSortMenu(false);
@@ -701,7 +701,7 @@ export default function TorrentsScreen() {
                       size={18}
                       color={sortBy === option.key ? (isDark ? colors.primary : '#FFFFFF') : (isDark ? colors.textSecondary : colors.text)}
                     />
-                    <Text   
+                    <Text
                       style={[
                         styles.sortOptionText,
                         {
