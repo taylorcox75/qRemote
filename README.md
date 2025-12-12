@@ -2,7 +2,7 @@
 
 Native iOS app for qBittorrent. Finally, a proper mobile interface instead of pinch-zooming the web UI.
 
-**[Join TestFlight Beta](https://testflight.apple.com/join/ZHp9Uq4h)** • **[GitHub](https://github.com/yourusername/qRemote)**
+**[Join TestFlight Beta](https://testflight.apple.com/join/ZHp9Uq4h)** • **[GitHub](https://github.com/taylorcox75/qRemote/)**
 
 ## Screenshots
 
