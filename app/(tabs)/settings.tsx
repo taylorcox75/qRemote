@@ -265,7 +265,13 @@ export default function SettingsScreen() {
                   style={[styles.disconnectButton, { backgroundColor: colors.error + '90' }]}
                   onPress={handleDisconnect}
                 >
-                  <Text style={[styles.disconnectText, { color: 'white' }]}>Disconnect</Text>
+                  <Text 
+                    style={[styles.disconnectText, { color: 'white' }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    Disconnect
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

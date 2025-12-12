@@ -216,7 +216,13 @@ export default function ManageTrackersScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Trackers</Text>
+        <Text 
+          style={[styles.headerTitle, { color: colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          Manage Trackers
+        </Text>
         <TouchableOpacity
           style={[styles.reannounceButton, { 
             backgroundColor: reannouncing ? colors.primary : 'transparent',
@@ -268,7 +274,13 @@ export default function ManageTrackersScreen() {
                     setNewTrackerUrl('');
                   }}
                 >
-                  <Text style={[styles.addTrackerButtonText, { color: colors.text }]}>Cancel</Text>
+                  <Text 
+                    style={[styles.addTrackerButtonText, { color: colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.addTrackerButton, { backgroundColor: colors.primary }]}
@@ -278,7 +290,13 @@ export default function ManageTrackersScreen() {
                   {addingTracker ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={[styles.addTrackerButtonText, { color: '#FFFFFF' }]}>Add</Text>
+                    <Text 
+                      style={[styles.addTrackerButtonText, { color: '#FFFFFF' }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      Add
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -289,7 +307,13 @@ export default function ManageTrackersScreen() {
               onPress={() => setShowAddInput(true)}
             >
               <Ionicons name="add" size={20} color="#FFFFFF" />
-              <Text style={styles.addButtonText}>Add New Tracker</Text>
+              <Text 
+                style={styles.addButtonText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                Add New Tracker
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -321,7 +345,13 @@ export default function ManageTrackersScreen() {
                     setEditTrackerUrl('');
                   }}
                 >
-                  <Text style={[styles.addTrackerButtonText, { color: colors.text }]}>Cancel</Text>
+                  <Text 
+                    style={[styles.addTrackerButtonText, { color: colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.addTrackerButton, { backgroundColor: colors.primary }]}
@@ -331,7 +361,13 @@ export default function ManageTrackersScreen() {
                   {addingTracker ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={[styles.addTrackerButtonText, { color: '#FFFFFF' }]}>Save</Text>
+                    <Text 
+                      style={[styles.addTrackerButtonText, { color: '#FFFFFF' }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      Save
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>

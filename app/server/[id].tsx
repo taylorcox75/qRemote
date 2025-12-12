@@ -136,9 +136,21 @@ export default function EditServerScreen() {
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButtonLeft}>
-            <Text style={[styles.headerButtonText, { color: colors.primary }]}>Cancel</Text>
+            <Text 
+              style={[styles.headerButtonText, { color: colors.primary }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              Cancel
+            </Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Server</Text>
+          <Text 
+            style={[styles.headerTitle, { color: colors.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            Edit Server
+          </Text>
           <TouchableOpacity 
             onPress={handleSave} 
             style={styles.headerButtonRight}
@@ -147,7 +159,13 @@ export default function EditServerScreen() {
             {saving ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text style={[styles.headerButtonText, { color: colors.primary, fontWeight: '600' }]}>Save</Text>
+              <Text 
+                style={[styles.headerButtonText, { color: colors.primary, fontWeight: '600' }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                Save
+              </Text>
             )}
           </TouchableOpacity>
         </View>
