@@ -10,6 +10,7 @@ jobs:
     type: build
     params:
       platform: ios
+      profile: production
   build_android:
     name: Build Android App
     type: build
