@@ -126,7 +126,8 @@ const styles = StyleSheet.create({
     left: spacing.lg,
     right: spacing.lg,
     borderRadius: borderRadius.medium,
-    zIndex: 9999,
+    zIndex: 999999,
+    elevation: 999999,
   },
   content: {
     flexDirection: 'row',
