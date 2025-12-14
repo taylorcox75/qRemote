@@ -13,6 +13,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,21 +91,51 @@ export default function TorrentsScreen() {
     }, [navigation, colors.surface, colors.surfaceOutline])
   );
 
-  // Load card view mode preference
+  // Load card view mode and check for filter preference changes on screen focus
   useFocusEffect(
     useCallback(() => {
-      const loadCardViewMode = async () => {
+      const loadPreferences = async () => {
         try {
           const prefs = await storageService.getPreferences();
           const viewMode = prefs.cardViewMode || 'compact';
           setCardViewMode(viewMode);
+          
+          // Check if default filter preference has changed and update if so
+          // This allows settings changes to be reflected immediately when navigating to torrents
+          if (prefs.defaultFilter && prefs.defaultFilter !== filter) {
+            setFilter(prefs.defaultFilter);
+          }
         } catch (error) {
           setCardViewMode('compact');
         }
       };
-      loadCardViewMode();
-    }, [])
+      loadPreferences();
+    }, [filter])
   );
+
+  // Load default sort/filter preferences only on app launch (once)
+  useEffect(() => {
+    const loadDefaultPreferences = async () => {
+      try {
+        const prefs = await storageService.getPreferences();
+        // Load default sort/filter preferences only if not already set
+        if (prefs.defaultSortBy) {
+          setSortBy(prefs.defaultSortBy);
+        }
+        if (prefs.defaultSortDirection) {
+          setSortDirection(prefs.defaultSortDirection);
+        }
+        if (prefs.defaultFilter) {
+          setFilter(prefs.defaultFilter);
+        }
+      } catch (error) {
+        // Use defaults if loading fails
+      }
+    };
+    loadDefaultPreferences();
+    // Only run once on mount (app launch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Filter, sort, and search logic
   const filteredTorrents = useMemo(() => {
@@ -236,20 +267,50 @@ export default function TorrentsScreen() {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedHashes.size === 0) return;
-    setBulkLoading(true);
-    try {
-      await torrentsApi.deleteTorrents(Array.from(selectedHashes), false);
-      refresh();
-      setSelectedHashes(new Set());
-      setSelectMode(false);
-      showToast(`${selectedHashes.size} torrent(s) deleted`, 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to delete torrents', 'error');
-    } finally {
-      setBulkLoading(false);
-    }
+    Alert.alert(
+      'Delete Torrents',
+      `Delete ${selectedHashes.size} torrent(s)?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Torrent Only',
+          onPress: async () => {
+            setBulkLoading(true);
+            try {
+              await torrentsApi.deleteTorrents(Array.from(selectedHashes), false);
+              refresh();
+              setSelectedHashes(new Set());
+              setSelectMode(false);
+              showToast(`${selectedHashes.size} torrent(s) deleted`, 'success');
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete torrents', 'error');
+            } finally {
+              setBulkLoading(false);
+            }
+          },
+        },
+        {
+          text: 'With Files',
+          style: 'destructive',
+          onPress: async () => {
+            setBulkLoading(true);
+            try {
+              await torrentsApi.deleteTorrents(Array.from(selectedHashes), true);
+              refresh();
+              setSelectedHashes(new Set());
+              setSelectMode(false);
+              showToast(`${selectedHashes.size} torrent(s) deleted`, 'success');
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete torrents', 'error');
+            } finally {
+              setBulkLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Torrent actions

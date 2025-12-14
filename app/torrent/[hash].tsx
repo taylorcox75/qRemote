@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
@@ -302,14 +303,39 @@ export default function TorrentDetail() {
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await torrentsApi.deleteTorrents([torrent.hash], false);
-      showToast('Torrent deleted', 'success');
-      router.back();
-    } catch (error: any) {
-      showToast(error.message || 'Failed to delete torrent', 'error');
-    }
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Torrent',
+      `Delete "${torrent.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Torrent Only',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], false);
+              showToast('Torrent deleted', 'success');
+              router.back();
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete torrent', 'error');
+            }
+          },
+        },
+        {
+          text: 'With Files',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], true);
+              showToast('Torrent deleted', 'success');
+              router.back();
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete torrent', 'error');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleRecheck = async () => {

@@ -1,11 +1,13 @@
 import { Stack } from 'expo-router';
 import { Dimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
 import { ServerProvider } from '../context/ServerContext';
 import { TorrentProvider } from '../context/TorrentContext';
 import { TransferProvider } from '../context/TransferContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { ToastProvider } from '../context/ToastContext';
+import { logStorage } from '../services/log-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +49,11 @@ function StackNavigator() {
 }
 
 export default function RootLayout() {
+  // Auto-delete logs on app launch
+  useEffect(() => {
+    logStorage.autoDeleteIfNeeded();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>

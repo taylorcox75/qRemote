@@ -376,7 +376,7 @@ export default function TransferScreen() {
                   <Text style={[styles.subsectionLabel, { color: colors.textSecondary }]}>All Time</Text>
                   <View style={styles.statsRow}>
                     <StatBox icon="download-outline" iconColor={colors.primary} label="Total DL" value={formatSize(serverState.alltime_dl || 0)} colors={colors} />
-                    <StatBox icon="push-outline" iconColor={colors.success} label="Total UL" value={formatSize(serverState.alltime_ul || 0)} colors={colors} />
+                    <StatBox icon="arrow-up-outline" iconColor={colors.success} label="Total UL" value={formatSize(serverState.alltime_ul || 0)} colors={colors} />
                   </View>
                   <View style={[styles.infoRow, { backgroundColor: colors.background }]}>
                     <View style={styles.infoLeft}>

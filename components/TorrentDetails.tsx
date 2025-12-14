@@ -143,18 +143,47 @@ export function TorrentDetails({
     }
   };
 
-  const handleDelete = async () => {
-    setActiveButton('delete');
-    try {
-      setLoading(true);
-      await torrentsApi.deleteTorrents([torrent.hash], false);
-      showToast('Torrent deleted', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to delete torrent', 'error');
-      setActiveButton(null);
-    } finally {
-      setLoading(false);
-    }
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Torrent',
+      `Delete "${torrent.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Torrent Only',
+          onPress: async () => {
+            setActiveButton('delete');
+            try {
+              setLoading(true);
+              await torrentsApi.deleteTorrents([torrent.hash], false);
+              showToast('Torrent deleted', 'success');
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete torrent', 'error');
+              setActiveButton(null);
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+        {
+          text: 'With Files',
+          style: 'destructive',
+          onPress: async () => {
+            setActiveButton('delete');
+            try {
+              setLoading(true);
+              await torrentsApi.deleteTorrents([torrent.hash], true);
+              showToast('Torrent deleted', 'success');
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete torrent', 'error');
+              setActiveButton(null);
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleRecheck = async () => {

@@ -164,14 +164,39 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await torrentsApi.deleteTorrents([torrent.hash], false);
-      sync().catch(() => {});
-      showToast('Torrent deleted', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to delete torrent', 'error');
-    }
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Torrent',
+      `Delete "${torrent.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Torrent Only',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], false);
+              sync().catch(() => {});
+              showToast('Torrent deleted', 'success');
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete torrent', 'error');
+            }
+          },
+        },
+        {
+          text: 'With Files',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], true);
+              sync().catch(() => {});
+              showToast('Torrent deleted', 'success');
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete torrent', 'error');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleMaxPriority = async () => {
@@ -506,15 +531,28 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             <Text style={[styles.compactStat, { color: colors.text }]}>
               {progress.toFixed(1)}%
             </Text>
+            <Text style={[styles.compactDivider, { color: colors.textSecondary }]}>|</Text>
+            <Text style={[styles.compactStat, { color: colors.text }]}>
+              {formatSize(torrent.total_size > 0 ? torrent.total_size : (torrent.size || 0))}
+            </Text>
+            <Text style={[styles.compactDivider, { color: colors.textSecondary }]}>|</Text>
             <Text style={[styles.compactStat, { color: colors.text }]}>
               {torrent.eta > 0 && torrent.eta < 8640000 ? formatTime(torrent.eta) : '∞'}
             </Text>
-            <Text style={[styles.compactStat, { color: colors.text }]}>
-              {formatSpeed(torrent.dlspeed)}
-            </Text>
-            <Text style={[styles.compactStat, { color: colors.text }]}>
-              {formatSpeed(torrent.upspeed)}
-            </Text>
+            <Text style={[styles.compactDivider, { color: colors.textSecondary }]}>|</Text>
+            <View style={styles.compactSpeedContainer}>
+              <Ionicons name="arrow-down" size={10} color={colors.primary} />
+              <Text style={[styles.compactStat, { color: colors.text }]}>
+                {formatSpeed(torrent.dlspeed)}
+              </Text>
+            </View>
+            <Text style={[styles.compactDivider, { color: colors.textSecondary }]}>|</Text>
+            <View style={styles.compactSpeedContainer}>
+              <Ionicons name="arrow-up" size={10} color={colors.success} />
+              <Text style={[styles.compactStat, { color: colors.text }]}>
+                {formatSpeed(torrent.upspeed)}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -944,6 +982,15 @@ const styles = StyleSheet.create({
   compactStat: {
     fontSize: 10,
     fontWeight: '500',
+  },
+  compactDivider: {
+    fontSize: 10,
+    fontWeight: '300',
+  },
+  compactSpeedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   progressBar: {
     flexGrow: 1,

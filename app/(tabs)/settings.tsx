@@ -11,23 +11,32 @@ import {
   Animated,
   PanResponder,
   Dimensions,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as MailComposer from 'expo-mail-composer';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 import { useServer } from '../../context/ServerContext';
 import { useTorrents } from '../../context/TorrentContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { ColorPicker } from '../../components/ColorPicker';
-import { colorThemeManager, ColorTheme } from '../../services/color-theme-manager';
+import { OptionPicker, OptionPickerItem } from '../../components/OptionPicker';
+import { InputModal } from '../../components/InputModal';
+import { colorThemeManager } from '../../services/color-theme-manager';
 import { ServerManager } from '../../services/server-manager';
 import { ServerConfig } from '../../types/api';
 import { storageService } from '../../services/storage';
 import { categoriesApi } from '../../services/api/categories';
 import { tagsApi } from '../../services/api/tags';
 import { applicationApi } from '../../services/api/application';
+import Constants from 'expo-constants';
 import { ApplicationVersion, BuildInfo } from '../../types/api';
+import { APP_VERSION } from '../../utils/version';
 import { shadows } from '../../constants/shadows';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
@@ -51,8 +60,35 @@ export default function SettingsScreen() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddTag, setShowAddTag] = useState(false);
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
-  const [colorPickerVisible, setColorPickerVisible] = useState(false);
-  const [colorPickerKey, setColorPickerKey] = useState<keyof ColorTheme | null>(null);
+  const [savePathModalVisible, setSavePathModalVisible] = useState(false);
+  
+  // Persistent Sort/Filter Preferences
+  const [defaultSortBy, setDefaultSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'added_on'>('added_on');
+  const [defaultSortDirection, setDefaultSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [defaultFilter, setDefaultFilter] = useState<string>('all');
+  
+  // Picker states
+  const [sortByPickerVisible, setSortByPickerVisible] = useState(false);
+  const [filterPickerVisible, setFilterPickerVisible] = useState(false);
+  
+  // Default Torrent Behaviors
+  const [pauseOnAdd, setPauseOnAdd] = useState(false);
+  const [defaultSavePath, setDefaultSavePath] = useState('');
+  const [autoCategorizeByTracker, setAutoCategorizeByTracker] = useState(false);
+  const [defaultPriority, setDefaultPriority] = useState<number>(0);
+  
+  // Notifications & Feedback
+  const [toastDuration, setToastDuration] = useState<number>(3000);
+  const [hapticFeedback, setHapticFeedback] = useState(true);
+  
+  // Server Management
+  const [autoConnectLastServer, setAutoConnectLastServer] = useState(false);
+  const [connectionTimeout, setConnectionTimeout] = useState<number>(10000);
+  
+  // Advanced Settings
+  const [apiTimeout, setApiTimeout] = useState<number>(30000);
+  const [retryAttempts, setRetryAttempts] = useState<number>(3);
+  const [debugMode, setDebugMode] = useState(false);
   
   // Pulse animation for connection status
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -84,6 +120,7 @@ export default function SettingsScreen() {
       loadPreferences();
       if (isConnected) {
         loadAppInfo();
+        loadDefaultSavePath();
       }
     }, [isConnected])
   );
@@ -116,6 +153,21 @@ export default function SettingsScreen() {
     }
   };
 
+  const loadDefaultSavePath = async () => {
+    try {
+      const serverPath = await applicationApi.getDefaultSavePath();
+      if (serverPath) {
+        setDefaultSavePath(serverPath);
+        // Update preferences with server path
+        const prefs = await storageService.getPreferences();
+        prefs.defaultSavePath = serverPath;
+        await storageService.savePreferences(prefs);
+      }
+    } catch (error) {
+      // Ignore if not connected or API error
+    }
+  };
+
   const loadPreferences = async () => {
     try {
       const prefs = await storageService.getPreferences();
@@ -123,6 +175,30 @@ export default function SettingsScreen() {
       setAutoRefreshInterval(interval.toString());
       const viewMode = prefs.cardViewMode || 'compact';
       setCardViewMode(viewMode);
+      
+      // Persistent Sort/Filter
+      setDefaultSortBy(prefs.defaultSortBy || 'added_on');
+      setDefaultSortDirection(prefs.defaultSortDirection || 'desc');
+      setDefaultFilter(prefs.defaultFilter || 'all');
+      
+      // Default Torrent Behaviors
+      setPauseOnAdd(prefs.pauseOnAdd || false);
+      setDefaultSavePath(prefs.defaultSavePath || '');
+      setAutoCategorizeByTracker(prefs.autoCategorizeByTracker || false);
+      setDefaultPriority(prefs.defaultPriority || 0);
+      
+      // Notifications & Feedback
+      setToastDuration(prefs.toastDuration || 3000);
+      setHapticFeedback(prefs.hapticFeedback !== false); // default true
+      
+      // Server Management
+      setAutoConnectLastServer(prefs.autoConnectLastServer || false);
+      setConnectionTimeout(prefs.connectionTimeout || 10000);
+      
+      // Advanced Settings
+      setApiTimeout(prefs.apiTimeout || 30000);
+      setRetryAttempts(prefs.retryAttempts || 3);
+      setDebugMode(prefs.debugMode || false);
     } catch (error) {
       setAutoRefreshInterval('1500');
       setCardViewMode('compact');
@@ -158,6 +234,149 @@ export default function SettingsScreen() {
       showToast('Failed to shutdown application', 'error');
     }
   };
+
+  // Helper functions for saving preferences
+  const savePreference = async (key: string, value: any) => {
+    try {
+      const prefs = await storageService.getPreferences();
+      prefs[key] = value;
+      await storageService.savePreferences(prefs);
+    } catch (error) {
+      // Ignore save errors
+    }
+  };
+
+
+  const exportSettings = async () => {
+    try {
+      const prefs = await storageService.getPreferences();
+      const servers = await ServerManager.getServers();
+      const exportData = {
+        preferences: prefs,
+        servers: servers.map(s => ({
+          id: s.id,
+          name: s.name,
+          host: s.host,
+          port: s.port,
+          username: s.username,
+          useHttps: s.useHttps,
+          bypassAuth: s.bypassAuth,
+          // Note: passwords are not exported for security
+        })),
+        exportDate: new Date().toISOString(),
+        appVersion: APP_VERSION
+      };
+      
+      const jsonString = JSON.stringify(exportData, null, 2);
+      
+      // Use documentDirectory which is more accessible for sharing
+      const docDir = FileSystem.documentDirectory;
+      if (!docDir) {
+        showToast('File system not available', 'error');
+        return;
+      }
+      
+      const fileName = `qremote-settings.json`;
+      const fileUri = `${docDir}${fileName}`;
+      await FileSystem.writeAsStringAsync(fileUri, jsonString);
+      
+      if (await Sharing.isAvailableAsync()) {
+        // Share with proper options to trigger system save dialogs
+        // On iOS, UTI helps show "Save to Files"
+        // On Android, MIME type helps show file managers
+        const shareOptions: any = {
+          mimeType: 'application/json',
+          dialogTitle: 'Save Settings',
+        };
+        
+        // UTI is iOS-specific - helps iOS show "Save to Files" option
+        if (Platform.OS === 'ios') {
+          shareOptions.UTI = 'public.json';
+        }
+        
+        await Sharing.shareAsync(fileUri, shareOptions);
+      } else {
+        showToast('Sharing not available', 'error');
+      }
+    } catch (error: any) {
+      console.error('Export settings error:', error);
+      showToast(error.message || 'Failed to export settings', 'error');
+    }
+  };
+
+  const importSettings = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const fileUri = result.assets[0].uri;
+      const fileContent = await FileSystem.readAsStringAsync(fileUri);
+      const importData = JSON.parse(fileContent);
+
+      // Validate the import data structure
+      if (!importData.preferences || !importData.servers) {
+        showToast('Invalid settings file format', 'error');
+        return;
+      }
+
+      // Import preferences
+      await storageService.savePreferences(importData.preferences);
+
+      // Import servers (without passwords - they need to be re-entered)
+      const existingServers = await ServerManager.getServers();
+      const existingServerIds = new Set(existingServers.map(s => s.id));
+
+      for (const serverData of importData.servers) {
+        if (!existingServerIds.has(serverData.id)) {
+          // Create new server config (passwords will need to be re-entered)
+          await ServerManager.saveServer({
+            ...serverData,
+            password: '', // Passwords are not imported for security
+          });
+        }
+      }
+
+      // Reload preferences and servers
+      await loadPreferences();
+      await loadServers();
+
+      showToast('Settings imported successfully', 'success');
+    } catch (error: any) {
+      console.error('Import settings error:', error);
+      if (error.message?.includes('JSON')) {
+        showToast('Failed to parse settings file. Please check the file format.', 'error');
+      } else {
+        showToast(error.message || 'Failed to import settings', 'error');
+      }
+    }
+  };
+
+  // Picker options
+  const sortByOptions: OptionPickerItem[] = [
+    { label: 'Name', value: 'name', icon: 'text-outline' },
+    { label: 'Size', value: 'size', icon: 'disc-outline' },
+    { label: 'Progress', value: 'progress', icon: 'pie-chart-outline' },
+    { label: 'Download Speed', value: 'dlspeed', icon: 'download-outline' },
+    { label: 'Upload Speed', value: 'upspeed', icon: 'arrow-up-outline' },
+    { label: 'Added Date', value: 'added_on', icon: 'calendar-outline' },
+  ];
+
+  const filterOptions: OptionPickerItem[] = [
+    { label: 'All', value: 'all', icon: 'grid-outline' },
+    { label: 'Active', value: 'active', icon: 'pulse' },
+    { label: 'Done', value: 'completed', icon: 'checkmark-circle' },
+    { label: 'Paused', value: 'paused', icon: 'pause-circle' },
+    { label: 'Stuck', value: 'stuck', icon: 'warning' },
+    { label: 'DL', value: 'downloading', icon: 'arrow-down' },
+    { label: 'UL', value: 'uploading', icon: 'arrow-up' },
+  ];
+
 
   const handleAddServer = () => {
     router.push('/server/add');
@@ -339,18 +558,22 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>APPEARANCE</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => router.push('/settings/theme')}
+              activeOpacity={0.7}
+            >
               <View style={styles.settingLeft}>
-                <Ionicons name={isDark ? 'moon' : 'sunny'} size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Dark Mode</Text>
+                <Ionicons name="color-palette-outline" size={22} color={colors.primary} />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>Theme & Colors</Text>
+                  <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                    Customize theme and color settings
+                  </Text>
+                </View>
               </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: 'white' + '100', true: 'colors.success '}}
-                ios_backgroundColor= {colors.surfaceOutline}
-                thumbColor={isDark ? 'white' : 'white'}              />
-            </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
             <View style={[styles.separator, { backgroundColor: colors.background }]} />
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
@@ -364,9 +587,8 @@ export default function SettingsScreen() {
               <Switch
                 value={cardViewMode === 'compact'}
                 onValueChange={(value) => saveCardViewMode(value ? 'compact' : 'expanded')}
-                trackColor={{ false: 'white' + '100', true: 'colors.success '}}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                 ios_backgroundColor={colors.surfaceOutline}
-                thumbColor={cardViewMode === 'compact' ? 'white' : 'white'}
               />
             </View>
             <View style={[styles.separator, { backgroundColor: colors.background }]} />
@@ -387,67 +609,6 @@ export default function SettingsScreen() {
                 placeholderTextColor={colors.textSecondary}
               />
             </View>
-          </View>
-        </View>
-
-        {/* Color Customization */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>COLOR THEME</Text>
-            <TouchableOpacity
-              onPress={async () => {
-                try {
-                  await colorThemeManager.resetCustomColors(isDark);
-                  await reloadCustomColors();
-                  showToast('Colors reset to defaults', 'success');
-                } catch (error) {
-                  showToast('Failed to reset colors', 'error');
-                }
-              }}
-            >
-              <Ionicons name="refresh" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <ColorSettingRow
-              label="Primary"
-              color={colors.primary}
-              onPress={() => {
-                setColorPickerKey('primary');
-                setColorPickerVisible(true);
-              }}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Error"
-              color={colors.error}
-              onPress={() => {
-                setColorPickerKey('error');
-                setColorPickerVisible(true);
-              }}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Success"
-              color={colors.success}
-              onPress={() => {
-                setColorPickerKey('success');
-                setColorPickerVisible(true);
-              }}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Warning"
-              color={colors.warning}
-              onPress={() => {
-                setColorPickerKey('warning');
-                setColorPickerVisible(true);
-              }}
-              colors={colors}
-            />
           </View>
         </View>
 
@@ -485,7 +646,9 @@ export default function SettingsScreen() {
               )}
               {Object.keys(categories).length === 0 && !showAddCategory ? (
                 <View style={styles.emptyStateSmall}>
+                  <Ionicons name="folder-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
                   <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>No categories</Text>
+                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>Create your first category to organize torrents</Text>
                 </View>
               ) : (
                 Object.entries(categories).map(([name, category], index) => (
@@ -552,7 +715,9 @@ export default function SettingsScreen() {
               )}
               {tags.length === 0 && !showAddTag ? (
                 <View style={styles.emptyStateSmall}>
+                  <Ionicons name="pricetag-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
                   <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>No tags</Text>
+                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>Add tags to label and filter your torrents</Text>
                 </View>
               ) : (
                 <View style={styles.tagsWrap}>
@@ -611,6 +776,322 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* Persistent Sort/Filter Preferences */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT LIST</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Sort By</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setSortByPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pickerText, { color: colors.text }]}>
+                  {defaultSortBy === 'name' ? 'Name' : defaultSortBy === 'size' ? 'Size' : defaultSortBy === 'progress' ? 'Progress' : defaultSortBy === 'dlspeed' ? 'Download Speed' : defaultSortBy === 'upspeed' ? 'Upload Speed' : 'Added Date'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Sort Direction</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => {
+                  const dir = defaultSortDirection === 'asc' ? 'desc' : 'asc';
+                  setDefaultSortDirection(dir);
+                  savePreference('defaultSortDirection', dir);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name={defaultSortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} 
+                  size={20} 
+                  color={colors.primary} 
+                />
+                <Text style={[styles.pickerText, { color: colors.text, marginLeft: 8 }]}>
+                  {defaultSortDirection === 'asc' ? 'Ascending' : 'Descending'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="funnel-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Filter</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setFilterPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pickerText, { color: colors.text }]}>
+                  {filterOptions.find(opt => opt.value === defaultFilter)?.label || defaultFilter.charAt(0).toUpperCase() + defaultFilter.slice(1)}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Default Torrent Behaviors */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT BEHAVIOR</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="pause-circle-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Pause on Add</Text>
+              </View>
+              <Switch
+                value={pauseOnAdd}
+                onValueChange={(value) => {
+                  setPauseOnAdd(value);
+                  savePreference('pauseOnAdd', value);
+                }}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                ios_backgroundColor={colors.surfaceOutline}
+              />
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="folder-outline" size={22} color={colors.primary} />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>Default Save Path</Text>
+                  {defaultSavePath && <Text style={[styles.settingHint, { color: colors.textSecondary }]} numberOfLines={1}>{defaultSavePath}</Text>}
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSavePathModalVisible(true)}
+              >
+                <Ionicons name="create-outline" size={22} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="pricetag-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Auto-categorize by Tracker</Text>
+              </View>
+              <Switch
+                value={autoCategorizeByTracker}
+                onValueChange={(value) => {
+                  setAutoCategorizeByTracker(value);
+                  savePreference('autoCategorizeByTracker', value);
+                }}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                ios_backgroundColor={colors.surfaceOutline}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Notifications & Feedback */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>NOTIFICATIONS & FEEDBACK</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="timer-outline" size={22} color={colors.primary} />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>Notification Duration</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Milliseconds</Text>
+                </View>
+              </View>
+              <TextInput
+                style={[styles.settingInput, { backgroundColor: 'transparent', borderColor: colors.textSecondary, borderWidth: 0.5, color: colors.text, width: 80 }]}
+                value={toastDuration.toString()}
+                onChangeText={(text) => {
+                  const num = parseInt(text, 10);
+                  if (!isNaN(num) && num >= 1000 && num <= 10000) {
+                    setToastDuration(num);
+                    savePreference('toastDuration', num);
+                  }
+                }}
+                keyboardType="numeric"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="phone-portrait-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Haptic Feedback</Text>
+              </View>
+              <Switch
+                value={hapticFeedback}
+                onValueChange={(value) => {
+                  setHapticFeedback(value);
+                  savePreference('hapticFeedback', value);
+                }}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                ios_backgroundColor={colors.surfaceOutline}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Server Management Enhancements */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>SERVER MANAGEMENT</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="flash-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Auto-connect to Last Server</Text>
+              </View>
+              <Switch
+                value={autoConnectLastServer}
+                onValueChange={(value) => {
+                  setAutoConnectLastServer(value);
+                  savePreference('autoConnectLastServer', value);
+                }}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                ios_backgroundColor={colors.surfaceOutline}
+              />
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="timer-outline" size={22} color={colors.primary} />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>Connection Timeout</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Milliseconds</Text>
+                </View>
+              </View>
+              <TextInput
+                style={[styles.settingInput, { backgroundColor: 'transparent', borderColor: colors.textSecondary, borderWidth: 0.5, color: colors.text, width: 80 }]}
+                value={connectionTimeout.toString()}
+                onChangeText={(text) => {
+                  const num = parseInt(text, 10);
+                  if (!isNaN(num) && num >= 1000 && num <= 60000) {
+                    setConnectionTimeout(num);
+                    savePreference('connectionTimeout', num);
+                  }
+                }}
+                keyboardType="numeric"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Advanced Settings */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ADVANCED</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="hourglass-outline" size={22} color={colors.primary} />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>API Timeout</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Milliseconds</Text>
+                </View>
+              </View>
+              <TextInput
+                style={[styles.settingInput, { backgroundColor: 'transparent', borderColor: colors.textSecondary, borderWidth: 0.5, color: colors.text, width: 80 }]}
+                value={apiTimeout.toString()}
+                onChangeText={(text) => {
+                  const num = parseInt(text, 10);
+                  if (!isNaN(num) && num >= 5000 && num <= 120000) {
+                    setApiTimeout(num);
+                    savePreference('apiTimeout', num);
+                  }
+                }}
+                keyboardType="numeric"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="repeat-outline" size={22} color={colors.primary} />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>Retry Attempts</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Number of retries</Text>
+                </View>
+              </View>
+              <TextInput
+                style={[styles.settingInput, { backgroundColor: 'transparent', borderColor: colors.textSecondary, borderWidth: 0.5, color: colors.text, width: 80 }]}
+                value={retryAttempts.toString()}
+                onChangeText={(text) => {
+                  const num = parseInt(text, 10);
+                  if (!isNaN(num) && num >= 0 && num <= 10) {
+                    setRetryAttempts(num);
+                    savePreference('retryAttempts', num);
+                  }
+                }}
+                keyboardType="numeric"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="bug-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Debug Mode</Text>
+              </View>
+              <Switch
+                value={debugMode}
+                onValueChange={(value) => {
+                  setDebugMode(value);
+                  savePreference('debugMode', value);
+                }}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                ios_backgroundColor={colors.surfaceOutline}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Backup & Restore */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>BACKUP & RESTORE</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity style={styles.settingRow} onPress={exportSettings}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="download-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Export Settings</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity style={styles.settingRow} onPress={importSettings}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="cloud-upload-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Import Settings</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Enhanced About Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ABOUT</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <InfoRow icon="information-circle-outline" label="App Version" value={APP_VERSION} colors={colors} />
+            <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+            <InfoRow icon="logo-react" label="React Native" value={Platform.constants.reactNativeVersion?.major + '.' + Platform.constants.reactNativeVersion?.minor + '.' + Platform.constants.reactNativeVersion?.patch || 'N/A'} colors={colors} />
+            <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+            <InfoRow icon="phone-portrait-outline" label="Platform" value={Platform.OS.charAt(0).toUpperCase() + Platform.OS.slice(1)} colors={colors} />
+            {buildInfo && (
+              <>
+                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                <InfoRow icon="code-working-outline" label="Build Info" value={`${buildInfo.qt} / ${buildInfo.libtorrent}`} colors={colors} />
+              </>
+            )}
+          </View>
+        </View>
+
         {/* Danger Zone */}
         {isConnected && (
           <View style={styles.section}>
@@ -633,31 +1114,49 @@ export default function SettingsScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Color Picker Modal */}
-      {colorPickerKey && (
-        <ColorPicker
-          visible={colorPickerVisible}
-          currentColor={colors[colorPickerKey]}
-          onColorChange={async (newColor) => {
-            try {
-              const custom = await colorThemeManager.getCustomColors(isDark);
-              const updatedCustom: ColorTheme = {
-                ...custom,
-                [colorPickerKey]: newColor,
-              };
-              await colorThemeManager.saveCustomColors(isDark, updatedCustom);
-              await reloadCustomColors();
-              showToast(`${colorPickerKey} color updated`, 'success');
-            } catch (error) {
-              showToast('Failed to save color', 'error');
-            }
-          }}
-          onClose={() => {
-            setColorPickerVisible(false);
-            setColorPickerKey(null);
-          }}
-        />
-      )}
+      {/* Option Pickers */}
+      <OptionPicker
+        visible={sortByPickerVisible}
+        title="Sort By"
+        options={sortByOptions}
+        selectedValue={defaultSortBy}
+        onSelect={(value) => {
+          setDefaultSortBy(value as any);
+          savePreference('defaultSortBy', value);
+          setSortByPickerVisible(false);
+        }}
+        onClose={() => setSortByPickerVisible(false)}
+      />
+
+      <OptionPicker
+        visible={filterPickerVisible}
+        title="Default Filter"
+        options={filterOptions}
+        selectedValue={defaultFilter}
+        onSelect={(value) => {
+          setDefaultFilter(value);
+          savePreference('defaultFilter', value);
+          setFilterPickerVisible(false);
+        }}
+        onClose={() => setFilterPickerVisible(false)}
+      />
+
+      {/* Default Save Path Modal */}
+      <InputModal
+        visible={savePathModalVisible}
+        title="Default Save Path"
+        message="Enter default save path for new torrents"
+        placeholder="/path/to/downloads"
+        defaultValue={defaultSavePath}
+        keyboardType="default"
+        onCancel={() => setSavePathModalVisible(false)}
+        onConfirm={(path: string) => {
+          setDefaultSavePath(path);
+          savePreference('defaultSavePath', path);
+          setSavePathModalVisible(false);
+        }}
+      />
+
     </>
   );
 }
@@ -987,9 +1486,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
+  settingDescription: {
+    ...typography.caption,
+    fontSize: 12,
+    marginTop: 2,
+  },
   settingHint: {
     fontSize: 12,
     marginTop: 1,
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  pickerText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   settingInput: {
     borderWidth: .25,
@@ -1148,28 +1661,4 @@ const styles = StyleSheet.create({
 });
 
 // Color Setting Row Component
-function ColorSettingRow({
-  label,
-  color,
-  onPress,
-  colors,
-}: {
-  label: string;
-  color: string;
-  onPress: () => void;
-  colors: any;
-}) {
-  return (
-    <TouchableOpacity style={styles.settingRow} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.settingLeft}>
-        <Ionicons name="color-palette" size={22} color={colors.primary} />
-        <Text style={[styles.settingLabel, { color: colors.text }]}>{label}</Text>
-      </View>
-      <View style={styles.colorPickerButton}>
-        <View style={[styles.colorPreview, { backgroundColor: color }]} />
-        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-      </View>
-    </TouchableOpacity>
-  );
-}
 

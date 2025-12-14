@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Alert } from 'react-native';
 import { RectButton, Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { TorrentCard } from './TorrentCard';
@@ -50,15 +50,46 @@ export function SwipeableTorrentCard({
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await torrentsApi.deleteTorrents([torrent.hash], false);
-      showToast('Torrent deleted', 'success');
-      sync().catch(() => {});
-      swipeableRef.current?.close();
-    } catch (error: any) {
-      showToast(error.message || 'Failed to delete', 'error');
-    }
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Torrent',
+      `Delete "${torrent.name}"?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => swipeableRef.current?.close(),
+        },
+        {
+          text: 'Torrent Only',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], false);
+              showToast('Torrent deleted', 'success');
+              sync().catch(() => {});
+              swipeableRef.current?.close();
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete', 'error');
+            }
+          },
+        },
+        {
+          text: 'With Files',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], true);
+              showToast('Torrent deleted', 'success');
+              sync().catch(() => {});
+              swipeableRef.current?.close();
+            } catch (error: any) {
+              showToast(error.message || 'Failed to delete', 'error');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const renderLeftActions = (
