@@ -37,17 +37,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider value={{ showToast }}>
-      <>
-        {children}
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            duration={toast.duration}
-            onHide={hideToast}
-          />
-        )}
-      </>
+      {children}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          duration={toast.duration}
+          onHide={hideToast}
+        />
+      )}
     </ToastContext.Provider>
   );
 }
