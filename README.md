@@ -1,8 +1,10 @@
 # qRemote
 
-Native iOS app for qBittorrent. Finally, a proper mobile interface instead of pinch-zooming the web UI.
+Native iOS & Android App for qBittorrent •  **[GitHub](https://github.com/taylorcox75/qRemote/)**
 
-**[Join TestFlight Beta](https://testflight.apple.com/join/ZHp9Uq4h)** • **[GitHub](https://github.com/taylorcox75/qRemote/)**
+**iOS:** [Join TestFlight Beta](https://testflight.apple.com/join/ZHp9Uq4h)  
+**Android:** Closed beta — [Join Google Group](https://groups.google.com/g/qremote), then [access Play Store preview](https://play.google.com/apps/testing/com.qRemote.app)
+
 
 ## Screenshots
 
