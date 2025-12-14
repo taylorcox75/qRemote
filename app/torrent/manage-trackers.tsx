@@ -7,7 +7,6 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  Alert,
   ActionSheetIOS,
   Platform,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { torrentsApi } from '../../services/api/torrents';
 import { Tracker } from '../../types/api';
@@ -28,6 +28,7 @@ export default function ManageTrackersScreen() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { showToast } = useToast();
   
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,37 +55,25 @@ export default function ManageTrackersScreen() {
       );
       setTrackers(realTrackers);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to fetch trackers');
+      showToast(error.message || 'Failed to fetch trackers', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRemoveTracker = (tracker: Tracker) => {
-    Alert.alert(
-      'Remove Tracker',
-      `Remove ${tracker.url}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await torrentsApi.removeTrackers(hash!, [tracker.url]);
-              fetchTrackers();
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to remove tracker');
-            }
-          },
-        },
-      ]
-    );
+  const handleRemoveTracker = async (tracker: Tracker) => {
+    try {
+      await torrentsApi.removeTrackers(hash!, [tracker.url]);
+      fetchTrackers();
+      showToast('Tracker removed', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to remove tracker', 'error');
+    }
   };
 
   const handleAddTracker = async () => {
     if (!newTrackerUrl.trim()) {
-      Alert.alert('Error', 'Please enter a tracker URL');
+      showToast('Please enter a tracker URL', 'error');
       return;
     }
 
@@ -94,9 +83,9 @@ export default function ManageTrackersScreen() {
       setNewTrackerUrl('');
       setShowAddInput(false);
       fetchTrackers();
-      Alert.alert('Success', 'Tracker added');
+      showToast('Tracker added', 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add tracker');
+      showToast(error.message || 'Failed to add tracker', 'error');
     } finally {
       setAddingTracker(false);
     }
@@ -122,7 +111,7 @@ export default function ManageTrackersScreen() {
 
   const handleCopyTracker = async (tracker: Tracker) => {
     await Clipboard.setStringAsync(tracker.url);
-    Alert.alert('Copied', 'Tracker URL copied to clipboard');
+    showToast('Tracker URL copied to clipboard', 'success');
   };
 
   const handleEditTracker = (tracker: Tracker) => {
@@ -132,7 +121,7 @@ export default function ManageTrackersScreen() {
 
   const handleSaveEditedTracker = async () => {
     if (!editTrackerUrl.trim() || !editingTracker) {
-      Alert.alert('Error', 'Please enter a tracker URL');
+      showToast('Please enter a tracker URL', 'error');
       return;
     }
 
@@ -145,9 +134,9 @@ export default function ManageTrackersScreen() {
       setEditingTracker(null);
       setEditTrackerUrl('');
       fetchTrackers();
-      Alert.alert('Success', 'Tracker updated');
+      showToast('Tracker updated', 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update tracker');
+      showToast(error.message || 'Failed to update tracker', 'error');
     } finally {
       setAddingTracker(false);
     }
@@ -172,20 +161,9 @@ export default function ManageTrackersScreen() {
         }
       );
     } else {
-      Alert.alert(
-        tracker.url,
-        'Choose an action',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Copy URL', onPress: () => handleCopyTracker(tracker) },
-          { text: 'Edit', onPress: () => handleEditTracker(tracker) },
-          { 
-            text: 'Delete', 
-            style: 'destructive',
-            onPress: () => handleRemoveTracker(tracker) 
-          },
-        ]
-      );
+      // On Android, show menu options inline or use a different approach
+      // For now, just handle actions directly without confirmation dialog
+      handleEditTracker(tracker);
     }
   };
 
@@ -194,10 +172,10 @@ export default function ManageTrackersScreen() {
     try {
       setReannouncing(true);
       await torrentsApi.reannounceTorrents([hash]);
-      Alert.alert('Success', 'Tracker reannounce sent');
+      showToast('Tracker reannounce sent', 'success');
       fetchTrackers();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to reannounce');
+      showToast(error.message || 'Failed to reannounce', 'error');
     } finally {
       setReannouncing(false);
     }
@@ -386,11 +364,9 @@ export default function ManageTrackersScreen() {
                 Existing Trackers ({trackers.length})
               </Text>
               {trackers.map((tracker, index) => (
-                <TouchableOpacity 
+                <View 
                   key={index} 
                   style={[styles.trackerRow, { backgroundColor: colors.surface }]}
-                  onPress={() => showTrackerMenu(tracker)}
-                  activeOpacity={0.7}
                 >
                   <View style={styles.trackerInfo}>
                     <Text style={[styles.trackerUrl, { color: colors.text }]} numberOfLines={2}>
@@ -408,8 +384,30 @@ export default function ManageTrackersScreen() {
                       </Text>
                     )}
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
+                  <View style={styles.trackerActions}>
+                    <TouchableOpacity
+                      style={styles.trackerActionButton}
+                      onPress={() => handleCopyTracker(tracker)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="copy-outline" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.trackerActionButton}
+                      onPress={() => handleEditTracker(tracker)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="create-outline" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.trackerActionButton}
+                      onPress={() => handleRemoveTracker(tracker)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={colors.error} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ))}
             </View>
           )}
@@ -475,6 +473,13 @@ const styles = StyleSheet.create({
   trackerInfo: {
     flex: 1,
     marginRight: spacing.md,
+  },
+  trackerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  trackerActionButton: {
+    padding: spacing.xs,
   },
   trackerUrl: {
     ...typography.smallMedium,

@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +18,7 @@ import { ServerManager } from '../../services/server-manager';
 import { ServerConfig } from '../../types/api';
 import { useTheme } from '../../context/ThemeContext';
 import { useServer } from '../../context/ServerContext';
+import { useToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { spacing, borderRadius } from '../../constants/spacing';
 
@@ -27,6 +27,7 @@ export default function EditServerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
   const { currentServer, disconnect, connectToServer } = useServer();
+  const { showToast } = useToast();
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('8080');
@@ -55,11 +56,11 @@ export default function EditServerScreen() {
         setUseHttps(server.useHttps || false);
         setBypassAuth(server.bypassAuth || false);
       } else {
-        Alert.alert('Error', 'Server not found');
+        showToast('Server not found', 'error');
         router.back();
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to load server');
+      showToast('Failed to load server', 'error');
       router.back();
     } finally {
       setLoading(false);
@@ -68,18 +69,18 @@ export default function EditServerScreen() {
 
   const handleSave = async () => {
     if (!name.trim() || !host.trim()) {
-      Alert.alert('Error', 'Please fill in server name and host');
+      showToast('Please fill in server name and host', 'error');
       return;
     }
 
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      Alert.alert('Error', 'Please fill in username and password, or enable bypass authentication');
+      showToast('Please fill in username and password, or enable bypass authentication', 'error');
       return;
     }
 
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
-      Alert.alert('Error', 'Please enter a valid port number (1-65535)');
+      showToast('Please enter a valid port number (1-65535)', 'error');
       return;
     }
 
@@ -103,50 +104,39 @@ export default function EditServerScreen() {
       };
 
       await ServerManager.saveServer(server);
+      showToast('Server saved successfully', 'success');
       router.back();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save server');
+      showToast('Failed to save server', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Server',
-      `Are you sure you want to delete "${name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ServerManager.deleteServer(id!);
-              router.back();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete server');
-            }
-          },
-        },
-      ]
-    );
+  const handleDelete = async () => {
+    try {
+      await ServerManager.deleteServer(id!);
+      showToast(`Server "${name}" deleted`, 'success');
+      router.back();
+    } catch (error) {
+      showToast('Failed to delete server', 'error');
+    }
   };
 
   const handleTest = async () => {
     if (!name.trim() || !host.trim()) {
-      Alert.alert('Error', 'Please fill in server name and host');
+      showToast('Please fill in server name and host', 'error');
       return;
     }
 
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      Alert.alert('Error', 'Please fill in username and password, or enable bypass authentication');
+      showToast('Please fill in username and password, or enable bypass authentication', 'error');
       return;
     }
 
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
-      Alert.alert('Error', 'Please enter a valid port number (1-65535)');
+      showToast('Please enter a valid port number (1-65535)', 'error');
       return;
     }
 
@@ -165,12 +155,12 @@ export default function EditServerScreen() {
 
       const result = await ServerManager.testConnection(server);
       if (result.success) {
-        Alert.alert('Success', 'Connection test successful!');
+        showToast('Connection test successful!', 'success');
       } else {
-        Alert.alert('Error', result.error || 'Connection test failed. Please check your settings.');
+        showToast(result.error || 'Connection test failed. Please check your settings.', 'error');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Connection test failed. Please check your settings.');
+      showToast(error.message || 'Connection test failed. Please check your settings.', 'error');
     } finally {
       setTesting(false);
     }

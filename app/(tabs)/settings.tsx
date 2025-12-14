@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   TextInput,
   Switch,
@@ -18,7 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useServer } from '../../context/ServerContext';
 import { useTorrents } from '../../context/TorrentContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
+import { ColorPicker } from '../../components/ColorPicker';
+import { colorThemeManager, ColorTheme } from '../../services/color-theme-manager';
 import { ServerManager } from '../../services/server-manager';
 import { ServerConfig } from '../../types/api';
 import { storageService } from '../../services/storage';
@@ -35,7 +37,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { currentServer, isConnected, connectToServer, disconnect } = useServer();
   const { categories, tags } = useTorrents();
-  const { isDark, toggleTheme, colors } = useTheme();
+  const { isDark, toggleTheme, colors, reloadCustomColors } = useTheme();
+  const { showToast } = useToast();
   const [servers, setServers] = useState<ServerConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryName, setCategoryName] = useState('');
@@ -48,6 +51,8 @@ export default function SettingsScreen() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddTag, setShowAddTag] = useState(false);
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
+  const [colorPickerVisible, setColorPickerVisible] = useState(false);
+  const [colorPickerKey, setColorPickerKey] = useState<keyof ColorTheme | null>(null);
   
   // Pulse animation for connection status
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -89,7 +94,7 @@ export default function SettingsScreen() {
       const serverList = await ServerManager.getServers();
       setServers(serverList);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load servers');
+      showToast('Failed to load servers', 'error');
     } finally {
       setLoading(false);
     }
@@ -145,26 +150,13 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleShutdown = () => {
-    Alert.alert(
-      'Shutdown Application',
-      'Are you sure you want to shutdown qBittorrent?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Shutdown',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await applicationApi.shutdown();
-              Alert.alert('Success', 'Application shutdown initiated');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to shutdown application');
-            }
-          },
-        },
-      ]
-    );
+  const handleShutdown = async () => {
+    try {
+      await applicationApi.shutdown();
+      showToast('Application shutdown initiated', 'success');
+    } catch (error) {
+      showToast('Failed to shutdown application', 'error');
+    }
   };
 
   const handleAddServer = () => {
@@ -180,20 +172,18 @@ export default function SettingsScreen() {
     try {
       const success = await connectToServer(server);
       if (success) {
-        Alert.alert('Success', `Connected to ${server.name}`);
+        showToast(`Connected to ${server.name}`, 'success');
       } else {
-        Alert.alert('Error', 'Failed to connect. Please check your credentials.');
+        showToast('Failed to connect. Please check your credentials.', 'error');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to connect');
+      showToast(error.message || 'Failed to connect', 'error');
     }
   };
 
   const handleDisconnect = async () => {
-    Alert.alert('Disconnect', 'Are you sure you want to disconnect?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Disconnect', onPress: () => disconnect() },
-    ]);
+    await disconnect();
+    showToast('Disconnected from server', 'info');
   };
 
   const handleDeleteServer = async (server: ServerConfig) => {
@@ -214,8 +204,9 @@ export default function SettingsScreen() {
           await disconnect();
         }
       }
+      showToast(`Server "${server.name}" deleted`, 'success');
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete server');
+      showToast('Failed to delete server', 'error');
     }
   };
         
@@ -223,30 +214,34 @@ export default function SettingsScreen() {
 
   const handleAddCategory = async () => {
     if (!categoryName.trim()) {
-      Alert.alert('Error', 'Please enter a category name');
+      showToast('Please enter a category name', 'error');
       return;
     }
+    const categoryToAdd = categoryName.trim();
     try {
-      await categoriesApi.addCategory(categoryName.trim(), categorySavePath.trim() || undefined);
+      await categoriesApi.addCategory(categoryToAdd, categorySavePath.trim() || undefined);
       setCategoryName('');
       setCategorySavePath('');
       setShowAddCategory(false);
+      showToast(`Category "${categoryToAdd}" added`, 'success');
     } catch (error) {
-      Alert.alert('Error', 'Failed to add category');
+      showToast('Failed to add category', 'error');
     }
   };
 
   const handleAddTag = async () => {
     if (!tagName.trim()) {
-      Alert.alert('Error', 'Please enter a tag name');
+      showToast('Please enter a tag name', 'error');
       return;
     }
+    const tagToAdd = tagName.trim();
     try {
-      await tagsApi.createTags([tagName.trim()]);
+      await tagsApi.createTags([tagToAdd]);
       setTagName('');
       setShowAddTag(false);
+      showToast(`Tag "${tagToAdd}" created`, 'success');
     } catch (error) {
-      Alert.alert('Error', 'Failed to create tag');
+      showToast('Failed to create tag', 'error');
     }
   };
 
@@ -395,6 +390,67 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Color Customization */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>COLOR THEME</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  await colorThemeManager.resetCustomColors(isDark);
+                  await reloadCustomColors();
+                  showToast('Colors reset to defaults', 'success');
+                } catch (error) {
+                  showToast('Failed to reset colors', 'error');
+                }
+              }}
+            >
+              <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <ColorSettingRow
+              label="Primary"
+              color={colors.primary}
+              onPress={() => {
+                setColorPickerKey('primary');
+                setColorPickerVisible(true);
+              }}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Error"
+              color={colors.error}
+              onPress={() => {
+                setColorPickerKey('error');
+                setColorPickerVisible(true);
+              }}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Success"
+              color={colors.success}
+              onPress={() => {
+                setColorPickerKey('success');
+                setColorPickerVisible(true);
+              }}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Warning"
+              color={colors.warning}
+              onPress={() => {
+                setColorPickerKey('warning');
+                setColorPickerVisible(true);
+              }}
+              colors={colors}
+            />
+          </View>
+        </View>
+
         {/* Categories */}
         {isConnected && (
           <View style={styles.section}>
@@ -448,11 +504,13 @@ export default function SettingsScreen() {
                           </View>
                         </View>
                         <TouchableOpacity
-                          onPress={() => {
-                            Alert.alert('Delete Category', `Delete "${name}"?`, [
-                              { text: 'Cancel', style: 'cancel' },
-                              { text: 'Delete', style: 'destructive', onPress: () => categoriesApi.removeCategories([name]) },
-                            ]);
+                          onPress={async () => {
+                            try {
+                              await categoriesApi.removeCategories([name]);
+                              showToast(`Category "${name}" deleted`, 'success');
+                            } catch (error) {
+                              showToast('Failed to delete category', 'error');
+                            }
                           }}
                         >
                           <Ionicons name="trash-outline" size={20} color={colors.error} />
@@ -502,11 +560,13 @@ export default function SettingsScreen() {
                     <TouchableOpacity
                       key={tag}
                       style={[styles.tagChip, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}
-                      onLongPress={() => {
-                        Alert.alert('Delete Tag', `Delete "${tag}"?`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Delete', style: 'destructive', onPress: () => tagsApi.deleteTags([tag]) },
-                        ]);
+                      onLongPress={async () => {
+                        try {
+                          await tagsApi.deleteTags([tag]);
+                          showToast(`Tag "${tag}" deleted`, 'success');
+                        } catch (error) {
+                          showToast('Failed to delete tag', 'error');
+                        }
                       }}
                     >
                       <Ionicons name="pricetag-outline" size={14} color={colors.primary} />
@@ -572,6 +632,32 @@ export default function SettingsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Color Picker Modal */}
+      {colorPickerKey && (
+        <ColorPicker
+          visible={colorPickerVisible}
+          currentColor={colors[colorPickerKey]}
+          onColorChange={async (newColor) => {
+            try {
+              const custom = await colorThemeManager.getCustomColors(isDark);
+              const updatedCustom: ColorTheme = {
+                ...custom,
+                [colorPickerKey]: newColor,
+              };
+              await colorThemeManager.saveCustomColors(isDark, updatedCustom);
+              await reloadCustomColors();
+              showToast(`${colorPickerKey} color updated`, 'success');
+            } catch (error) {
+              showToast('Failed to save color', 'error');
+            }
+          }}
+          onClose={() => {
+            setColorPickerVisible(false);
+            setColorPickerKey(null);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -1047,5 +1133,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
+  colorPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  colorPreview: {
+    width: 30,
+    height: 30,
+    borderRadius: borderRadius.small,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
 });
+
+// Color Setting Row Component
+function ColorSettingRow({
+  label,
+  color,
+  onPress,
+  colors,
+}: {
+  label: string;
+  color: string;
+  onPress: () => void;
+  colors: any;
+}) {
+  return (
+    <TouchableOpacity style={styles.settingRow} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.settingLeft}>
+        <Ionicons name="color-palette" size={22} color={colors.primary} />
+        <Text style={[styles.settingLabel, { color: colors.text }]}>{label}</Text>
+      </View>
+      <View style={styles.colorPickerButton}>
+        <View style={[styles.colorPreview, { backgroundColor: color }]} />
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+      </View>
+    </TouchableOpacity>
+  );
+}
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { shadows } from '../constants/shadows';
@@ -16,6 +17,7 @@ interface ToastProps {
 
 export function Toast({ message, type = 'info', duration = 3000, onHide }: ToastProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -86,12 +88,15 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
     }
   };
 
+  const topOffset = insets.top + (Platform.OS === 'ios' ? 8 : 16);
+
   return (
     <Animated.View
       style={[
         styles.container,
         {
           backgroundColor: colors.surface,
+          top: topOffset,
           transform: [{ translateY }],
           opacity,
         },
@@ -118,7 +123,6 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 20,
     left: spacing.lg,
     right: spacing.lg,
     borderRadius: borderRadius.medium,

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Dimensions, Platform, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TorrentInfo, TorrentState } from '../types/api';
 import { torrentsApi } from '../services/api/torrents';
@@ -7,6 +8,7 @@ import { useServer } from '../context/ServerContext';
 import { useTorrents } from '../context/TorrentContext';
 import { useTheme } from '../context/ThemeContext';
 import { useTransfer } from '../context/TransferContext';
+import { useToast } from '../context/ToastContext';
 import { apiClient } from '../services/api/client';
 import { formatSpeed, formatSize, formatTime } from '../utils/format';
 import * as Clipboard from 'expo-clipboard';
@@ -20,16 +22,24 @@ interface TorrentCardProps {
 }
 
 export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: TorrentCardProps) {
+  const isIOS = Platform.OS === 'ios';
+  const menuRole = isIOS ? 'menu' : 'none';
+  const menuItemRole = isIOS ? 'menuitem' : 'button';
+  const separatorRole = isIOS ? 'separator' : 'none';
 
   const { isConnected, currentServer, reconnect } = useServer();
   const { sync } = useTorrents();
   const { isDark, colors } = useTheme();
   const { transferInfo, toggleAlternativeSpeedLimits, refresh: refreshTransfer } = useTransfer();
+  const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [optimisticPaused, setOptimisticPaused] = useState<boolean | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-  const menuButtonRef = useRef<TouchableOpacity>(null);
+  const menuButtonRef = useRef<any>(null);
+  const menuContainerRef = useRef<View | null>(null);
+  const hasAdjustedPosition = useRef(false);
 
   // Check if torrent is stopped/paused
   // A torrent is considered paused/stopped if:
@@ -45,7 +55,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
 
   const handlePauseResume = async () => {
     if (!isConnected || !currentServer) {
-      Alert.alert('Error', 'Not connected to a server. Please connect to a server first.');
+      showToast('Not connected to a server. Please connect to a server first.', 'error');
       return;
     }
 
@@ -62,7 +72,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
         if (!reconnected) {
           // Revert optimistic update
           setOptimisticPaused(null);
-          Alert.alert('Error', 'Lost connection to server. Please reconnect.');
+          showToast('Lost connection to server. Please reconnect.', 'error');
           return;
         }
       }
@@ -80,7 +90,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       // Revert optimistic update on error
       setOptimisticPaused(null);
       console.error('Pause/Resume error:', error);
-      Alert.alert('Error', error.message || `Failed to ${wasPaused ? 'start' : 'pause'} torrent`);
+      showToast(error.message || `Failed to ${wasPaused ? 'start' : 'pause'} torrent`, 'error');
     } finally {
       setLoading(false);
       // Clear optimistic state after a delay to allow sync to update
@@ -92,7 +102,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
 
   const handleForceStart = async () => {
     if (!isConnected || !currentServer) {
-      Alert.alert('Error', 'Not connected to a server. Please connect to a server first.');
+      showToast('Not connected to a server. Please connect to a server first.', 'error');
       return;
     }
 
@@ -104,7 +114,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
         // Server was cleared, try to reconnect
         const reconnected = await reconnect();
         if (!reconnected) {
-          Alert.alert('Error', 'Lost connection to server. Please reconnect.');
+          showToast('Lost connection to server. Please reconnect.', 'error');
           return;
         }
       }
@@ -116,7 +126,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       sync().catch(() => {});
     } catch (error: any) {
       console.error('Force Start error:', error);
-      Alert.alert('Error', error.message || 'Failed to force start torrent');
+      showToast(error.message || 'Failed to force start torrent', 'error');
     } finally {
       setLoading(false);
     }
@@ -125,19 +135,19 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
   const handleVerifyData = async () => {
     try {
       await torrentsApi.recheckTorrents([torrent.hash]);
-      Alert.alert('Success', 'Verification started');
+      showToast('Verification started', 'success');
       sync().catch(() => {});
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to verify torrent');
+      showToast(error.message || 'Failed to verify torrent', 'error');
     }
   };
 
   const handleReannounce = async () => {
     try {
       await torrentsApi.reannounceTorrents([torrent.hash]);
-      Alert.alert('Success', 'Reannounce sent');
+      showToast('Reannounce sent', 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to reannounce');
+      showToast(error.message || 'Failed to reannounce', 'error');
     }
   };
 
@@ -145,51 +155,28 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
     try {
       if (torrent.magnet_uri) {
         await Clipboard.setStringAsync(torrent.magnet_uri);
-        Alert.alert('Copied', 'Magnet link copied to clipboard');
+        showToast('Magnet link copied to clipboard', 'success');
       } else {
-        Alert.alert('Error', 'No magnet link available');
+        showToast('No magnet link available', 'error');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to copy magnet link');
+      showToast(error.message || 'Failed to copy magnet link', 'error');
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Torrent',
-      'Do you want to delete the torrent files too?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Torrent Only',
-          onPress: async () => {
-            try {
-              await torrentsApi.deleteTorrents([torrent.hash], false);
-              sync().catch(() => {});
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete torrent');
-            }
-          },
-        },
-        {
-          text: 'With Files',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await torrentsApi.deleteTorrents([torrent.hash], true);
-              sync().catch(() => {});
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete torrent');
-            }
-          },
-        },
-      ]
-    );
+  const handleDelete = async () => {
+    try {
+      await torrentsApi.deleteTorrents([torrent.hash], false);
+      sync().catch(() => {});
+      showToast('Torrent deleted', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to delete torrent', 'error');
+    }
   };
 
   const handleMaxPriority = async () => {
     if (!isConnected || !currentServer) {
-      Alert.alert('Error', 'Not connected to a server.');
+      showToast('Not connected to a server.', 'error');
       return;
     }
 
@@ -198,15 +185,15 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       if (!apiClient.getServer()) {
         const reconnected = await reconnect();
         if (!reconnected) {
-          Alert.alert('Error', 'Lost connection to server.');
+          showToast('Lost connection to server.', 'error');
           return;
         }
       }
       await torrentsApi.setMaximalPriority([torrent.hash]);
       sync().catch(() => {});
-      Alert.alert('Success', 'Priority set to maximum');
+      showToast('Priority set to maximum', 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to set priority');
+      showToast(error.message || 'Failed to set priority', 'error');
     } finally {
       setLoading(false);
     }
@@ -228,9 +215,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
               const limitBytes = limitKB * 1024;
               await torrentsApi.setTorrentDownloadLimit([torrent.hash], limitBytes);
               sync().catch(() => {});
-              Alert.alert('Success', `Download limit set to ${limitKB === 0 ? 'unlimited' : `${limitKB} KB/s`}`);
+              showToast(`Download limit set to ${limitKB === 0 ? 'unlimited' : `${limitKB} KB/s`}`, 'success');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to set download limit');
+              showToast(error.message || 'Failed to set download limit', 'error');
             } finally {
               setLoading(false);
             }
@@ -244,7 +231,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
 
   const handleToggleGlobalSpeedLimit = async () => {
     if (!isConnected || !currentServer) {
-      Alert.alert('Error', 'Not connected to a server.');
+      showToast('Not connected to a server.', 'error');
       return;
     }
 
@@ -253,16 +240,16 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       if (!apiClient.getServer()) {
         const reconnected = await reconnect();
         if (!reconnected) {
-          Alert.alert('Error', 'Lost connection to server.');
+          showToast('Lost connection to server.', 'error');
           return;
         }
       }
       await toggleAlternativeSpeedLimits();
       await refreshTransfer();
       const isEnabled = transferInfo?.use_alt_speed_limits;
-      Alert.alert('Success', `Global speed limit ${!isEnabled ? 'enabled' : 'disabled'}`);
+      showToast(`Global speed limit ${!isEnabled ? 'enabled' : 'disabled'}`, 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to toggle speed limit');
+      showToast(error.message || 'Failed to toggle speed limit', 'error');
     } finally {
       setLoading(false);
     }
@@ -270,11 +257,51 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
 
   const showMenu = () => {
     if (menuButtonRef.current) {
-      menuButtonRef.current.measureInWindow((x, y, width, height) => {
+      menuButtonRef.current.measureInWindow((x: number, y: number, width: number, height: number) => {
         const screenWidth = Dimensions.get('window').width;
+        const screenHeight = Dimensions.get('window').height;
         const menuWidth = 200;
         const menuX = Math.min(x - menuWidth + width, screenWidth - menuWidth - 16);
-        setMenuPosition({ x: menuX, y: y + height + 8 });
+        
+        // Conservative estimate: ~10 menu items at ~48px each + padding = ~500px
+        // We'll use onLayout to get exact height and adjust
+        const estimatedMenuHeight = 500;
+        // Use safe area insets for proper padding
+        const topPadding = Math.max(insets.top, 16) + 8;
+        const bottomPadding = Math.max(insets.bottom, 16) + 8;
+        const menuYBelow = y + height + 8;
+        const spaceBelow = screenHeight - menuYBelow - bottomPadding;
+        const spaceAbove = y - topPadding;
+        
+        // Determine best position: prefer below, but use above if not enough space below
+        let finalY = menuYBelow;
+        
+        if (spaceBelow < estimatedMenuHeight) {
+          // Not enough space below - position above if possible
+          if (spaceAbove >= estimatedMenuHeight) {
+            // Enough space above, position there
+            finalY = y - estimatedMenuHeight - 8;
+            // Ensure we don't go above screen
+            if (finalY < topPadding) {
+              finalY = topPadding;
+            }
+          } else {
+            // Not enough space either way - position to maximize visibility
+            // Position from bottom, ensuring full menu is visible
+            finalY = screenHeight - estimatedMenuHeight - bottomPadding;
+            // But don't go above the button if we have space
+            if (finalY < menuYBelow && spaceBelow > estimatedMenuHeight * 0.5) {
+              finalY = menuYBelow;
+            }
+            // Ensure we don't go above screen
+            if (finalY < topPadding) {
+              finalY = topPadding;
+            }
+          }
+        }
+        
+        setMenuPosition({ x: menuX, y: finalY });
+        hasAdjustedPosition.current = false;
         setMenuVisible(true);
       });
     }
@@ -282,6 +309,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
 
   const hideMenu = () => {
     setMenuVisible(false);
+    hasAdjustedPosition.current = false;
   };
 
   const handleMenuAction = (action: () => void) => {
@@ -411,40 +439,39 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
   return (
     <View style={[styles.card, { backgroundColor: colors.surface }, cardStateStyle()]}>
       <TouchableOpacity onPress={onPress} onLongPress={showMenu} activeOpacity={0.7} style={styles.cardContent}>
-        {/* Row 1: Title | Menu */}
+        {/* Row 1: Title | Status | Menu */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
               {torrent.name}
             </Text>
-            {/* Row 2: Centered status */}
-            <View style={styles.statusRow}>
-              <View style={[
-                styles.stateBadge, 
-                { backgroundColor: stateColor },
-                isStalled && { borderWidth: 0, borderColor: colors.error },
-                torrent.state === 'forcedMetaDL' && { borderWidth: 1, borderColor: '#FFD700' }
-              ]}>
-                <Text style={styles.stateText}>{stateLabel}</Text>
-              </View>
-            </View>
           </View>
-          <TouchableOpacity
-            ref={menuButtonRef}
-            style={styles.menuButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              showMenu();
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <View style={[
+              styles.stateBadge, 
+              { backgroundColor: stateColor },
+              isStalled && { borderWidth: 0, borderColor: colors.error },
+              torrent.state === 'forcedMetaDL' && { borderWidth: 1, borderColor: '#FFD700' }
+            ]}>
+              <Text style={styles.stateText}>{stateLabel}</Text>
+            </View>
+            <TouchableOpacity
+              ref={menuButtonRef}
+              style={styles.menuButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                showMenu();
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
 
 
-        {/* Row 3: Progress bar | Pause/Play */}
+        {/* Row 2: Progress bar | Play/Pause */}
         <View style={styles.progressBarRow}>
           <View style={[styles.progressBar, { backgroundColor: colors.surfaceOutline }]}>
             <View
@@ -473,7 +500,8 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
           </TouchableOpacity>
         </View>
 
-        {viewMode === 'compact' ? (
+        {/* Row 3 (compact only): Stats */}
+        {viewMode === 'compact' && (
           <View style={styles.compactStatsRow}>
             <Text style={[styles.compactStat, { color: colors.text }]}>
               {progress.toFixed(1)}%
@@ -487,14 +515,10 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             <Text style={[styles.compactStat, { color: colors.text }]}>
               {formatSpeed(torrent.upspeed)}
             </Text>
-            <Text style={[styles.compactStat, { color: colors.text }]}>
-              {formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)}
-            </Text>
-            <Text style={[styles.compactStat, { color: colors.text }]}>
-              Ratio: {torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'}
-            </Text>
           </View>
-        ) : (
+        )}
+
+        {viewMode === 'expanded' ? (
           <>
       <View style={styles.statsGrid}>
 
@@ -563,7 +587,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
         </View>         
       </View>
           </>
-        )}
+        ) : null}
 
       </TouchableOpacity>
 
@@ -584,6 +608,105 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
           accessibilityLabel="Close menu"
         >
           <View
+            ref={menuContainerRef}
+            onLayout={(event) => {
+              // Prevent infinite loop - only adjust once
+              if (hasAdjustedPosition.current) return;
+              
+              const { height } = event.nativeEvent.layout;
+              if (height > 0 && menuButtonRef.current && height > 10) {
+                menuButtonRef.current.measureInWindow((_x: number, y: number, _width: number, buttonHeight: number) => {
+                  const screenHeight = Dimensions.get('window').height;
+                  // Use safe area insets for proper padding
+                  const topPadding = Math.max(insets.top, 16) + 8;
+                  const bottomPadding = Math.max(insets.bottom, 16) + 8;
+                  const currentTop = menuPosition.y;
+                  const menuBottom = currentTop + height;
+                  const buttonBottom = y + buttonHeight;
+                  const buttonTop = y;
+                  
+                  let adjustedY = currentTop;
+                  let needsAdjustment = false;
+                  
+                  // Check if menu extends below screen - reposition from bottom if needed
+                  if (menuBottom > screenHeight - bottomPadding) {
+                    // Not enough space at bottom, try positioning above button
+                    const spaceAbove = buttonTop - topPadding;
+                    if (spaceAbove >= height) {
+                      // Enough space above, position there
+                      adjustedY = buttonTop - height - 8;
+                      needsAdjustment = true;
+                    } else {
+                      // Not enough space above either, position from bottom edge
+                      adjustedY = screenHeight - height - bottomPadding;
+                      needsAdjustment = true;
+                    }
+                  }
+                  
+                  // Check if menu extends above screen - reposition from top if needed
+                  if (adjustedY < topPadding) {
+                    // Not enough space at top, try positioning below button
+                    const spaceBelow = screenHeight - buttonBottom - bottomPadding;
+                    if (spaceBelow >= height) {
+                      // Enough space below, position there
+                      adjustedY = buttonBottom + 8;
+                      needsAdjustment = true;
+                    } else {
+                      // Not enough space below either, position from top edge
+                      adjustedY = topPadding;
+                      needsAdjustment = true;
+                    }
+                  }
+                  
+                  // Final safety check: ensure menu is fully within screen bounds
+                  if (adjustedY + height > screenHeight - bottomPadding) {
+                    adjustedY = screenHeight - height - bottomPadding;
+                    needsAdjustment = true;
+                  }
+                  if (adjustedY < topPadding) {
+                    adjustedY = topPadding;
+                    needsAdjustment = true;
+                  }
+                  
+                  // Try to maintain gap from button if possible (but visibility is priority)
+                  const gap = 8;
+                  const menuTop = adjustedY;
+                  const menuBottomAdjusted = adjustedY + height;
+                  
+                  // If menu overlaps button, try to move it if space allows
+                  if (menuTop < buttonBottom + gap && menuBottomAdjusted > buttonTop - gap) {
+                    const spaceBelow = screenHeight - buttonBottom - bottomPadding;
+                    const spaceAbove = buttonTop - topPadding;
+                    
+                    // Prefer positioning below button if space allows
+                    if (spaceBelow >= height && menuBottomAdjusted <= screenHeight - bottomPadding) {
+                      adjustedY = buttonBottom + gap;
+                      needsAdjustment = true;
+                    } else if (spaceAbove >= height && menuTop >= topPadding) {
+                      // Otherwise position above if space allows
+                      adjustedY = buttonTop - height - gap;
+                      needsAdjustment = true;
+                    }
+                  }
+                  
+                  // Final safety check after gap adjustment
+                  if (adjustedY + height > screenHeight - bottomPadding) {
+                    adjustedY = screenHeight - height - bottomPadding;
+                    needsAdjustment = true;
+                  }
+                  if (adjustedY < topPadding) {
+                    adjustedY = topPadding;
+                    needsAdjustment = true;
+                  }
+                  
+                  // Only update if adjustment is needed and significant (avoid jitter)
+                  if (needsAdjustment && Math.abs(adjustedY - currentTop) > 5) {
+                    hasAdjustedPosition.current = true;
+                    setMenuPosition(prev => ({ ...prev, y: adjustedY }));
+                  }
+                });
+              }
+            }}
             style={[
               styles.menuContainer,
               {
@@ -593,7 +716,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
                 shadowColor: colors.text,
               },
             ]}
-            accessibilityRole="menu"
+            accessibilityRole={menuRole}
             accessibilityLabel="Torrent actions"
           >
             <MenuOption
@@ -660,7 +783,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
               accessibilityLabel={`Copy magnet link for ${torrent.name}`}
               accessibilityHint="Copies the magnet link of this torrent to clipboard"
             />
-            <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} accessibilityRole="separator" />
+            <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} accessibilityRole={separatorRole as any} />
             <MenuOption
               icon="trash"
               label="Delete"
@@ -694,12 +817,14 @@ function MenuOption({
   accessibilityLabel?: string;
   accessibilityHint?: string;
 }) {
+  const menuItemRole = Platform.OS === 'ios' ? 'menuitem' : 'button';
+  
   return (
     <TouchableOpacity
       style={styles.menuOption}
       onPress={onPress}
       activeOpacity={0.7}
-      accessibilityRole="menuitem"
+      accessibilityRole={menuItemRole}
       accessibilityLabel={accessibilityLabel || label}
       accessibilityHint={accessibilityHint}
     >
@@ -732,32 +857,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardContent: {
-    padding: spacing.md,
+    padding: spacing.sm,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   headerLeft: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 6,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   name: {
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
     color: '#000000',
-    marginRight: 8,
+    marginRight: 6,
   },
   menuButton: {
-    padding: 4,
-    marginTop: 2,
-  },
-  statusRow: {
-    alignItems: 'flex-start',
-    marginTop: 6,
+    padding: 2,
   },
   menuOverlay: {
     flex: 1,
@@ -767,7 +892,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     minWidth: 200,
     borderRadius: borderRadius.medium,
-    paddingVertical: spacing.xs,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md,
     ...shadows.card,
     elevation: 8,
   },
@@ -792,8 +918,8 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
   },
   stateBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
     borderRadius: borderRadius.small,
   },
   stateText: {
@@ -804,8 +930,8 @@ const styles = StyleSheet.create({
   progressBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    gap: 4,
+    marginBottom: 2,
   },
   compactStatsRow: {
     flexDirection: 'row',
@@ -813,26 +939,28 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginTop: 2,
     marginBottom: 0,
-    gap: 4,
+    gap: 6,
   },
   compactStat: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
   },
   progressBar: {
-    flex: 1,
-    height: 6,
+    flexGrow: 1,
+    flexShrink: 1,
+    height: 5,
     backgroundColor: '#E5E5EA',
-    borderRadius: 6,
+    borderRadius: 5,
     overflow: 'hidden',
+    minWidth: 80,
   },
   progressFill: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 5,
   },
   progressActionButton: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: borderRadius.large,
     alignItems: 'center',
     justifyContent: 'center',

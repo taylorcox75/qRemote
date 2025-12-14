@@ -8,7 +8,6 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
-  Alert,
   ScrollView,
   Animated,
   Modal,
@@ -20,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTorrents } from '../../context/TorrentContext';
 import { useServer } from '../../context/ServerContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import { TorrentInfo, TorrentState } from '../../types/api';
 import { TorrentCard } from '../../components/TorrentCard';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
@@ -31,11 +31,12 @@ import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
 
 export default function TorrentsScreen() {
+  const { showToast } = useToast();
   const router = useRouter();
   const navigation = useNavigation();
   const { torrents, isLoading, error, refresh } = useTorrents();
   const { isConnected } = useServer();
-  const { colors, isDark } = useTheme() 
+  const { colors, isDark } = useTheme();
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -214,7 +215,7 @@ export default function TorrentsScreen() {
       setSelectedHashes(new Set());
       setSelectMode(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to pause torrents');
+      showToast(error.message || 'Failed to pause torrents', 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -229,54 +230,26 @@ export default function TorrentsScreen() {
       setSelectedHashes(new Set());
       setSelectMode(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to resume torrents');
+      showToast(error.message || 'Failed to resume torrents', 'error');
     } finally {
       setBulkLoading(false);
     }
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedHashes.size === 0) return;
-    Alert.alert(
-      'Delete Torrents',
-      `Delete ${selectedHashes.size} torrent(s)?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Torrent Only',
-          onPress: async () => {
-            setBulkLoading(true);
-            try {
-              await torrentsApi.deleteTorrents(Array.from(selectedHashes), false);
-              refresh();
-              setSelectedHashes(new Set());
-              setSelectMode(false);
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete torrents');
-            } finally {
-              setBulkLoading(false);
-            }
-          },
-        },
-        {
-          text: 'With Files',
-          style: 'destructive',
-          onPress: async () => {
-            setBulkLoading(true);
-            try {
-              await torrentsApi.deleteTorrents(Array.from(selectedHashes), true);
-              refresh();
-              setSelectedHashes(new Set());
-              setSelectMode(false);
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete torrents');
-            } finally {
-              setBulkLoading(false);
-            }
-          },
-        },
-      ]
-    );
+    setBulkLoading(true);
+    try {
+      await torrentsApi.deleteTorrents(Array.from(selectedHashes), false);
+      refresh();
+      setSelectedHashes(new Set());
+      setSelectMode(false);
+      showToast(`${selectedHashes.size} torrent(s) deleted`, 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to delete torrents', 'error');
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   // Torrent actions
@@ -286,12 +259,12 @@ export default function TorrentsScreen() {
 
   const handleSubmitTorrent = async () => {
     if (!torrentUrl.trim()) {
-      Alert.alert('Error', 'Please enter a torrent URL or magnet link');
+      showToast('Please enter a torrent URL or magnet link', 'error');
       return;
     }
 
     if (!isConnected) {
-      Alert.alert('Error', 'Not connected to a server');
+      showToast('Not connected to a server', 'error');
       return;
     }
 
@@ -301,9 +274,9 @@ export default function TorrentsScreen() {
       setTorrentUrl('');
       setShowAddModal(false);
       refresh();
-      Alert.alert('Success', 'Torrent added successfully');
+      showToast('Torrent added successfully', 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add torrent');
+      showToast(error.message || 'Failed to add torrent', 'error');
     } finally {
       setAddingTorrent(false);
     }
@@ -872,15 +845,16 @@ export default function TorrentsScreen() {
           animationType="fade"
           onRequestClose={() => setShowAddModal(false)}
         >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowAddModal(false)}
+          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.modalOverlayInner}
             >
+              <TouchableOpacity
+                style={styles.modalOverlayInner}
+                activeOpacity={1}
+                onPress={() => setShowAddModal(false)}
+              >
               <TouchableOpacity
                 activeOpacity={1}
                 onPress={(e) => e.stopPropagation()}
@@ -948,7 +922,8 @@ export default function TorrentsScreen() {
                 </View>
               </TouchableOpacity>
             </TouchableOpacity>
-          </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+          </View>
         </Modal>
       </View>
     </>
@@ -1145,7 +1120,12 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlayInner: {
+    flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,

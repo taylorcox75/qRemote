@@ -6,38 +6,38 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useServer } from '../../context/ServerContext';
+import { useToast } from '../../context/ToastContext';
 import { torrentsApi } from '../../services/api/torrents';
 
 export default function AddTorrentScreen() {
   const router = useRouter();
   const { isConnected } = useServer();
+  const { showToast } = useToast();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleAdd = async () => {
     if (!url.trim()) {
-      Alert.alert('Error', 'Please enter a torrent URL or magnet link');
+      showToast('Please enter a torrent URL or magnet link', 'error');
       return;
     }
 
     if (!isConnected) {
-      Alert.alert('Error', 'Not connected to a server');
+      showToast('Not connected to a server', 'error');
       return;
     }
 
     try {
       setLoading(true);
       await torrentsApi.addTorrent(url.trim());
-      Alert.alert('Success', 'Torrent added successfully', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showToast('Torrent added successfully', 'success');
+      router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add torrent');
+      showToast(error.message || 'Failed to add torrent', 'error');
     } finally {
       setLoading(false);
     }

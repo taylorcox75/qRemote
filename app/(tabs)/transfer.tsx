@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
   Modal,
   TextInput,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { useTransfer } from '../../context/TransferContext';
 import { useServer } from '../../context/ServerContext';
 import { useTorrents } from '../../context/TorrentContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { torrentsApi } from '../../services/api/torrents';
 import { formatSize, formatSpeed, kbToBytes, bytesToKb } from '../../utils/format';
@@ -38,6 +38,7 @@ export default function TransferScreen() {
   const { isConnected } = useServer();
   const { serverState, sync: syncTorrents } = useTorrents();
   const { colors, isDark } = useTheme();
+  const { showToast } = useToast();
   
   const [settingLimit, setSettingLimit] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,7 +59,7 @@ export default function TransferScreen() {
       await torrentsApi.pauseTorrents(['all']);
       await syncTorrents();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to pause all torrents');
+      showToast(err.message || 'Failed to pause all torrents', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -70,7 +71,7 @@ export default function TransferScreen() {
       await torrentsApi.resumeTorrents(['all']);
       await syncTorrents();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to resume all torrents');
+      showToast(err.message || 'Failed to resume all torrents', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -81,7 +82,7 @@ export default function TransferScreen() {
     try {
       await toggleAlternativeSpeedLimits();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to toggle alternative speed limits');
+      showToast(err.message || 'Failed to toggle alternative speed limits', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -97,7 +98,7 @@ export default function TransferScreen() {
         await setUploadLimit(bytesValue);
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || `Failed to set ${type} limit`);
+      showToast(err.message || `Failed to set ${type} limit`, 'error');
     } finally {
       setSettingLimit(false);
     }
@@ -117,7 +118,7 @@ export default function TransferScreen() {
     
     const limit = parseFloat(limitInput);
     if (isNaN(limit) || limit < 0) {
-      Alert.alert('Error', 'Please enter a valid number');
+      showToast('Please enter a valid number', 'error');
       return;
     }
     
@@ -135,7 +136,7 @@ export default function TransferScreen() {
       setLimitInput('');
       setLimitType(null);
     } catch (err: any) {
-      Alert.alert('Error', err.message || `Failed to set ${limitType} limit`);
+      showToast(err.message || `Failed to set ${limitType} limit`, 'error');
     } finally {
       setSettingLimit(false);
     }

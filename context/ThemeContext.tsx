@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { storageService } from '../services/storage';
+import { colorThemeManager, ColorTheme } from '../services/color-theme-manager';
 
 interface ThemeContextType {
   isDark: boolean;
   toggleTheme: () => void;
+  reloadCustomColors: () => Promise<void>;
   colors: {
     background: string;
     surface: string;
@@ -63,10 +65,17 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(true); // Default to dark theme
   const [isLoading, setIsLoading] = useState(true);
+  const [customColors, setCustomColors] = useState<ColorTheme | null>(null);
 
   useEffect(() => {
     loadThemePreference();
   }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      loadCustomColors();
+    }
+  }, [isDark, isLoading]);
 
   const loadThemePreference = async () => {
     try {
@@ -83,6 +92,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loadCustomColors = async () => {
+    try {
+      const custom = await colorThemeManager.getCustomColors(isDark);
+      setCustomColors(custom);
+    } catch (error) {
+      // Ignore color loading errors
+    }
+  };
+
   const toggleTheme = async () => {
     const newTheme = !isDark;
     setIsDark(newTheme);
@@ -92,12 +110,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         ...preferences,
         theme: newTheme ? 'dark' : 'light',
       });
+      // Reload custom colors for new theme
+      const custom = await colorThemeManager.getCustomColors(newTheme);
+      setCustomColors(custom);
     } catch (error) {
       // Ignore theme saving errors
     }
   };
 
-  const colors = isDark ? darkColors : lightColors;
+  const baseColors = isDark ? darkColors : lightColors;
+  const colors = colorThemeManager.mergeColors(baseColors, customColors) as typeof baseColors;
 
   if (isLoading) {
     // Return with default dark theme while loading
@@ -106,6 +128,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         value={{
           isDark: true,
           toggleTheme,
+          reloadCustomColors: loadCustomColors,
           colors: darkColors,
         }}
       >
@@ -115,13 +138,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ThemeContext.Provider
-      value={{
-        isDark,
-        toggleTheme,
-        colors,
-      }}
-    >
+      <ThemeContext.Provider
+        value={{
+          isDark,
+          toggleTheme,
+          reloadCustomColors: loadCustomColors,
+          colors,
+        }}
+      >
       {children}
     </ThemeContext.Provider>
   );
