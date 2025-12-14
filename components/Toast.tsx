@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +21,7 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
   const opacity = useRef(new Animated.Value(0)).current;
   
   // Calculate safe area top - use StatusBar height as fallback for Modal
-  const [safeTop, setSafeTop] = useState(insets.top || (Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0));
+  const safeTop = insets.top || (Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0);
 
   useEffect(() => {
     // Slide in
