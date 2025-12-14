@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { shadows } from '../constants/shadows';
 import { spacing, borderRadius } from '../constants/spacing';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -99,8 +98,12 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
           top: topOffset,
           transform: [{ translateY }],
           opacity,
+          // Shadow for visual depth (but don't override elevation)
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
         },
-        shadows.large,
       ]}
     >
       <TouchableOpacity
