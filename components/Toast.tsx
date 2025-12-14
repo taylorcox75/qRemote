@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -19,9 +19,6 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  
-  // Calculate safe area top - use StatusBar height as fallback for Modal
-  const safeTop = insets.top || (Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0);
 
   useEffect(() => {
     // Slide in
@@ -90,67 +87,54 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
     }
   };
 
-  const topOffset = safeTop + (Platform.OS === 'ios' ? 8 : 16);
+  const topOffset = insets.top + (Platform.OS === 'ios' ? 8 : 16);
 
   return (
-    <Modal
-      transparent
-      visible={true}
-      animationType="none"
-      statusBarTranslucent
-      hardwareAccelerated
+    <Animated.View
+      pointerEvents="box-none"
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.surface,
+          top: topOffset,
+          transform: [{ translateY }],
+          opacity,
+          // Shadow properties inline to preserve elevation value
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
+        },
+      ]}
     >
-      <View style={styles.modalOverlay} pointerEvents="box-none">
-        <Animated.View
-          pointerEvents="auto"
-          style={[
-            styles.container,
-            {
-              backgroundColor: colors.surface,
-              top: topOffset,
-              transform: [{ translateY }],
-              opacity,
-              // Shadow properties inline to preserve elevation value
-              // Extracted from shadows.large to avoid overriding the elevation in styles.container
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.12,
-              shadowRadius: 16,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.content}
-            onPress={hide}
-            activeOpacity={0.9}
-          >
-            <Ionicons name={getIcon() as any} size={24} color={getColor()} />
-            <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
-              {message}
-            </Text>
-            <TouchableOpacity onPress={hide} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-    </Modal>
+      <TouchableOpacity
+        style={styles.content}
+        onPress={hide}
+        activeOpacity={0.9}
+        pointerEvents="auto"
+      >
+        <Ionicons name={getIcon() as any} size={24} color={getColor()} />
+        <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
+          {message}
+        </Text>
+        <TouchableOpacity onPress={hide} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="close" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    pointerEvents: 'box-none',
-  },
   container: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
     borderRadius: borderRadius.medium,
-    // High z-index and elevation for proper layering
-    zIndex: 10000,
-    elevation: 10000,
+    // Extremely high z-index and elevation to appear above modal screens
+    // Must be higher than any modal or overlay in the app
+    zIndex: 999999,
+    elevation: 999999,
   },
   content: {
     flexDirection: 'row',

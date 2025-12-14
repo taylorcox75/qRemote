@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { Toast, ToastType } from '../components/Toast';
 import { storageService } from '../services/storage';
 
@@ -37,15 +38,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider value={{ showToast }}>
-      {children}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          duration={toast.duration}
-          onHide={hideToast}
-        />
-      )}
+      <View style={styles.container}>
+        {children}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onHide={hideToast}
+          />
+        )}
+      </View>
     </ToastContext.Provider>
   );
 }
@@ -58,3 +61,8 @@ export function useToast() {
   return context;
 }
 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
