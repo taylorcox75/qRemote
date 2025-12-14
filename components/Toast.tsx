@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -90,41 +90,55 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
   const topOffset = insets.top + (Platform.OS === 'ios' ? 8 : 16);
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.surface,
-          top: topOffset,
-          transform: [{ translateY }],
-          opacity,
-          // Shadow properties inline to avoid overriding elevation from styles.container
-          // Using shadows.large would set elevation: 4, overriding the 999999 value needed for modal visibility
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.12,
-          shadowRadius: 16,
-        },
-      ]}
+    <Modal
+      transparent
+      visible={true}
+      animationType="none"
+      statusBarTranslucent
+      pointerEvents="box-none"
     >
-      <TouchableOpacity
-        style={styles.content}
-        onPress={hide}
-        activeOpacity={0.9}
-      >
-        <Ionicons name={getIcon() as any} size={24} color={getColor()} />
-        <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
-          {message}
-        </Text>
-        <TouchableOpacity onPress={hide} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="close" size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Animated.View>
+      <View style={styles.modalContainer} pointerEvents="box-none">
+        <Animated.View
+          style={[
+            styles.container,
+            {
+              backgroundColor: colors.surface,
+              top: topOffset,
+              transform: [{ translateY }],
+              opacity,
+              // Shadow properties inline to avoid overriding elevation from styles.container
+              // Using shadows.large would set elevation: 4, overriding the 999999 value needed for modal visibility
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.content}
+            onPress={hide}
+            activeOpacity={0.9}
+          >
+            <Ionicons name={getIcon() as any} size={24} color={getColor()} />
+            <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
+              {message}
+            </Text>
+            <TouchableOpacity onPress={hide} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    pointerEvents: 'box-none',
+  },
   container: {
     position: 'absolute',
     left: spacing.lg,
