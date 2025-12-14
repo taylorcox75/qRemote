@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ActionSheetIOS, Platform } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Modal, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TorrentInfo, TorrentState } from '../types/api';
 import { torrentsApi } from '../services/api/torrents';
@@ -27,6 +27,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
   const { transferInfo, toggleAlternativeSpeedLimits, refresh: refreshTransfer } = useTransfer();
   const [loading, setLoading] = useState(false);
   const [optimisticPaused, setOptimisticPaused] = useState<boolean | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const menuButtonRef = useRef<TouchableOpacity>(null);
 
   // Check if torrent is stopped/paused
   // A torrent is considered paused/stopped if:
@@ -266,80 +269,24 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
   };
 
   const showMenu = () => {
-    const globalSpeedLimitStatus = transferInfo?.use_alt_speed_limits ? 'ON' : 'OFF';
-    const options = [
-      isPaused ? 'Resume' : 'Pause',
-      'Force Start',
-      `Global Speed Limit (${globalSpeedLimitStatus})`,
-      'Max Priority',
-      'Set DL Limit',
-      'Verify Data',
-      'Reannounce',
-      'Copy Magnet Link',
-      'Delete',
-      'Cancel',
-    ];
-    const destructiveButtonIndex = 8;
-    const cancelButtonIndex = 9;
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          destructiveButtonIndex,
-          cancelButtonIndex,
-        },
-        (buttonIndex) => {
-          switch (buttonIndex) {
-            case 0:
-              handlePauseResume();
-              break;
-            case 1:
-              handleForceStart();
-              break;
-            case 2:
-              handleToggleGlobalSpeedLimit();
-              break;
-            case 3:
-              handleMaxPriority();
-              break;
-            case 4:
-              handleSetDownloadLimit();
-              break;
-            case 5:
-              handleVerifyData();
-              break;
-            case 6:
-              handleReannounce();
-              break;
-            case 7:
-              handleCopyMagnet();
-              break;
-            case 8:
-              handleDelete();
-              break;
-          }
-        }
-      );
-    } else {
-      // Android fallback using Alert
-      Alert.alert(
-        'Actions',
-        '',
-        [
-          { text: isPaused ? 'Resume' : 'Pause', onPress: handlePauseResume },
-          { text: 'Force Start', onPress: handleForceStart },
-          { text: `Global Speed Limit (${globalSpeedLimitStatus})`, onPress: handleToggleGlobalSpeedLimit },
-          { text: 'Max Priority', onPress: handleMaxPriority },
-          { text: 'Set DL Limit', onPress: handleSetDownloadLimit },
-          { text: 'Verify Data', onPress: handleVerifyData },
-          { text: 'Reannounce', onPress: handleReannounce },
-          { text: 'Copy Magnet Link', onPress: handleCopyMagnet },
-          { text: 'Delete', style: 'destructive', onPress: handleDelete },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
+    if (menuButtonRef.current) {
+      menuButtonRef.current.measureInWindow((x, y, width, height) => {
+        const screenWidth = Dimensions.get('window').width;
+        const menuWidth = 200;
+        const menuX = Math.min(x - menuWidth + width, screenWidth - menuWidth - 16);
+        setMenuPosition({ x: menuX, y: y + height + 8 });
+        setMenuVisible(true);
+      });
     }
+  };
+
+  const hideMenu = () => {
+    setMenuVisible(false);
+  };
+
+  const handleMenuAction = (action: () => void) => {
+    hideMenu();
+    setTimeout(() => action(), 100);
   };
 
   const getStateColor = (state: TorrentState, progress: number): string => {
@@ -466,21 +413,24 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       <TouchableOpacity onPress={onPress} onLongPress={showMenu} activeOpacity={0.7} style={styles.cardContent}>
         {/* Row 1: Title | Menu */}
         <View style={styles.header}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
-            {torrent.name}
-          </Text>
-                  {/* Row 2: Centered status */}
-        <View style={styles.statusRow}>
-          <View style={[
-            styles.stateBadge, 
-            { backgroundColor: stateColor },
-            isStalled && { borderWidth: 0, borderColor: colors.error },
-            torrent.state === 'forcedMetaDL' && { borderWidth: 1, borderColor: '#FFD700' }
-          ]}>
-            <Text style={styles.stateText}>{stateLabel}</Text>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
+              {torrent.name}
+            </Text>
+            {/* Row 2: Centered status */}
+            <View style={styles.statusRow}>
+              <View style={[
+                styles.stateBadge, 
+                { backgroundColor: stateColor },
+                isStalled && { borderWidth: 0, borderColor: colors.error },
+                torrent.state === 'forcedMetaDL' && { borderWidth: 1, borderColor: '#FFD700' }
+              ]}>
+                <Text style={styles.stateText}>{stateLabel}</Text>
+              </View>
+            </View>
           </View>
-        </View>
           <TouchableOpacity
+            ref={menuButtonRef}
             style={styles.menuButton}
             onPress={(e) => {
               e.stopPropagation();
@@ -616,7 +566,127 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
         )}
 
       </TouchableOpacity>
+
+      {/* Material Design Popup Menu */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={hideMenu}
+      >
+        <TouchableOpacity
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={hideMenu}
+        >
+          <View
+            style={[
+              styles.menuContainer,
+              {
+                backgroundColor: colors.surface,
+                top: menuPosition.y,
+                left: menuPosition.x,
+                shadowColor: colors.text,
+              },
+            ]}
+          >
+            <MenuOption
+              icon={isPaused ? 'play' : 'pause'}
+              label={isPaused ? 'Resume' : 'Pause'}
+              onPress={() => handleMenuAction(handlePauseResume)}
+              colors={colors}
+            />
+            <MenuOption
+              icon="flash"
+              label="Force Start"
+              onPress={() => handleMenuAction(handleForceStart)}
+              colors={colors}
+            />
+            <MenuOption
+              icon="speedometer"
+              label={`Global Speed Limit (${transferInfo?.use_alt_speed_limits ? 'ON' : 'OFF'})`}
+              onPress={() => handleMenuAction(handleToggleGlobalSpeedLimit)}
+              colors={colors}
+            />
+            <MenuOption
+              icon="flag"
+              label="Max Priority"
+              onPress={() => handleMenuAction(handleMaxPriority)}
+              colors={colors}
+            />
+            <MenuOption
+              icon="download"
+              label="Set DL Limit"
+              onPress={() => handleMenuAction(handleSetDownloadLimit)}
+              colors={colors}
+            />
+            <MenuOption
+              icon="checkmark-circle"
+              label="Verify Data"
+              onPress={() => handleMenuAction(handleVerifyData)}
+              colors={colors}
+            />
+            <MenuOption
+              icon="refresh"
+              label="Reannounce"
+              onPress={() => handleMenuAction(handleReannounce)}
+              colors={colors}
+            />
+            <MenuOption
+              icon="link"
+              label="Copy Magnet Link"
+              onPress={() => handleMenuAction(handleCopyMagnet)}
+              colors={colors}
+            />
+            <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} />
+            <MenuOption
+              icon="trash"
+              label="Delete"
+              onPress={() => handleMenuAction(handleDelete)}
+              colors={colors}
+              destructive
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
+  );
+}
+
+function MenuOption({
+  icon,
+  label,
+  onPress,
+  colors,
+  destructive = false,
+}: {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  colors: any;
+  destructive?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.menuOption}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Ionicons
+        name={icon as any}
+        size={20}
+        color={destructive ? colors.error : colors.primary}
+        style={styles.menuIcon}
+      />
+      <Text
+        style={[
+          styles.menuOptionText,
+          { color: destructive ? colors.error : colors.text },
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -648,10 +718,43 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     padding: 4,
+    marginTop: 2,
   },
   statusRow: {
-    alignItems: 'flex-end',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginTop: 6,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  menuContainer: {
+    position: 'absolute',
+    minWidth: 200,
+    borderRadius: borderRadius.medium,
+    paddingVertical: spacing.xs,
+    ...shadows.card,
+    elevation: 8,
+  },
+  menuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minHeight: 44,
+  },
+  menuIcon: {
+    marginRight: spacing.md,
+    width: 24,
+  },
+  menuOptionText: {
+    fontSize: 15,
+    flex: 1,
+  },
+  menuDivider: {
+    height: 1,
+    marginVertical: spacing.xs,
+    marginHorizontal: spacing.md,
   },
   stateBadge: {
     paddingHorizontal: spacing.md,

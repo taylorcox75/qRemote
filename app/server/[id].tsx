@@ -18,21 +18,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { ServerManager } from '../../services/server-manager';
 import { ServerConfig } from '../../types/api';
 import { useTheme } from '../../context/ThemeContext';
+import { useServer } from '../../context/ServerContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
+import { spacing, borderRadius } from '../../constants/spacing';
+import { apiClient } from '../../services/api/client';
+import { authApi } from '../../services/api/auth';
+import { applicationApi } from '../../services/api/application';
 
 export default function EditServerScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
+  const { currentServer, disconnect, connectToServer } = useServer();
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
-  const [port, setPort] = useState('');
-  const [noPort, setNoPort] = useState(false);
+  const [port, setPort] = useState('8080');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [useHttps, setUseHttps] = useState(false);
+  const [bypassAuth, setBypassAuth] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     loadServer();
@@ -46,10 +53,10 @@ export default function EditServerScreen() {
         setHost(server.host);
         const hasPort = server.port != null && server.port > 0;
         setPort(hasPort ? server.port!.toString() : '');
-        setNoPort(!hasPort);
-        setUsername(server.username);
-        setPassword(server.password);
+        setUsername(server.username || '');
+        setPassword(server.password || '');
         setUseHttps(server.useHttps || false);
+        setBypassAuth(server.bypassAuth || false);
       } else {
         Alert.alert('Error', 'Server not found');
         router.back();
@@ -63,27 +70,39 @@ export default function EditServerScreen() {
   };
 
   const handleSave = async () => {
-    if (!name.trim() || !host.trim() || !username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    if (!name.trim() || !host.trim()) {
+      Alert.alert('Error', 'Please fill in server name and host');
       return;
     }
 
-    const portNum = noPort ? undefined : (port.trim() ? parseInt(port, 10) : undefined);
-    if (!noPort && portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
+    if (!bypassAuth && (!username.trim() || !password.trim())) {
+      Alert.alert('Error', 'Please fill in username and password, or enable bypass authentication');
+      return;
+    }
+
+    const portNum = port.trim() ? parseInt(port, 10) : undefined;
+    if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       Alert.alert('Error', 'Please enter a valid port number (1-65535)');
       return;
     }
 
     try {
       setSaving(true);
+      
+      // If editing the currently connected server, disconnect first
+      if (currentServer?.id === id) {
+        await disconnect();
+      }
+      
       const server: ServerConfig = {
         id: id!,
         name: name.trim(),
         host: host.trim(),
         port: portNum,
-        username: username.trim(),
-        password: password.trim(),
+        username: bypassAuth ? '' : username.trim(),
+        password: bypassAuth ? '' : password.trim(),
         useHttps,
+        bypassAuth,
       };
 
       await ServerManager.saveServer(server);
@@ -115,6 +134,76 @@ export default function EditServerScreen() {
         },
       ]
     );
+  };
+
+  const handleTest = async () => {
+    if (!name.trim() || !host.trim()) {
+      Alert.alert('Error', 'Please fill in server name and host');
+      return;
+    }
+
+    if (!bypassAuth && (!username.trim() || !password.trim())) {
+      Alert.alert('Error', 'Please fill in username and password, or enable bypass authentication');
+      return;
+    }
+
+    const portNum = port.trim() ? parseInt(port, 10) : undefined;
+    if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
+      Alert.alert('Error', 'Please enter a valid port number (1-65535)');
+      return;
+    }
+
+    try {
+      setTesting(true);
+      const server: ServerConfig = {
+        id: id!,
+        name: name.trim(),
+        host: host.trim(),
+        port: portNum,
+        username: bypassAuth ? '' : username.trim(),
+        password: bypassAuth ? '' : password.trim(),
+        useHttps,
+        bypassAuth,
+      };
+
+      // Set server temporarily for testing
+      apiClient.setServer(server);
+
+      try {
+        if (!bypassAuth) {
+          // Attempt login
+          const loginResult = await authApi.login(server.username, server.password);
+          if (loginResult.status !== 'Ok') {
+            apiClient.setServer(null);
+            Alert.alert('Error', 'Authentication failed. Please check your username and password.');
+            return;
+          }
+        }
+
+        // Verify connection by making a test API call
+        await applicationApi.getVersion();
+        
+        // Connection test successful
+        Alert.alert('Success', 'Connection test successful!');
+      } catch (error: any) {
+        apiClient.setServer(null);
+        // Provide more specific error messages
+        if (error.message?.includes('Authentication') || error.response?.status === 403) {
+          Alert.alert('Error', 'Authentication failed. Please check your credentials.');
+        } else if (error.message?.includes('timeout') || error.message?.includes('Connection') || error.message?.includes('Network')) {
+          Alert.alert('Error', 'Connection failed. Please check your server address and network connection.');
+        } else {
+          Alert.alert('Error', error.message || 'Connection test failed. Please check your settings.');
+        }
+      } finally {
+        apiClient.setServer(null);
+      }
+    } catch (error: any) {
+      apiClient.setServer(null);
+      Alert.alert('Error', error.message || 'Connection test failed. Please check your settings.');
+    } finally {
+      setTesting(false);
+    }
   };
 
   if (loading) {
@@ -208,30 +297,24 @@ export default function EditServerScreen() {
               <View style={styles.inputRow}>
                 <Ionicons name="link-outline" size={20} color={colors.primary} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.input, { color: noPort ? colors.textSecondary : colors.text }]}
-                  value={noPort ? 'N/A' : port}
+                  style={[styles.input, { color: colors.text }]}
+                  value={port}
                   onChangeText={setPort}
-                  placeholder="Port (optional)"
+                  placeholder="Port (optional, default: 8080)"
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="numeric"
-                  editable={!noPort}
                 />
-                <TouchableOpacity 
-                  style={[styles.naButton, noPort && { backgroundColor: colors.primary }]}
-                  onPress={() => setNoPort(!noPort)}
-                >
-                  <Text style={[styles.naButtonText, { color: noPort ? '#FFFFFF' : colors.textSecondary }]}>N/A</Text>
-                </TouchableOpacity>
               </View>
             </View>
           </View>
 
           {/* Authentication Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>AUTHENTICATION</Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.inputRow}>
-                <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+          {!bypassAuth && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>AUTHENTICATION</Text>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <View style={styles.inputRow}>
+                  <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   value={username}
@@ -240,11 +323,13 @@ export default function EditServerScreen() {
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="none"
+                  autoComplete="off"
                 />
-              </View>
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <View style={styles.inputRow}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                </View>
+                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                <View style={styles.inputRow}>
+                  <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   value={password}
@@ -254,10 +339,14 @@ export default function EditServerScreen() {
                   secureTextEntry
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="oneTimeCode"
+                  autoComplete="off"
+                  passwordRules=""
                 />
+                </View>
               </View>
             </View>
-          </View>
+          )}
 
           {/* Security Section */}
           <View style={styles.section}>
@@ -275,6 +364,43 @@ export default function EditServerScreen() {
                   thumbColor="#FFFFFF"
                 />
               </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="lock-open-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                  <View>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>Bypass Authentication</Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Skip login when local network auth is off</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={bypassAuth}
+                  onValueChange={setBypassAuth}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Test Connection */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>CONNECTION TEST</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity
+                style={[styles.testButton, { backgroundColor: colors.primary }]}
+                onPress={handleTest}
+                disabled={testing || saving}
+              >
+                {testing ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.testButtonText}>Test Connection</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -388,6 +514,10 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
   },
+  settingHint: {
+    fontSize: 12,
+    marginTop: 1,
+  },
   dangerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -403,15 +533,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  naButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: .8,
-    borderColor: '#666',
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.medium,
+    margin: spacing.md,
+    minHeight: 50,
   },
-  naButtonText: {
-    fontSize: 13,
+  testButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

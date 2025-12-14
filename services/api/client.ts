@@ -25,8 +25,8 @@ class ApiClient {
         }
         
         const protocol = this.currentServer.useHttps ? 'https' : 'http';
-        const port = Number(this.currentServer.port);
-        const portPart = port && port > 0 ? `:${port}` : '';
+        const port = this.currentServer.port;
+        const portPart = port != null && port > 0 ? `:${port}` : '';
         config.baseURL = `${protocol}://${this.currentServer.host}${portPart}`;
         
         if (this.cookies) {
