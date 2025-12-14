@@ -98,7 +98,8 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
           top: topOffset,
           transform: [{ translateY }],
           opacity,
-          // Shadow for visual depth (but don't override elevation)
+          // Shadow properties inline to avoid overriding elevation from styles.container
+          // Using shadows.large would set elevation: 4, overriding the 999999 value needed for modal visibility
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.12,
@@ -129,6 +130,8 @@ const styles = StyleSheet.create({
     left: spacing.lg,
     right: spacing.lg,
     borderRadius: borderRadius.medium,
+    // Very high z-index and elevation to ensure toast appears above modal screens
+    // Modal screens in expo-router can have high z-index values, so we use 999999
     zIndex: 999999,
     elevation: 999999,
   },
