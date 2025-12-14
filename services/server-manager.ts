@@ -59,7 +59,15 @@ export class ServerManager {
           // Connection test failed, clear server
           apiClient.setServer(null);
           // Re-throw network/connection errors so they can be handled by the caller
-          if (error.message?.includes('timeout') || error.message?.includes('Connection') || error.message?.includes('Network')) {
+          // Check error codes/types first, then fall back to message string matching
+          const isNetworkError = error.code === 'ECONNABORTED' || 
+                                 error.code === 'ERR_NETWORK' || 
+                                 error.code === 'ETIMEDOUT' ||
+                                 error.response?.status >= 500 ||
+                                 error.message?.includes('timeout') || 
+                                 error.message?.includes('Connection') || 
+                                 error.message?.includes('Network');
+          if (isNetworkError) {
             throw error;
           }
           throw new Error('Failed to connect to server. Please check your settings.');
@@ -80,11 +88,20 @@ export class ServerManager {
           // Connection test failed, clear server
           apiClient.setServer(null);
           // Re-throw network/connection errors so they can be handled by the caller
-          if (error.message?.includes('timeout') || error.message?.includes('Connection') || error.message?.includes('Network')) {
+          // Check error codes/types first, then fall back to message string matching
+          const isNetworkError = error.code === 'ECONNABORTED' || 
+                                 error.code === 'ERR_NETWORK' || 
+                                 error.code === 'ETIMEDOUT' ||
+                                 error.response?.status >= 500 ||
+                                 error.message?.includes('timeout') || 
+                                 error.message?.includes('Connection') || 
+                                 error.message?.includes('Network');
+          if (isNetworkError) {
             throw error;
           }
           // Authentication error means login didn't actually work
-          if (error.message?.includes('Authentication') || error.response?.status === 403) {
+          // Check status code first, then fall back to message string matching
+          if (error.response?.status === 403 || error.response?.status === 401 || error.message?.includes('Authentication')) {
             throw new Error('Authentication failed. Please check your credentials.');
           }
           throw new Error('Failed to connect to server. Please check your settings.');
@@ -97,7 +114,15 @@ export class ServerManager {
     } catch (error: any) {
       apiClient.setServer(null);
       // Re-throw network/connection errors so they can be handled by the caller
-      if (error.message?.includes('timeout') || error.message?.includes('Connection') || error.message?.includes('Network')) {
+      // Check error codes/types first, then fall back to message string matching
+      const isNetworkError = error.code === 'ECONNABORTED' || 
+                             error.code === 'ERR_NETWORK' || 
+                             error.code === 'ETIMEDOUT' ||
+                             error.response?.status >= 500 ||
+                             error.message?.includes('timeout') || 
+                             error.message?.includes('Connection') || 
+                             error.message?.includes('Network');
+      if (isNetworkError) {
         throw error;
       }
       // Re-throw if it's already a formatted error message
@@ -137,6 +162,57 @@ export class ServerManager {
       return false;
     }
     return await this.connectToServer(currentServer);
+  }
+
+  /**
+   * Test connection to a server without saving it
+   * Returns a result object with success status and error message if failed
+   */
+  static async testConnection(server: ServerConfig): Promise<{ success: boolean; error?: string }> {
+    const previousServer = apiClient.getServer();
+    
+    try {
+      // Set server temporarily for testing
+      apiClient.setServer(server);
+
+      try {
+        if (!server.bypassAuth) {
+          // Attempt login
+          const loginResult = await authApi.login(server.username, server.password);
+          if (loginResult.status !== 'Ok') {
+            return { success: false, error: 'Authentication failed. Please check your username and password.' };
+          }
+        }
+
+        // Verify connection by making a test API call
+        await applicationApi.getVersion();
+        
+        return { success: true };
+      } catch (error: any) {
+        // Provide more specific error messages
+        // Check status codes first, then error codes, then fall back to message string matching
+        if (error.response?.status === 403 || error.response?.status === 401 || error.message?.includes('Authentication')) {
+          return { success: false, error: 'Authentication failed. Please check your credentials.' };
+        } else if (error.code === 'ECONNABORTED' || 
+                   error.code === 'ERR_NETWORK' || 
+                   error.code === 'ETIMEDOUT' ||
+                   error.response?.status >= 500 ||
+                   error.message?.includes('timeout') || 
+                   error.message?.includes('Connection') || 
+                   error.message?.includes('Network')) {
+          return { success: false, error: 'Connection failed. Please check your server address and network connection.' };
+        } else {
+          return { success: false, error: error.message || 'Connection test failed. Please check your settings.' };
+        }
+      } finally {
+        // Restore previous server state
+        apiClient.setServer(previousServer);
+      }
+    } catch (error: any) {
+      // Ensure cleanup even if outer try fails
+      apiClient.setServer(previousServer);
+      return { success: false, error: error.message || 'Connection test failed. Please check your settings.' };
+    }
   }
 }
 

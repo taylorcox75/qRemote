@@ -198,12 +198,21 @@ export default function SettingsScreen() {
 
   const handleDeleteServer = async (server: ServerConfig) => {
     try {
+      // Check if we're deleting the currently connected server
+      const isDeletingCurrentServer = currentServer?.id === server.id;
+      
       await ServerManager.deleteServer(server.id);
       await loadServers();
-      // If no servers remain, disconnect
-      const remainingServers = await ServerManager.getServers();
-      if (remainingServers.length === 0 && isConnected) {
+      
+      // Disconnect if we deleted the currently connected server
+      if (isDeletingCurrentServer && isConnected) {
         await disconnect();
+      } else {
+        // If no servers remain, disconnect
+        const remainingServers = await ServerManager.getServers();
+        if (remainingServers.length === 0 && isConnected) {
+          await disconnect();
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to delete server');
@@ -658,12 +667,21 @@ function SwipeableServerItem({
     }
   };
 
+  const serverAddress = `${server.host}${server.port != null && server.port > 0 ? `:${server.port}` : ''}`;
+  const isConnected = currentServer?.id === server.id;
+
   return (
     <View>
       <View style={styles.swipeableContainer}>
         {/* Delete button background */}
         <View style={[styles.swipeableAction, { backgroundColor: colors.error }]}>
-          <TouchableOpacity style={styles.swipeableActionButton} onPress={handleDelete}>
+          <TouchableOpacity 
+            style={styles.swipeableActionButton} 
+            onPress={handleDelete}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete server ${server.name}`}
+            accessibilityHint="Swipe left or tap to delete this server"
+          >
             <Ionicons name="trash" size={24} color="#FFFFFF" />
             <Text style={styles.swipeableActionText}>Delete</Text>
           </TouchableOpacity>
@@ -678,6 +696,9 @@ function SwipeableServerItem({
             },
           ]}
           {...panResponder.panHandlers}
+          accessibilityRole="button"
+          accessibilityLabel={`Server ${server.name} at ${serverAddress}${isConnected ? ', currently connected' : ''}`}
+          accessibilityHint="Swipe left to delete, tap to edit"
         >
           <TouchableOpacity style={styles.listItem} onPress={handlePress} activeOpacity={0.7}>
             <View style={styles.listItemContent}>
@@ -686,18 +707,20 @@ function SwipeableServerItem({
                 <View style={styles.listItemText}>
                   <Text style={[styles.listItemTitle, { color: colors.text }]}>{server.name}</Text>
                   <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]}>
-                    {server.host}{server.port != null && server.port > 0 ? `:${server.port}` : ''}
+                    {serverAddress}
                   </Text>
                 </View>
               </View>
               <View style={styles.listItemRight}>
-                {currentServer?.id === server.id ? (
+                {isConnected ? (
                   <TouchableOpacity
                     style={[styles.smallButton, { backgroundColor: colors.error }]}
                     onPress={(e) => {
                       e.stopPropagation();
                       onDisconnect();
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Disconnect from ${server.name}`}
                   >
                     <Text 
                       style={styles.smallButtonText}
@@ -714,6 +737,8 @@ function SwipeableServerItem({
                       e.stopPropagation();
                       onConnect();
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Connect to ${server.name}`}
                   >
                     <Text style={styles.smallButtonText}>Connect</Text>
                   </TouchableOpacity>

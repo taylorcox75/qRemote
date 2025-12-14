@@ -573,11 +573,15 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
         transparent
         animationType="fade"
         onRequestClose={hideMenu}
+        accessibilityViewIsModal
+        accessibilityLabel="Torrent actions menu"
       >
         <TouchableOpacity
           style={styles.menuOverlay}
           activeOpacity={1}
           onPress={hideMenu}
+          accessibilityRole="button"
+          accessibilityLabel="Close menu"
         >
           <View
             style={[
@@ -589,62 +593,82 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
                 shadowColor: colors.text,
               },
             ]}
+            accessibilityRole="menu"
+            accessibilityLabel="Torrent actions"
           >
             <MenuOption
               icon={isPaused ? 'play' : 'pause'}
               label={isPaused ? 'Resume' : 'Pause'}
               onPress={() => handleMenuAction(handlePauseResume)}
               colors={colors}
+              accessibilityLabel={isPaused ? `Resume torrent ${torrent.name}` : `Pause torrent ${torrent.name}`}
+              accessibilityHint={isPaused ? 'Resumes downloading or uploading this torrent' : 'Pauses downloading or uploading this torrent'}
             />
             <MenuOption
               icon="flash"
               label="Force Start"
               onPress={() => handleMenuAction(handleForceStart)}
               colors={colors}
+              accessibilityLabel={`Force start torrent ${torrent.name}`}
+              accessibilityHint="Forces the torrent to start downloading immediately"
             />
             <MenuOption
               icon="speedometer"
               label={`Global Speed Limit (${transferInfo?.use_alt_speed_limits ? 'ON' : 'OFF'})`}
               onPress={() => handleMenuAction(handleToggleGlobalSpeedLimit)}
               colors={colors}
+              accessibilityLabel={`Toggle global speed limit, currently ${transferInfo?.use_alt_speed_limits ? 'on' : 'off'}`}
+              accessibilityHint="Toggles the global alternative speed limits for all torrents"
             />
             <MenuOption
               icon="flag"
               label="Max Priority"
               onPress={() => handleMenuAction(handleMaxPriority)}
               colors={colors}
+              accessibilityLabel={`Set maximum priority for ${torrent.name}`}
+              accessibilityHint="Sets this torrent to the highest download priority"
             />
             <MenuOption
               icon="download"
               label="Set DL Limit"
               onPress={() => handleMenuAction(handleSetDownloadLimit)}
               colors={colors}
+              accessibilityLabel={`Set download limit for ${torrent.name}`}
+              accessibilityHint="Sets a download speed limit for this torrent in kilobytes per second"
             />
             <MenuOption
               icon="checkmark-circle"
               label="Verify Data"
               onPress={() => handleMenuAction(handleVerifyData)}
               colors={colors}
+              accessibilityLabel={`Verify data integrity for ${torrent.name}`}
+              accessibilityHint="Starts verification of downloaded data for this torrent"
             />
             <MenuOption
               icon="refresh"
               label="Reannounce"
               onPress={() => handleMenuAction(handleReannounce)}
               colors={colors}
+              accessibilityLabel={`Reannounce ${torrent.name} to trackers`}
+              accessibilityHint="Reannounces this torrent to all its trackers"
             />
             <MenuOption
               icon="link"
               label="Copy Magnet Link"
               onPress={() => handleMenuAction(handleCopyMagnet)}
               colors={colors}
+              accessibilityLabel={`Copy magnet link for ${torrent.name}`}
+              accessibilityHint="Copies the magnet link of this torrent to clipboard"
             />
-            <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} />
+            <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} accessibilityRole="separator" />
             <MenuOption
               icon="trash"
               label="Delete"
               onPress={() => handleMenuAction(handleDelete)}
               colors={colors}
               destructive
+              accessibilityLabel={`Delete torrent ${torrent.name}`}
+              accessibilityHint="Permanently deletes this torrent. You can choose to delete files as well"
             />
           </View>
         </TouchableOpacity>
@@ -659,18 +683,25 @@ function MenuOption({
   onPress,
   colors,
   destructive = false,
+  accessibilityLabel,
+  accessibilityHint,
 }: {
   icon: string;
   label: string;
   onPress: () => void;
   colors: any;
   destructive?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }) {
   return (
     <TouchableOpacity
       style={styles.menuOption}
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityRole="menuitem"
+      accessibilityLabel={accessibilityLabel || label}
+      accessibilityHint={accessibilityHint}
     >
       <Ionicons
         name={icon as any}
@@ -708,6 +739,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 6,
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: 8,
   },
   name: {
     flex: 1,

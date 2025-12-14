@@ -639,6 +639,8 @@ export default function TorrentsScreen() {
                           color: filter === item.key ? '#FFFFFF' : colors.text,
                         },
                       ]}
+                      textAlignVertical="center"
+                      includeFontPadding={false}
                     >
                       {item.label}
                     </Text>
@@ -659,7 +661,11 @@ export default function TorrentsScreen() {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="close" size={14} color="#FFFFFF" />
-                  <Text style={[styles.filterChipTextCompact, { color: '#FFFFFF' }]}>
+                  <Text 
+                    style={[styles.filterChipTextCompact, { color: '#FFFFFF' }]}
+                    textAlignVertical="center"
+                    includeFontPadding={false}
+                  >
                     Close
                   </Text>
                 </TouchableOpacity>

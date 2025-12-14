@@ -21,9 +21,6 @@ import { useTheme } from '../../context/ThemeContext';
 import { useServer } from '../../context/ServerContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { spacing, borderRadius } from '../../constants/spacing';
-import { apiClient } from '../../services/api/client';
-import { authApi } from '../../services/api/auth';
-import { applicationApi } from '../../services/api/application';
 
 export default function AddServerScreen() {
   const router = useRouter();
@@ -136,40 +133,13 @@ export default function AddServerScreen() {
         bypassAuth,
       };
 
-      // Set server temporarily for testing
-      apiClient.setServer(server);
-
-      try {
-        if (!bypassAuth) {
-          // Attempt login
-          const loginResult = await authApi.login(server.username, server.password);
-          if (loginResult.status !== 'Ok') {
-            apiClient.setServer(null);
-            Alert.alert('Error', 'Authentication failed. Please check your username and password.');
-            return;
-          }
-        }
-
-        // Verify connection by making a test API call
-        await applicationApi.getVersion();
-        
-        // Connection test successful
+      const result = await ServerManager.testConnection(server);
+      if (result.success) {
         Alert.alert('Success', 'Connection test successful!');
-      } catch (error: any) {
-        apiClient.setServer(null);
-        // Provide more specific error messages
-        if (error.message?.includes('Authentication') || error.response?.status === 403) {
-          Alert.alert('Error', 'Authentication failed. Please check your credentials.');
-        } else if (error.message?.includes('timeout') || error.message?.includes('Connection') || error.message?.includes('Network')) {
-          Alert.alert('Error', 'Connection failed. Please check your server address and network connection.');
-        } else {
-          Alert.alert('Error', error.message || 'Connection test failed. Please check your settings.');
-        }
-      } finally {
-        apiClient.setServer(null);
+      } else {
+        Alert.alert('Error', result.error || 'Connection test failed. Please check your settings.');
       }
     } catch (error: any) {
-      apiClient.setServer(null);
       Alert.alert('Error', error.message || 'Connection test failed. Please check your settings.');
     } finally {
       setTesting(false);
@@ -301,7 +271,7 @@ export default function AddServerScreen() {
                   secureTextEntry
                   autoCapitalize="none"
                   autoCorrect={false}
-                  textContentType="oneTimeCode"
+                  textContentType="password"
                   autoComplete="off"
                   passwordRules=""
                 />
