@@ -11,8 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Switch,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ServerManager } from '../../services/server-manager';
@@ -127,7 +127,7 @@ export default function EditServerScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <KeyboardAvoidingView 
         style={styles.keyboardView}
