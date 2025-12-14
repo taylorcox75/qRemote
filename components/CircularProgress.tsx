@@ -2,84 +2,102 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../context/ThemeContext';
+import { formatSpeed } from '../utils/format';
 
 interface CircularProgressProps {
-  value: number; // 0-100
+  current: number;
+  limit: number;
+  color: string;
   size?: number;
   strokeWidth?: number;
-  progressColor?: string;
-  backgroundColor?: string;
-  children?: React.ReactNode;
+  showLabel?: boolean;
 }
 
-/**
- * Circular progress indicator for storage, completion, etc.
- * Shows percentage in a clean, minimal ring design
- */
 export function CircularProgress({
-  value,
-  size = 120,
-  strokeWidth = 12,
-  progressColor,
-  backgroundColor,
-  children,
+  current,
+  limit,
+  color,
+  size = 60,
+  strokeWidth = 6,
+  showLabel = true,
 }: CircularProgressProps) {
   const { colors } = useTheme();
 
-  const color = progressColor || colors.primary;
-  const bgColor = backgroundColor || colors.surfaceOutline;
+  const percentage = limit > 0 ? Math.min(100, (current / limit) * 100) : 0;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (value / 100) * circumference;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  // Color coding: green < 80%, yellow 80-95%, red > 95%
+  let progressColor = color;
+  if (limit > 0) {
+    if (percentage >= 95) {
+      progressColor = colors.error;
+    } else if (percentage >= 80) {
+      progressColor = colors.warning;
+    }
+  }
+
+  const center = size / 2;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      <Svg width={size} height={size}>
+      <Svg width={size} height={size} style={styles.svg}>
         {/* Background circle */}
         <Circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={center}
+          cy={center}
           r={radius}
-          stroke={bgColor}
+          stroke={colors.surfaceOutline}
           strokeWidth={strokeWidth}
           fill="none"
         />
-        
         {/* Progress circle */}
         <Circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={center}
+          cy={center}
           r={radius}
-          stroke={color}
+          stroke={progressColor}
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
+          transform={`rotate(-90 ${center} ${center})`}
         />
       </Svg>
-      
-      {/* Center content */}
-      <View style={styles.centerContent}>
-        {children}
-      </View>
+      {showLabel && (
+        <View style={styles.labelContainer}>
+          <Text style={[styles.percentage, { color: colors.text }]}>
+            {percentage.toFixed(0)}%
+          </Text>
+          <Text style={[styles.speed, { color: colors.textSecondary }]} numberOfLines={1}>
+            {formatSpeed(current)}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  centerContent: {
+  svg: {
     position: 'absolute',
-    justifyContent: 'center',
+  },
+  labelContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  percentage: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  speed: {
+    fontSize: 8,
+    marginTop: 2,
   },
 });
-
-

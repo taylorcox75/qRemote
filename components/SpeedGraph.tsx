@@ -1,112 +1,104 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withTiming,
-} from 'react-native-reanimated';
+import React, { useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
+import Svg, { Polyline, Line, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../context/ThemeContext';
 
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
 interface SpeedGraphProps {
-  data: number[]; // Array of speed values
+  data: number[];
+  color: string;
   width?: number;
   height?: number;
-  color?: string;
-  animated?: boolean;
+  maxValue?: number;
 }
 
-/**
- * Mini sparkline graph for speed visualization
- * Shows bandwidth history with smooth line and gradient fill
- */
-export function SpeedGraph({
-  data,
-  width = 100,
-  height = 40,
-  color,
-  animated = true,
-}: SpeedGraphProps) {
+export function SpeedGraph({ data, color, width = 150, height = 50, maxValue }: SpeedGraphProps) {
   const { colors } = useTheme();
-  const graphColor = color || colors.primary;
-  const progress = useSharedValue(0);
 
-  useEffect(() => {
-    if (animated) {
-      progress.value = withTiming(1, { duration: 800 });
-    } else {
-      progress.value = 1;
+  const { path, gradientId, yScale, domain } = useMemo(() => {
+    if (!data || data.length === 0) {
+      return {
+        path: '',
+        gradientId: `gradient-${color.replace('#', '')}`,
+        yScale: 1,
+        domain: { min: 0, max: 1 },
+      };
     }
-  }, [data, animated]);
 
-  // Calculate points
-  const maxValue = Math.max(...data, 1);
-  const minValue = Math.min(...data, 0);
-  const range = maxValue - minValue || 1;
+    const padding = 4;
+    const graphWidth = width - padding * 2;
+    const graphHeight = height - padding * 2;
+    const max = maxValue || Math.max(...data, 1);
+    const min = 0;
 
-  const points = data.map((value, index) => {
-    const x = (index / (data.length - 1 || 1)) * width;
-    const y = height - ((value - minValue) / range) * height;
-    return { x, y };
-  });
+    const domain = { min, max: max || 1 };
+    const yScale = graphHeight / (domain.max - domain.min || 1);
 
-  // Create path
-  let pathData = '';
-  if (points.length > 0) {
-    pathData = `M ${points[0].x},${points[0].y}`;
-    
-    // Use quadratic curves for smooth line
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      const midX = (prev.x + curr.x) / 2;
-      const midY = (prev.y + curr.y) / 2;
-      pathData += ` Q ${prev.x},${prev.y} ${midX},${midY}`;
-    }
-    
-    // Last point
-    if (points.length > 1) {
-      const last = points[points.length - 1];
-      pathData += ` L ${last.x},${last.y}`;
-    }
+    const points: string[] = [];
+    data.forEach((value, index) => {
+      const x = padding + (index / (data.length - 1 || 1)) * graphWidth;
+      const y = padding + graphHeight - (value - domain.min) * yScale;
+      points.push(`${x},${y}`);
+    });
+
+    const path = points.join(' ');
+
+    return {
+      path,
+      gradientId: `gradient-${color.replace('#', '')}-${Date.now()}`,
+      yScale,
+      domain,
+    };
+  }, [data, width, height, maxValue, color]);
+
+  if (!data || data.length === 0) {
+    return (
+      <View style={[styles.container, { width, height, backgroundColor: 'transparent' }]}>
+        <View style={styles.emptyContainer}>
+          {/* Empty state - could show a placeholder */}
+        </View>
+      </View>
+    );
   }
-
-  // Create filled area path
-  const fillPathData = pathData + ` L ${width},${height} L 0,${height} Z`;
-
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: (1 - progress.value) * width * 2,
-  }));
 
   return (
     <View style={[styles.container, { width, height }]}>
-      <Svg width={width} height={height}>
+      <Svg width={width} height={height} style={styles.svg}>
         <Defs>
-          <LinearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor={graphColor} stopOpacity="0.3" />
-            <Stop offset="100%" stopColor={graphColor} stopOpacity="0.05" />
+          <LinearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor={color} stopOpacity="0.3" />
+            <Stop offset="100%" stopColor={color} stopOpacity="0" />
           </LinearGradient>
         </Defs>
-
-        {/* Filled area */}
-        <Path
-          d={fillPathData}
-          fill="url(#gradient)"
-        />
-
+        {/* Area fill */}
+        {data.length > 0 && (
+          <Polyline
+            points={`${4},${height - 4} ${path} ${width - 4},${height - 4}`}
+            fill={`url(#${gradientId})`}
+            fillOpacity={0.3}
+          />
+        )}
         {/* Line */}
-        <AnimatedPath
-          d={pathData}
-          stroke={graphColor}
-          strokeWidth={2}
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray={width * 2}
-          animatedProps={animatedProps}
-        />
+        {data.length > 1 && (
+          <Polyline
+            points={path}
+            fill="none"
+            stroke={color}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        {/* Single point if only one data point */}
+        {data.length === 1 && (
+          <Line
+            x1={width / 2}
+            y1={height - 4}
+            x2={width / 2}
+            y2={4}
+            stroke={color}
+            strokeWidth="1.5"
+          />
+        )}
       </Svg>
     </View>
   );
@@ -114,8 +106,15 @@ export function SpeedGraph({
 
 const styles = StyleSheet.create({
   container: {
+    borderRadius: 8,
     overflow: 'hidden',
   },
+  svg: {
+    position: 'absolute',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
-
-

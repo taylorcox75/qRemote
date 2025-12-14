@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTransfer } from '../../context/TransferContext';
@@ -18,11 +19,14 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { torrentsApi } from '../../services/api/torrents';
-import { formatSize, formatSpeed, kbToBytes, bytesToKb } from '../../utils/format';
+import { formatSize, formatSpeed, kbToBytes, bytesToKb, formatTime } from '../../utils/format';
 import { shadows } from '../../constants/shadows';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
+import { useSpeedTracker } from '../../hooks/useSpeedTracker';
+import { SpeedGraph } from '../../components/SpeedGraph';
+import { CircularProgress } from '../../components/CircularProgress';
 
 const SPEED_PRESETS = [
   { label: '∞', value: 0 },
@@ -31,12 +35,15 @@ const SPEED_PRESETS = [
   { label: '2M', value: 2048 },
   { label: '5M', value: 5120 },
   { label: '10M', value: 10240 },
+  { label: '20M', value: 20480 },
+  { label: '50M', value: 51200 },
+  { label: '100M', value: 102400 },
 ];
 
 export default function TransferScreen() {
   const { transferInfo, isLoading, error, refresh, toggleAlternativeSpeedLimits, setDownloadLimit, setUploadLimit } = useTransfer();
   const { isConnected } = useServer();
-  const { serverState, sync: syncTorrents } = useTorrents();
+  const { torrents, serverState, sync: syncTorrents } = useTorrents();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
   
@@ -46,7 +53,55 @@ export default function TransferScreen() {
   const [limitType, setLimitType] = useState<'download' | 'upload' | null>(null);
   const [limitInput, setLimitInput] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Speed tracking
+  const { speedData, stats, addSpeedData, resetStats } = useSpeedTracker(isConnected && !!transferInfo);
   
+  // Track speed data when transferInfo updates
+  useEffect(() => {
+    if (transferInfo && isConnected) {
+      addSpeedData(transferInfo.dl_info_speed || 0, transferInfo.up_info_speed || 0);
+    }
+  }, [transferInfo?.dl_info_speed, transferInfo?.up_info_speed, isConnected, addSpeedData]);
+
+  // Get graph data from speed tracker
+  const downloadGraphData = useMemo(() => {
+    return speedData.map(point => point.downloadSpeed);
+  }, [speedData]);
+
+  const uploadGraphData = useMemo(() => {
+    return speedData.map(point => point.uploadSpeed);
+  }, [speedData]);
+
+  // Calculate statistics
+  const activeTorrentsCount = useMemo(() => {
+    if (!torrents) return { downloading: 0, uploading: 0, total: 0 };
+    const downloading = torrents.filter(t => 
+      t.state === 'downloading' || t.state === 'forcedDL' || t.state === 'metaDL' || t.state === 'forcedMetaDL'
+    ).length;
+    const uploading = torrents.filter(t => 
+      t.state === 'uploading' || t.state === 'forcedUP' || t.state === 'stalledUP'
+    ).length;
+    return { downloading, uploading, total: downloading + uploading };
+  }, [torrents]);
+
+  const queueStats = useMemo(() => {
+    if (!torrents || !serverState) return null;
+    const queued = torrents.filter(t => 
+      t.state === 'queuedDL' || t.state === 'queuedUP'
+    ).length;
+    return {
+      queued,
+      queueing: serverState.queueing || false,
+      averageQueueTime: serverState.average_time_queue || 0,
+    };
+  }, [torrents, serverState]);
+
+  const sessionDuration = useMemo(() => {
+    if (stats.sessionStartTime === 0) return 0;
+    return Math.floor((Date.now() - stats.sessionStartTime) / 1000);
+  }, [stats.sessionStartTime]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refresh(), syncTorrents()]);
@@ -58,6 +113,7 @@ export default function TransferScreen() {
     try {
       await torrentsApi.pauseTorrents(['all']);
       await syncTorrents();
+      showToast('All torrents paused', 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to pause all torrents', 'error');
     } finally {
@@ -70,12 +126,71 @@ export default function TransferScreen() {
     try {
       await torrentsApi.resumeTorrents(['all']);
       await syncTorrents();
+      showToast('All torrents resumed', 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to resume all torrents', 'error');
     } finally {
       setActionLoading(null);
     }
   };
+
+  const handleForceStartAll = async () => {
+    setActionLoading('forceStart');
+    try {
+      await torrentsApi.setForceStart(['all'], true);
+      await syncTorrents();
+      showToast('Force start enabled for all torrents', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to force start all torrents', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handlePauseAllDownloads = async () => {
+    setActionLoading('pauseDL');
+    try {
+      // Filter torrents that are downloading
+      const downloadingHashes = torrents
+        .filter(t => t.state === 'downloading' || t.state === 'forcedDL' || t.state === 'metaDL')
+        .map(t => t.hash);
+      if (downloadingHashes.length === 0) {
+        showToast('No downloading torrents to pause', 'info');
+        setActionLoading(null);
+        return;
+      }
+      await torrentsApi.pauseTorrents(downloadingHashes);
+      await syncTorrents();
+      showToast(`Paused ${downloadingHashes.length} downloading torrent${downloadingHashes.length !== 1 ? 's' : ''}`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to pause downloads', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handlePauseAllUploads = async () => {
+    setActionLoading('pauseUL');
+    try {
+      // Filter torrents that are uploading/seeding
+      const uploadingHashes = torrents
+        .filter(t => t.state === 'uploading' || t.state === 'forcedUP' || t.state === 'stalledUP')
+        .map(t => t.hash);
+      if (uploadingHashes.length === 0) {
+        showToast('No uploading torrents to pause', 'info');
+        setActionLoading(null);
+        return;
+      }
+      await torrentsApi.pauseTorrents(uploadingHashes);
+      await syncTorrents();
+      showToast(`Paused ${uploadingHashes.length} uploading torrent${uploadingHashes.length !== 1 ? 's' : ''}`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to pause uploads', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
 
   const handleToggleAltSpeed = async () => {
     setActionLoading('altSpeed');
@@ -94,11 +209,30 @@ export default function TransferScreen() {
       const bytesValue = kbToBytes(kbValue);
       if (type === 'download') {
         await setDownloadLimit(bytesValue);
+        showToast(kbValue === 0 ? 'Download limit removed' : `Download limit set to ${kbValue} KB/s`, 'success');
       } else {
         await setUploadLimit(bytesValue);
+        showToast(kbValue === 0 ? 'Upload limit removed' : `Upload limit set to ${kbValue} KB/s`, 'success');
       }
     } catch (err: any) {
       showToast(err.message || `Failed to set ${type} limit`, 'error');
+    } finally {
+      setSettingLimit(false);
+    }
+  };
+
+  const handleRemoveLimit = async (type: 'download' | 'upload') => {
+    setSettingLimit(true);
+    try {
+      if (type === 'download') {
+        await setDownloadLimit(0);
+        showToast('Download limit removed', 'success');
+      } else {
+        await setUploadLimit(0);
+        showToast('Upload limit removed', 'success');
+      }
+    } catch (err: any) {
+      showToast(err.message || `Failed to remove ${type} limit`, 'error');
     } finally {
       setSettingLimit(false);
     }
@@ -266,9 +400,13 @@ export default function TransferScreen() {
                     <Ionicons name="arrow-down" size={18} color={colors.primary} />
                     <Text style={[styles.graphLabel, { color: colors.textSecondary }]}>Download</Text>
                   </View>
-                  <View style={{ width: 150, height: 50, backgroundColor: colors.surface, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ color: colors.textSecondary, fontSize: 10 }}>Graph</Text>
-                  </View>
+                  <SpeedGraph
+                    data={downloadGraphData}
+                    color={colors.primary}
+                    width={150}
+                    height={50}
+                    maxValue={transferInfo.dl_rate_limit > 0 ? transferInfo.dl_rate_limit : undefined}
+                  />
                   <Text style={[styles.graphValue, { color: colors.text }]}>
                     {formatSpeed(transferInfo.dl_info_speed)}
                   </Text>
@@ -281,27 +419,65 @@ export default function TransferScreen() {
                     <Ionicons name="arrow-up" size={18} color={colors.success} />
                     <Text style={[styles.graphLabel, { color: colors.textSecondary }]}>Upload</Text>
                   </View>
-                  <View style={{ width: 150, height: 50, backgroundColor: colors.surface, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ color: colors.textSecondary, fontSize: 10 }}>Graph</Text>
-                  </View>
+                  <SpeedGraph
+                    data={uploadGraphData}
+                    color={colors.success}
+                    width={150}
+                    height={50}
+                    maxValue={transferInfo.up_rate_limit > 0 ? transferInfo.up_rate_limit : undefined}
+                  />
                   <Text style={[styles.graphValue, { color: colors.text }]}>
                     {formatSpeed(transferInfo.up_info_speed)}
                   </Text>
                 </View>
               </View>
               <View style={[styles.limitsBar, { backgroundColor: colors.background }]}>
-                <View style={styles.limitItem}>
-                  <Ionicons name="arrow-down" size={14} color={colors.primary} />
-                  <Text style={[styles.limitText, { color: colors.textSecondary }]}>
-                    {transferInfo.dl_rate_limit > 0 ? formatSpeed(transferInfo.dl_rate_limit) : '∞'}
-                  </Text>
+                <View style={styles.limitItemWithProgress}>
+                  <CircularProgress
+                    current={transferInfo.dl_info_speed || 0}
+                    limit={transferInfo.dl_rate_limit || 0}
+                    color={colors.primary}
+                    size={40}
+                    strokeWidth={4}
+                    showLabel={false}
+                  />
+                  <View style={styles.limitItemText}>
+                    <View style={styles.limitItemRow}>
+                      <Ionicons name="arrow-down" size={14} color={colors.primary} />
+                      <Text style={[styles.limitText, { color: colors.textSecondary }]}>
+                        {transferInfo.dl_rate_limit > 0 ? formatSpeed(transferInfo.dl_rate_limit) : '∞'}
+                      </Text>
+                    </View>
+                    {transferInfo.dl_rate_limit > 0 && (
+                      <Text style={[styles.limitPercentage, { color: colors.textSecondary }]}>
+                        {Math.min(100, Math.round((transferInfo.dl_info_speed / transferInfo.dl_rate_limit) * 100))}% used
+                      </Text>
+                    )}
+                  </View>
                 </View>
                 <Text style={[styles.limitsLabel, { color: colors.textSecondary }]}>Limits</Text>
-                <View style={styles.limitItem}>
-                  <Ionicons name="arrow-up" size={14} color={colors.success} />
-                  <Text style={[styles.limitText, { color: colors.textSecondary }]}>
-                    {transferInfo.up_rate_limit > 0 ? formatSpeed(transferInfo.up_rate_limit) : '∞'}
-                  </Text>
+                <View style={styles.limitItemWithProgress}>
+                  <CircularProgress
+                    current={transferInfo.up_info_speed || 0}
+                    limit={transferInfo.up_rate_limit || 0}
+                    color={colors.success}
+                    size={40}
+                    strokeWidth={4}
+                    showLabel={false}
+                  />
+                  <View style={styles.limitItemText}>
+                    <View style={styles.limitItemRow}>
+                      <Ionicons name="arrow-up" size={14} color={colors.success} />
+                      <Text style={[styles.limitText, { color: colors.textSecondary }]}>
+                        {transferInfo.up_rate_limit > 0 ? formatSpeed(transferInfo.up_rate_limit) : '∞'}
+                      </Text>
+                    </View>
+                    {transferInfo.up_rate_limit > 0 && (
+                      <Text style={[styles.limitPercentage, { color: colors.textSecondary }]}>
+                        {Math.min(100, Math.round((transferInfo.up_info_speed / transferInfo.up_rate_limit) * 100))}% used
+                      </Text>
+                    )}
+                  </View>
                 </View>
               </View>
             </View>
@@ -313,48 +489,88 @@ export default function TransferScreen() {
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.actionsRow}>
                 <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: colors.success + '12' }]}
+                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
                   onPress={handleResumeAll}
                   disabled={actionLoading !== null}
                 >
                   {actionLoading === 'resume' ? (
-                    <ActivityIndicator size="small" color={colors.text} />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Ionicons name="play" size={20} color={colors.text} />
+                    <Ionicons name="play" size={20} color="#FFFFFF" />
                   )}
-                  <Text style={[styles.actionText, { color: colors.text }]}>Resume All</Text>
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Resume All</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: '#FF9500' + '12' }]}
+                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
                   onPress={handlePauseAll}
                   disabled={actionLoading !== null}
                 >
                   {actionLoading === 'pause' ? (
-                    <ActivityIndicator size="small" color="#FF9500" />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Ionicons name="pause" size={20} color="#FF9500" />
+                    <Ionicons name="pause" size={20} color="#FFFFFF" />
                   )}
-                  <Text style={[styles.actionText, { color: '#FF9500' }]}>Pause All</Text>
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Pause All</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: isAltSpeedEnabled ? colors.primary + '20' : colors.background }]}
+                  style={[styles.actionButton, { backgroundColor: isAltSpeedEnabled ? colors.warning : colors.primary }]}
                   onPress={handleToggleAltSpeed}
                   disabled={actionLoading !== null}
                 >
                   {actionLoading === 'altSpeed' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Ionicons 
                       name={isAltSpeedEnabled ? 'speedometer' : 'speedometer-outline'} 
                       size={20} 
-                      color={isAltSpeedEnabled ? colors.text : colors.textSecondary} 
+                      color="#FFFFFF" 
                     />
                   )}
-                  <Text style={[styles.actionText, { color: isAltSpeedEnabled ? colors.text : colors.text }]}>
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>
                     Alt Speed
                   </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  onPress={handleForceStartAll}
+                  disabled={actionLoading !== null}
+                >
+                  {actionLoading === 'forceStart' ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="flash" size={20} color="#FFFFFF" />
+                  )}
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Force Start All</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  onPress={handlePauseAllDownloads}
+                  disabled={actionLoading !== null}
+                >
+                  {actionLoading === 'pauseDL' ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="arrow-down" size={20} color="#FFFFFF" />
+                  )}
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Pause DL</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  onPress={handlePauseAllUploads}
+                  disabled={actionLoading !== null}
+                >
+                  {actionLoading === 'pauseUL' ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+                  )}
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Pause UL</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -369,6 +585,56 @@ export default function TransferScreen() {
                 <StatBox icon="cloud-download-outline" iconColor={colors.primary} label="Downloaded" value={formatSize(transferInfo.dl_info_data)} colors={colors} />
                 <StatBox icon="cloud-upload-outline" iconColor={colors.success} label="Uploaded" value={formatSize(transferInfo.up_info_data)} colors={colors} />
               </View>
+              
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              
+              <View style={styles.statsRow}>
+                <StatBox icon="speedometer-outline" iconColor={colors.primary} label="Avg DL Speed" value={formatSpeed(stats.averageDownload)} colors={colors} />
+                <StatBox icon="speedometer-outline" iconColor={colors.success} label="Avg UL Speed" value={formatSpeed(stats.averageUpload)} colors={colors} />
+              </View>
+              
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              
+              <View style={styles.statsRow}>
+                <StatBox icon="trending-up-outline" iconColor={colors.primary} label="Peak DL Speed" value={formatSpeed(stats.peakDownload)} colors={colors} />
+                <StatBox icon="trending-up-outline" iconColor={colors.success} label="Peak UL Speed" value={formatSpeed(stats.peakUpload)} colors={colors} />
+              </View>
+
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              
+              <View style={[styles.infoRow, { backgroundColor: colors.background }]}>
+                <View style={styles.infoLeft}>
+                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Session Duration</Text>
+                </View>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{formatTime(sessionDuration)}</Text>
+              </View>
+
+              <View style={[styles.infoRow, { backgroundColor: colors.background }]}>
+                <View style={styles.infoLeft}>
+                  <Ionicons name="arrow-down-circle-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Active Downloads</Text>
+                </View>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{activeTorrentsCount.downloading}</Text>
+              </View>
+
+              <View style={[styles.infoRow, { backgroundColor: colors.background }]}>
+                <View style={styles.infoLeft}>
+                  <Ionicons name="arrow-up-circle-outline" size={18} color={colors.success} />
+                  <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Active Uploads</Text>
+                </View>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{activeTorrentsCount.uploading}</Text>
+              </View>
+
+              {queueStats && queueStats.queued > 0 && (
+                <View style={[styles.infoRow, { backgroundColor: colors.background }]}>
+                  <View style={styles.infoLeft}>
+                    <Ionicons name="list-outline" size={18} color={colors.textSecondary} />
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Queued</Text>
+                  </View>
+                  <Text style={[styles.infoValue, { color: colors.text }]}>{queueStats.queued}</Text>
+                </View>
+              )}
 
               {serverState && (
                 <>
@@ -422,6 +688,16 @@ export default function TransferScreen() {
                       </TouchableOpacity>
                     );
                   })}
+                  {transferInfo.dl_rate_limit > 0 && (
+                    <TouchableOpacity
+                      style={[styles.removeLimitButton, { borderColor: colors.error }]}
+                      onPress={() => handleRemoveLimit('download')}
+                      disabled={settingLimit}
+                    >
+                      <Ionicons name="close-circle" size={16} color={colors.error} />
+                      <Text style={[styles.removeLimitText, { color: colors.error }]}>Remove</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
 
@@ -455,6 +731,16 @@ export default function TransferScreen() {
                       </TouchableOpacity>
                     );
                   })}
+                  {transferInfo.up_rate_limit > 0 && (
+                    <TouchableOpacity
+                      style={[styles.removeLimitButton, { borderColor: colors.error }]}
+                      onPress={() => handleRemoveLimit('upload')}
+                      disabled={settingLimit}
+                    >
+                      <Ionicons name="close-circle" size={16} color={colors.error} />
+                      <Text style={[styles.removeLimitText, { color: colors.error }]}>Remove</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </View>
@@ -483,13 +769,48 @@ export default function TransferScreen() {
                   <Text style={[styles.networkLabel, { color: colors.textSecondary }]}>DHT Nodes</Text>
                 </View>
                 {serverState && (
-                  <View style={styles.networkItem}>
-                    <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
-                    <Text style={[styles.networkValue, { color: colors.text }]}>{(serverState.total_peer_connections || 0).toLocaleString()}</Text>
-                    <Text style={[styles.networkLabel, { color: colors.textSecondary }]}>Peers</Text>
-                  </View>
+                  <>
+                    <View style={styles.networkItem}>
+                      <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
+                      <Text style={[styles.networkValue, { color: colors.text }]}>{(serverState.total_peer_connections || 0).toLocaleString()}</Text>
+                      <Text style={[styles.networkLabel, { color: colors.textSecondary }]}>Peers</Text>
+                    </View>
+                    {serverState.total_buffers_size !== undefined && (
+                      <View style={styles.networkItem}>
+                        <Ionicons name="server-outline" size={18} color={colors.textSecondary} />
+                        <Text style={[styles.networkValue, { color: colors.text }]}>{formatSize(serverState.total_buffers_size)}</Text>
+                        <Text style={[styles.networkLabel, { color: colors.textSecondary }]}>Buffers</Text>
+                      </View>
+                    )}
+                  </>
                 )}
               </View>
+              
+              {serverState && serverState.queueing && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={[styles.infoRow, { backgroundColor: colors.background }]}>
+                    <View style={styles.infoLeft}>
+                      <Ionicons name="list-outline" size={18} color={colors.textSecondary} />
+                      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Queued Size</Text>
+                    </View>
+                    <Text style={[styles.infoValue, { color: colors.text }]}>
+                      {formatSize(serverState.total_queued_size || 0)}
+                    </Text>
+                  </View>
+                  {serverState.average_time_queue > 0 && (
+                    <View style={[styles.infoRow, { backgroundColor: colors.background }]}>
+                      <View style={styles.infoLeft}>
+                        <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+                        <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Avg Queue Time</Text>
+                      </View>
+                      <Text style={[styles.infoValue, { color: colors.text }]}>
+                        {formatTime(serverState.average_time_queue)}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
 
               {diskSpaceInfo && diskSpaceInfo.free > 0 && (
                 <>
@@ -782,6 +1103,36 @@ const styles = StyleSheet.create({
   presetChipText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  removeLimitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md + 2,
+    borderWidth: 0.25,
+    borderRadius: borderRadius.medium,
+  },
+  removeLimitText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  limitItemWithProgress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  limitItemText: {
+    flex: 1,
+  },
+  limitItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  limitPercentage: {
+    ...typography.small,
+    marginTop: 2,
   },
 
   // Connection
