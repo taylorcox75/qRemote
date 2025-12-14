@@ -7,6 +7,7 @@ export interface ServerConfig {
   username: string;
   password: string;
   useHttps?: boolean;
+  bypassAuth?: boolean; // Skip authentication when local network auth is disabled
 }
 
 // Authentication

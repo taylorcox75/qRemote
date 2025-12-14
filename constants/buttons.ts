@@ -67,6 +67,7 @@ export const buttonStyles = {
     borderRadius: borderRadius.medium,
     gap: spacing.xs,
     minHeight: 32,
+    overflow: 'hidden' as const,
   },
 };
 
@@ -90,6 +91,8 @@ export const buttonText = {
   chip: {
     fontSize: 12,
     fontWeight: '600' as const,
+    textAlignVertical: 'center' as any,
+    includeFontPadding: false,
   },
 };
 

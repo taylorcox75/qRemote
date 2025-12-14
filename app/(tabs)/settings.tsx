@@ -10,6 +10,8 @@ import {
   TextInput,
   Switch,
   Animated,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -194,6 +196,31 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const handleDeleteServer = async (server: ServerConfig) => {
+    try {
+      // Check if we're deleting the currently connected server
+      const isDeletingCurrentServer = currentServer?.id === server.id;
+      
+      await ServerManager.deleteServer(server.id);
+      await loadServers();
+      
+      // Disconnect if we deleted the currently connected server
+      if (isDeletingCurrentServer && isConnected) {
+        await disconnect();
+      } else {
+        // If no servers remain, disconnect
+        const remainingServers = await ServerManager.getServers();
+        if (remainingServers.length === 0 && isConnected) {
+          await disconnect();
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete server');
+    }
+  };
+        
+    
+
   const handleAddCategory = async () => {
     if (!categoryName.trim()) {
       Alert.alert('Error', 'Please enter a category name');
@@ -258,7 +285,7 @@ export default function SettingsScreen() {
                     <Text style={[styles.connectionTitle, { color: colors.text }]}>{currentServer.name}</Text>
                   </View>
                   <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
-                    {currentServer.host}:{currentServer.port}
+                    {currentServer.host}{currentServer.port != null && currentServer.port > 0 ? `:${currentServer.port}` : ''}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -297,37 +324,17 @@ export default function SettingsScreen() {
               </View>
             ) : (
               servers.map((server, index) => (
-                <View key={server.id}>
-                  <TouchableOpacity style={styles.listItem} onPress={() => handleEditServer(server)}>
-                    <View style={styles.listItemContent}>
-                      <View style={styles.listItemLeft}>
-                        <Ionicons name="server-outline" size={22} color={colors.primary} />
-                        <View style={styles.listItemText}>
-                          <Text style={[styles.listItemTitle, { color: colors.text }]}>{server.name}</Text>
-                          <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]}>
-                            {server.host}:{server.port}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.listItemRight}>
-                        {currentServer?.id === server.id ? (
-                          <View style={[styles.badge, { backgroundColor: colors.error + '90' }]}>
-                            <Text style={[styles.badgeText, { color: 'white' }]}>Current</Text>
-                          </View>
-                        ) : (
-                          <TouchableOpacity
-                            style={[styles.smallButton, { backgroundColor: colors.success }]}
-                            onPress={() => handleConnect(server)}
-                          >
-                            <Text style={styles.smallButtonText}>Connect</Text>
-                          </TouchableOpacity>
-                        )}
-                        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                  {index < servers.length - 1 && <View style={[styles.separator, { backgroundColor: colors.background }]} />}
-                </View>
+                <SwipeableServerItem
+                  key={server.id}
+                  server={server}
+                  currentServer={currentServer}
+                  colors={colors}
+                  onPress={() => handleEditServer(server)}
+                  onConnect={() => handleConnect(server)}
+                  onDisconnect={() => disconnect()}
+                  onDelete={() => handleDeleteServer(server)}
+                  isLast={index === servers.length - 1}
+                />
               ))
             )}
           </View>
@@ -569,6 +576,184 @@ export default function SettingsScreen() {
   );
 }
 
+function SwipeableServerItem({
+  server,
+  currentServer,
+  colors,
+  onPress,
+  onConnect,
+  onDisconnect,
+  onDelete,
+  isLast,
+}: {
+  server: ServerConfig;
+  currentServer: ServerConfig | null;
+  colors: any;
+  onPress: () => void;
+  onConnect: () => void;
+  onDisconnect: () => void;
+  onDelete: () => void;
+  isLast: boolean;
+}) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const isSwipeOpen = useRef(false);
+  
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderGrant: () => {
+        translateX.setOffset(isSwipeOpen.current ? -80 : 0);
+        translateX.setValue(0);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const baseValue = isSwipeOpen.current ? -80 : 0;
+        const newValue = baseValue + gestureState.dx;
+        // Only allow swiping left (negative values)
+        translateX.setValue(Math.max(Math.min(newValue, 0), -80));
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        translateX.flattenOffset();
+        const baseValue = isSwipeOpen.current ? -80 : 0;
+        const finalValue = baseValue + gestureState.dx;
+        if (finalValue < -40) {
+          // Swipe left enough to reveal delete
+          isSwipeOpen.current = true;
+          Animated.spring(translateX, {
+            toValue: -80,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 7,
+          }).start();
+        } else {
+          // Snap back
+          isSwipeOpen.current = false;
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 7,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  const handleDelete = () => {
+    isSwipeOpen.current = false;
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 7,
+    }).start(() => {
+      onDelete();
+    });
+  };
+
+  const handlePress = () => {
+    if (isSwipeOpen.current) {
+      // If swiped open, close it
+      isSwipeOpen.current = false;
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }).start();
+    } else {
+      onPress();
+    }
+  };
+
+  const serverAddress = `${server.host}${server.port != null && server.port > 0 ? `:${server.port}` : ''}`;
+  const isConnected = currentServer?.id === server.id;
+
+  return (
+    <View>
+      <View style={styles.swipeableContainer}>
+        {/* Delete button background */}
+        <View style={[styles.swipeableAction, { backgroundColor: colors.error }]}>
+          <TouchableOpacity 
+            style={styles.swipeableActionButton} 
+            onPress={handleDelete}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete server ${server.name}`}
+            accessibilityHint="Swipe left or tap to delete this server"
+          >
+            <Ionicons name="trash" size={24} color="#FFFFFF" />
+            <Text style={styles.swipeableActionText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+        {/* Main content */}
+        <Animated.View
+          style={[
+            styles.swipeableContent,
+            {
+              transform: [{ translateX }],
+              backgroundColor: colors.surface,
+            },
+          ]}
+          {...panResponder.panHandlers}
+          accessibilityRole="button"
+          accessibilityLabel={`Server ${server.name} at ${serverAddress}${isConnected ? ', currently connected' : ''}`}
+          accessibilityHint="Swipe left to delete, tap to edit"
+        >
+          <TouchableOpacity style={styles.listItem} onPress={handlePress} activeOpacity={0.7}>
+            <View style={styles.listItemContent}>
+              <View style={styles.listItemLeft}>
+                <Ionicons name="server-outline" size={20} color={colors.primary} />
+                <View style={styles.listItemText}>
+                  <Text style={[styles.listItemTitle, { color: colors.text }]}>{server.name}</Text>
+                  <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]}>
+                    {serverAddress}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.listItemRight}>
+                {isConnected ? (
+                  <TouchableOpacity
+                    style={[styles.smallButton, { backgroundColor: colors.error }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onDisconnect();
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Disconnect from ${server.name}`}
+                  >
+                    <Text 
+                      style={styles.smallButtonText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      Disconnect
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.smallButton, { backgroundColor: colors.success }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onConnect();
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Connect to ${server.name}`}
+                  >
+                    <Text style={styles.smallButtonText}>Connect</Text>
+                  </TouchableOpacity>
+                )}
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+      {!isLast && <View style={[styles.separator, { backgroundColor: colors.background }]} />}
+    </View>
+  );
+}
+
 function InfoRow({ icon, label, value, colors }: { icon: string; label: string; value: string; colors: any }) {
   return (
     <View style={styles.infoRow}>
@@ -649,7 +834,7 @@ const styles = StyleSheet.create({
   },
   listItem: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
   },
   listItemContent: {
     flexDirection: 'row',
@@ -670,7 +855,7 @@ const styles = StyleSheet.create({
   },
   listItemSubtitle: {
     ...typography.small,
-    marginTop: 2,
+    marginTop: 1,
   },
   listItemRight: {
     flexDirection: 'row',
@@ -832,6 +1017,35 @@ const styles = StyleSheet.create({
   dangerHint: {
     ...typography.caption,
     marginTop: 1,
+  },
+  swipeableContainer: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  swipeableAction: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swipeableActionButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+    gap: 4,
+  },
+  swipeableActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  swipeableContent: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
 });
 

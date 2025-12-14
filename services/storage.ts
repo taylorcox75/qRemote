@@ -35,6 +35,7 @@ export const storageService = {
         username: s.username,
         password: '', // Don't store password in AsyncStorage
         useHttps: s.useHttps || false,
+        bypassAuth: s.bypassAuth || false,
       }));
       
       await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(serversWithoutPasswords));
