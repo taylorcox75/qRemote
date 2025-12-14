@@ -137,16 +137,15 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    pointerEvents: 'box-none',
   },
   container: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
     borderRadius: borderRadius.medium,
-    // High z-index and elevation for additional layering within the Modal
-    zIndex: 999999,
-    elevation: 999999,
+    // High z-index and elevation for proper layering
+    zIndex: 1000,
+    elevation: 10,
   },
   content: {
     flexDirection: 'row',
