@@ -21,6 +21,7 @@ import { tagsApi } from '../services/api/tags';
 import { useTorrents } from '../context/TorrentContext';
 import { useServer } from '../context/ServerContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { useTransfer } from '../context/TransferContext';
 import { apiClient } from '../services/api/client';
 import {
@@ -53,6 +54,7 @@ export function TorrentDetails({
   const { categories, tags, sync, torrents } = useTorrents();
   const { isConnected, currentServer, reconnect } = useServer();
   const { colors } = useTheme();
+  const { showToast } = useToast();
   const { transferInfo, toggleAlternativeSpeedLimits } = useTransfer();
   const [loading, setLoading] = useState(false);
   const [activeButton, setActiveButton] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export function TorrentDetails({
 
   const handlePause = async () => {
     if (!isConnected || !currentServer) {
-      Alert.alert('Error', 'Not connected to a server. Please connect to a server first.');
+      showToast('Not connected to a server. Please connect to a server first.', 'error');
       return;
     }
     setActiveButton('pause');
@@ -90,7 +92,7 @@ export function TorrentDetails({
         // Server was cleared, try to reconnect
         const reconnected = await reconnect();
         if (!reconnected) {
-          Alert.alert('Error', 'Lost connection to server. Please reconnect.');
+          showToast('Lost connection to server. Please reconnect.', 'error');
           return;
         }
       }
@@ -102,7 +104,7 @@ export function TorrentDetails({
       onRefresh();
     } catch (error: any) {
       console.error('Pause error:', error);
-      Alert.alert('Error', error.message || 'Failed to pause torrent');
+      showToast(error.message || 'Failed to pause torrent', 'error');
     } finally {
       setLoading(false);
       setActiveButton(null);
@@ -111,7 +113,7 @@ export function TorrentDetails({
 
   const handleResume = async () => {
     if (!isConnected || !currentServer) {
-      Alert.alert('Error', 'Not connected to a server. Please connect to a server first.');
+      showToast('Not connected to a server. Please connect to a server first.', 'error');
       return;
     }
     setActiveButton('resume');
@@ -122,7 +124,7 @@ export function TorrentDetails({
         // Server was cleared, try to reconnect
         const reconnected = await reconnect();
         if (!reconnected) {
-          Alert.alert('Error', 'Lost connection to server. Please reconnect.');
+          showToast('Lost connection to server. Please reconnect.', 'error');
           return;
         }
       }
@@ -134,7 +136,7 @@ export function TorrentDetails({
       onRefresh();
     } catch (error: any) {
       console.error('Resume error:', error);
-      Alert.alert('Error', error.message || 'Failed to resume torrent');
+      showToast(error.message || 'Failed to resume torrent', 'error');
     } finally {
       setLoading(false);
       setActiveButton(null);
@@ -144,20 +146,19 @@ export function TorrentDetails({
   const handleDelete = () => {
     Alert.alert(
       'Delete Torrent',
-      'Do you want to delete the torrent files as well?',
+      `Delete "${torrent.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete Files',
-          style: 'destructive',
+          text: 'Torrent Only',
           onPress: async () => {
             setActiveButton('delete');
             try {
               setLoading(true);
-              await torrentsApi.deleteTorrents([torrent.hash], true);
-              Alert.alert('Success', 'Torrent deleted');
+              await torrentsApi.deleteTorrents([torrent.hash], false);
+              showToast('Torrent deleted', 'success');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete torrent');
+              showToast(error.message || 'Failed to delete torrent', 'error');
               setActiveButton(null);
             } finally {
               setLoading(false);
@@ -165,15 +166,16 @@ export function TorrentDetails({
           },
         },
         {
-          text: 'Delete Only',
+          text: 'With Files',
+          style: 'destructive',
           onPress: async () => {
             setActiveButton('delete');
             try {
               setLoading(true);
-              await torrentsApi.deleteTorrents([torrent.hash], false);
-              Alert.alert('Success', 'Torrent deleted');
+              await torrentsApi.deleteTorrents([torrent.hash], true);
+              showToast('Torrent deleted', 'success');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete torrent');
+              showToast(error.message || 'Failed to delete torrent', 'error');
               setActiveButton(null);
             } finally {
               setLoading(false);
@@ -185,34 +187,22 @@ export function TorrentDetails({
   };
 
   const handleRecheck = async () => {
-    Alert.alert(
-      'Recheck Torrent',
-      'This will verify all files. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Recheck',
-          onPress: async () => {
-            setActiveButton('recheck');
-            try {
-              setLoading(true);
-              await torrentsApi.recheckTorrents([torrent.hash]);
-              // Wait 1 second for the server to process the request
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              // Refresh the global torrent list and detail view
-              await sync();
-              onRefresh();
-              Alert.alert('Success', 'Recheck started');
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to recheck torrent');
-              setActiveButton(null);
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
+    setActiveButton('recheck');
+    try {
+      setLoading(true);
+      await torrentsApi.recheckTorrents([torrent.hash]);
+      // Wait 1 second for the server to process the request
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Refresh the global torrent list and detail view
+      await sync();
+      onRefresh();
+      showToast('Recheck started', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to recheck torrent', 'error');
+      setActiveButton(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReannounce = async () => {
@@ -225,9 +215,9 @@ export function TorrentDetails({
       // Refresh the global torrent list and detail view
       await sync();
       onRefresh();
-      Alert.alert('Success', 'Reannounce sent');
+      showToast('Reannounce sent', 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to reannounce torrent');
+      showToast(error.message || 'Failed to reannounce torrent', 'error');
     } finally {
       setLoading(false);
       setActiveButton(null);
@@ -247,7 +237,7 @@ export function TorrentDetails({
       await sync();
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to change priority');
+      showToast(error.message || 'Failed to change priority', 'error');
       setOptimisticPriority(torrent.priority);
     } finally {
       setLoading(false);
@@ -267,7 +257,7 @@ export function TorrentDetails({
       await sync();
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to change priority');
+      showToast(error.message || 'Failed to change priority', 'error');
       setOptimisticPriority(torrent.priority);
     } finally {
       setLoading(false);
@@ -287,7 +277,7 @@ export function TorrentDetails({
       await sync();
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to change priority');
+      showToast(error.message || 'Failed to change priority', 'error');
       setOptimisticPriority(torrent.priority);
     } finally {
       setLoading(false);
@@ -309,7 +299,7 @@ export function TorrentDetails({
       await sync();
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to change priority');
+      showToast(error.message || 'Failed to change priority', 'error');
       setOptimisticPriority(torrent.priority);
     } finally {
       setLoading(false);
@@ -328,7 +318,7 @@ export function TorrentDetails({
       await sync();
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to set force start');
+      showToast(error.message || 'Failed to set force start', 'error');
     } finally {
       setLoading(false);
       setActiveButton(null);
@@ -345,7 +335,7 @@ export function TorrentDetails({
       await sync();
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to set super seeding');
+      showToast(error.message || 'Failed to set super seeding', 'error');
     } finally {
       setLoading(false);
     }
@@ -357,7 +347,7 @@ export function TorrentDetails({
       await torrentsApi.toggleSequentialDownload([torrent.hash]);
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to toggle sequential download');
+      showToast(error.message || 'Failed to toggle sequential download', 'error');
     } finally {
       setLoading(false);
     }
@@ -373,7 +363,7 @@ export function TorrentDetails({
       await sync();
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to toggle alternative speed limits');
+      showToast(error.message || 'Failed to toggle alternative speed limits', 'error');
     } finally {
       setLoading(false);
     }
@@ -401,7 +391,7 @@ export function TorrentDetails({
               await sync();
               onRefresh();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to set category');
+              showToast(error.message || 'Failed to set category', 'error');
               setActiveButton(null);
             } finally {
               setLoading(false);
@@ -422,7 +412,7 @@ export function TorrentDetails({
                   text: 'Add',
                   onPress: async (categoryName: string | undefined) => {
                     if (!categoryName || !categoryName.trim()) {
-                      Alert.alert('Error', 'Please enter a valid category name');
+                      showToast('Please enter a valid category name', 'error');
                       return;
                     }
                     try {
@@ -438,7 +428,7 @@ export function TorrentDetails({
                       await sync();
                       onRefresh();
                     } catch (error: any) {
-                      Alert.alert('Error', error.message || 'Failed to add category');
+                      showToast(error.message || 'Failed to add category', 'error');
                     } finally {
                       setLoading(false);
                       setActiveButton(null);
@@ -493,7 +483,7 @@ export function TorrentDetails({
               await sync();
               onRefresh();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to set share limits');
+              showToast(error.message || 'Failed to set share limits', 'error');
             } finally {
               setLoading(false);
               setActiveButton(null);
@@ -516,7 +506,7 @@ export function TorrentDetails({
           text: 'Set',
           onPress: async (location: string | undefined) => {
             if (!location || !location.trim()) {
-              Alert.alert('Error', 'Please enter a valid path');
+              showToast('Please enter a valid path', 'error');
               setActiveButton(null);
               return;
             }
@@ -527,7 +517,7 @@ export function TorrentDetails({
               await sync();
               onRefresh();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to set location');
+              showToast(error.message || 'Failed to set location', 'error');
             } finally {
               setLoading(false);
               setActiveButton(null);
@@ -551,7 +541,7 @@ export function TorrentDetails({
           text: 'Rename',
           onPress: async (name: string | undefined) => {
             if (!name || !name.trim()) {
-              Alert.alert('Error', 'Please enter a valid name');
+              showToast('Please enter a valid name', 'error');
               setActiveButton(null);
               return;
             }
@@ -562,7 +552,7 @@ export function TorrentDetails({
               await sync();
               onRefresh();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to rename torrent');
+              showToast(error.message || 'Failed to rename torrent', 'error');
             } finally {
               setLoading(false);
               setActiveButton(null);
@@ -579,29 +569,17 @@ export function TorrentDetails({
     router.push(`/torrent/manage-trackers?hash=${torrent.hash}`);
   };
 
-  const handleRemoveTracker = (tracker: Tracker) => {
-    Alert.alert(
-      'Remove Tracker',
-      `Remove ${tracker.url}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await torrentsApi.removeTrackers(torrent.hash, [tracker.url]);
-              onRefresh();
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to remove tracker');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
+  const handleRemoveTracker = async (tracker: Tracker) => {
+    try {
+      setLoading(true);
+      await torrentsApi.removeTrackers(torrent.hash, [tracker.url]);
+      onRefresh();
+      showToast('Tracker removed', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to remove tracker', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddPeers = () => {
@@ -614,16 +592,16 @@ export function TorrentDetails({
           text: 'Add',
           onPress: async (peersText: string | undefined) => {
             if (!peersText || !peersText.trim()) {
-              Alert.alert('Error', 'Please enter peer addresses');
+              showToast('Please enter peer addresses', 'error');
               return;
             }
             try {
               setLoading(true);
               const peers = peersText.split('\n').map((p: string) => p.trim()).filter((p: string) => p);
               await torrentsApi.addPeers([torrent.hash], peers);
-              Alert.alert('Success', 'Peers added');
+              showToast('Peers added', 'success');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to add peers');
+              showToast(error.message || 'Failed to add peers', 'error');
             } finally {
               setLoading(false);
             }
@@ -672,7 +650,7 @@ export function TorrentDetails({
     
     const limit = parseFloat(limitInput);
     if (isNaN(limit) || limit < 0) {
-      Alert.alert('Error', 'Please enter a valid number');
+      showToast('Please enter a valid number', 'error');
       return;
     }
     
@@ -694,7 +672,7 @@ export function TorrentDetails({
       setLimitInput('');
       setLimitType(null);
     } catch (error: any) {
-      Alert.alert('Error', error.message || `Failed to set ${limitType} limit`);
+      showToast(error.message || `Failed to set ${limitType} limit`, 'error');
     } finally {
       setLoading(false);
       setActiveButton(null);
@@ -1057,7 +1035,7 @@ export function TorrentDetails({
                         );
                         onRefresh();
                       } catch (error: any) {
-                        Alert.alert('Error', error.message || 'Failed to set category');
+                        showToast(error.message || 'Failed to set category', 'error');
                       } finally {
                         setLoading(false);
                       }
@@ -1089,7 +1067,7 @@ export function TorrentDetails({
                   (t) => !torrent.tags || !torrent.tags.split(',').includes(t)
                 );
                 if (availableTags.length === 0) {
-                  Alert.alert('Info', 'All tags are already assigned');
+                  showToast('All tags are already assigned', 'info');
                   return;
                 }
                 Alert.alert(
@@ -1103,7 +1081,7 @@ export function TorrentDetails({
                         await torrentsApi.addTorrentTags([torrent.hash], [tag]);
                         onRefresh();
                       } catch (error: any) {
-                        Alert.alert('Error', error.message || 'Failed to add tag');
+                        showToast(error.message || 'Failed to add tag', 'error');
                       } finally {
                         setLoading(false);
                       }
@@ -1130,7 +1108,7 @@ export function TorrentDetails({
                           await torrentsApi.removeTorrentTags([torrent.hash], [tag.trim()]);
                           onRefresh();
                         } catch (error: any) {
-                          Alert.alert('Error', error.message || 'Failed to remove tag');
+                          showToast(error.message || 'Failed to remove tag', 'error');
                         } finally {
                           setLoading(false);
                         }
@@ -1242,7 +1220,7 @@ export function TorrentDetails({
       await sync();
       onRefresh();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to set file priority');
+      showToast(error.message || 'Failed to set file priority', 'error');
     } finally {
       setLoading(false);
     }
@@ -1258,7 +1236,7 @@ export function TorrentDetails({
           text: 'Rename',
           onPress: async (newName: string | undefined) => {
             if (!newName || !newName.trim()) {
-              Alert.alert('Error', 'Please enter a valid name');
+              showToast('Please enter a valid name', 'error');
               return;
             }
             try {
@@ -1266,7 +1244,7 @@ export function TorrentDetails({
               await torrentsApi.renameFile(torrent.hash, file.name, newName.trim());
               onRefresh();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to rename file');
+              showToast(error.message || 'Failed to rename file', 'error');
             } finally {
               setLoading(false);
             }

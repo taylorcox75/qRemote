@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TorrentCard } from './TorrentCard';
 import { TorrentInfo } from '../types/api';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { torrentsApi } from '../services/api/torrents';
 import { useTorrents } from '../context/TorrentContext';
 import { spacing } from '../constants/spacing';
@@ -26,6 +27,7 @@ export function SwipeableTorrentCard({
   onPress,
 }: SwipeableTorrentCardProps) {
   const { colors } = useTheme();
+  const { showToast } = useToast();
   const { sync } = useTorrents();
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -44,7 +46,7 @@ export function SwipeableTorrentCard({
       sync().catch(() => {});
       swipeableRef.current?.close();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to pause/resume torrent');
+      showToast(error.message || 'Failed to pause/resume torrent', 'error');
     }
   };
 
@@ -63,10 +65,11 @@ export function SwipeableTorrentCard({
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent.hash], false);
+              showToast('Torrent deleted', 'success');
               sync().catch(() => {});
               swipeableRef.current?.close();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete');
+              showToast(error.message || 'Failed to delete', 'error');
             }
           },
         },
@@ -76,10 +79,11 @@ export function SwipeableTorrentCard({
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent.hash], true);
+              showToast('Torrent deleted', 'success');
               sync().catch(() => {});
               swipeableRef.current?.close();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete');
+              showToast(error.message || 'Failed to delete', 'error');
             }
           },
         },

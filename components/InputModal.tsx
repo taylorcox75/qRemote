@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { spacing, borderRadius } from '../constants/spacing';
+import { shadows } from '../constants/shadows';
 
 interface InputModalProps {
   visible: boolean;
@@ -31,10 +34,20 @@ export function InputModal({
   keyboardType = 'default',
   multiline = false,
 }: InputModalProps) {
+  const { colors } = useTheme();
   const [value, setValue] = useState(defaultValue || '');
 
+  // Update value when defaultValue changes (e.g., when modal opens)
+  useEffect(() => {
+    if (visible && defaultValue !== undefined) {
+      setValue(defaultValue);
+    }
+  }, [visible, defaultValue]);
+
   const handleConfirm = () => {
-    onConfirm(value);
+    if (value.trim()) {
+      onConfirm(value.trim());
+    }
     setValue('');
   };
 
@@ -50,31 +63,40 @@ export function InputModal({
       animationType="fade"
       onRequestClose={handleCancel}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
-          <Text style={styles.title}>{title}</Text>
-          {message && <Text style={styles.message}>{message}</Text>}
+      <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+        <View style={[styles.modal, { backgroundColor: colors.surface, ...shadows.large }]}>
+          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          {message && <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>}
           <TextInput
-            style={[styles.input, multiline && styles.inputMultiline]}
+            style={[
+              styles.input,
+              multiline && styles.inputMultiline,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.surfaceOutline,
+                color: colors.text,
+              },
+            ]}
             value={value}
             onChangeText={setValue}
             placeholder={placeholder}
+            placeholderTextColor={colors.textSecondary}
             keyboardType={keyboardType}
             multiline={multiline}
             autoFocus
           />
           <View style={styles.buttons}>
             <TouchableOpacity
-              style={[styles.button, styles.cancelButton]}
+              style={[styles.button, { backgroundColor: colors.surfaceOutline }]}
               onPress={handleCancel}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={[styles.buttonText, { color: colors.text }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.button, styles.confirmButton]}
+              style={[styles.button, { backgroundColor: colors.primary }]}
               onPress={handleConfirm}
             >
-              <Text style={styles.confirmButtonText}>Confirm</Text>
+              <Text style={[styles.buttonText, { color: colors.surface }]}>Confirm</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -86,35 +108,30 @@ export function InputModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modal: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: borderRadius.large,
+    padding: spacing.lg,
     width: '80%',
     maxWidth: 400,
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 8,
-    color: '#000000',
+    marginBottom: spacing.xs,
   },
   message: {
     fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   input: {
-    borderWidth: .25,
-    borderColor: '#E5E5EA',
-    borderRadius: 16,
-    padding: 12,
+    borderWidth: 1,
+    borderRadius: borderRadius.medium,
+    padding: spacing.sm,
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: spacing.md,
     minHeight: 44,
   },
   inputMultiline: {
@@ -124,28 +141,16 @@ const styles = StyleSheet.create({
   buttons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
+    gap: spacing.sm,
   },
   button: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.medium,
     minWidth: 80,
     alignItems: 'center',
   },
-  cancelButton: {
-    backgroundColor: '#F2F2F7',
-  },
-  confirmButton: {
-    backgroundColor: '#007AFF',
-  },
-  cancelButtonText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  confirmButtonText: {
-    color: '#FFFFFF',
+  buttonText: {
     fontSize: 16,
     fontWeight: '600',
   },

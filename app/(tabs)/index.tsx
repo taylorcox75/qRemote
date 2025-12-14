@@ -8,18 +8,19 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
-  Alert,
   ScrollView,
   Animated,
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTorrents } from '../../context/TorrentContext';
 import { useServer } from '../../context/ServerContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import { TorrentInfo, TorrentState } from '../../types/api';
 import { TorrentCard } from '../../components/TorrentCard';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
@@ -31,11 +32,12 @@ import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
 
 export default function TorrentsScreen() {
+  const { showToast } = useToast();
   const router = useRouter();
   const navigation = useNavigation();
   const { torrents, isLoading, error, refresh } = useTorrents();
   const { isConnected } = useServer();
-  const { colors, isDark } = useTheme() 
+  const { colors, isDark } = useTheme();
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,21 +91,51 @@ export default function TorrentsScreen() {
     }, [navigation, colors.surface, colors.surfaceOutline])
   );
 
-  // Load card view mode preference
+  // Load card view mode and check for filter preference changes on screen focus
   useFocusEffect(
     useCallback(() => {
-      const loadCardViewMode = async () => {
+      const loadPreferences = async () => {
         try {
           const prefs = await storageService.getPreferences();
           const viewMode = prefs.cardViewMode || 'compact';
           setCardViewMode(viewMode);
+          
+          // Check if default filter preference has changed and update if so
+          // This allows settings changes to be reflected immediately when navigating to torrents
+          if (prefs.defaultFilter && prefs.defaultFilter !== filter) {
+            setFilter(prefs.defaultFilter);
+          }
         } catch (error) {
           setCardViewMode('compact');
         }
       };
-      loadCardViewMode();
-    }, [])
+      loadPreferences();
+    }, [filter])
   );
+
+  // Load default sort/filter preferences only on app launch (once)
+  useEffect(() => {
+    const loadDefaultPreferences = async () => {
+      try {
+        const prefs = await storageService.getPreferences();
+        // Load default sort/filter preferences only if not already set
+        if (prefs.defaultSortBy) {
+          setSortBy(prefs.defaultSortBy);
+        }
+        if (prefs.defaultSortDirection) {
+          setSortDirection(prefs.defaultSortDirection);
+        }
+        if (prefs.defaultFilter) {
+          setFilter(prefs.defaultFilter);
+        }
+      } catch (error) {
+        // Use defaults if loading fails
+      }
+    };
+    loadDefaultPreferences();
+    // Only run once on mount (app launch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Filter, sort, and search logic
   const filteredTorrents = useMemo(() => {
@@ -214,7 +246,7 @@ export default function TorrentsScreen() {
       setSelectedHashes(new Set());
       setSelectMode(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to pause torrents');
+      showToast(error.message || 'Failed to pause torrents', 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -229,7 +261,7 @@ export default function TorrentsScreen() {
       setSelectedHashes(new Set());
       setSelectMode(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to resume torrents');
+      showToast(error.message || 'Failed to resume torrents', 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -251,8 +283,9 @@ export default function TorrentsScreen() {
               refresh();
               setSelectedHashes(new Set());
               setSelectMode(false);
+              showToast(`${selectedHashes.size} torrent(s) deleted`, 'success');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete torrents');
+              showToast(error.message || 'Failed to delete torrents', 'error');
             } finally {
               setBulkLoading(false);
             }
@@ -268,8 +301,9 @@ export default function TorrentsScreen() {
               refresh();
               setSelectedHashes(new Set());
               setSelectMode(false);
+              showToast(`${selectedHashes.size} torrent(s) deleted`, 'success');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete torrents');
+              showToast(error.message || 'Failed to delete torrents', 'error');
             } finally {
               setBulkLoading(false);
             }
@@ -286,12 +320,12 @@ export default function TorrentsScreen() {
 
   const handleSubmitTorrent = async () => {
     if (!torrentUrl.trim()) {
-      Alert.alert('Error', 'Please enter a torrent URL or magnet link');
+      showToast('Please enter a torrent URL or magnet link', 'error');
       return;
     }
 
     if (!isConnected) {
-      Alert.alert('Error', 'Not connected to a server');
+      showToast('Not connected to a server', 'error');
       return;
     }
 
@@ -301,9 +335,9 @@ export default function TorrentsScreen() {
       setTorrentUrl('');
       setShowAddModal(false);
       refresh();
-      Alert.alert('Success', 'Torrent added successfully');
+      showToast('Torrent added successfully', 'success');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add torrent');
+      showToast(error.message || 'Failed to add torrent', 'error');
     } finally {
       setAddingTorrent(false);
     }
@@ -872,15 +906,16 @@ export default function TorrentsScreen() {
           animationType="fade"
           onRequestClose={() => setShowAddModal(false)}
         >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowAddModal(false)}
+          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.modalOverlayInner}
             >
+              <TouchableOpacity
+                style={styles.modalOverlayInner}
+                activeOpacity={1}
+                onPress={() => setShowAddModal(false)}
+              >
               <TouchableOpacity
                 activeOpacity={1}
                 onPress={(e) => e.stopPropagation()}
@@ -948,7 +983,8 @@ export default function TorrentsScreen() {
                 </View>
               </TouchableOpacity>
             </TouchableOpacity>
-          </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+          </View>
         </Modal>
       </View>
     </>
@@ -1145,7 +1181,12 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlayInner: {
+    flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,

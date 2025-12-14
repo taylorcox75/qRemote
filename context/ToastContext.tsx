@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Toast, ToastType } from '../components/Toast';
+import { storageService } from '../services/storage';
 
 interface ToastContextType {
   showToast: (message: string, type?: ToastType, duration?: number) => void;
@@ -9,9 +10,25 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<{ message: string; type: ToastType; duration: number } | null>(null);
+  const [defaultDuration, setDefaultDuration] = useState<number>(3000);
 
-  const showToast = (message: string, type: ToastType = 'info', duration: number = 3000) => {
-    setToast({ message, type, duration });
+  // Load toast duration preference
+  useEffect(() => {
+    const loadToastDuration = async () => {
+      try {
+        const prefs = await storageService.getPreferences();
+        if (prefs.toastDuration && typeof prefs.toastDuration === 'number') {
+          setDefaultDuration(prefs.toastDuration);
+        }
+      } catch (error) {
+        // Use default 3000ms if loading fails
+      }
+    };
+    loadToastDuration();
+  }, []);
+
+  const showToast = (message: string, type: ToastType = 'info', duration?: number) => {
+    setToast({ message, type, duration: duration ?? defaultDuration });
   };
 
   const hideToast = () => {

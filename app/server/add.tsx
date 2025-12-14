@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +18,7 @@ import { ServerManager } from '../../services/server-manager';
 import { ServerConfig } from '../../types/api';
 import { useTheme } from '../../context/ThemeContext';
 import { useServer } from '../../context/ServerContext';
+import { useToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { spacing, borderRadius } from '../../constants/spacing';
 
@@ -26,6 +26,7 @@ export default function AddServerScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { connectToServer } = useServer();
+  const { showToast } = useToast();
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('8080');
@@ -38,18 +39,18 @@ export default function AddServerScreen() {
 
   const handleSave = async () => {
     if (!name.trim() || !host.trim()) {
-      Alert.alert('Error', 'Please fill in server name and host');
+      showToast('Please fill in server name and host', 'error');
       return;
     }
 
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      Alert.alert('Error', 'Please fill in username and password, or enable bypass authentication');
+      showToast('Please fill in username and password, or enable bypass authentication', 'error');
       return;
     }
 
     const portNum = (port.trim() ? parseInt(port, 10) : undefined);
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
-      Alert.alert('Error', 'Please enter a valid port number (1-65535)');
+      showToast('Please enter a valid port number (1-65535)', 'error');
       return;
     }
 
@@ -72,32 +73,23 @@ export default function AddServerScreen() {
       };
 
       await ServerManager.saveServer(server);
+      showToast('Server saved successfully', 'success');
       
       // If this is the first server, auto-connect
       if (isFirstServer) {
         try {
           const connected = await connectToServer(server);
           if (!connected) {
-            // Connection failed, but server was saved, so just show a message
-            Alert.alert(
-              'Server Saved',
-              'Server saved successfully, but connection failed. Please check your settings and try connecting manually.',
-              [{ text: 'OK' }]
-            );
+            showToast('Connection failed. Please check your settings and try connecting manually.', 'warning');
           }
         } catch (error: any) {
-          // Connection error (network, etc.)
-          Alert.alert(
-            'Server Saved',
-            `Server saved successfully, but connection failed: ${error.message || 'Unknown error'}. Please try connecting manually.`,
-            [{ text: 'OK' }]
-          );
+          showToast(`Connection failed: ${error.message || 'Unknown error'}. Please try connecting manually.`, 'warning');
         }
       }
       
       router.back();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save server');
+      showToast('Failed to save server', 'error');
     } finally {
       setLoading(false);
     }
@@ -105,18 +97,18 @@ export default function AddServerScreen() {
 
   const handleTest = async () => {
     if (!name.trim() || !host.trim()) {
-      Alert.alert('Error', 'Please fill in server name and host');
+      showToast('Please fill in server name and host', 'error');
       return;
     }
 
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      Alert.alert('Error', 'Please fill in username and password, or enable bypass authentication');
+      showToast('Please fill in username and password, or enable bypass authentication', 'error');
       return;
     }
 
     const portNum = (port.trim() ? parseInt(port, 10) : undefined);
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
-      Alert.alert('Error', 'Please enter a valid port number (1-65535)');
+      showToast('Please enter a valid port number (1-65535)', 'error');
       return;
     }
 
@@ -135,12 +127,12 @@ export default function AddServerScreen() {
 
       const result = await ServerManager.testConnection(server);
       if (result.success) {
-        Alert.alert('Success', 'Connection test successful!');
+        showToast('Connection test successful!', 'success');
       } else {
-        Alert.alert('Error', result.error || 'Connection test failed. Please check your settings.');
+        showToast(result.error || 'Connection test failed. Please check your settings.', 'error');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Connection test failed. Please check your settings.');
+      showToast(error.message || 'Connection test failed. Please check your settings.', 'error');
     } finally {
       setTesting(false);
     }
