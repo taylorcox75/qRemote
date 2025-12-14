@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -19,6 +19,9 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  
+  // Calculate safe area top - use StatusBar height as fallback for Modal
+  const [safeTop, setSafeTop] = useState(insets.top || (Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0));
 
   useEffect(() => {
     // Slide in
@@ -87,7 +90,7 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
     }
   };
 
-  const topOffset = insets.top + (Platform.OS === 'ios' ? 8 : 16);
+  const topOffset = safeTop + (Platform.OS === 'ios' ? 8 : 16);
 
   return (
     <Modal
@@ -95,10 +98,11 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
       visible={true}
       animationType="none"
       statusBarTranslucent
-      pointerEvents="box-none"
+      hardwareAccelerated
     >
-      <View style={styles.modalContainer} pointerEvents="box-none">
+      <View style={styles.modalOverlay} pointerEvents="box-none">
         <Animated.View
+          pointerEvents="auto"
           style={[
             styles.container,
             {
@@ -135,17 +139,18 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
 }
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
+    pointerEvents: 'box-none',
   },
   container: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
     borderRadius: borderRadius.medium,
-    // Z-index for layering, elevation matches shadows.large
-    zIndex: 1000,
-    elevation: 4,
+    // High z-index and elevation for proper layering
+    zIndex: 10000,
+    elevation: 10000,
   },
   content: {
     flexDirection: 'row',
