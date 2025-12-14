@@ -143,9 +143,9 @@ const styles = StyleSheet.create({
     left: spacing.lg,
     right: spacing.lg,
     borderRadius: borderRadius.medium,
-    // High z-index and elevation for proper layering
+    // Z-index for layering, elevation matches shadows.large
     zIndex: 1000,
-    elevation: 10,
+    elevation: 4,
   },
   content: {
     flexDirection: 'row',
