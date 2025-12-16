@@ -18,7 +18,7 @@ import { ServerManager } from '../../services/server-manager';
 import { ServerConfig } from '../../types/api';
 import { useTheme } from '../../context/ThemeContext';
 import { useServer } from '../../context/ServerContext';
-import { useToast } from '../../context/ToastContext';
+import { useToast, ModalToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { spacing, borderRadius } from '../../constants/spacing';
 
@@ -331,6 +331,7 @@ export default function AddServerScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+      <ModalToast />
     </SafeAreaView>
   );
 }

@@ -30,6 +30,7 @@ module.exports = {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: 'com.qRemote.app',
+	  usesCleartextTraffic: 'true',
     },
     web: {
       favicon: './assets/favicon.png',
