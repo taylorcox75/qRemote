@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal, StatusBar } from 'react-native';
+import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { shadows } from '../constants/shadows';
@@ -18,6 +18,8 @@ interface ToastProps {
 export function Toast({ message, type = 'info', duration = 3000, onHide }: ToastProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  // Use initialWindowMetrics as fallback for when toast is in a Modal (which loses SafeAreaProvider context)
+  const safeTop = insets.top || initialWindowMetrics?.insets.top || (Platform.OS === 'ios' ? 47 : StatusBar.currentHeight || 24);
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -88,9 +90,9 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
     }
   };
 
-  const topOffset = insets.top + (Platform.OS === 'ios' ? 8 : 16);
+  const topOffset = safeTop + 8;
 
-  return (
+  const toastContent = (
     <Animated.View
       style={[
         styles.container,
@@ -118,9 +120,32 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
       </TouchableOpacity>
     </Animated.View>
   );
+
+  // On iOS, wrap in Modal to ensure it appears above other modals
+  if (Platform.OS === 'ios') {
+    return (
+      <Modal
+        visible={true}
+        transparent={true}
+        animationType="none"
+        statusBarTranslucent={true}
+        presentationStyle="overFullScreen"
+      >
+        <View style={styles.modalContainer} pointerEvents="box-none">
+          {toastContent}
+        </View>
+      </Modal>
+    );
+  }
+
+  return toastContent;
 }
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
   container: {
     position: 'absolute',
     left: spacing.lg,
