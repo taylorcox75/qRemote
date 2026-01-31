@@ -11,13 +11,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useServer } from '../../context/ServerContext';
+import { useTorrents } from '../../context/TorrentContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { logsApi } from '../../services/api/logs';
 import { LogEntry, PeerLogEntry } from '../../types/api';
 
 export default function LogsScreen() {
-  const { isConnected, isLoading } = useServer();
+  const { isConnected, currentServer, isLoading: serverIsLoading } = useServer();
+  const { initialLoadComplete } = useTorrents();
   const { colors, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<'app' | 'peer'>('app');
   const [appLogs, setAppLogs] = useState<LogEntry[]>([]);
@@ -138,25 +140,27 @@ export default function LogsScreen() {
     );
   }, [peerLogs, searchQuery]);
 
-  // Show loading spinner while restoring connection (prevents flash on app launch/resume)
-  if (isLoading && !isConnected) {
+  // Only show "Not Connected" screen if no server is configured (check FIRST)
+  if (!isConnected && !currentServer && !serverIsLoading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.subMessage, { color: colors.textSecondary, marginTop: 16 }]}>
-          Connecting...
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <Text style={[styles.message, { color: colors.text }]}>Not connected to a server</Text>
+        <Text style={[styles.subMessage, { color: colors.textSecondary }]}>
+          Go to Settings to connect to a qBittorrent server
         </Text>
       </View>
     );
   }
 
-  // Only show "Not Connected" when truly disconnected (not during initial load)
-  if (!isConnected) {
+  // Show loading screen during initial app launch (server connecting or first data fetch)
+  if (!initialLoadComplete && (serverIsLoading || !isConnected)) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={[styles.message, { color: colors.text }]}>Not connected to a server</Text>
-        <Text style={[styles.subMessage, { color: colors.textSecondary }]}>
-          Go to Settings to connect to a qBittorrent server
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.subMessage, { color: colors.textSecondary, marginTop: 16 }]}>
+          Loading...
         </Text>
       </View>
     );

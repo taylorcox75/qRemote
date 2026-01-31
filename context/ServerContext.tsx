@@ -10,6 +10,7 @@ interface ServerContextType {
   connectToServer: (server: ServerConfig) => Promise<boolean>;
   disconnect: () => Promise<void>;
   reconnect: () => Promise<boolean>;
+  checkAndReconnect: () => Promise<boolean>;
 }
 
 const ServerContext = createContext<ServerContextType | undefined>(undefined);
@@ -118,6 +119,32 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const checkAndReconnect = async (): Promise<boolean> => {
+    // Silently check if connection is still alive and reconnect if needed
+    // This is used when app comes back from background
+    if (!currentServer) {
+      setIsConnected(false);
+      return false;
+    }
+
+    try {
+      // Try a lightweight API call to test connection (don't set loading state)
+      const success = await ServerManager.reconnect();
+      setIsConnected(success);
+      return success;
+    } catch (error) {
+      // Connection is stale, try to reconnect
+      try {
+        const reconnected = await ServerManager.connectToServer(currentServer);
+        setIsConnected(reconnected);
+        return reconnected;
+      } catch (reconnectError) {
+        setIsConnected(false);
+        return false;
+      }
+    }
+  };
+
   return (
     <ServerContext.Provider
       value={{
@@ -127,6 +154,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         connectToServer,
         disconnect,
         reconnect,
+        checkAndReconnect,
       }}
     >
       {children}

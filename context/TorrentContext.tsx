@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { TorrentInfo, MainData } from '../types/api';
 import { syncApi } from '../services/api/sync';
 import { useServer } from './ServerContext';
@@ -12,12 +13,14 @@ interface TorrentContextType {
   error: string | null;
   refresh: () => Promise<void>;
   sync: () => Promise<void>;
+  isRecoveringFromBackground: boolean;
+  initialLoadComplete: boolean;
 }
 
 const TorrentContext = createContext<TorrentContextType | undefined>(undefined);
 
 export function TorrentProvider({ children }: { children: ReactNode }) {
-  const { isConnected } = useServer();
+  const { isConnected, checkAndReconnect } = useServer();
   const [torrents, setTorrents] = useState<TorrentInfo[]>([]);
   const [categories, setCategories] = useState<{ [name: string]: any }>({});
   const [tags, setTags] = useState<string[]>([]);
@@ -26,6 +29,11 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [rid, setRid] = useState(0);
   const ridRef = useRef(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const appState = useRef(AppState.currentState);
+  const lastActiveTime = useRef(Date.now());
+  const isRecoveringFromBackground = useRef(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -39,6 +47,16 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       setError(null);
       const currentRid = ridRef.current;
       const data: MainData = await syncApi.getMainData(currentRid);
+      
+      // Mark initial load as complete after first successful sync
+      if (!initialLoadComplete) {
+        setInitialLoadComplete(true);
+      }
+      
+      // Clear recovery flag on successful sync
+      if (isRecoveringFromBackground.current) {
+        isRecoveringFromBackground.current = false;
+      }
       
       if (data.full_update || ridRef.current === 0) {
         // Full update
@@ -138,8 +156,8 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       setRid(data.rid);
       ridRef.current = data.rid;
     } catch (err: any) {
-      // Don't log errors if we're not connected - it's expected
-      if (isConnected) {
+      // Don't set error if we're recovering from background - transient network issues are expected
+      if (isConnected && !isRecoveringFromBackground.current) {
         setError(err.message || 'Failed to sync torrents');
       }
     }
@@ -169,11 +187,16 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       });
       
       // Set up polling for real-time updates
-      const interval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         sync();
       }, 2000); // Poll every 2 seconds
 
-      return () => clearInterval(interval);
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
     } else {
       setTorrents([]);
       setCategories({});
@@ -186,6 +209,76 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
 
+  // AppState listener for background/foreground handling
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      const previousAppState = appState.current;
+      appState.current = nextAppState;
+
+      if (previousAppState === 'background' && nextAppState === 'active') {
+        // App came back to foreground
+        const timeInBackground = Date.now() - lastActiveTime.current;
+        
+        // If app was in background for more than 30 seconds, connection might be stale
+        if (timeInBackground > 30000 && isConnected) {
+          isRecoveringFromBackground.current = true;
+          
+          // Try to reconnect silently
+          const reconnected = await checkAndReconnect();
+          
+          if (reconnected) {
+            // Clear error and force a fresh sync
+            setError(null);
+            setRid(0);
+            ridRef.current = 0;
+            
+            // Resume polling
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+            }
+            intervalRef.current = setInterval(() => {
+              sync();
+            }, 2000);
+            
+            // Do an immediate sync
+            await sync();
+          }
+          
+          isRecoveringFromBackground.current = false;
+        } else if (isConnected) {
+          // Just resume polling, connection should still be good
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+          intervalRef.current = setInterval(() => {
+            sync();
+          }, 2000);
+          
+          // Do an immediate sync
+          await sync();
+        }
+        
+        lastActiveTime.current = Date.now();
+      } else if (nextAppState === 'background') {
+        // App went to background - pause polling to save battery
+        lastActiveTime.current = Date.now();
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      } else if (nextAppState === 'active') {
+        // App became active (but wasn't in background before)
+        lastActiveTime.current = Date.now();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [isConnected, checkAndReconnect, sync]);
+
   return (
     <TorrentContext.Provider
       value={{
@@ -197,6 +290,8 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
         error,
         refresh,
         sync,
+        isRecoveringFromBackground: isRecoveringFromBackground.current,
+        initialLoadComplete,
       }}
     >
       {children}
