@@ -323,12 +323,19 @@ export default function TorrentsScreen() {
   const handlePickFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/x-bittorrent',
+        type: ['application/x-bittorrent', 'application/octet-stream', '*/*'],
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
+        
+        // Validate it's a .torrent file by checking the extension
+        if (!file.name.toLowerCase().endsWith('.torrent')) {
+          showToast('Please select a .torrent file', 'error');
+          return;
+        }
+        
         setSelectedFile({
           uri: file.uri,
           name: file.name,
@@ -1018,7 +1025,7 @@ export default function TorrentsScreen() {
                   style={[
                     styles.filePickerButton,
                     {
-                      backgroundColor: selectedFile ? colors.success + '20' : colors.background,
+                      backgroundColor: selectedFile ? colors.success : colors.background,
                       borderColor: selectedFile ? colors.success : colors.surfaceOutline,
                     },
                   ]}
@@ -1028,11 +1035,14 @@ export default function TorrentsScreen() {
                   <Ionicons 
                     name={selectedFile ? 'checkmark-circle' : 'document'} 
                     size={20} 
-                    color={selectedFile ? colors.success : colors.text} 
+                    color={selectedFile ? '#FFFFFF' : colors.text} 
                   />
                   <Text style={[
                     styles.filePickerText, 
-                    { color: selectedFile ? colors.success : colors.text }
+                    { 
+                      color: selectedFile ? '#FFFFFF' : colors.text,
+                      fontWeight: selectedFile ? '600' : '400',
+                    }
                   ]}>
                     {selectedFile ? selectedFile.name : 'Select .torrent file'}
                   </Text>
@@ -1041,7 +1051,7 @@ export default function TorrentsScreen() {
                       onPress={() => setSelectedFile(null)}
                       style={styles.clearFileButton}
                     >
-                      <Ionicons name="close-circle" size={20} color={colors.error} />
+                      <Ionicons name="close-circle" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                   )}
                 </TouchableOpacity>
