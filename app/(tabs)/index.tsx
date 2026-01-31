@@ -36,8 +36,8 @@ export default function TorrentsScreen() {
   const { showToast } = useToast();
   const router = useRouter();
   const navigation = useNavigation();
-  const { torrents, isLoading, error, refresh } = useTorrents();
-  const { isConnected } = useServer();
+  const { torrents, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
+  const { isConnected, currentServer, isLoading: serverIsLoading } = useServer();
   const { colors, isDark } = useTheme();
 
   // State
@@ -536,23 +536,8 @@ export default function TorrentsScreen() {
   ];
 
   // Early returns
-  // Show loading spinner while restoring connection (prevents flash on app launch/resume)
-  if (isLoading && !isConnected) {
-    return (
-      <>
-        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
-            Connecting...
-          </Text>
-        </View>
-      </>
-    );
-  }
-
-  // Only show "Not Connected" when truly disconnected (not during initial load)
-  if (!isConnected) {
+  // Only show "Not Connected" screen if no server is configured (check this FIRST)
+  if (!isConnected && !currentServer && !serverIsLoading) {
     return (
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -575,7 +560,23 @@ export default function TorrentsScreen() {
     );
   }
 
-  if (error) {
+  // Show loading screen during initial app launch (server connecting or first data fetch)
+  if (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
+            Loading...
+          </Text>
+        </View>
+      </>
+    );
+  }
+
+  // Only show persistent errors (not during background recovery or initial connection)
+  if (error && !isRecoveringFromBackground && initialLoadComplete) {
     return (
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -639,6 +640,13 @@ export default function TorrentsScreen() {
                   placeholderTextColor={colors.textSecondary}
                 />
               </View>
+              
+              {/* Loading indicator when syncing */}
+              {isLoading && (
+                <View style={[styles.syncIndicator, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              )}
               
               {/* Sort button */}
               {!selectMode && (
@@ -817,11 +825,7 @@ export default function TorrentsScreen() {
           </View>
         </Animated.View>
 
-        {isLoading && torrents.length === 0 ? (
-          <View style={[styles.center, { backgroundColor: colors.background }]}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : filteredTorrents.length === 0 ? (
+        {filteredTorrents.length === 0 ? (
           <View style={[styles.center, { backgroundColor: colors.background }]}>
             <Ionicons 
               name={filter === 'all' ? 'cloud-download-outline' : 'funnel-outline'} 
@@ -1380,6 +1384,15 @@ const styles = StyleSheet.create({
   },
   searchSortButton: {
     ...buttonStyles.icon,
+  },
+  syncIndicator: {
+    width: 42,
+    height: 42,
+    borderRadius: borderRadius.medium,
+    borderWidth: 0.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.small,
   },
   filterRow: {
     flexDirection: 'row',

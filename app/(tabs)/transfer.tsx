@@ -42,8 +42,8 @@ const SPEED_PRESETS = [
 
 export default function TransferScreen() {
   const { transferInfo, isLoading, error, refresh, toggleAlternativeSpeedLimits, setDownloadLimit, setUploadLimit } = useTransfer();
-  const { isConnected } = useServer();
-  const { torrents, serverState, sync: syncTorrents } = useTorrents();
+  const { isConnected, currentServer, isLoading: serverIsLoading } = useServer();
+  const { torrents, serverState, sync: syncTorrents, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
   
@@ -287,21 +287,8 @@ export default function TransferScreen() {
 
   const diskSpaceInfo = serverState ? { free: serverState.free_space_on_disk || 0 } : null;
 
-  // Show loading spinner while restoring connection (prevents flash on app launch/resume)
-  if (isLoading && !isConnected) {
-    return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
-          Connecting...
-        </Text>
-      </View>
-    );
-  }
-
-  // Only show "Not Connected" when truly disconnected (not during initial load)
-  if (!isConnected) {
+  // Only show "Not Connected" screen if no server is configured (check FIRST)
+  if (!isConnected && !currentServer && !serverIsLoading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -314,7 +301,21 @@ export default function TransferScreen() {
     );
   }
 
-  if (error) {
+  // Show loading screen during initial app launch (server connecting or first data fetch)
+  if (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
+          Loading...
+        </Text>
+      </View>
+    );
+  }
+
+  // Only show persistent errors (not during background recovery)
+  if (error && !isRecoveringFromBackground && initialLoadComplete) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -327,7 +328,8 @@ export default function TransferScreen() {
     );
   }
 
-  if (isLoading && !transferInfo) {
+  // Show loading while fetching transfer data after initial load
+  if (!transferInfo && isLoading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />

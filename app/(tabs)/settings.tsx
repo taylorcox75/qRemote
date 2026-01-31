@@ -56,7 +56,7 @@ export default function SettingsScreen() {
   const [appVersion, setAppVersion] = useState<ApplicationVersion | null>(null);
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
   const [loadingAppInfo, setLoadingAppInfo] = useState(false);
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState('1500');
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState('1000');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddTag, setShowAddTag] = useState(false);
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
@@ -171,7 +171,7 @@ export default function SettingsScreen() {
   const loadPreferences = async () => {
     try {
       const prefs = await storageService.getPreferences();
-      const interval = prefs.autoRefreshInterval || 1500;
+      const interval = prefs.autoRefreshInterval || 1000;
       setAutoRefreshInterval(interval.toString());
       const viewMode = prefs.cardViewMode || 'compact';
       setCardViewMode(viewMode);
@@ -200,7 +200,7 @@ export default function SettingsScreen() {
       setRetryAttempts(prefs.retryAttempts || 3);
       setDebugMode(prefs.debugMode || false);
     } catch (error) {
-      setAutoRefreshInterval('1500');
+      setAutoRefreshInterval('1000');
       setCardViewMode('compact');
     }
   };
