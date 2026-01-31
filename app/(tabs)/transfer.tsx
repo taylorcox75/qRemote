@@ -287,6 +287,20 @@ export default function TransferScreen() {
 
   const diskSpaceInfo = serverState ? { free: serverState.free_space_on_disk || 0 } : null;
 
+  // Show loading spinner while restoring connection (prevents flash on app launch/resume)
+  if (isLoading && !isConnected) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
+          Connecting...
+        </Text>
+      </View>
+    );
+  }
+
+  // Only show "Not Connected" when truly disconnected (not during initial load)
   if (!isConnected) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -557,7 +571,7 @@ export default function TransferScreen() {
                   ) : (
                     <Ionicons name="arrow-down" size={20} color="#FFFFFF" />
                   )}
-                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Pause DL</Text>
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Pause All DL</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -570,7 +584,7 @@ export default function TransferScreen() {
                   ) : (
                     <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
                   )}
-                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Pause UL</Text>
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>Pause All UL</Text>
                 </TouchableOpacity>
               </View>
             </View>

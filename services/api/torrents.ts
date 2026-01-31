@@ -244,7 +244,7 @@ export const torrentsApi = {
    * Add torrent file
    */
   async addTorrentFile(
-    fileUri: string,
+    file: { uri: string; name: string; type?: string },
     options?: {
       savepath?: string;
       category?: string;
@@ -262,13 +262,14 @@ export const torrentsApi = {
       autoTMM?: boolean;
     }
   ): Promise<void> {
-    // Note: For file upload, we need to use a file picker and FormData
-    // This is a placeholder - actual implementation will need file handling
     const formData = new FormData();
     
-    // In React Native, we'd need to use a library like react-native-document-picker
-    // and convert the file to a format FormData can handle
-    // formData.append('torrents', { uri: fileUri, type: 'application/x-bittorrent', name: 'torrent.torrent' });
+    // Add the torrent file
+    formData.append('torrents', {
+      uri: file.uri,
+      type: file.type || 'application/x-bittorrent',
+      name: file.name,
+    } as any);
 
     if (options) {
       if (options.savepath) formData.append('savepath', options.savepath);

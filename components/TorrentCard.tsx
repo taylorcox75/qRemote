@@ -43,9 +43,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
 
   // Check if torrent is stopped/paused
   // A torrent is considered paused/stopped if:
-  // 1. State is explicitly pausedDL, pausedUP, or stoppedDL
+  // 1. State is explicitly pausedDL, pausedUP, stoppedDL, or stoppedUP
   // Note: Stalled states (stalledDL, stalledUP) are still active, not paused
-  const actualIsPaused = torrent.state === 'pausedDL' || torrent.state === 'pausedUP' || torrent.state === 'stoppedDL';
+  const actualIsPaused = torrent.state === 'pausedDL' || torrent.state === 'pausedUP' || torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
   
   // Check if trrrent is stalled
   const isStalled = torrent.state === 'stalledDL' || torrent.state === 'stalledUP';
@@ -371,7 +371,8 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
         case 'stoppedDL':
           return isDark ? colors.surfaceOutline : colors.text
       case 'stoppedUP':
-        return colors.success
+        // Don't show as green/seeding - it's stopped!
+        return isDark ? colors.surfaceOutline : colors.text // Gray (paused)
       case 'stalledDL':
         return colors.error
       case 'stalledUP':
@@ -420,7 +421,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       case 'stoppedDL':
         return 'Stopped';
       case 'stoppedUP':
-        return 'Seeding';
+        return 'Paused'; // NOT "Seeding" - it's stopped!
       default:
         return state;
     }

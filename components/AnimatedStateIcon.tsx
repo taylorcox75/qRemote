@@ -105,7 +105,7 @@ export function AnimatedStateIcon({ state, size = 20, color }: AnimatedStateIcon
     if (state === 'checkingDL' || state === 'checkingUP') {
       return 'sync-circle';
     }
-    if (state === 'pausedDL' || state === 'pausedUP' || state === 'stoppedDL') {
+    if (state === 'pausedDL' || state === 'pausedUP' || state === 'stoppedDL' || state === 'stoppedUP') {
       return 'pause-circle-outline';
     }
     if (state === 'error') {

@@ -4,6 +4,7 @@ export interface ServerConfig {
   name: string;
   host: string;
   port?: number;
+  basePath?: string;
   username: string;
   password: string;
   useHttps?: boolean;

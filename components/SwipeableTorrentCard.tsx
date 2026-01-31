@@ -34,7 +34,8 @@ export function SwipeableTorrentCard({
   const isPaused =
     torrent.state === 'pausedDL' ||
     torrent.state === 'pausedUP' ||
-    torrent.state === 'stoppedDL';
+    torrent.state === 'stoppedDL' ||
+    torrent.state === 'stoppedUP';
 
   const handlePauseResume = async () => {
     try {

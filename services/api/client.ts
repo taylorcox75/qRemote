@@ -5,6 +5,7 @@ class ApiClient {
   private client: AxiosInstance;
   private currentServer: ServerConfig | null = null;
   private cookies: string = '';
+  private csrfToken: string = '';
 
   constructor() {
     this.client = axios.create({
@@ -28,11 +29,29 @@ class ApiClient {
         const port = this.currentServer.port;
         const portNum = port !== undefined && port !== null ? Number(port) : undefined;
         const portPart = portNum !== undefined && !isNaN(portNum) && portNum > 0 ? `:${portNum}` : '';
-        config.baseURL = `${protocol}://${this.currentServer.host}${portPart}`;
         
+        // Handle base path - ensure it starts with / and doesn't end with /
+        let basePath = this.currentServer.basePath || '/';
+        if (!basePath.startsWith('/')) {
+          basePath = '/' + basePath;
+        }
+        if (basePath.endsWith('/') && basePath.length > 1) {
+          basePath = basePath.slice(0, -1);
+        }
+        
+        config.baseURL = `${protocol}://${this.currentServer.host}${portPart}${basePath}`;
+        
+        // Add cookies if available
         if (this.cookies) {
           config.headers.Cookie = this.cookies;
         }
+        
+        // Add Referer header for qBittorrent 5.x compatibility
+        config.headers.Referer = config.baseURL + '/';
+        
+        // Add Origin header for CORS/authentication
+        config.headers.Origin = `${protocol}://${this.currentServer.host}${portPart}`;
+        
         return config;
       },
       (error) => {
@@ -56,13 +75,31 @@ class ApiClient {
         if (setCookieHeader) {
           if (Array.isArray(setCookieHeader)) {
             // Join multiple cookies with semicolon and space
+            // Also extract CSRF token if present in cookies
             this.cookies = setCookieHeader.map(cookie => {
               // Extract just the cookie name=value part (before semicolon if there are attributes)
-              return cookie.split(';')[0].trim();
+              const cookieValue = cookie.split(';')[0].trim();
+              
+              // Check for CSRF token in cookie (qBittorrent 5.x)
+              if (cookieValue.toLowerCase().startsWith('sid=')) {
+                // Extract SID token which is used as CSRF in qBittorrent 5.x
+                const sidMatch = cookieValue.match(/SID=([^;]+)/i);
+                if (sidMatch) {
+                  this.csrfToken = sidMatch[1];
+                }
+              }
+              
+              return cookieValue;
             }).join('; ');
           } else {
             // Extract just the cookie name=value part
             this.cookies = setCookieHeader.split(';')[0].trim();
+            
+            // Check for CSRF token in cookie
+            const sidMatch = this.cookies.match(/SID=([^;]+)/i);
+            if (sidMatch) {
+              this.csrfToken = sidMatch[1];
+            }
           }
           // console.log('Cookies captured after request:', this.cookies.substring(0, 100));
         } else {
@@ -119,6 +156,7 @@ class ApiClient {
     // Only clear cookies if we're switching to a different server or disconnecting
     if (!server || (this.currentServer && this.currentServer.id !== server.id)) {
       this.cookies = '';
+      this.csrfToken = '';
     }
     this.currentServer = server;
   }
@@ -129,10 +167,15 @@ class ApiClient {
 
   clearCookies() {
     this.cookies = '';
+    this.csrfToken = '';
   }
 
   getCookies(): string {
     return this.cookies;
+  }
+  
+  getCsrfToken(): string {
+    return this.csrfToken;
   }
 
   // Helper method for form data requests

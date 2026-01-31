@@ -33,7 +33,7 @@ export default function TorrentDetail() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const { isConnected } = useServer();
+  const { isConnected, isLoading } = useServer();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
   
@@ -113,6 +113,19 @@ export default function TorrentDetail() {
     }
   };
 
+  // Show loading spinner while restoring connection (prevents flash on app launch/resume)
+  if (isLoading && !isConnected) {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </>
+    );
+  }
+
+  // Only show "Not Connected" when truly disconnected (not during initial load)
   if (!isConnected) {
     return (
       <>
@@ -152,9 +165,9 @@ export default function TorrentDetail() {
       return colors.success;
     }
     
-    // Show green for stoppedUP (Seeding)
+    // Show gray for stoppedUP (it's paused/stopped, not actively seeding)
     if (state === 'stoppedUP') {
-      return colors.success;
+      return colors.surfaceOutline;
     }
     
     // Show error color for stalledDL
@@ -182,9 +195,9 @@ export default function TorrentDetail() {
       return 'Seeding';
     }
     
-    // Show "Seeding" for stoppedUP state
+    // Show "Paused" for stoppedUP state (it's stopped/paused, not actively seeding)
     if (state === 'stoppedUP') {
-      return 'Seeding';
+      return 'Paused';
     }
     
     // Show "Forced Meta" for forcedMetaDL state
@@ -756,6 +769,59 @@ export default function TorrentDetail() {
             onPress={() => {}} 
           />
 
+          {/* Quick Tools Section - Moved to top */}
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Tools</Text>
+            <View style={styles.quickToolsGrid}>
+          <TouchableOpacity
+                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
+                onPress={handlePauseResume}
+                disabled={actionLoading}
+          >
+            <Ionicons
+                  name={isPaused ? 'play' : 'pause'} 
+              size={20}
+                  color="#FFFFFF" 
+            />
+                <Text style={styles.quickToolText}>
+                  {isPaused ? 'Resume' : 'Pause'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+                style={[styles.quickToolButton, { backgroundColor: '#FF3B30', opacity: 0.75 }]}
+                onPress={handleDelete}
+                disabled={actionLoading}
+          >
+                <Ionicons name="trash" size={20} color="#FFFFFF" />
+                <Text style={styles.quickToolText}>Delete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
+                onPress={handleRecheck}
+                disabled={actionLoading}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                <Text style={styles.quickToolText}>Recheck</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
+                onPress={handleReannounce}
+                disabled={actionLoading}
+          >
+                <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                <Text style={styles.quickToolText}>Reannounce</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.quickToolButton, { backgroundColor: '#5856D6', opacity: 0.75 }]}
+                onPress={() => router.push(`/torrent/files?hash=${hash}`)}
+                disabled={actionLoading}
+              >
+                <Ionicons name="folder-open" size={20} color="#FFFFFF" />
+                <Text style={styles.quickToolText}>Files</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* General Info Section */}
           <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>General Info</Text>
@@ -894,51 +960,6 @@ export default function TorrentDetail() {
               </View>
             </View>
           )}
-
-          {/* Quick Tools Section */}
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Tools</Text>
-            <View style={styles.quickToolsGrid}>
-          <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handlePauseResume}
-                disabled={actionLoading}
-          >
-            <Ionicons
-                  name={isPaused ? 'play' : 'pause'} 
-              size={20}
-                  color="#FFFFFF" 
-            />
-                <Text style={styles.quickToolText}>
-                  {isPaused ? 'Resume' : 'Pause'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: '#FF3B30', opacity: 0.75 }]}
-                onPress={handleDelete}
-                disabled={actionLoading}
-          >
-                <Ionicons name="trash" size={20} color="#FFFFFF" />
-                <Text style={styles.quickToolText}>Delete</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleRecheck}
-                disabled={actionLoading}
-              >
-                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                <Text style={styles.quickToolText}>Recheck</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleReannounce}
-                disabled={actionLoading}
-          >
-                <Ionicons name="refresh" size={20} color="#FFFFFF" />
-                <Text style={styles.quickToolText}>Reannounce</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
           {/* Advanced Section */}
           <View style={[styles.section, { backgroundColor: colors.surface }]}>

@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { useTorrents } from '../../context/TorrentContext';
 import { useServer } from '../../context/ServerContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -44,6 +45,7 @@ export default function TorrentsScreen() {
   const [filter, setFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [torrentUrl, setTorrentUrl] = useState('');
+  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string } | null>(null);
   const [addingTorrent, setAddingTorrent] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
@@ -318,9 +320,30 @@ export default function TorrentsScreen() {
     setShowAddModal(true);
   };
 
+  const handlePickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/x-bittorrent',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        setSelectedFile({
+          uri: file.uri,
+          name: file.name,
+        });
+        setTorrentUrl(''); // Clear URL input when file is selected
+        showToast(`File selected: ${file.name}`, 'success');
+      }
+    } catch (error: any) {
+      showToast(error.message || 'Failed to pick file', 'error');
+    }
+  };
+
   const handleSubmitTorrent = async () => {
-    if (!torrentUrl.trim()) {
-      showToast('Please enter a torrent URL or magnet link', 'error');
+    if (!torrentUrl.trim() && !selectedFile) {
+      showToast('Please enter a URL/magnet link or select a .torrent file', 'error');
       return;
     }
 
@@ -331,8 +354,17 @@ export default function TorrentsScreen() {
 
     try {
       setAddingTorrent(true);
-      await torrentsApi.addTorrent(torrentUrl.trim());
+      
+      if (selectedFile) {
+        // Upload .torrent file
+        await torrentsApi.addTorrentFile(selectedFile);
+      } else {
+        // Add magnet/URL
+        await torrentsApi.addTorrent(torrentUrl.trim());
+      }
+      
       setTorrentUrl('');
+      setSelectedFile(null);
       setShowAddModal(false);
       refresh();
       showToast('Torrent added successfully', 'success');
@@ -497,6 +529,22 @@ export default function TorrentsScreen() {
   ];
 
   // Early returns
+  // Show loading spinner while restoring connection (prevents flash on app launch/resume)
+  if (isLoading && !isConnected) {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
+            Connecting...
+          </Text>
+        </View>
+      </>
+    );
+  }
+
+  // Only show "Not Connected" when truly disconnected (not during initial load)
   if (!isConnected) {
     return (
       <>
@@ -923,7 +971,11 @@ export default function TorrentsScreen() {
               >
                 <View style={styles.modalHeader}>
                   <Text style={[styles.modalTitle, { color: colors.text }]}>Add Torrent</Text>
-                  <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                  <TouchableOpacity onPress={() => {
+                    setShowAddModal(false);
+                    setTorrentUrl('');
+                    setSelectedFile(null);
+                  }}>
                     <Ionicons name="close" size={24} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
@@ -940,7 +992,12 @@ export default function TorrentsScreen() {
                     },
                   ]}
                   value={torrentUrl}
-                  onChangeText={setTorrentUrl}
+                  onChangeText={(text) => {
+                    setTorrentUrl(text);
+                    if (text.trim() && selectedFile) {
+                      setSelectedFile(null); // Clear file when URL is entered
+                    }
+                  }}
                   placeholder="magnet:?xt=urn:btih:..."
                   placeholderTextColor={colors.textSecondary}
                   multiline
@@ -948,7 +1005,46 @@ export default function TorrentsScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   textAlignVertical="top"
+                  editable={!selectedFile}
                 />
+
+                <View style={styles.divider}>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
+                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.filePickerButton,
+                    {
+                      backgroundColor: selectedFile ? colors.success + '20' : colors.background,
+                      borderColor: selectedFile ? colors.success : colors.surfaceOutline,
+                    },
+                  ]}
+                  onPress={handlePickFile}
+                  disabled={!!torrentUrl.trim()}
+                >
+                  <Ionicons 
+                    name={selectedFile ? 'checkmark-circle' : 'document'} 
+                    size={20} 
+                    color={selectedFile ? colors.success : colors.text} 
+                  />
+                  <Text style={[
+                    styles.filePickerText, 
+                    { color: selectedFile ? colors.success : colors.text }
+                  ]}>
+                    {selectedFile ? selectedFile.name : 'Select .torrent file'}
+                  </Text>
+                  {selectedFile && (
+                    <TouchableOpacity
+                      onPress={() => setSelectedFile(null)}
+                      style={styles.clearFileButton}
+                    >
+                      <Ionicons name="close-circle" size={20} color={colors.error} />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
@@ -959,6 +1055,7 @@ export default function TorrentsScreen() {
                     ]}
                     onPress={() => {
                       setTorrentUrl('');
+                      setSelectedFile(null);
                       setShowAddModal(false);
                     }}
                   >
@@ -1218,7 +1315,36 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...typography.small,
     minHeight: 80,
+    marginBottom: spacing.md,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    ...typography.smallMedium,
+    marginHorizontal: spacing.md,
+  },
+  filePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.large,
+    borderWidth: 1,
     marginBottom: spacing.xl,
+  },
+  filePickerText: {
+    flex: 1,
+    ...typography.body,
+  },
+  clearFileButton: {
+    padding: spacing.xs,
   },
   modalButtons: {
     flexDirection: 'row',

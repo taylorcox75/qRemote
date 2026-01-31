@@ -31,6 +31,7 @@ export default function EditServerScreen() {
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('8080');
+  const [basePath, setBasePath] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [useHttps, setUseHttps] = useState(false);
@@ -51,6 +52,7 @@ export default function EditServerScreen() {
         setHost(server.host);
         const hasPort = server.port != null && server.port > 0;
         setPort(hasPort ? server.port!.toString() : '');
+        setBasePath(server.basePath && server.basePath !== '/' ? server.basePath : '');
         setUsername(server.username || '');
         setPassword(server.password || '');
         setUseHttps(server.useHttps || false);
@@ -97,6 +99,7 @@ export default function EditServerScreen() {
         name: name.trim(),
         host: host.trim(),
         port: portNum,
+        basePath: basePath.trim() || '/',
         username: bypassAuth ? '' : username.trim(),
         password: bypassAuth ? '' : password.trim(),
         useHttps,
@@ -263,6 +266,19 @@ export default function EditServerScreen() {
                   placeholder="Port (optional, default: 8080)"
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="numeric"
+                />
+              </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.inputRow}>
+                <Ionicons name="git-branch-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  value={basePath}
+                  onChangeText={setBasePath}
+                  placeholder="Base Path (default: /)"
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
             </View>

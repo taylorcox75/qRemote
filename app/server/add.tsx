@@ -30,6 +30,7 @@ export default function AddServerScreen() {
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('8080');
+  const [basePath, setBasePath] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [useHttps, setUseHttps] = useState(false);
@@ -66,6 +67,7 @@ export default function AddServerScreen() {
         name: name.trim(),
         host: host.trim(),
         port: portNum,
+        basePath: basePath.trim() || '/',
         username: bypassAuth ? '' : username.trim(),
         password: bypassAuth ? '' : password.trim(),
         useHttps,
@@ -228,6 +230,19 @@ export default function AddServerScreen() {
                   keyboardType="numeric"
                 />
      
+              </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.inputRow}>
+                <Ionicons name="git-branch-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  value={basePath}
+                  onChangeText={setBasePath}
+                  placeholder="Base Path (default)"
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
               </View>
             </View>
           </View>
