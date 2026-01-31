@@ -17,7 +17,7 @@ import { logsApi } from '../../services/api/logs';
 import { LogEntry, PeerLogEntry } from '../../types/api';
 
 export default function LogsScreen() {
-  const { isConnected } = useServer();
+  const { isConnected, isLoading } = useServer();
   const { colors, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<'app' | 'peer'>('app');
   const [appLogs, setAppLogs] = useState<LogEntry[]>([]);
@@ -138,6 +138,19 @@ export default function LogsScreen() {
     );
   }, [peerLogs, searchQuery]);
 
+  // Show loading spinner while restoring connection (prevents flash on app launch/resume)
+  if (isLoading && !isConnected) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.subMessage, { color: colors.textSecondary, marginTop: 16 }]}>
+          Connecting...
+        </Text>
+      </View>
+    );
+  }
+
+  // Only show "Not Connected" when truly disconnected (not during initial load)
   if (!isConnected) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
