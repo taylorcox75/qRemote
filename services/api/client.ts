@@ -35,7 +35,11 @@ class ApiClient {
         if (!basePath.startsWith('/')) {
           basePath = '/' + basePath;
         }
-        if (basePath.endsWith('/') && basePath.length > 1) {
+        // If basePath is just '/', set it to empty string to avoid double slashes
+        if (basePath === '/') {
+          basePath = '';
+        } else if (basePath.endsWith('/')) {
+          // Remove trailing slash for non-root paths
           basePath = basePath.slice(0, -1);
         }
         

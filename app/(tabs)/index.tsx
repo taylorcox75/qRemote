@@ -45,7 +45,7 @@ export default function TorrentsScreen() {
   const [filter, setFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [torrentUrl, setTorrentUrl] = useState('');
-  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string; mimeType?: string } | null>(null);
   const [addingTorrent, setAddingTorrent] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
@@ -728,8 +728,6 @@ export default function TorrentsScreen() {
                           color: filter === item.key ? '#FFFFFF' : colors.text,
                         },
                       ]}
-                      textAlignVertical="center"
-                      includeFontPadding={false}
                     >
                       {item.label}
                     </Text>
@@ -752,8 +750,6 @@ export default function TorrentsScreen() {
                   <Ionicons name="close" size={14} color="#FFFFFF" />
                   <Text 
                     style={[styles.filterChipTextCompact, { color: '#FFFFFF' }]}
-                    textAlignVertical="center"
-                    includeFontPadding={false}
                   >
                     Close
                   </Text>
