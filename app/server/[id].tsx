@@ -249,7 +249,7 @@ export default function EditServerScreen() {
                   style={[styles.input, { color: colors.text }]}
                   value={host}
                   onChangeText={setHost}
-                  placeholder="IP Address or Hostname"
+                  placeholder="IP /  Hostname (without http(s))"
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
