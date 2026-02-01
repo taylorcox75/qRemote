@@ -11,9 +11,9 @@ export const applicationApi = {
   /**
    * Get application version
    */
-  async getVersion(): Promise<ApplicationVersion> {
-    const version = await apiClient.get(`/api/${API_VERSION}/app/version`);
-    const apiVersion = await apiClient.get(`/api/${API_VERSION}/app/webapiVersion`);
+  async getVersion(signal?: AbortSignal): Promise<ApplicationVersion> {
+    const version = await apiClient.get(`/api/${API_VERSION}/app/version`, undefined, signal);
+    const apiVersion = await apiClient.get(`/api/${API_VERSION}/app/webapiVersion`, undefined, signal);
     return {
       version: version as string,
       apiVersion: apiVersion as string,

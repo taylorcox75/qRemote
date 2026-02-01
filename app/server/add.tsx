@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Switch,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -21,6 +22,7 @@ import { useServer } from '../../context/ServerContext';
 import { useToast, ModalToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { spacing, borderRadius } from '../../constants/spacing';
+import { shadows } from '../../constants/shadows';
 
 export default function AddServerScreen() {
   const router = useRouter();
@@ -29,14 +31,29 @@ export default function AddServerScreen() {
   const { showToast } = useToast();
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
-  const [port, setPort] = useState('8080');
-  const [basePath, setBasePath] = useState('');
+  const [port, setPort] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [useHttps, setUseHttps] = useState(false);
   const [bypassAuth, setBypassAuth] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [showHostTooltip, setShowHostTooltip] = useState(false);
+  const [showPortTooltip, setShowPortTooltip] = useState(false);
+  const testAbortController = useRef<AbortController | null>(null);
+
+  // Helper function to strip http:// or https:// prefix from host
+  const stripProtocol = (hostString: string): string => {
+    return hostString.replace(/^(https?:\/\/)/i, '');
+  };
+
+  const handleCancelTest = () => {
+    if (testAbortController.current) {
+      testAbortController.current.abort();
+      testAbortController.current = null;
+    }
+    setTesting(false);
+  };
 
   const handleSave = async () => {
     if (!name.trim() || !host.trim()) {
@@ -65,9 +82,9 @@ export default function AddServerScreen() {
       const server: ServerConfig = {
         id: Date.now().toString(),
         name: name.trim(),
-        host: host.trim(),
+        host: stripProtocol(host.trim()),
         port: portNum,
-        basePath: basePath.trim() || '/',
+        basePath: '/',
         username: bypassAuth ? '' : username.trim(),
         password: bypassAuth ? '' : password.trim(),
         useHttps,
@@ -116,10 +133,12 @@ export default function AddServerScreen() {
 
     try {
       setTesting(true);
+      testAbortController.current = new AbortController();
+      
       const server: ServerConfig = {
         id: 'test-' + Date.now().toString(),
         name: name.trim(),
-        host: host.trim(),
+        host: stripProtocol(host.trim()),
         port: portNum,
         username: bypassAuth ? '' : username.trim(),
         password: bypassAuth ? '' : password.trim(),
@@ -127,15 +146,23 @@ export default function AddServerScreen() {
         bypassAuth,
       };
 
-      const result = await ServerManager.testConnection(server);
+      const result = await ServerManager.testConnection(server, testAbortController.current.signal);
+      
       if (result.success) {
         showToast('Connection test successful!', 'success');
       } else {
         showToast(result.error || 'Connection test failed. Please check your settings.', 'error');
       }
     } catch (error: any) {
-      showToast(error.message || 'Connection test failed. Please check your settings.', 'error');
+      // Only show error if not cancelled
+      if (error.name !== 'AbortError' && 
+          error.name !== 'CanceledError' && 
+          error.code !== 'ERR_CANCELED' &&
+          !error.message?.includes('cancel')) {
+        showToast(error.message || 'Connection test failed. Please check your settings.', 'error');
+      }
     } finally {
+      testAbortController.current = null;
       setTesting(false);
     }
   };
@@ -211,12 +238,15 @@ export default function AddServerScreen() {
                   style={[styles.input, { color: colors.text }]}
                   value={host}
                   onChangeText={setHost}
-                  placeholder="IP / Hostname (without http(s))"
+                  placeholder="IP / Domain"
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="default"
                 />
+                <TouchableOpacity onPress={() => setShowHostTooltip(true)} style={styles.infoButton}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.inputRow}>
@@ -225,24 +255,13 @@ export default function AddServerScreen() {
                   style={[styles.input, { color: colors.text }]}
                   value={port}
                   onChangeText={setPort}
-                  placeholder="Port (optional, default: 8080)"
+                  placeholder="Port (optional)"
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="numeric"
                 />
-     
-              </View>
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <View style={styles.inputRow}>
-                <Ionicons name="git-branch-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={basePath}
-                  onChangeText={setBasePath}
-                  placeholder="Base Path (default)"
-                  placeholderTextColor={colors.textSecondary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+                <TouchableOpacity onPress={() => setShowPortTooltip(true)} style={styles.infoButton}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -326,26 +345,114 @@ export default function AddServerScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>CONNECTION TEST</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: colors.primary }]}
-                onPress={handleTest}
-                disabled={testing || loading}
-              >
-                {testing ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.testButtonText}>Test Connection</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              {testing ? (
+                <View style={styles.testingContainer}>
+                  <View style={styles.testingContent}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.testingText, { color: colors.text }]}>Testing connection...</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.cancelButton, { backgroundColor: colors.error }]}
+                    onPress={handleCancelTest}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.testButton, { backgroundColor: colors.primary }]}
+                  onPress={handleTest}
+                  disabled={loading}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.testButtonText}>Test Connection</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+      
+      {/* Host Tooltip Modal */}
+      <Modal
+        visible={showHostTooltip}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowHostTooltip(false)}
+      >
+        <TouchableOpacity 
+          style={styles.tooltipOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowHostTooltip(false)}
+        >
+          <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+            <View style={styles.tooltipHeader}>
+              <Ionicons name="globe-outline" size={24} color={colors.primary} />
+              <Text style={[styles.tooltipTitle, { color: colors.text }]}>Host Address</Text>
+            </View>
+            <Text style={[styles.tooltipText, { color: colors.text }]}>
+              Enter your server's address without http:// or https://
+            </Text>
+            <Text style={[styles.tooltipText, { color: colors.text, marginTop: 12 }]}>
+              Examples:
+            </Text>
+            <Text style={[styles.tooltipExample, { color: colors.textSecondary }]}>
+              • 192.168.1.100{'\n'}
+              • qbittorrent.example.com{'\n'}
+              • example.com/qbt
+            </Text>
+            <TouchableOpacity 
+              style={[styles.tooltipButton, { backgroundColor: colors.primary }]}
+              onPress={() => setShowHostTooltip(false)}
+            >
+              <Text style={styles.tooltipButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Port Tooltip Modal */}
+      <Modal
+        visible={showPortTooltip}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPortTooltip(false)}
+      >
+        <TouchableOpacity 
+          style={styles.tooltipOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowPortTooltip(false)}
+        >
+          <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+            <View style={styles.tooltipHeader}>
+              <Ionicons name="link-outline" size={24} color={colors.primary} />
+              <Text style={[styles.tooltipTitle, { color: colors.text }]}>Port</Text>
+            </View>
+            <Text style={[styles.tooltipText, { color: colors.text }]}>
+              Specify the port number if your server uses a custom port.
+            </Text>
+            <Text style={[styles.tooltipText, { color: colors.text, marginTop: 12 }]}>
+              Leave blank if you're using:
+            </Text>
+            <Text style={[styles.tooltipExample, { color: colors.textSecondary }]}>
+              • A domain name (example.com){'\n'}
+              • A reverse proxy{'\n'}
+            </Text>
+            <Text style={[styles.tooltipText, { color: colors.text, marginTop: 12 }]}>
+              Common qBittorrent port: 8080
+            </Text>
+            <TouchableOpacity 
+              style={[styles.tooltipButton, { backgroundColor: colors.primary }]}
+              onPress={() => setShowPortTooltip(false)}
+            >
+              <Text style={styles.tooltipButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <ModalToast />
     </SafeAreaView>
   );
@@ -460,6 +567,83 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   testButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  testingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    margin: spacing.md,
+    minHeight: 50,
+  },
+  testingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  testingText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  cancelButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.small,
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  infoButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  tooltipOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  tooltipContainer: {
+    borderRadius: borderRadius.large,
+    padding: spacing.xl,
+    maxWidth: 400,
+    width: '100%',
+    ...shadows.card,
+  },
+  tooltipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  tooltipTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  tooltipText: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  tooltipExample: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
+    marginLeft: 4,
+  },
+  tooltipButton: {
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.medium,
+    alignItems: 'center',
+  },
+  tooltipButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

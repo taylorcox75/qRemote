@@ -13,6 +13,8 @@ import {
   Dimensions,
   Platform,
   Alert,
+  Linking,
+  Modal,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +44,49 @@ import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
 
+// Changelog data
+const CHANGELOG = [
+  {
+    version: '1.1.1',
+    date: '2026-02-01',
+    changes: [
+      'Fixed protocol prefix handling - no more double http:// issues',
+      'Simplified server configuration with helpful tooltips',
+      'Added cancel button during connection testing',
+      'Removed confusing Base Path field',
+      'Added What\'s New section',
+      'Improved UX with cleaner placeholders and info icons',
+    ],
+  },
+  {
+    version: '1.1.0',
+    date: '2026-02-01',
+    changes: [
+      'Fixed hostname handling and connection issues',
+      'Improved loading screen experience',
+      'Better background app restoration',
+    ],
+  },
+  {
+    version: '1.0.6',
+    date: '2025-12-15',
+    changes: [
+      'Fixed popup and Android localhost issues',
+      'General stability improvements',
+    ],
+  },
+  {
+    version: '1.0.5',
+    date: '2025-12-13',
+    changes: [
+      'Major UI cleanup and enhancements',
+      'Improved add server form robustness',
+      'Added credential toggle for local networks',
+      'Fixed Android server configuration issues',
+    ],
+  },
+];
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { currentServer, isConnected, connectToServer, disconnect } = useServer();
@@ -61,6 +106,7 @@ export default function SettingsScreen() {
   const [showAddTag, setShowAddTag] = useState(false);
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
   const [savePathModalVisible, setSavePathModalVisible] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
   
   // Persistent Sort/Filter Preferences
   const [defaultSortBy, setDefaultSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'added_on'>('added_on');
@@ -554,6 +600,124 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Torrent List Settings */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT LIST</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Sort By</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setSortByPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pickerText, { color: colors.text }]}>
+                  {defaultSortBy === 'name' ? 'Name' : defaultSortBy === 'size' ? 'Size' : defaultSortBy === 'progress' ? 'Progress' : defaultSortBy === 'dlspeed' ? 'Download Speed' : defaultSortBy === 'upspeed' ? 'Upload Speed' : 'Added Date'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Sort Direction</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => {
+                  const dir = defaultSortDirection === 'asc' ? 'desc' : 'asc';
+                  setDefaultSortDirection(dir);
+                  savePreference('defaultSortDirection', dir);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name={defaultSortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} 
+                  size={20} 
+                  color={colors.primary} 
+                />
+                <Text style={[styles.pickerText, { color: colors.text, marginLeft: 8 }]}>
+                  {defaultSortDirection === 'asc' ? 'Ascending' : 'Descending'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="funnel-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Filter</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setFilterPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pickerText, { color: colors.text }]}>
+                  {filterOptions.find(opt => opt.value === defaultFilter)?.label || defaultFilter.charAt(0).toUpperCase() + defaultFilter.slice(1)}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Torrent Behavior */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT BEHAVIOR</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="pause-circle-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Pause on Add</Text>
+              </View>
+              <Switch
+                value={pauseOnAdd}
+                onValueChange={(value) => {
+                  setPauseOnAdd(value);
+                  savePreference('pauseOnAdd', value);
+                }}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                ios_backgroundColor={colors.surfaceOutline}
+              />
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="folder-outline" size={22} color={colors.primary} />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>Default Save Path</Text>
+                  {defaultSavePath && <Text style={[styles.settingHint, { color: colors.textSecondary }]} numberOfLines={1}>{defaultSavePath}</Text>}
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSavePathModalVisible(true)}
+              >
+                <Ionicons name="create-outline" size={22} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="pricetag-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Auto-categorize by Tracker</Text>
+              </View>
+              <Switch
+                value={autoCategorizeByTracker}
+                onValueChange={(value) => {
+                  setAutoCategorizeByTracker(value);
+                  savePreference('autoCategorizeByTracker', value);
+                }}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                ios_backgroundColor={colors.surfaceOutline}
+              />
+            </View>
+          </View>
+        </View>
+
         {/* Appearance */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>APPEARANCE</Text>
@@ -744,156 +908,6 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* Application Info */}
-        {isConnected && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>APPLICATION</Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              {loadingAppInfo ? (
-                <View style={styles.loadingState}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                </View>
-              ) : (
-                <>
-                  {appVersion && (
-                    <>
-                      <InfoRow icon="information-circle-outline" label="qBittorrent" value={appVersion.version} colors={colors} />
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                      <InfoRow icon="code-slash-outline" label="API Version" value={appVersion.apiVersion} colors={colors} />
-                    </>
-                  )}
-                  {buildInfo && (
-                    <>
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                      <InfoRow icon="cube-outline" label="Libtorrent" value={buildInfo.libtorrent} colors={colors} />
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                      <InfoRow icon="hardware-chip-outline" label="Architecture" value={`${buildInfo.bitness}-bit`} colors={colors} />
-                    </>
-                  )}
-                </>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Persistent Sort/Filter Preferences */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT LIST</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Sort By</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setSortByPickerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.pickerText, { color: colors.text }]}>
-                  {defaultSortBy === 'name' ? 'Name' : defaultSortBy === 'size' ? 'Size' : defaultSortBy === 'progress' ? 'Progress' : defaultSortBy === 'dlspeed' ? 'Download Speed' : defaultSortBy === 'upspeed' ? 'Upload Speed' : 'Added Date'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Sort Direction</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => {
-                  const dir = defaultSortDirection === 'asc' ? 'desc' : 'asc';
-                  setDefaultSortDirection(dir);
-                  savePreference('defaultSortDirection', dir);
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons 
-                  name={defaultSortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} 
-                  size={20} 
-                  color={colors.primary} 
-                />
-                <Text style={[styles.pickerText, { color: colors.text, marginLeft: 8 }]}>
-                  {defaultSortDirection === 'asc' ? 'Ascending' : 'Descending'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="funnel-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Filter</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setFilterPickerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.pickerText, { color: colors.text }]}>
-                  {filterOptions.find(opt => opt.value === defaultFilter)?.label || defaultFilter.charAt(0).toUpperCase() + defaultFilter.slice(1)}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Default Torrent Behaviors */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT BEHAVIOR</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="pause-circle-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Pause on Add</Text>
-              </View>
-              <Switch
-                value={pauseOnAdd}
-                onValueChange={(value) => {
-                  setPauseOnAdd(value);
-                  savePreference('pauseOnAdd', value);
-                }}
-                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                ios_backgroundColor={colors.surfaceOutline}
-              />
-            </View>
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="folder-outline" size={22} color={colors.primary} />
-                <View>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Default Save Path</Text>
-                  {defaultSavePath && <Text style={[styles.settingHint, { color: colors.textSecondary }]} numberOfLines={1}>{defaultSavePath}</Text>}
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => setSavePathModalVisible(true)}
-              >
-                <Ionicons name="create-outline" size={22} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="pricetag-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Auto-categorize by Tracker</Text>
-              </View>
-              <Switch
-                value={autoCategorizeByTracker}
-                onValueChange={(value) => {
-                  setAutoCategorizeByTracker(value);
-                  savePreference('autoCategorizeByTracker', value);
-                }}
-                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                ios_backgroundColor={colors.surfaceOutline}
-              />
-            </View>
-          </View>
-        </View>
-
         {/* Notifications & Feedback */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>NOTIFICATIONS & FEEDBACK</Text>
@@ -1074,21 +1088,101 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Enhanced About Section */}
+        {/* Application Info - qBittorrent Server */}
+        {isConnected && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>QBITTORRENT SERVER</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              {loadingAppInfo ? (
+                <View style={styles.loadingState}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              ) : (
+                <>
+                  {appVersion && (
+                    <>
+                      <InfoRow icon="information-circle-outline" label="qBittorrent" value={appVersion.version} colors={colors} />
+                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <InfoRow icon="code-slash-outline" label="API Version" value={appVersion.apiVersion} colors={colors} />
+                    </>
+                  )}
+                  {buildInfo && (
+                    <>
+                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <InfoRow icon="cube-outline" label="Libtorrent" value={buildInfo.libtorrent} colors={colors} />
+                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <InfoRow icon="hardware-chip-outline" label="Architecture" value={`${buildInfo.bitness}-bit`} colors={colors} />
+                    </>
+                  )}
+                </>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* About qRemote - Community Links */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ABOUT</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>COMMUNITY</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://github.com/taylorcox75/qremote')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="logo-github" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Source Code</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://github.com/taylorcox75/qRemote/issues')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="bug-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Report Issue</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://www.paypal.com/donate/?business=E9XLGFHN963HN&no_recurring=0&currency_code=USD')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="beer-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Buy Me a Beer</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* App Info */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>APP INFO</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <InfoRow icon="information-circle-outline" label="App Version" value={APP_VERSION} colors={colors} />
+            <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => setShowWhatsNew(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="sparkles-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>What's New</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
             <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
             <InfoRow icon="logo-react" label="React Native" value={Platform.constants.reactNativeVersion?.major + '.' + Platform.constants.reactNativeVersion?.minor + '.' + Platform.constants.reactNativeVersion?.patch || 'N/A'} colors={colors} />
             <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
             <InfoRow icon="phone-portrait-outline" label="Platform" value={Platform.OS.charAt(0).toUpperCase() + Platform.OS.slice(1)} colors={colors} />
-            {buildInfo && (
-              <>
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                <InfoRow icon="code-working-outline" label="Build Info" value={`${buildInfo.qt} / ${buildInfo.libtorrent}`} colors={colors} />
-              </>
-            )}
           </View>
         </View>
 
@@ -1156,6 +1250,44 @@ export default function SettingsScreen() {
           setSavePathModalVisible(false);
         }}
       />
+
+      {/* What's New Modal */}
+      <Modal
+        visible={showWhatsNew}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowWhatsNew(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.surfaceOutline }]}>
+            <View style={styles.modalTitleContainer}>
+              <Ionicons name="sparkles" size={28} color={colors.primary} />
+              <Text style={[styles.modalTitle, { color: colors.text }]}>What's New</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowWhatsNew(false)} style={styles.modalCloseButton}>
+              <Ionicons name="close" size={28} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.changelogScroll} contentContainerStyle={styles.changelogContent}>
+            {CHANGELOG.map((release, index) => (
+              <View key={release.version} style={styles.changelogRelease}>
+                <View style={styles.releaseHeader}>
+                  <Text style={[styles.releaseVersion, { color: colors.primary }]}>v{release.version}</Text>
+                  <Text style={[styles.releaseDate, { color: colors.textSecondary }]}>{release.date}</Text>
+                </View>
+                <View style={[styles.changesList, { backgroundColor: colors.surface }]}>
+                  {release.changes.map((change, changeIndex) => (
+                    <View key={changeIndex} style={styles.changeItem}>
+                      <Ionicons name="checkmark-circle" size={18} color={colors.success} style={styles.changeIcon} />
+                      <Text style={[styles.changeText, { color: colors.text }]}>{change}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
 
     </>
   );
@@ -1657,6 +1789,72 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.small,
     borderWidth: 1,
     borderColor: '#E5E5EA',
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  modalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  modalCloseButton: {
+    padding: spacing.xs,
+  },
+  changelogScroll: {
+    flex: 1,
+  },
+  changelogContent: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  changelogRelease: {
+    marginBottom: spacing.xxl,
+  },
+  releaseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  releaseVersion: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  releaseDate: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  changesList: {
+    borderRadius: borderRadius.medium,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  changeItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  changeIcon: {
+    marginTop: 2,
+  },
+  changeText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });
 

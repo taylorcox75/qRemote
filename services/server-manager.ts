@@ -168,7 +168,7 @@ export class ServerManager {
    * Test connection to a server without saving it
    * Returns a result object with success status and error message if failed
    */
-  static async testConnection(server: ServerConfig): Promise<{ success: boolean; error?: string }> {
+  static async testConnection(server: ServerConfig, signal?: AbortSignal): Promise<{ success: boolean; error?: string }> {
     const previousServer = apiClient.getServer();
     
     try {
@@ -177,18 +177,32 @@ export class ServerManager {
 
       try {
         if (!server.bypassAuth) {
-          // Attempt login
-          const loginResult = await authApi.login(server.username, server.password);
+          // Attempt login with abort signal
+          const loginResult = await authApi.login(server.username, server.password, signal);
           if (loginResult.status !== 'Ok') {
             return { success: false, error: 'Authentication failed. Please check your username and password.' };
           }
         }
 
-        // Verify connection by making a test API call
-        await applicationApi.getVersion();
+        // Check if aborted
+        if (signal?.aborted) {
+          throw new Error('Test cancelled');
+        }
+
+        // Verify connection by making a test API call with abort signal
+        await applicationApi.getVersion(signal);
         
         return { success: true };
       } catch (error: any) {
+        // Handle cancellation - check for axios cancel errors
+        if (error.name === 'AbortError' || 
+            error.name === 'CanceledError' || 
+            error.code === 'ERR_CANCELED' ||
+            error.message === 'Test cancelled' ||
+            error.message?.includes('cancel')) {
+          throw error;
+        }
+        
         // Provide more specific error messages
         // Check status codes first, then error codes, then fall back to message string matching
         if (error.response?.status === 403 || error.response?.status === 401 || error.message?.includes('Authentication')) {
@@ -211,6 +225,14 @@ export class ServerManager {
     } catch (error: any) {
       // Ensure cleanup even if outer try fails
       apiClient.setServer(previousServer);
+      // Re-throw cancellation errors
+      if (error.name === 'AbortError' || 
+          error.name === 'CanceledError' || 
+          error.code === 'ERR_CANCELED' ||
+          error.message === 'Test cancelled' ||
+          error.message?.includes('cancel')) {
+        throw error;
+      }
       return { success: false, error: error.message || 'Connection test failed. Please check your settings.' };
     }
   }
