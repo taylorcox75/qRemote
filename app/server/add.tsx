@@ -38,6 +38,11 @@ export default function AddServerScreen() {
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  // Helper function to strip http:// or https:// prefix from host
+  const stripProtocol = (hostString: string): string => {
+    return hostString.replace(/^(https?:\/\/)/i, '');
+  };
+
   const handleSave = async () => {
     if (!name.trim() || !host.trim()) {
       showToast('Please fill in server name and host', 'error');
@@ -65,7 +70,7 @@ export default function AddServerScreen() {
       const server: ServerConfig = {
         id: Date.now().toString(),
         name: name.trim(),
-        host: host.trim(),
+        host: stripProtocol(host.trim()),
         port: portNum,
         basePath: basePath.trim() || '/',
         username: bypassAuth ? '' : username.trim(),
@@ -119,7 +124,7 @@ export default function AddServerScreen() {
       const server: ServerConfig = {
         id: 'test-' + Date.now().toString(),
         name: name.trim(),
-        host: host.trim(),
+        host: stripProtocol(host.trim()),
         port: portNum,
         username: bypassAuth ? '' : username.trim(),
         password: bypassAuth ? '' : password.trim(),
@@ -211,7 +216,7 @@ export default function AddServerScreen() {
                   style={[styles.input, { color: colors.text }]}
                   value={host}
                   onChangeText={setHost}
-                  placeholder="IP / Hostname (without http(s))"
+                  placeholder="IP / Hostname"
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}

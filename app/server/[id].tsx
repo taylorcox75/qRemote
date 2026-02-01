@@ -40,6 +40,11 @@ export default function EditServerScreen() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  // Helper function to strip http:// or https:// prefix from host
+  const stripProtocol = (hostString: string): string => {
+    return hostString.replace(/^(https?:\/\/)/i, '');
+  };
+
   useEffect(() => {
     loadServer();
   }, [id]);
@@ -97,7 +102,7 @@ export default function EditServerScreen() {
       const server: ServerConfig = {
         id: id!,
         name: name.trim(),
-        host: host.trim(),
+        host: stripProtocol(host.trim()),
         port: portNum,
         basePath: basePath.trim() || '/',
         username: bypassAuth ? '' : username.trim(),
@@ -148,7 +153,7 @@ export default function EditServerScreen() {
       const server: ServerConfig = {
         id: id!,
         name: name.trim(),
-        host: host.trim(),
+        host: stripProtocol(host.trim()),
         port: portNum,
         username: bypassAuth ? '' : username.trim(),
         password: bypassAuth ? '' : password.trim(),
@@ -249,7 +254,7 @@ export default function EditServerScreen() {
                   style={[styles.input, { color: colors.text }]}
                   value={host}
                   onChangeText={setHost}
-                  placeholder="IP /  Hostname (without http(s))"
+                  placeholder="IP /  Hostname"
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
