@@ -13,6 +13,7 @@ import {
   Dimensions,
   Platform,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -743,6 +744,48 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+
+        {/* About qRemote */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ABOUT QREMOTE</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://github.com/taylorcox75/qremote')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="logo-github" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Source Code</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://github.com/taylorcox75/qRemote/issues')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="bug-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Report Issue</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://www.paypal.com/donate/?business=E9XLGFHN963HN&no_recurring=0&currency_code=USD')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="beer-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>Buy Me a Beer</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Application Info */}
         {isConnected && (
