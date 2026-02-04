@@ -47,6 +47,18 @@ import { typography } from '../../constants/typography';
 // Changelog data
 const CHANGELOG = [
   {
+    version: '1.1.2',
+    date: '2026-02-01',
+    changes: [
+      'Backwards compatibility improvements for existing server configs',
+      'Fixed basePath persistence for reverse proxy users',
+      'Normalized host format on load to prevent double-protocol issues on upgrade',
+      'Include basePath in settings export and import',
+      'Defensive theme loading for legacy preference formats',
+      'Coerce numeric preferences (timeouts, intervals) for robustness',
+    ],
+  },
+  {
     version: '1.1.1',
     date: '2026-02-01',
     changes: [
@@ -217,7 +229,7 @@ export default function SettingsScreen() {
   const loadPreferences = async () => {
     try {
       const prefs = await storageService.getPreferences();
-      const interval = prefs.autoRefreshInterval || 1000;
+      const interval = Number(prefs.autoRefreshInterval) || 1000;
       setAutoRefreshInterval(interval.toString());
       const viewMode = prefs.cardViewMode || 'compact';
       setCardViewMode(viewMode);
@@ -231,19 +243,19 @@ export default function SettingsScreen() {
       setPauseOnAdd(prefs.pauseOnAdd || false);
       setDefaultSavePath(prefs.defaultSavePath || '');
       setAutoCategorizeByTracker(prefs.autoCategorizeByTracker || false);
-      setDefaultPriority(prefs.defaultPriority || 0);
+      setDefaultPriority(Number(prefs.defaultPriority) || 0);
       
       // Notifications & Feedback
-      setToastDuration(prefs.toastDuration || 3000);
+      setToastDuration(Number(prefs.toastDuration) || 3000);
       setHapticFeedback(prefs.hapticFeedback !== false); // default true
       
       // Server Management
       setAutoConnectLastServer(prefs.autoConnectLastServer || false);
-      setConnectionTimeout(prefs.connectionTimeout || 10000);
+      setConnectionTimeout(Number(prefs.connectionTimeout) || 10000);
       
       // Advanced Settings
-      setApiTimeout(prefs.apiTimeout || 30000);
-      setRetryAttempts(prefs.retryAttempts || 3);
+      setApiTimeout(Number(prefs.apiTimeout) || 30000);
+      setRetryAttempts(Number(prefs.retryAttempts) || 3);
       setDebugMode(prefs.debugMode || false);
     } catch (error) {
       setAutoRefreshInterval('1000');
@@ -304,6 +316,7 @@ export default function SettingsScreen() {
           name: s.name,
           host: s.host,
           port: s.port,
+          basePath: s.basePath,
           username: s.username,
           useHttps: s.useHttps,
           bypassAuth: s.bypassAuth,

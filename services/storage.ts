@@ -8,6 +8,9 @@ const STORAGE_KEYS = {
   PREFERENCES: 'preferences',
 } as const;
 
+const stripProtocol = (host: string): string =>
+  (host || '').replace(/^(https?:\/\/)/i, '');
+
 export const storageService = {
   /**
    * Save server configuration
@@ -30,8 +33,9 @@ export const storageService = {
       const serversWithoutPasswords = updatedServers.map(s => ({
         id: s.id,
         name: s.name,
-        host: s.host,
+        host: stripProtocol(s.host || ''),
         port: (s.port && s.port > 0) ? s.port : undefined,
+        basePath: s.basePath || '/',
         username: s.username,
         password: '', // Don't store password in AsyncStorage
         useHttps: s.useHttps || false,
@@ -57,11 +61,11 @@ export const storageService = {
 
       const servers: Omit<ServerConfig, 'password'>[] = JSON.parse(data);
       
-      // Retrieve passwords from SecureStore
+      // Retrieve passwords from SecureStore, normalize host (strip protocol from legacy data)
       const serversWithPasswords = await Promise.all(
         servers.map(async (server) => {
           const password = await SecureStore.getItemAsync(`server_password_${server.id}`) || '';
-          return { ...server, password };
+          return { ...server, password, host: stripProtocol(server.host || '') };
         })
       );
 
