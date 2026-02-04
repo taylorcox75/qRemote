@@ -8,7 +8,7 @@ export const authApi = {
    * Login to qBittorrent WebUI
    * Compatible with qBittorrent 4.x and 5.x
    */
-  async login(username: string, password: string): Promise<LoginResponse> {
+  async login(username: string, password: string, signal?: AbortSignal): Promise<LoginResponse> {
     try {
       // Clear any existing cookies before login
       apiClient.clearCookies();
@@ -16,7 +16,7 @@ export const authApi = {
       const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/auth/login`, {
         username,
         password,
-      });
+      }, signal);
       
       // Check if cookies were set after login
       const cookies = apiClient.getCookies();
@@ -42,6 +42,11 @@ export const authApi = {
       console.error('[Auth] Login failed with response:', responseStr);
       return { status: 'Fails' };
     } catch (error: any) {
+      // Re-throw abort errors immediately
+      if (error.name === 'AbortError' || error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        throw error;
+      }
+      
       // Enhanced error logging for debugging
       console.error('[Auth] Login error:', {
         message: error.message,

@@ -82,7 +82,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const preferences = await storageService.getPreferences();
       const savedTheme = preferences.theme;
       if (savedTheme !== undefined) {
-        setIsDark(savedTheme === 'dark');
+        setIsDark(savedTheme === true || savedTheme === 'dark');
       }
       // If no saved preference, default to dark (already set)
     } catch (error) {

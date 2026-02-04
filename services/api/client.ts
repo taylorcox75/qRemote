@@ -203,7 +203,7 @@ class ApiClient {
   }
 
   // Helper method for URL-encoded requests
-  async postUrlEncoded(url: string, data: Record<string, any>): Promise<any> {
+  async postUrlEncoded(url: string, data: Record<string, any>, signal?: AbortSignal): Promise<any> {
     // Check server is configured (interceptor will also check, but fail early with better error)
     if (!this.currentServer) {
       throw new Error('No server configured. Please connect to a server first.');
@@ -220,27 +220,27 @@ class ApiClient {
     const body = params.join('&');
 
     // Let the interceptor handle headers (it already sets Content-Type) and baseURL
-    const response = await this.client.post(url, body);
+    const response = await this.client.post(url, body, { signal });
     return response.data;
   }
 
   // Helper method for GET requests
-  async get(url: string, params?: Record<string, any>): Promise<any> {
+  async get(url: string, params?: Record<string, any>, signal?: AbortSignal): Promise<any> {
     if (!this.currentServer) {
       throw new Error('No server configured');
     }
 
-    const response = await this.client.get(url, { params });
+    const response = await this.client.get(url, { params, signal });
     return response.data;
   }
 
   // Helper method for POST requests (JSON)
-  async post(url: string, data?: any): Promise<any> {
+  async post(url: string, data?: any, signal?: AbortSignal): Promise<any> {
     if (!this.currentServer) {
       throw new Error('No server configured');
     }
 
-    const response = await this.client.post(url, data);
+    const response = await this.client.post(url, data, { signal });
     return response.data;
   }
 }
