@@ -59,6 +59,7 @@ export default function EditServerScreen() {
     setTesting(false);
   };
 
+
   useEffect(() => {
     loadServer();
   }, [id]);
@@ -279,7 +280,7 @@ export default function EditServerScreen() {
                   style={[styles.input, { color: colors.text }]}
                   value={host}
                   onChangeText={setHost}
-                  placeholder="IP  / URL (Domain)"
+                  placeholder="IP / Hostname / Domain"
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
