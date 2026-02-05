@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import { useToast, ModalToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { shadows } from '../../constants/shadows';
+import * as Clipboard from 'expo-clipboard';
+import { APP_VERSION } from '../../utils/version';
 
 export default function AddServerScreen() {
   const router = useRouter();
@@ -40,11 +42,114 @@ export default function AddServerScreen() {
   const [testing, setTesting] = useState(false);
   const [showHostTooltip, setShowHostTooltip] = useState(false);
   const [showPortTooltip, setShowPortTooltip] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
   const testAbortController = useRef<AbortController | null>(null);
 
   // Helper function to strip http:// or https:// prefix from host
   const stripProtocol = (hostString: string): string => {
     return hostString.replace(/^(https?:\/\/)/i, '');
+  };
+
+  // Computed debug info for troubleshooting
+  const debugInfo = useMemo(() => {
+    const originalHost = host.trim();
+    const hadProtocol = /^https?:\/\//i.test(originalHost);
+    const strippedProtocol = hadProtocol ? originalHost.match(/^(https?:\/\/)/i)?.[0] : null;
+    const cleanHost = stripProtocol(originalHost);
+    
+    const protocol = useHttps ? 'https' : 'http';
+    const portNum = port.trim() ? parseInt(port, 10) : undefined;
+    const portPart = portNum && portNum > 0 ? `:${portNum}` : '';
+    const baseUrl = `${protocol}://${cleanHost}${portPart}`;
+    
+    // Detect issues
+    const warnings: Array<{ type: 'error' | 'warning' | 'info'; message: string }> = [];
+    
+    // Port in host
+    const portInHost = cleanHost.match(/:(\d+)/);
+    if (portInHost) {
+      warnings.push({ type: 'warning', message: `Port ":${portInHost[1]}" detected in host. Move it to the Port field.` });
+    }
+    
+    // Path in host
+    const pathMatch = cleanHost.match(/\/(.+)/);
+    if (pathMatch) {
+      warnings.push({ type: 'warning', message: `Path "/${pathMatch[1]}" detected in host.` });
+    }
+    
+    // Protocol stripped
+    if (strippedProtocol) {
+      warnings.push({ type: 'info', message: `"${strippedProtocol}" removed. Use the HTTPS toggle instead.` });
+    }
+    
+    // Localhost
+    if (/^(localhost|127\.0\.0\.1)$/i.test(cleanHost.split(':')[0].split('/')[0])) {
+      warnings.push({ type: 'error', message: "Localhost won't work on mobile. Use your server's network IP." });
+    }
+    
+    // DDNS without port
+    const ddnsPatterns = /\.(ddns\.net|duckdns\.org|no-ip\.com|dynu\.com|freedns\.afraid\.org|hopto\.org|zapto\.org|sytes\.net)$/i;
+    if (ddnsPatterns.test(cleanHost) && !portNum) {
+      warnings.push({ type: 'info', message: "DDNS detected without port. Most need port 8080 unless using a reverse proxy." });
+    }
+    
+    // IP without port
+    const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(cleanHost.split(':')[0]);
+    if (isIP && !portNum) {
+      warnings.push({ type: 'info', message: "IP address without port. Usually needs port 8080." });
+    }
+    
+    // HTTPS on private IP
+    const isPrivateIP = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(cleanHost);
+    if (useHttps && isPrivateIP) {
+      warnings.push({ type: 'warning', message: "HTTPS on local IP may fail without a valid certificate." });
+    }
+    
+    // Missing credentials
+    if (!bypassAuth && (!username.trim() || !password.trim())) {
+      warnings.push({ type: 'error', message: "Username and password required (or enable Bypass Authentication)." });
+    }
+    
+    return {
+      originalHost,
+      cleanHost,
+      hadProtocol,
+      strippedProtocol,
+      protocol,
+      portNum,
+      portPart,
+      baseUrl,
+      loginEndpoint: `${baseUrl}/api/v2/auth/login`,
+      versionEndpoint: `${baseUrl}/api/v2/app/version`,
+      warnings,
+      hasErrors: warnings.some(w => w.type === 'error'),
+      hasWarnings: warnings.some(w => w.type === 'warning'),
+    };
+  }, [host, port, useHttps, bypassAuth, username, password]);
+
+  // Copy debug info to clipboard
+  const copyDebugInfo = async () => {
+    const debugText = `=== qBitRemote Debug Info ===
+Full URL: ${debugInfo.baseUrl}
+Protocol: ${debugInfo.protocol}://
+Host: ${debugInfo.cleanHost || '(empty)'}
+Port: ${debugInfo.portNum || 'default (80/443)'}
+HTTPS: ${useHttps ? 'Yes' : 'No'}
+Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}
+
+Login Endpoint: ${debugInfo.loginEndpoint}
+Version Endpoint: ${debugInfo.versionEndpoint}
+
+${debugInfo.warnings.length > 0 ? 'Warnings/Issues:\n' + debugInfo.warnings.map(w => `- [${w.type.toUpperCase()}] ${w.message}`).join('\n') : 'No warnings detected.'}
+
+App Version: ${APP_VERSION}`;
+
+    try {
+      await Clipboard.setStringAsync(debugText);
+      showToast('Debug info copied to clipboard', 'success');
+    } catch (error) {
+      showToast('Failed to copy debug info', 'error');
+    }
   };
 
   const handleCancelTest = () => {
@@ -368,8 +473,117 @@ export default function AddServerScreen() {
                   <Text style={styles.testButtonText}>Test Connection</Text>
                 </TouchableOpacity>
               )}
+              
+              {/* Debug Toggle */}
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="bug-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>Debug Mode</Text>
+                </View>
+                <Switch
+                  value={showDebugInfo}
+                  onValueChange={setShowDebugInfo}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
             </View>
           </View>
+
+          {/* Debug Info - Only shown when toggle is ON */}
+          {showDebugInfo && (
+            <View style={styles.section}>
+              <View style={styles.debugHeaderRow}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  DEBUG INFO {debugInfo.hasErrors ? '⚠' : debugInfo.hasWarnings ? '!' : '✓'}
+                </Text>
+                <TouchableOpacity 
+                  onPress={copyDebugInfo}
+                  style={styles.copyButton}
+                  accessibilityLabel="Copy debug info to clipboard"
+                >
+                  <Ionicons name="copy-outline" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                {/* Full URL */}
+                <View style={styles.debugRow}>
+                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Full URL</Text>
+                  <Text style={[styles.debugValue, { color: colors.text }]} selectable>
+                    {debugInfo.baseUrl}
+                  </Text>
+                </View>
+                
+                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                
+                {/* Breakdown */}
+                <View style={styles.debugRow}>
+                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Protocol</Text>
+                  <Text style={[styles.debugValue, { color: colors.text }]}>{debugInfo.protocol}://</Text>
+                </View>
+                <View style={styles.debugRow}>
+                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Host</Text>
+                  <Text style={[styles.debugValue, { color: colors.text }]}>{debugInfo.cleanHost || '(empty)'}</Text>
+                </View>
+                <View style={styles.debugRow}>
+                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Port</Text>
+                  <Text style={[styles.debugValue, { color: colors.text }]}>
+                    {debugInfo.portNum || 'default (80/443)'}
+                  </Text>
+                </View>
+                
+                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                
+                {/* Endpoints */}
+                <View style={styles.debugRow}>
+                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Login API</Text>
+                  <Text style={[styles.debugValue, { color: colors.text }]} selectable numberOfLines={2}>
+                    {debugInfo.loginEndpoint}
+                  </Text>
+                </View>
+                
+                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                
+                {/* Warnings */}
+                {debugInfo.warnings.length > 0 && (
+                  <View style={styles.debugWarnings}>
+                    {debugInfo.warnings.map((w, i) => (
+                      <View 
+                        key={i} 
+                        style={[
+                          styles.debugWarningRow,
+                          { backgroundColor: w.type === 'error' ? colors.error + '20' : 
+                                             w.type === 'warning' ? colors.warning + '20' : 
+                                             colors.primary + '15' }
+                        ]}
+                      >
+                        <Ionicons 
+                          name={w.type === 'error' ? 'alert-circle' : 
+                                w.type === 'warning' ? 'warning' : 'information-circle'} 
+                          size={16} 
+                          color={w.type === 'error' ? colors.error : 
+                                 w.type === 'warning' ? colors.warning : colors.primary} 
+                        />
+                        <Text style={[styles.debugWarningText, { color: colors.text }]}>
+                          {w.message}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                
+                {debugInfo.warnings.length === 0 && (
+                  <View style={[styles.debugWarningRow, { backgroundColor: colors.success + '20' }]}>
+                    <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                    <Text style={[styles.debugWarningText, { color: colors.text }]}>
+                      Configuration looks good!
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -647,6 +861,49 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Debug panel styles
+  debugHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 0,
+  },
+  copyButton: {
+    padding: 8,
+    marginRight: 4,
+  },
+  debugRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'flex-start',
+  },
+  debugLabel: {
+    width: 70,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  debugValue: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  debugWarnings: {
+    padding: 8,
+    gap: 8,
+  },
+  debugWarningRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 10,
+    borderRadius: 8,
+    gap: 8,
+  },
+  debugWarningText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
 

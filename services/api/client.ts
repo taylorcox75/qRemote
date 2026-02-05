@@ -26,6 +26,8 @@ class ApiClient {
         }
         
         const protocol = this.currentServer.useHttps ? 'https' : 'http';
+        // Defense-in-depth: strip protocol from host even if already sanitized
+        let host = (this.currentServer.host || '').replace(/^(https?:\/\/)/i, '');
         const port = this.currentServer.port;
         const portNum = port !== undefined && port !== null ? Number(port) : undefined;
         const portPart = portNum !== undefined && !isNaN(portNum) && portNum > 0 ? `:${portNum}` : '';
@@ -43,7 +45,7 @@ class ApiClient {
           basePath = basePath.slice(0, -1);
         }
         
-        config.baseURL = `${protocol}://${this.currentServer.host}${portPart}${basePath}`;
+        config.baseURL = `${protocol}://${host}${portPart}${basePath}`;
         
         // Add cookies if available
         if (this.cookies) {
@@ -54,7 +56,7 @@ class ApiClient {
         config.headers.Referer = config.baseURL + '/';
         
         // Add Origin header for CORS/authentication
-        config.headers.Origin = `${protocol}://${this.currentServer.host}${portPart}`;
+        config.headers.Origin = `${protocol}://${host}${portPart}`;
         
         return config;
       },
