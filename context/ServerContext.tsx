@@ -84,9 +84,10 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         setIsConnected(false);
       }
       return success;
-    } catch (error) {
+    } catch (error: any) {
       setIsConnected(false);
-      return false;
+      // Re-throw so callers can show the actual error message in a toast
+      throw error;
     } finally {
       setIsLoading(false);
     }

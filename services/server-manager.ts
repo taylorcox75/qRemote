@@ -3,6 +3,7 @@ import { storageService } from './storage';
 import { apiClient } from './api/client';
 import { authApi } from './api/auth';
 import { applicationApi } from './api/application';
+import { clogInfo, clogWarn, clogError } from './connectivity-log';
 
 export class ServerManager {
   /**
@@ -44,6 +45,7 @@ export class ServerManager {
    */
   static async connectToServer(server: ServerConfig): Promise<boolean> {
     try {
+      clogInfo('CONN', `Connecting to ${server.host}:${server.port || 'default'} (bypassAuth=${server.bypassAuth})`);
       // Set server in API client
       apiClient.setServer(server);
 
@@ -54,10 +56,12 @@ export class ServerManager {
           await applicationApi.getVersion();
           // Connection verified, save as current server
           await storageService.setCurrentServerId(server.id);
+          clogInfo('CONN', 'Connected successfully (bypass auth)');
           return true;
         } catch (error: any) {
           // Connection test failed, clear server
           apiClient.setServer(null);
+          clogError('CONN', `Bypass-auth connect failed: ${error.message}`);
           // Re-throw network/connection errors so they can be handled by the caller
           // Check error codes/types first, then fall back to message string matching
           const isNetworkError = error.code === 'ECONNABORTED' || 
@@ -83,10 +87,12 @@ export class ServerManager {
           await applicationApi.getVersion();
           // Connection verified, save as current server
           await storageService.setCurrentServerId(server.id);
+          clogInfo('CONN', 'Connected successfully (authenticated)');
           return true;
         } catch (error: any) {
           // Connection test failed, clear server
           apiClient.setServer(null);
+          clogError('CONN', `Post-login API check failed: ${error.message}`);
           // Re-throw network/connection errors so they can be handled by the caller
           // Check error codes/types first, then fall back to message string matching
           const isNetworkError = error.code === 'ECONNABORTED' || 
@@ -109,9 +115,11 @@ export class ServerManager {
       }
       
       // Login failed, clear server
+      clogWarn('CONN', 'Login returned Fails — clearing server');
       apiClient.setServer(null);
       return false;
     } catch (error: any) {
+      clogError('CONN', `connectToServer error: ${error.message}`);
       apiClient.setServer(null);
       // Re-throw network/connection errors so they can be handled by the caller
       // Check error codes/types first, then fall back to message string matching
@@ -170,6 +178,7 @@ export class ServerManager {
    */
   static async testConnection(server: ServerConfig, signal?: AbortSignal): Promise<{ success: boolean; error?: string }> {
     const previousServer = apiClient.getServer();
+    clogInfo('CONN', `testConnection to ${server.host}:${server.port || 'default'}`);
     
     try {
       // Set server temporarily for testing
@@ -180,6 +189,7 @@ export class ServerManager {
           // Attempt login with abort signal
           const loginResult = await authApi.login(server.username, server.password, signal);
           if (loginResult.status !== 'Ok') {
+            clogWarn('CONN', 'testConnection: auth failed');
             return { success: false, error: 'Authentication failed. Please check your username and password.' };
           }
         }
@@ -192,6 +202,7 @@ export class ServerManager {
         // Verify connection by making a test API call with abort signal
         await applicationApi.getVersion(signal);
         
+        clogInfo('CONN', 'testConnection succeeded');
         return { success: true };
       } catch (error: any) {
         // Handle cancellation - check for axios cancel errors
@@ -206,6 +217,7 @@ export class ServerManager {
         // Provide more specific error messages
         // Check status codes first, then error codes, then fall back to message string matching
         if (error.response?.status === 403 || error.response?.status === 401 || error.message?.includes('Authentication')) {
+          clogWarn('CONN', `testConnection failed: auth error (${error.response?.status || error.message})`);
           return { success: false, error: 'Authentication failed. Please check your credentials.' };
         } else if (error.code === 'ECONNABORTED' || 
                    error.code === 'ERR_NETWORK' || 
@@ -214,8 +226,10 @@ export class ServerManager {
                    error.message?.includes('timeout') || 
                    error.message?.includes('Connection') || 
                    error.message?.includes('Network')) {
+          clogError('CONN', `testConnection failed: network error (${error.code || error.message})`);
           return { success: false, error: 'Connection failed. Please check your server address and network connection.' };
         } else {
+          clogError('CONN', `testConnection failed: ${error.message}`);
           return { success: false, error: error.message || 'Connection test failed. Please check your settings.' };
         }
       } finally {
