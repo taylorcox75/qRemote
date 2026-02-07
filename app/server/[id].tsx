@@ -21,6 +21,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useServer } from '../../context/ServerContext';
 import { useToast, ModalToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
+import { SuperDebugPanel } from '../../components/SuperDebugPanel';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { shadows } from '../../constants/shadows';
 import * as Clipboard from 'expo-clipboard';
@@ -49,9 +50,9 @@ export default function EditServerScreen() {
   // Preserve basePath from existing servers even though we don't show it in UI
   const [preservedBasePath, setPreservedBasePath] = useState<string>('/');
 
-  // Helper function to strip http:// or https:// prefix from host
+  // Helper function to strip http:// or https:// prefix and trailing colons/slashes from host
   const stripProtocol = (hostString: string): string => {
-    return hostString.replace(/^(https?:\/\/)/i, '');
+    return hostString.replace(/^(https?:\/\/)/i, '').replace(/[:\/]+$/, '');
   };
 
   // Computed debug info for troubleshooting
@@ -529,8 +530,8 @@ App Version: ${APP_VERSION}`;
                   trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
-              </View>
             </View>
+          </View>
           </View>
 
           {/* Debug Info - Only shown when toggle is ON */}
@@ -624,6 +625,16 @@ App Version: ${APP_VERSION}`;
                   </View>
                 )}
               </View>
+
+              {/* Network Diagnostics - part of debug mode */}
+              <SuperDebugPanel
+                host={host}
+                port={port}
+                useHttps={useHttps}
+                username={username}
+                password={password}
+                bypassAuth={bypassAuth}
+              />
             </View>
           )}
 

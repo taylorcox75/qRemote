@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ServerConfig } from '../../types/api';
+import { clogDebug, clogInfo, clogWarn, clogError } from '../connectivity-log';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -26,8 +27,8 @@ class ApiClient {
         }
         
         const protocol = this.currentServer.useHttps ? 'https' : 'http';
-        // Defense-in-depth: strip protocol from host even if already sanitized
-        let host = (this.currentServer.host || '').replace(/^(https?:\/\/)/i, '');
+        // Defense-in-depth: strip protocol and trailing colons/slashes from host even if already sanitized
+        let host = (this.currentServer.host || '').replace(/^(https?:\/\/)/i, '').replace(/[:\/]+$/, '');
         const port = this.currentServer.port;
         const portNum = port !== undefined && port !== null ? Number(port) : undefined;
         const portPart = portNum !== undefined && !isNaN(portNum) && portNum > 0 ? `:${portNum}` : '';
@@ -46,6 +47,8 @@ class ApiClient {
         }
         
         config.baseURL = `${protocol}://${host}${portPart}${basePath}`;
+        
+        clogDebug('HTTP', `${config.method?.toUpperCase() || 'REQ'} ${config.baseURL}${config.url || ''}`);
         
         // Add cookies if available
         if (this.cookies) {
@@ -107,6 +110,7 @@ class ApiClient {
               this.csrfToken = sidMatch[1];
             }
           }
+          clogDebug('HTTP', `Cookies captured: ${this.cookies.substring(0, 60)}...`);
           // console.log('Cookies captured after request:', this.cookies.substring(0, 100));
         } else {
           // Log available headers for debugging
@@ -120,39 +124,48 @@ class ApiClient {
         return response;
       },
       (error: AxiosError) => {
+        const reqUrl = `${error.config?.baseURL || ''}${error.config?.url || ''}`;
+        const status = error.response?.status;
+
         // Handle authentication errors
-        if (error.response?.status === 403) {
+        if (status === 403) {
           this.cookies = '';
+          clogError('HTTP', `403 Forbidden — ${reqUrl}`);
           throw new Error('Authentication failed. Please check your credentials.');
         }
 
         // Handle rate limiting
-        if (error.response?.status === 429) {
+        if (status === 429) {
           const retryAfter =
-            (error.response.headers as any)?.['retry-after'] ??
-            (error.response.headers as any)?.['Retry-After'];
+            (error.response!.headers as any)?.['retry-after'] ??
+            (error.response!.headers as any)?.['Retry-After'];
           const waitMsg = retryAfter ? ` Please retry after ${retryAfter} seconds.` : '';
+          clogWarn('HTTP', `429 Rate Limited — ${reqUrl}${waitMsg}`);
           throw new Error(`Rate limited by server.${waitMsg}`.trim());
         }
 
         // Queueing disabled for priority endpoints
-        if (error.response?.status === 409) {
+        if (status === 409) {
+          clogWarn('HTTP', `409 Conflict — ${reqUrl}`);
           throw new Error('Torrent queueing must be enabled in qBittorrent to change priorities.');
         }
         
         // Handle 404 Not Found errors
-        if (error.response?.status === 404) {
+        if (status === 404) {
           const fullUrl = `${error.config?.baseURL}${error.config?.url}`;
+          clogWarn('HTTP', `404 Not Found — ${fullUrl}`);
           throw new Error(`Endpoint not found: ${fullUrl}. Please check your qBittorrent version and API compatibility.`);
         }
         
         // Handle network errors
         if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+          clogError('HTTP', `Network error (${error.code}) — ${reqUrl}`);
           throw new Error('Connection timeout. Please check your server connection.');
         }
 
         // Handle other errors
         const message = error.response?.data?.toString() || error.message || 'An unknown error occurred';
+        clogError('HTTP', `${status ? 'HTTP ' + status : error.code || 'Unknown'} — ${reqUrl}: ${message}`);
         throw new Error(message);
       }
     );
@@ -165,6 +178,11 @@ class ApiClient {
       this.csrfToken = '';
     }
     this.currentServer = server;
+    if (server) {
+      clogInfo('HTTP', `API client set to ${server.host}:${server.port || 'default'}`);
+    } else {
+      clogInfo('HTTP', 'API client server cleared');
+    }
   }
 
   getServer(): ServerConfig | null {
