@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Dimensions,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
@@ -19,6 +20,7 @@ import { useToast } from '../../context/ToastContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { TorrentCard } from '../../components/TorrentCard';
 import { torrentsApi } from '../../services/api/torrents';
+import { syncApi } from '../../services/api/sync';
 import {
   TorrentProperties,
   Tracker,
@@ -51,6 +53,9 @@ export default function TorrentDetail() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [optimisticPaused, setOptimisticPaused] = useState<boolean | null>(null);
+  const [peersModalVisible, setPeersModalVisible] = useState(false);
+  const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
+  const [peersLoading, setPeersLoading] = useState(false);
 
   useEffect(() => {
     if (hash && isConnected) {
@@ -361,6 +366,29 @@ export default function TorrentDetail() {
     } catch (error: any) {
       showToast(error.message || 'Failed to recheck torrent', 'error');
       setActionLoading(false);
+    }
+  };
+
+  const handleOpenPeerDetails = async () => {
+    if (!hash) return;
+    setPeersModalVisible(true);
+    setPeersLoading(true);
+    setPeersData([]);
+    try {
+      const data = await syncApi.getTorrentPeers(hash, 0);
+      const peersObj = data?.peers ?? {};
+      const list = Object.entries(peersObj).map(([addr, p]: [string, any]) => ({
+        ip: addr,
+        progress: typeof p?.progress === 'number' ? p.progress : 0,
+        client: p?.client || '',
+      }));
+      list.sort((a, b) => b.progress - a.progress);
+      setPeersData(list);
+    } catch (error: any) {
+      showToast(error.message || 'Failed to load peer details', 'error');
+      setPeersModalVisible(false);
+    } finally {
+      setPeersLoading(false);
     }
   };
 
@@ -879,17 +907,31 @@ export default function TorrentDetail() {
           <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Details</Text>
             <View style={styles.infoGrid}>
-              <View style={styles.infoRow}>
+              <View style={[styles.infoRow, styles.infoRowWithButton]}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Seeds</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
                   {torrent.num_seeds || 0} / {torrent.num_complete || 0}
                 </Text>
+                <TouchableOpacity
+                  style={[styles.peersInfoBtn, { backgroundColor: colors.primary }]}
+                  onPress={handleOpenPeerDetails}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="information-circle" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
-              <View style={styles.infoRow}>
+              <View style={[styles.infoRow, styles.infoRowWithButton]}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Peers</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
                   {torrent.num_leechs || 0} / {torrent.num_incomplete || 0}
                 </Text>
+                <TouchableOpacity
+                  style={[styles.peersInfoBtn, { backgroundColor: colors.primary }]}
+                  onPress={handleOpenPeerDetails}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="information-circle" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Availability</Text>
@@ -919,8 +961,71 @@ export default function TorrentDetail() {
                   </View>
                 </>
               )}
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Last Seen Complete</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  {formatDate(torrent.seen_complete)}
+                </Text>
+              </View>
           </View>
         </View>
+
+        {/* Peer Details Modal */}
+        <Modal
+          visible={peersModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setPeersModalVisible(false)}
+        >
+          <View style={styles.peersModalOverlay}>
+            <View style={[styles.peersModalContent, { backgroundColor: colors.surface }]}>
+              <View style={[styles.peersModalHeader, { borderBottomColor: colors.surfaceOutline }]}>
+                <Text style={[styles.peersModalTitle, { color: colors.text }]}>Connected Peers</Text>
+                <TouchableOpacity onPress={() => setPeersModalVisible(false)}>
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+              {peersLoading ? (
+                <View style={styles.peersModalBody}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[styles.peersModalLoadingText, { color: colors.textSecondary }]}>
+                    Loading peer details…
+                  </Text>
+                </View>
+              ) : peersData.length === 0 ? (
+                <View style={styles.peersModalBody}>
+                  <Ionicons name="people-outline" size={48} color={colors.textSecondary} />
+                  <Text style={[styles.peersModalEmptyText, { color: colors.textSecondary }]}>
+                    No connected peers
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView style={styles.peersModalScroll} contentContainerStyle={styles.peersModalScrollContent}>
+                  {peersData.map((p, idx) => (
+                    <View
+                      key={`${p.ip}-${idx}`}
+                      style={[styles.peerRow, { borderBottomColor: colors.surfaceOutline }]}
+                    >
+                      <Text style={[styles.peerProgress, { color: colors.text }]}>
+                        {(p.progress * 100).toFixed(1)}%
+                      </Text>
+                      <View style={styles.peerInfo}>
+                        <Text style={[styles.peerIp, { color: colors.text }]} numberOfLines={1}>
+                          {p.ip}
+                        </Text>
+                        {p.client ? (
+                          <Text style={[styles.peerClient, { color: colors.textSecondary }]} numberOfLines={1}>
+                            {p.client}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </Modal>
 
           {/* Stats Section */}
           {properties && (
@@ -1254,6 +1359,76 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
     textAlign: 'right',
+  },
+  infoRowWithButton: {
+    position: 'relative',
+  },
+  peersInfoBtn: {
+    marginLeft: 8,
+    padding: 4,
+    borderRadius: 12,
+  },
+  peersModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  peersModalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  peersModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  peersModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  peersModalBody: {
+    padding: 32,
+    alignItems: 'center',
+    gap: 12,
+  },
+  peersModalLoadingText: {
+    fontSize: 14,
+  },
+  peersModalEmptyText: {
+    fontSize: 14,
+  },
+  peersModalScroll: {
+    maxHeight: 400,
+  },
+  peersModalScrollContent: {
+    paddingBottom: 24,
+  },
+  peerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    gap: 16,
+  },
+  peerProgress: {
+    fontSize: 16,
+    fontWeight: '600',
+    width: 52,
+  },
+  peerInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  peerIp: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  peerClient: {
+    fontSize: 12,
+    marginTop: 2,
   },
   quickToolsGrid: {
     flexDirection: 'row',
