@@ -16,7 +16,9 @@ import {
   Linking,
   Modal,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { getStoredLanguage, setStoredLanguage } from '../../i18n';
 import { Ionicons } from '@expo/vector-icons';
 import * as MailComposer from 'expo-mail-composer';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -100,6 +102,7 @@ const CHANGELOG = [
 ];
 
 export default function SettingsScreen() {
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const { currentServer, isConnected, connectToServer, disconnect } = useServer();
   const { categories, tags } = useTorrents();
@@ -128,6 +131,7 @@ export default function SettingsScreen() {
   // Picker states
   const [sortByPickerVisible, setSortByPickerVisible] = useState(false);
   const [filterPickerVisible, setFilterPickerVisible] = useState(false);
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   
   // Default Torrent Behaviors
   const [pauseOnAdd, setPauseOnAdd] = useState(false);
@@ -189,7 +193,7 @@ export default function SettingsScreen() {
       const serverList = await ServerManager.getServers();
       setServers(serverList);
     } catch (error) {
-      showToast('Failed to load servers', 'error');
+      showToast(t('errors.failedToLoadServers'), 'error');
     } finally {
       setLoading(false);
     }
@@ -287,9 +291,9 @@ export default function SettingsScreen() {
   const handleShutdown = async () => {
     try {
       await applicationApi.shutdown();
-      showToast('Application shutdown initiated', 'success');
+      showToast(t('toast.shutdownInitiated'), 'success');
     } catch (error) {
-      showToast('Failed to shutdown application', 'error');
+      showToast(t('errors.failedToShutdown'), 'error');
     }
   };
 
@@ -331,7 +335,7 @@ export default function SettingsScreen() {
       // Use documentDirectory which is more accessible for sharing
       const docDir = FileSystem.documentDirectory;
       if (!docDir) {
-        showToast('File system not available', 'error');
+        showToast(t('errors.fileSystemNotAvailable'), 'error');
         return;
       }
       
@@ -355,11 +359,11 @@ export default function SettingsScreen() {
         
         await Sharing.shareAsync(fileUri, shareOptions);
       } else {
-        showToast('Sharing not available', 'error');
+        showToast(t('errors.sharingNotAvailable'), 'error');
       }
     } catch (error: any) {
       console.error('Export settings error:', error);
-      showToast(error.message || 'Failed to export settings', 'error');
+      showToast(error.message || t('errors.failedToExportSettings'), 'error');
     }
   };
 
@@ -380,7 +384,7 @@ export default function SettingsScreen() {
 
       // Validate the import data structure
       if (!importData.preferences || !importData.servers) {
-        showToast('Invalid settings file format', 'error');
+        showToast(t('errors.invalidSettingsFormat'), 'error');
         return;
       }
 
@@ -405,36 +409,44 @@ export default function SettingsScreen() {
       await loadPreferences();
       await loadServers();
 
-      showToast('Settings imported successfully', 'success');
+      showToast(t('toast.settingsImported'), 'success');
     } catch (error: any) {
       console.error('Import settings error:', error);
       if (error.message?.includes('JSON')) {
-        showToast('Failed to parse settings file. Please check the file format.', 'error');
+        showToast(t('errors.failedToParseSettings'), 'error');
       } else {
-        showToast(error.message || 'Failed to import settings', 'error');
+        showToast(error.message || t('errors.failedToImportSettings'), 'error');
       }
     }
   };
 
   // Picker options
   const sortByOptions: OptionPickerItem[] = [
-    { label: 'Name', value: 'name', icon: 'text-outline' },
-    { label: 'Size', value: 'size', icon: 'disc-outline' },
-    { label: 'Progress', value: 'progress', icon: 'pie-chart-outline' },
-    { label: 'UL Ratio', value: 'ratio', icon: 'swap-horizontal-outline' },
-    { label: 'Download Speed', value: 'dlspeed', icon: 'download-outline' },
-    { label: 'Upload Speed', value: 'upspeed', icon: 'arrow-up-outline' },
-    { label: 'Added Date', value: 'added_on', icon: 'calendar-outline' },
+    { label: t('sort.name'), value: 'name', icon: 'text-outline' },
+    { label: t('sort.size'), value: 'size', icon: 'disc-outline' },
+    { label: t('sort.progress'), value: 'progress', icon: 'pie-chart-outline' },
+    { label: t('sort.ulRatio'), value: 'ratio', icon: 'swap-horizontal-outline' },
+    { label: t('sort.dlSpeed'), value: 'dlspeed', icon: 'download-outline' },
+    { label: t('sort.ulSpeed'), value: 'upspeed', icon: 'arrow-up-outline' },
+    { label: t('sort.dateAdded'), value: 'added_on', icon: 'calendar-outline' },
   ];
 
   const filterOptions: OptionPickerItem[] = [
-    { label: 'All', value: 'all', icon: 'grid-outline' },
-    { label: 'Active', value: 'active', icon: 'pulse' },
-    { label: 'Done', value: 'completed', icon: 'checkmark-circle' },
-    { label: 'Paused', value: 'paused', icon: 'pause-circle' },
-    { label: 'Stuck', value: 'stuck', icon: 'warning' },
-    { label: 'DL', value: 'downloading', icon: 'arrow-down' },
-    { label: 'UL', value: 'uploading', icon: 'arrow-up' },
+    { label: t('filters.all'), value: 'all', icon: 'grid-outline' },
+    { label: t('filters.active'), value: 'active', icon: 'pulse' },
+    { label: t('filters.completed'), value: 'completed', icon: 'checkmark-circle' },
+    { label: t('filters.paused'), value: 'paused', icon: 'pause-circle' },
+    { label: t('filters.stuck'), value: 'stuck', icon: 'warning' },
+    { label: t('filters.downloading'), value: 'downloading', icon: 'arrow-down' },
+    { label: t('filters.uploading'), value: 'uploading', icon: 'arrow-up' },
+  ];
+
+  const languageOptions: OptionPickerItem[] = [
+    { label: 'English', value: 'en', icon: 'language-outline' },
+    { label: 'Español', value: 'es', icon: 'language-outline' },
+    { label: '中文', value: 'zh', icon: 'language-outline' },
+    { label: 'Français', value: 'fr', icon: 'language-outline' },
+    { label: 'Deutsch', value: 'de', icon: 'language-outline' },
   ];
 
 
@@ -451,18 +463,18 @@ export default function SettingsScreen() {
     try {
       const success = await connectToServer(server);
       if (success) {
-        showToast(`Connected to ${server.name}`, 'success');
+        showToast(t('toast.connectedTo', { name: server.name }), 'success');
       } else {
-        showToast('Failed to connect. Please check your credentials.', 'error');
+        showToast(t('errors.checkCredentials'), 'error');
       }
     } catch (error: any) {
-      showToast(error.message || 'Failed to connect', 'error');
+      showToast(error.message || t('errors.failedToConnect'), 'error');
     }
   };
 
   const handleDisconnect = async () => {
     await disconnect();
-    showToast('Disconnected from server', 'info');
+    showToast(t('toast.disconnected'), 'info');
   };
 
   const handleDeleteServer = async (server: ServerConfig) => {
@@ -483,9 +495,9 @@ export default function SettingsScreen() {
           await disconnect();
         }
       }
-      showToast(`Server "${server.name}" deleted`, 'success');
+      showToast(t('toast.serverDeleted', { name: server.name }), 'success');
     } catch (error) {
-      showToast('Failed to delete server', 'error');
+      showToast(t('errors.failedToDeleteServer'), 'error');
     }
   };
         
@@ -493,7 +505,7 @@ export default function SettingsScreen() {
 
   const handleAddCategory = async () => {
     if (!categoryName.trim()) {
-      showToast('Please enter a category name', 'error');
+      showToast(t('errors.enterCategoryName'), 'error');
       return;
     }
     const categoryToAdd = categoryName.trim();
@@ -502,15 +514,15 @@ export default function SettingsScreen() {
       setCategoryName('');
       setCategorySavePath('');
       setShowAddCategory(false);
-      showToast(`Category "${categoryToAdd}" added`, 'success');
+      showToast(t('toast.categoryAdded', { name: categoryToAdd }), 'success');
     } catch (error) {
-      showToast('Failed to add category', 'error');
+      showToast(t('errors.failedToAddCategory'), 'error');
     }
   };
 
   const handleAddTag = async () => {
     if (!tagName.trim()) {
-      showToast('Please enter a tag name', 'error');
+      showToast(t('errors.enterTagName'), 'error');
       return;
     }
     const tagToAdd = tagName.trim();
@@ -518,9 +530,9 @@ export default function SettingsScreen() {
       await tagsApi.createTags([tagToAdd]);
       setTagName('');
       setShowAddTag(false);
-      showToast(`Tag "${tagToAdd}" created`, 'success');
+      showToast(t('toast.tagCreated', { name: tagToAdd }), 'success');
     } catch (error) {
-      showToast('Failed to create tag', 'error');
+      showToast(t('errors.failedToCreateTag'), 'error');
     }
   };
 
@@ -542,7 +554,7 @@ export default function SettingsScreen() {
         {/* Connection Status */}
         {currentServer && (
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>CONNECTION</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.connection').toUpperCase()}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.connectionRow}>
                 <View style={styles.connectionInfo}>
@@ -571,7 +583,7 @@ export default function SettingsScreen() {
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
-                    Disconnect
+                    {t('screens.settings.disconnect')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -582,7 +594,7 @@ export default function SettingsScreen() {
         {/* Servers */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>SERVERS</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.servers').toUpperCase()}</Text>
             <TouchableOpacity onPress={handleAddServer}>
               <Ionicons name="add-circle" size={24} color={colors.primary} />
             </TouchableOpacity>
@@ -591,9 +603,9 @@ export default function SettingsScreen() {
             {servers.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="server-outline" size={40} color={colors.textSecondary} />
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No servers configured</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('screens.settings.noServersConfigured')}</Text>
                 <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }]} onPress={handleAddServer}>
-                  <Text style={styles.primaryButtonText}>Add Server</Text>
+                  <Text style={styles.primaryButtonText}>{t('screens.settings.addServer')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -614,14 +626,37 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* App / Language */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.app').toUpperCase()}</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="language-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.language')}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setLanguagePickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pickerText, { color: colors.text }]}>
+                  {languageOptions.find((opt) => opt.value === ((i18n.language || 'en').startsWith('zh') ? 'zh' : (i18n.language || 'en')))?.label || 'English'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         {/* Torrent List Settings */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT LIST</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.torrentList').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Sort By</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.defaultSortBy')}</Text>
               </View>
               <TouchableOpacity
                 style={styles.pickerButton}
@@ -629,7 +664,7 @@ export default function SettingsScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.pickerText, { color: colors.text }]}>
-                  {defaultSortBy === 'name' ? 'Name' : defaultSortBy === 'size' ? 'Size' : defaultSortBy === 'progress' ? 'Progress' : defaultSortBy === 'ratio' ? 'UL Ratio' : defaultSortBy === 'dlspeed' ? 'Download Speed' : defaultSortBy === 'upspeed' ? 'Upload Speed' : 'Added Date'}
+                  {sortByOptions.find(opt => opt.value === defaultSortBy)?.label || t('sort.dateAdded')}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -638,7 +673,7 @@ export default function SettingsScreen() {
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Sort Direction</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.defaultSortDirection')}</Text>
               </View>
               <TouchableOpacity
                 style={styles.pickerButton}
@@ -655,7 +690,7 @@ export default function SettingsScreen() {
                   color={colors.primary} 
                 />
                 <Text style={[styles.pickerText, { color: colors.text, marginLeft: 8 }]}>
-                  {defaultSortDirection === 'asc' ? 'Ascending' : 'Descending'}
+                  {defaultSortDirection === 'asc' ? t('screens.settings.ascending') : t('screens.settings.descending')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -663,7 +698,7 @@ export default function SettingsScreen() {
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="funnel-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Default Filter</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.defaultFilter')}</Text>
               </View>
               <TouchableOpacity
                 style={styles.pickerButton}
@@ -671,7 +706,7 @@ export default function SettingsScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.pickerText, { color: colors.text }]}>
-                  {filterOptions.find(opt => opt.value === defaultFilter)?.label || defaultFilter.charAt(0).toUpperCase() + defaultFilter.slice(1)}
+                  {filterOptions.find(opt => opt.value === defaultFilter)?.label || defaultFilter}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -681,12 +716,12 @@ export default function SettingsScreen() {
 
         {/* Torrent Behavior */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT BEHAVIOR</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.torrentBehavior').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="pause-circle-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Pause on Add</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.pauseOnAdd')}</Text>
               </View>
               <Switch
                 value={pauseOnAdd}
@@ -703,7 +738,7 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="folder-outline" size={22} color={colors.primary} />
                 <View>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Default Save Path</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.defaultSavePath')}</Text>
                   {defaultSavePath && <Text style={[styles.settingHint, { color: colors.textSecondary }]} numberOfLines={1}>{defaultSavePath}</Text>}
                 </View>
               </View>
@@ -717,7 +752,7 @@ export default function SettingsScreen() {
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="pricetag-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Auto-categorize by Tracker</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.autoCategorizeByTracker')}</Text>
               </View>
               <Switch
                 value={autoCategorizeByTracker}
@@ -734,7 +769,7 @@ export default function SettingsScreen() {
 
         {/* Appearance */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>APPEARANCE</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.appearance').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <TouchableOpacity
               style={styles.settingRow}
@@ -744,9 +779,9 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="color-palette-outline" size={22} color={colors.primary} />
                 <View>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Theme & Colors</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.themeAndColors')}</Text>
                   <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                    Customize theme and color settings
+                    {t('screens.settings.themeDescription')}
                   </Text>
                 </View>
               </View>
@@ -760,7 +795,7 @@ export default function SettingsScreen() {
                   size={22} 
                   color={colors.primary} 
                 />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Compact Card View</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.compactCardView')}</Text>
               </View>
               <Switch
                 value={cardViewMode === 'compact'}
@@ -774,8 +809,8 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="refresh-outline" size={22} color={colors.primary} />
                 <View>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Refresh Interval</Text>
-                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Milliseconds</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.refreshInterval')}</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.milliseconds')}</Text>
                 </View>
               </View>
               <TextInput
@@ -794,7 +829,7 @@ export default function SettingsScreen() {
         {isConnected && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>CATEGORIES</Text>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.categories').toUpperCase()}</Text>
               <TouchableOpacity onPress={() => setShowAddCategory(!showAddCategory)}>
                 <Ionicons name={showAddCategory ? 'close-circle' : 'add-circle'} size={24} color={colors.primary} />
               </TouchableOpacity>
@@ -804,20 +839,20 @@ export default function SettingsScreen() {
                 <View style={styles.addForm}>
                   <TextInput
                     style={[styles.formInput, { backgroundColor: colors.background, borderColor: colors.surfaceOutline, color: colors.text }]}
-                    placeholder="Category name"
+                    placeholder={t('screens.settings.categoryName')}
                     placeholderTextColor={colors.textSecondary}
                     value={categoryName}
                     onChangeText={setCategoryName}
                   />
                   <TextInput
                     style={[styles.formInput, { backgroundColor: colors.background, borderColor: colors.surfaceOutline, color: colors.text }]}
-                    placeholder="Save path (optional)"
+                    placeholder={t('screens.settings.savePathOptional')}
                     placeholderTextColor={colors.textSecondary}
                     value={categorySavePath}
                     onChangeText={setCategorySavePath}
                   />
                   <TouchableOpacity style={[styles.formButton, { backgroundColor: colors.primary }]} onPress={handleAddCategory}>
-                    <Text style={styles.formButtonText}>Add Category</Text>
+                    <Text style={styles.formButtonText}>{t('screens.settings.addCategory')}</Text>
                   </TouchableOpacity>
                   <View style={[styles.separator, { backgroundColor: colors.surfaceOutline, marginTop: 16, marginLeft: 0 }]} />
                 </View>
@@ -825,8 +860,8 @@ export default function SettingsScreen() {
               {Object.keys(categories).length === 0 && !showAddCategory ? (
                 <View style={styles.emptyStateSmall}>
                   <Ionicons name="folder-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
-                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>No categories</Text>
-                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>Create your first category to organize torrents</Text>
+                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>{t('screens.settings.noCategories')}</Text>
+                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>{t('screens.settings.noCategoriesHint')}</Text>
                 </View>
               ) : (
                 Object.entries(categories).map(([name, category], index) => (
@@ -848,9 +883,9 @@ export default function SettingsScreen() {
                           onPress={async () => {
                             try {
                               await categoriesApi.removeCategories([name]);
-                              showToast(`Category "${name}" deleted`, 'success');
+                              showToast(t('toast.categoryDeleted', { name }), 'success');
                             } catch (error) {
-                              showToast('Failed to delete category', 'error');
+                              showToast(t('errors.failedToDeleteCategory'), 'error');
                             }
                           }}
                         >
@@ -870,7 +905,7 @@ export default function SettingsScreen() {
         {isConnected && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TAGS</Text>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.tags').toUpperCase()}</Text>
               <TouchableOpacity onPress={() => setShowAddTag(!showAddTag)}>
                 <Ionicons name={showAddTag ? 'close-circle' : 'add-circle'} size={24} color={colors.primary} />
               </TouchableOpacity>
@@ -880,13 +915,13 @@ export default function SettingsScreen() {
                 <View style={styles.addForm}>
                   <TextInput
                     style={[styles.formInput, { backgroundColor: colors.background, borderColor: colors.surfaceOutline, color: colors.text }]}
-                    placeholder="Tag name"
+                    placeholder={t('screens.settings.tagName')}
                     placeholderTextColor={colors.textSecondary}
                     value={tagName}
                     onChangeText={setTagName}
                   />
                   <TouchableOpacity style={[styles.formButton, { backgroundColor: colors.primary }]} onPress={handleAddTag}>
-                    <Text style={styles.formButtonText}>Create Tag</Text>
+                    <Text style={styles.formButtonText}>{t('screens.settings.createTag')}</Text>
                   </TouchableOpacity>
                   <View style={[styles.separator, { backgroundColor: colors.background  , marginTop: 16, marginLeft: 0 }]} />
                 </View>
@@ -894,8 +929,8 @@ export default function SettingsScreen() {
               {tags.length === 0 && !showAddTag ? (
                 <View style={styles.emptyStateSmall}>
                   <Ionicons name="pricetag-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
-                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>No tags</Text>
-                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>Add tags to label and filter your torrents</Text>
+                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>{t('screens.settings.noTags')}</Text>
+                  <Text style={[styles.emptyTextSmall, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>{t('screens.settings.noTagsHint')}</Text>
                 </View>
               ) : (
                 <View style={styles.tagsWrap}>
@@ -906,9 +941,9 @@ export default function SettingsScreen() {
                       onLongPress={async () => {
                         try {
                           await tagsApi.deleteTags([tag]);
-                          showToast(`Tag "${tag}" deleted`, 'success');
+                          showToast(t('toast.tagDeleted', { tag }), 'success');
                         } catch (error) {
-                          showToast('Failed to delete tag', 'error');
+                          showToast(t('errors.failedToDeleteTag'), 'error');
                         }
                       }}
                     >
@@ -924,14 +959,14 @@ export default function SettingsScreen() {
 
         {/* Notifications & Feedback */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>NOTIFICATIONS & FEEDBACK</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.notificationsFeedback').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="timer-outline" size={22} color={colors.primary} />
                 <View>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Notification Duration</Text>
-                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Milliseconds</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.notificationDuration')}</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.milliseconds')}</Text>
                 </View>
               </View>
               <TextInput
@@ -952,7 +987,7 @@ export default function SettingsScreen() {
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="phone-portrait-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Haptic Feedback</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.hapticFeedback')}</Text>
               </View>
               <Switch
                 value={hapticFeedback}
@@ -969,12 +1004,12 @@ export default function SettingsScreen() {
 
         {/* Server Management Enhancements */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>SERVER MANAGEMENT</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.serverManagement').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="flash-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Auto-connect to Last Server</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.autoConnectLastServer')}</Text>
               </View>
               <Switch
                 value={autoConnectLastServer}
@@ -991,8 +1026,8 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="timer-outline" size={22} color={colors.primary} />
                 <View>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Connection Timeout</Text>
-                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Milliseconds</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.connectionTimeout')}</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.milliseconds')}</Text>
                 </View>
               </View>
               <TextInput
@@ -1014,14 +1049,14 @@ export default function SettingsScreen() {
 
         {/* Advanced Settings */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ADVANCED</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.advanced').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="hourglass-outline" size={22} color={colors.primary} />
                 <View>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>API Timeout</Text>
-                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Milliseconds</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.apiTimeout')}</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.milliseconds')}</Text>
                 </View>
               </View>
               <TextInput
@@ -1043,8 +1078,8 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="repeat-outline" size={22} color={colors.primary} />
                 <View>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Retry Attempts</Text>
-                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Number of retries</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.retryAttempts')}</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.retryAttemptsHint')}</Text>
                 </View>
               </View>
               <TextInput
@@ -1065,7 +1100,7 @@ export default function SettingsScreen() {
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="bug-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Debug Mode</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.debugMode')}</Text>
               </View>
               <Switch
                 value={debugMode}
@@ -1082,12 +1117,12 @@ export default function SettingsScreen() {
 
         {/* Backup & Restore */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>BACKUP & RESTORE</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.backupRestore').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <TouchableOpacity style={styles.settingRow} onPress={exportSettings}>
               <View style={styles.settingLeft}>
                 <Ionicons name="download-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Export Settings</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.exportSettings')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -1095,7 +1130,7 @@ export default function SettingsScreen() {
             <TouchableOpacity style={styles.settingRow} onPress={importSettings}>
               <View style={styles.settingLeft}>
                 <Ionicons name="cloud-upload-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Import Settings</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.importSettings')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -1105,7 +1140,7 @@ export default function SettingsScreen() {
         {/* Application Info - qBittorrent Server */}
         {isConnected && (
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>QBITTORRENT SERVER</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.qbittorrentServer').toUpperCase()}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               {loadingAppInfo ? (
                 <View style={styles.loadingState}>
@@ -1136,7 +1171,7 @@ export default function SettingsScreen() {
 
         {/* About qRemote - Community Links */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>COMMUNITY</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.community').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <TouchableOpacity 
               style={styles.settingRow}
@@ -1145,7 +1180,7 @@ export default function SettingsScreen() {
             >
               <View style={styles.settingLeft}>
                 <Ionicons name="logo-github" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Source Code</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.sourceCode')}</Text>
               </View>
               <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -1157,7 +1192,7 @@ export default function SettingsScreen() {
             >
               <View style={styles.settingLeft}>
                 <Ionicons name="bug-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Report Issue</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.reportIssue')}</Text>
               </View>
               <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -1169,7 +1204,7 @@ export default function SettingsScreen() {
             >
               <View style={styles.settingLeft}>
                 <Ionicons name="beer-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>Buy Me a Beer</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.buyMeBeer')}</Text>
               </View>
               <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -1178,9 +1213,9 @@ export default function SettingsScreen() {
 
         {/* App Info */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>APP INFO</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.appInfo').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <InfoRow icon="information-circle-outline" label="App Version" value={APP_VERSION} colors={colors} />
+            <InfoRow icon="information-circle-outline" label={t('screens.settings.appVersion')} value={APP_VERSION} colors={colors} />
             <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
             <TouchableOpacity 
               style={styles.settingRow}
@@ -1189,28 +1224,28 @@ export default function SettingsScreen() {
             >
               <View style={styles.settingLeft}>
                 <Ionicons name="sparkles-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>What's New</Text>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.whatsNew')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
             <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
             <InfoRow icon="logo-react" label="React Native" value={Platform.constants.reactNativeVersion?.major + '.' + Platform.constants.reactNativeVersion?.minor + '.' + Platform.constants.reactNativeVersion?.patch || 'N/A'} colors={colors} />
             <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-            <InfoRow icon="phone-portrait-outline" label="Platform" value={Platform.OS.charAt(0).toUpperCase() + Platform.OS.slice(1)} colors={colors} />
+            <InfoRow icon="phone-portrait-outline" label={t('screens.settings.platform')} value={Platform.OS.charAt(0).toUpperCase() + Platform.OS.slice(1)} colors={colors} />
           </View>
         </View>
 
         {/* Danger Zone */}
         {isConnected && (
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.error }]}>DANGER ZONE</Text>
+            <Text style={[styles.sectionHeader, { color: colors.error }]}>{t('screens.settings.dangerZone').toUpperCase()}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity style={styles.dangerRow} onPress={handleShutdown}>
                 <View style={styles.dangerLeft}>
                   <Ionicons name="power-outline" size={22} color={colors.error} />
                   <View>
-                    <Text style={[styles.dangerLabel, { color: colors.error }]}>Shutdown qBittorrent</Text>
-                    <Text style={[styles.dangerHint, { color: colors.textSecondary }]}>Stop the application</Text>
+                    <Text style={[styles.dangerLabel, { color: colors.error }]}>{t('screens.settings.shutdownQbittorrent')}</Text>
+                    <Text style={[styles.dangerHint, { color: colors.textSecondary }]}>{t('screens.settings.shutdownHint')}</Text>
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -1225,7 +1260,7 @@ export default function SettingsScreen() {
       {/* Option Pickers */}
       <OptionPicker
         visible={sortByPickerVisible}
-        title="Sort By"
+        title={t('screens.settings.sortBy')}
         options={sortByOptions}
         selectedValue={defaultSortBy}
         onSelect={(value) => {
@@ -1238,7 +1273,7 @@ export default function SettingsScreen() {
 
       <OptionPicker
         visible={filterPickerVisible}
-        title="Default Filter"
+        title={t('screens.settings.defaultFilter')}
         options={filterOptions}
         selectedValue={defaultFilter}
         onSelect={(value) => {
@@ -1249,12 +1284,25 @@ export default function SettingsScreen() {
         onClose={() => setFilterPickerVisible(false)}
       />
 
+      <OptionPicker
+        visible={languagePickerVisible}
+        title={t('screens.settings.language')}
+        options={languageOptions}
+        selectedValue={(i18n.language || 'en').startsWith('zh') ? 'zh' : (i18n.language || 'en')}
+        onSelect={async (value) => {
+          await setStoredLanguage(value);
+          await i18n.changeLanguage(value);
+          setLanguagePickerVisible(false);
+        }}
+        onClose={() => setLanguagePickerVisible(false)}
+      />
+
       {/* Default Save Path Modal */}
       <InputModal
         visible={savePathModalVisible}
-        title="Default Save Path"
-        message="Enter default save path for new torrents"
-        placeholder="/path/to/downloads"
+        title={t('screens.settings.defaultSavePathTitle')}
+        message={t('screens.settings.defaultSavePathMessage')}
+        placeholder={t('screens.settings.defaultSavePathPlaceholder')}
         defaultValue={defaultSavePath}
         keyboardType="default"
         onCancel={() => setSavePathModalVisible(false)}
@@ -1276,7 +1324,7 @@ export default function SettingsScreen() {
           <View style={[styles.modalHeader, { borderBottomColor: colors.surfaceOutline }]}>
             <View style={styles.modalTitleContainer}>
               <Ionicons name="sparkles" size={28} color={colors.primary} />
-              <Text style={[styles.modalTitle, { color: colors.text }]}>What's New</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('screens.settings.whatsNew')}</Text>
             </View>
             <TouchableOpacity onPress={() => setShowWhatsNew(false)} style={styles.modalCloseButton}>
               <Ionicons name="close" size={28} color={colors.textSecondary} />
@@ -1326,6 +1374,7 @@ function SwipeableServerItem({
   onDelete: () => void;
   isLast: boolean;
 }) {
+  const { t } = useTranslation();
   const translateX = useRef(new Animated.Value(0)).current;
   const isSwipeOpen = useRef(false);
   
@@ -1414,7 +1463,7 @@ function SwipeableServerItem({
             accessibilityHint="Swipe left or tap to delete this server"
           >
             <Ionicons name="trash" size={24} color="#FFFFFF" />
-            <Text style={styles.swipeableActionText}>Delete</Text>
+            <Text style={styles.swipeableActionText}>{t('common.delete')}</Text>
           </TouchableOpacity>
         </View>
         {/* Main content */}
@@ -1451,14 +1500,14 @@ function SwipeableServerItem({
                       onDisconnect();
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`Disconnect from ${server.name}`}
+                    accessibilityLabel={t('screens.settings.disconnect') + ' ' + server.name}
                   >
                     <Text 
                       style={styles.smallButtonText}
                       numberOfLines={1}
                       adjustsFontSizeToFit
                     >
-                      Disconnect
+                      {t('screens.settings.disconnect')}
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -1471,7 +1520,7 @@ function SwipeableServerItem({
                     accessibilityRole="button"
                     accessibilityLabel={`Connect to ${server.name}`}
                   >
-                    <Text style={styles.smallButtonText}>Connect</Text>
+                    <Text style={styles.smallButtonText}>{t('screens.settings.connect')}</Text>
                   </TouchableOpacity>
                 )}
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />

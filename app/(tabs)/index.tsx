@@ -15,6 +15,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -33,6 +34,7 @@ import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
 
 export default function TorrentsScreen() {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const router = useRouter();
   const navigation = useNavigation();
@@ -256,7 +258,7 @@ export default function TorrentsScreen() {
       setSelectedHashes(new Set());
       setSelectMode(false);
     } catch (error: any) {
-      showToast(error.message || 'Failed to pause torrents', 'error');
+      showToast(error.message || t('errors.failedToPause'), 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -271,7 +273,7 @@ export default function TorrentsScreen() {
       setSelectedHashes(new Set());
       setSelectMode(false);
     } catch (error: any) {
-      showToast(error.message || 'Failed to resume torrents', 'error');
+      showToast(error.message || t('errors.failedToResume'), 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -279,11 +281,12 @@ export default function TorrentsScreen() {
 
   const handleBulkDelete = () => {
     if (selectedHashes.size === 0) return;
+    const count = selectedHashes.size;
     Alert.alert(
-      'Delete Torrents',
-      `Delete ${selectedHashes.size} torrent(s)?`,
+      t('alerts.deleteTorrents', { count }),
+      t('alerts.deleteConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
           text: 'Torrent Only',
           onPress: async () => {
@@ -293,9 +296,9 @@ export default function TorrentsScreen() {
               refresh();
               setSelectedHashes(new Set());
               setSelectMode(false);
-              showToast(`${selectedHashes.size} torrent(s) deleted`, 'success');
+              showToast(t('toast.torrentsDeleted_other', { count }), 'success');
             } catch (error: any) {
-              showToast(error.message || 'Failed to delete torrents', 'error');
+              showToast(error.message || t('errors.failedToDelete'), 'error');
             } finally {
               setBulkLoading(false);
             }
@@ -311,9 +314,9 @@ export default function TorrentsScreen() {
               refresh();
               setSelectedHashes(new Set());
               setSelectMode(false);
-              showToast(`${selectedHashes.size} torrent(s) deleted`, 'success');
+              showToast(t('toast.torrentsDeleted_other', { count }), 'success');
             } catch (error: any) {
-              showToast(error.message || 'Failed to delete torrents', 'error');
+              showToast(error.message || t('errors.failedToDelete'), 'error');
             } finally {
               setBulkLoading(false);
             }
@@ -340,7 +343,7 @@ export default function TorrentsScreen() {
         
         // Validate it's a .torrent file by checking the extension
         if (!file.name.toLowerCase().endsWith('.torrent')) {
-          showToast('Please select a .torrent file', 'error');
+          showToast(t('errors.selectTorrentFile'), 'error');
           return;
         }
         
@@ -352,18 +355,18 @@ export default function TorrentsScreen() {
         showToast(`File selected: ${file.name}`, 'success');
       }
     } catch (error: any) {
-      showToast(error.message || 'Failed to pick file', 'error');
+      showToast(error.message || t('errors.failedToPickFile'), 'error');
     }
   };
 
   const handleSubmitTorrent = async () => {
     if (!torrentUrl.trim() && !selectedFile) {
-      showToast('Please enter a URL/magnet link or select a .torrent file', 'error');
+      showToast(t('errors.enterUrlOrMagnet'), 'error');
       return;
     }
 
     if (!isConnected) {
-      showToast('Not connected to a server', 'error');
+      showToast(t('toast.notConnected'), 'error');
       return;
     }
 
@@ -382,9 +385,9 @@ export default function TorrentsScreen() {
       setSelectedFile(null);
       setShowAddModal(false);
       refresh();
-      showToast('Torrent added successfully', 'success');
+      showToast(t('toast.torrentAdded'), 'success');
     } catch (error: any) {
-      showToast(error.message || 'Failed to add torrent', 'error');
+      showToast(error.message || t('errors.failedToAdd'), 'error');
     } finally {
       setAddingTorrent(false);
     }
@@ -522,24 +525,23 @@ export default function TorrentsScreen() {
 
   // Filter options
   const filterOptions = [
-    { key: 'all', label: 'All', icon: 'grid-outline' },
-    { key: 'active', label: 'Active', icon: 'pulse' },
-    { key: 'completed', label: 'Done', icon: 'checkmark-circle' },
-    { key: 'paused', label: 'Paused', icon: 'pause-circle' },
-    { key: 'stuck', label: 'Stuck', icon: 'warning' },
-    { key: 'downloading', label: 'DL', icon: 'arrow-down' },
-    { key: 'uploading', label: 'UL', icon: 'arrow-up' },
+    { key: 'all', labelKey: 'filters.all', icon: 'grid-outline' },
+    { key: 'active', labelKey: 'filters.active', icon: 'pulse' },
+    { key: 'completed', labelKey: 'filters.completed', icon: 'checkmark-circle' },
+    { key: 'paused', labelKey: 'filters.paused', icon: 'pause-circle' },
+    { key: 'stuck', labelKey: 'filters.stuck', icon: 'warning' },
+    { key: 'downloading', labelKey: 'filters.downloading', icon: 'arrow-down' },
+    { key: 'uploading', labelKey: 'filters.uploading', icon: 'arrow-up' },
   ];
 
-  // Sort options
   const sortOptions = [
-    { key: 'added_on' as const, label: 'Date Added', icon: 'time-outline' },
-    { key: 'name' as const, label: 'Name', icon: 'text-outline' },
-    { key: 'size' as const, label: 'Size', icon: 'albums-outline' },
-    { key: 'progress' as const, label: 'Progress', icon: 'stats-chart-outline' },
-    { key: 'ratio' as const, label: 'UL Ratio', icon: 'swap-horizontal-outline' },
-    { key: 'dlspeed' as const, label: 'DL Speed', icon: 'arrow-down-outline' },
-    { key: 'upspeed' as const, label: 'UL Speed', icon: 'arrow-up-outline' },
+    { key: 'added_on' as const, labelKey: 'sort.dateAdded', icon: 'time-outline' },
+    { key: 'name' as const, labelKey: 'sort.name', icon: 'text-outline' },
+    { key: 'size' as const, labelKey: 'sort.size', icon: 'albums-outline' },
+    { key: 'progress' as const, labelKey: 'sort.progress', icon: 'stats-chart-outline' },
+    { key: 'ratio' as const, labelKey: 'sort.ulRatio', icon: 'swap-horizontal-outline' },
+    { key: 'dlspeed' as const, labelKey: 'sort.dlSpeed', icon: 'arrow-down-outline' },
+    { key: 'upspeed' as const, labelKey: 'sort.ulSpeed', icon: 'arrow-up-outline' },
   ];
 
   // Early returns
@@ -551,16 +553,16 @@ export default function TorrentsScreen() {
         <View style={[styles.center, { backgroundColor: colors.background }]}>
           <Ionicons name="cloud-offline-outline" size={64} color={colors.textSecondary} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            Not Connected
+            {t('screens.torrents.notConnected')}
           </Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Connect to a qBittorrent server to get started
+            {t('screens.torrents.notConnectedSubtitle')}
           </Text>
           <TouchableOpacity
             style={[styles.emptyButton, { backgroundColor: colors.primary }]}
             onPress={() => router.push('/settings')}
           >
-            <Text style={styles.emptyButtonText}>Go to Settings</Text>
+            <Text style={styles.emptyButtonText}>{t('common.goToSettings')}</Text>
           </TouchableOpacity>
         </View>
       </>
@@ -575,7 +577,7 @@ export default function TorrentsScreen() {
         <View style={[styles.center, { backgroundColor: colors.background }]}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
-            Loading...
+            {t('common.loading')}
           </Text>
         </View>
       </>
@@ -590,7 +592,7 @@ export default function TorrentsScreen() {
         <View style={[styles.center, { backgroundColor: colors.background }]}>
           <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            Something Went Wrong
+            {t('screens.torrents.somethingWentWrong')}
           </Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
             {error}
@@ -599,7 +601,7 @@ export default function TorrentsScreen() {
             style={[styles.emptyButton, { backgroundColor: colors.primary }]}
             onPress={refresh}
           >
-            <Text style={styles.emptyButtonText}>Try Again</Text>
+            <Text style={styles.emptyButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       </>
@@ -641,7 +643,7 @@ export default function TorrentsScreen() {
                 />
                 <TextInput
                   style={[styles.searchInputCompact, { color: colors.text }]}
-                  placeholder="Search torrents..."
+                  placeholder={t('placeholders.searchTorrents')}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   placeholderTextColor={colors.textSecondary}
@@ -755,7 +757,7 @@ export default function TorrentsScreen() {
                         },
                       ]}
                     >
-                      {item.label}
+                      {t(item.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -777,7 +779,7 @@ export default function TorrentsScreen() {
                   <Text 
                     style={[styles.filterChipTextCompact, { color: '#FFFFFF' }]}
                   >
-                    Close
+                    {t('common.close')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -827,7 +829,7 @@ export default function TorrentsScreen() {
                         },
                       ]}
                     >
-                      {option.label}
+                      {t(option.labelKey)}
                     </Text>
                     {sortBy === option.key && (
                       <Ionicons 
@@ -851,12 +853,12 @@ export default function TorrentsScreen() {
               color={colors.textSecondary} 
             />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {filter === 'all' ? 'No Torrents' : 'No Results'}
+              {filter === 'all' ? t('screens.torrents.noTorrents') : t('screens.torrents.noResults')}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
               {filter === 'all' 
-                ? 'Add a magnet link to start downloading' 
-                : `No ${filter === 'stuck' ? 'stuck' : filter} torrents found`}
+                ? t('screens.torrents.addMagnetSubtitle') 
+                : filter === 'stuck' ? t('screens.torrents.noStuckResults') : t('screens.torrents.noFilterResults', { filter })}
             </Text>
             {filter === 'all' ? (
               <TouchableOpacity
@@ -865,7 +867,7 @@ export default function TorrentsScreen() {
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Ionicons name="add" size={20} color="#FFFFFF" />
-                  <Text style={styles.emptyButtonText}>Add Torrent</Text>
+                  <Text style={styles.emptyButtonText}>{t('screens.torrents.addTorrent')}</Text>
                 </View>
               </TouchableOpacity>
             ) : (
@@ -873,7 +875,7 @@ export default function TorrentsScreen() {
                 style={[styles.emptyButton, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceOutline }]}
                 onPress={() => setFilter('all')}
               >
-                <Text style={[styles.emptyButtonText, { color: colors.text }]}>Clear Filter</Text>
+                <Text style={[styles.emptyButtonText, { color: colors.text }]}>{t('screens.torrents.clearFilter')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -952,7 +954,7 @@ export default function TorrentsScreen() {
               disabled={bulkLoading}
             >
               <Ionicons name="play" size={20} color="#FFFFFF" />
-              <Text style={styles.bulkActionText}>Resume</Text>
+              <Text style={styles.bulkActionText}>{t('actions.resume')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: '#FF9500' }]}
@@ -960,7 +962,7 @@ export default function TorrentsScreen() {
               disabled={bulkLoading}
             >
               <Ionicons name="pause" size={20} color="#FFFFFF" />
-              <Text style={styles.bulkActionText}>Pause</Text>
+              <Text style={styles.bulkActionText}>{t('actions.pause')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: '#FF3B30' }]}
@@ -968,7 +970,7 @@ export default function TorrentsScreen() {
               disabled={bulkLoading}
             >
               <Ionicons name="trash" size={20} color="#FFFFFF" />
-              <Text style={styles.bulkActionText}>Delete</Text>
+              <Text style={styles.bulkActionText}>{t('common.delete')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -995,7 +997,7 @@ export default function TorrentsScreen() {
                 style={[styles.modalContent, { backgroundColor: colors.surface }]}
               >
                 <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: colors.text }]}>Add Torrent</Text>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>{t('screens.torrents.addTorrent')}</Text>
                   <TouchableOpacity onPress={() => {
                     setShowAddModal(false);
                     setTorrentUrl('');
@@ -1023,7 +1025,7 @@ export default function TorrentsScreen() {
                       setSelectedFile(null); // Clear file when URL is entered
                     }
                   }}
-                  placeholder="magnet:?xt=urn:btih:..."
+                  placeholder={t('placeholders.magnetLink')}
                   placeholderTextColor={colors.textSecondary}
                   multiline
                   numberOfLines={3}
@@ -1087,7 +1089,7 @@ export default function TorrentsScreen() {
                       setShowAddModal(false);
                     }}
                   >
-                    <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
+                    <Text style={[styles.modalButtonText, { color: colors.text }]}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
