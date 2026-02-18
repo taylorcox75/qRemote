@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Dimensions, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
   const { sync } = useTorrents();
   const { isDark, colors } = useTheme();
   const { transferInfo, toggleAlternativeSpeedLimits, refresh: refreshTransfer } = useTransfer();
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
 
   const handlePauseResume = async () => {
     if (!isConnected || !currentServer) {
-      showToast('Not connected to a server. Please connect to a server first.', 'error');
+      showToast(t('toast.notConnected'), 'error');
       return;
     }
 
@@ -72,7 +74,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
         if (!reconnected) {
           // Revert optimistic update
           setOptimisticPaused(null);
-          showToast('Lost connection to server. Please reconnect.', 'error');
+          showToast(t('toast.lostConnection'), 'error');
           return;
         }
       }
@@ -90,7 +92,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       // Revert optimistic update on error
       setOptimisticPaused(null);
       console.error('Pause/Resume error:', error);
-      showToast(error.message || `Failed to ${wasPaused ? 'start' : 'pause'} torrent`, 'error');
+      showToast(error.message || (wasPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
     } finally {
       setLoading(false);
       // Clear optimistic state after a delay to allow sync to update
@@ -102,7 +104,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
 
   const handleForceStart = async () => {
     if (!isConnected || !currentServer) {
-      showToast('Not connected to a server. Please connect to a server first.', 'error');
+      showToast(t('toast.notConnected'), 'error');
       return;
     }
 
@@ -114,7 +116,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
         // Server was cleared, try to reconnect
         const reconnected = await reconnect();
         if (!reconnected) {
-          showToast('Lost connection to server. Please reconnect.', 'error');
+          showToast(t('toast.lostConnection'), 'error');
           return;
         }
       }
@@ -135,19 +137,19 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
   const handleVerifyData = async () => {
     try {
       await torrentsApi.recheckTorrents([torrent.hash]);
-      showToast('Verification started', 'success');
+      showToast(t('toast.verificationStarted'), 'success');
       sync().catch(() => {});
     } catch (error: any) {
-      showToast(error.message || 'Failed to verify torrent', 'error');
+      showToast(error.message || t('errors.failedToVerify'), 'error');
     }
   };
 
   const handleReannounce = async () => {
     try {
       await torrentsApi.reannounceTorrents([torrent.hash]);
-      showToast('Reannounce sent', 'success');
+      showToast(t('toast.reannounceSent'), 'success');
     } catch (error: any) {
-      showToast(error.message || 'Failed to reannounce', 'error');
+      showToast(error.message || t('errors.failedToConnect'), 'error');
     }
   };
 
@@ -155,9 +157,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
     try {
       if (torrent.magnet_uri) {
         await Clipboard.setStringAsync(torrent.magnet_uri);
-        showToast('Magnet link copied to clipboard', 'success');
+        showToast(t('toast.magnetCopied'), 'success');
       } else {
-        showToast('No magnet link available', 'error');
+        showToast(t('toast.noMagnetAvailable'), 'error');
       }
     } catch (error: any) {
       showToast(error.message || 'Failed to copy magnet link', 'error');
@@ -176,9 +178,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             try {
               await torrentsApi.deleteTorrents([torrent.hash], false);
               sync().catch(() => {});
-              showToast('Torrent deleted', 'success');
+              showToast(t('toast.torrentDeleted'), 'success');
             } catch (error: any) {
-              showToast(error.message || 'Failed to delete torrent', 'error');
+              showToast(error.message || t('errors.failedToDelete'), 'error');
             }
           },
         },
@@ -189,9 +191,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             try {
               await torrentsApi.deleteTorrents([torrent.hash], true);
               sync().catch(() => {});
-              showToast('Torrent deleted', 'success');
+              showToast(t('toast.torrentDeleted'), 'success');
             } catch (error: any) {
-              showToast(error.message || 'Failed to delete torrent', 'error');
+              showToast(error.message || t('errors.failedToDelete'), 'error');
             }
           },
         },
@@ -216,9 +218,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       }
       await torrentsApi.setMaximalPriority([torrent.hash]);
       sync().catch(() => {});
-      showToast('Priority set to maximum', 'success');
+      showToast(t('toast.prioritySetMax'), 'success');
     } catch (error: any) {
-      showToast(error.message || 'Failed to set priority', 'error');
+      showToast(error.message || t('errors.generic'), 'error');
     } finally {
       setLoading(false);
     }
@@ -272,9 +274,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
       await toggleAlternativeSpeedLimits();
       await refreshTransfer();
       const isEnabled = transferInfo?.use_alt_speed_limits;
-      showToast(`Global speed limit ${!isEnabled ? 'enabled' : 'disabled'}`, 'success');
+      showToast(t('toast.speedLimitToggled', { status: !isEnabled ? t('common.enabled') : t('common.disabled') }), 'success');
     } catch (error: any) {
-      showToast(error.message || 'Failed to toggle speed limit', 'error');
+      showToast(error.message || t('errors.generic'), 'error');
     } finally {
       setLoading(false);
     }
@@ -772,7 +774,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             />
             <MenuOption
               icon="flash"
-              label="Force Start"
+              label={t('actions.forceStart')}
               onPress={() => handleMenuAction(handleForceStart)}
               colors={colors}
               accessibilityLabel={`Force start torrent ${torrent.name}`}
@@ -788,7 +790,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             />
             <MenuOption
               icon="flag"
-              label="Max Priority"
+              label={t('actions.maxPriority')}
               onPress={() => handleMenuAction(handleMaxPriority)}
               colors={colors}
               accessibilityLabel={`Set maximum priority for ${torrent.name}`}
@@ -796,7 +798,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             />
             <MenuOption
               icon="download"
-              label="Set DL Limit"
+              label={t('actions.setDlLimit')}
               onPress={() => handleMenuAction(handleSetDownloadLimit)}
               colors={colors}
               accessibilityLabel={`Set download limit for ${torrent.name}`}
@@ -804,7 +806,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             />
             <MenuOption
               icon="checkmark-circle"
-              label="Verify Data"
+              label={t('actions.verifyData')}
               onPress={() => handleMenuAction(handleVerifyData)}
               colors={colors}
               accessibilityLabel={`Verify data integrity for ${torrent.name}`}
@@ -812,7 +814,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             />
             <MenuOption
               icon="refresh"
-              label="Reannounce"
+              label={t('actions.reannounce')}
               onPress={() => handleMenuAction(handleReannounce)}
               colors={colors}
               accessibilityLabel={`Reannounce ${torrent.name} to trackers`}
@@ -820,7 +822,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             />
             <MenuOption
               icon="link"
-              label="Copy Magnet Link"
+              label={t('actions.copyMagnetLink')}
               onPress={() => handleMenuAction(handleCopyMagnet)}
               colors={colors}
               accessibilityLabel={`Copy magnet link for ${torrent.name}`}
@@ -829,7 +831,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} accessibilityRole={separatorRole as any} />
             <MenuOption
               icon="trash"
-              label="Delete"
+              label={t('common.delete')}
               onPress={() => handleMenuAction(handleDelete)}
               colors={colors}
               destructive

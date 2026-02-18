@@ -1,3 +1,4 @@
+import '../i18n';
 import { Stack } from 'expo-router';
 import { Dimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
