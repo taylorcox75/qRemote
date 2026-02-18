@@ -20,6 +20,9 @@ module.exports = {
       infoPlist: {
         UIViewControllerBasedStatusBarAppearance: true,
         ITSAppUsesNonExemptEncryption: false,
+        NSAppTransportSecurity: {
+          NSAllowsArbitraryLoads: true,
+        },
       },
     },
     android: {
