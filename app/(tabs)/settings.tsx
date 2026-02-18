@@ -121,7 +121,7 @@ export default function SettingsScreen() {
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   
   // Persistent Sort/Filter Preferences
-  const [defaultSortBy, setDefaultSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'added_on'>('added_on');
+  const [defaultSortBy, setDefaultSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'>('added_on');
   const [defaultSortDirection, setDefaultSortDirection] = useState<'asc' | 'desc'>('desc');
   const [defaultFilter, setDefaultFilter] = useState<string>('all');
   
@@ -421,6 +421,7 @@ export default function SettingsScreen() {
     { label: 'Name', value: 'name', icon: 'text-outline' },
     { label: 'Size', value: 'size', icon: 'disc-outline' },
     { label: 'Progress', value: 'progress', icon: 'pie-chart-outline' },
+    { label: 'UL Ratio', value: 'ratio', icon: 'swap-horizontal-outline' },
     { label: 'Download Speed', value: 'dlspeed', icon: 'download-outline' },
     { label: 'Upload Speed', value: 'upspeed', icon: 'arrow-up-outline' },
     { label: 'Added Date', value: 'added_on', icon: 'calendar-outline' },
@@ -628,7 +629,7 @@ export default function SettingsScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.pickerText, { color: colors.text }]}>
-                  {defaultSortBy === 'name' ? 'Name' : defaultSortBy === 'size' ? 'Size' : defaultSortBy === 'progress' ? 'Progress' : defaultSortBy === 'dlspeed' ? 'Download Speed' : defaultSortBy === 'upspeed' ? 'Upload Speed' : 'Added Date'}
+                  {defaultSortBy === 'name' ? 'Name' : defaultSortBy === 'size' ? 'Size' : defaultSortBy === 'progress' ? 'Progress' : defaultSortBy === 'ratio' ? 'UL Ratio' : defaultSortBy === 'dlspeed' ? 'Download Speed' : defaultSortBy === 'upspeed' ? 'Upload Speed' : 'Added Date'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
               </TouchableOpacity>

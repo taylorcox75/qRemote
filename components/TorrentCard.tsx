@@ -554,6 +554,10 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
                 {formatSpeed(torrent.upspeed)}
               </Text>
             </View>
+            <Text style={[styles.compactDivider, { color: colors.textSecondary }]}>|</Text>
+            <Text style={[styles.compactStat, { color: colors.text }]}>
+              Ratio: {torrent.ratio != null ? torrent.ratio.toFixed(2) : '0.00'}
+            </Text>
           </View>
         )}
 

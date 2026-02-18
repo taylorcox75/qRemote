@@ -50,7 +50,7 @@ export default function TorrentsScreen() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [sortBy, setSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'added_on'>('added_on');
+  const [sortBy, setSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'>('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
   
@@ -93,6 +93,9 @@ export default function TorrentsScreen() {
     }, [navigation, colors.surface, colors.surfaceOutline])
   );
 
+  // Track last known default filter so we only sync when user changes it in Settings
+  const lastDefaultFilterRef = useRef<string | null>(null);
+
   // Load card view mode and check for filter preference changes on screen focus
   useFocusEffect(
     useCallback(() => {
@@ -102,17 +105,19 @@ export default function TorrentsScreen() {
           const viewMode = prefs.cardViewMode || 'compact';
           setCardViewMode(viewMode);
           
-          // Check if default filter preference has changed and update if so
-          // This allows settings changes to be reflected immediately when navigating to torrents
-          if (prefs.defaultFilter && prefs.defaultFilter !== filter) {
-            setFilter(prefs.defaultFilter);
+          // Only update filter when the default filter preference has changed in Settings
+          // (not when the user selects a different filter on this screen)
+          const newDefault = prefs.defaultFilter || 'all';
+          if (lastDefaultFilterRef.current !== null && lastDefaultFilterRef.current !== newDefault) {
+            setFilter(newDefault);
           }
+          lastDefaultFilterRef.current = newDefault;
         } catch (error) {
           setCardViewMode('compact');
         }
       };
       loadPreferences();
-    }, [filter])
+    }, [])
   );
 
   // Load default sort/filter preferences only on app launch (once)
@@ -196,6 +201,9 @@ export default function TorrentsScreen() {
           break;
         case 'upspeed':
           comparison = a.upspeed - b.upspeed;
+          break;
+        case 'ratio':
+          comparison = (a.ratio ?? 0) - (b.ratio ?? 0);
           break;
         case 'added_on':
           comparison = a.added_on - b.added_on;
@@ -521,8 +529,6 @@ export default function TorrentsScreen() {
     { key: 'stuck', label: 'Stuck', icon: 'warning' },
     { key: 'downloading', label: 'DL', icon: 'arrow-down' },
     { key: 'uploading', label: 'UL', icon: 'arrow-up' },
-
-
   ];
 
   // Sort options
@@ -531,6 +537,7 @@ export default function TorrentsScreen() {
     { key: 'name' as const, label: 'Name', icon: 'text-outline' },
     { key: 'size' as const, label: 'Size', icon: 'albums-outline' },
     { key: 'progress' as const, label: 'Progress', icon: 'stats-chart-outline' },
+    { key: 'ratio' as const, label: 'UL Ratio', icon: 'swap-horizontal-outline' },
     { key: 'dlspeed' as const, label: 'DL Speed', icon: 'arrow-down-outline' },
     { key: 'upspeed' as const, label: 'UL Speed', icon: 'arrow-up-outline' },
   ];
@@ -721,7 +728,18 @@ export default function TorrentsScreen() {
                         borderWidth: filter === item.key ? 0 : 0.2,
                       },
                     ]}
-                    onPress={() => setFilter(item.key)}
+                    onPress={() => {
+                      if (filter === item.key) {
+                        // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
+                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                        if (item.key === 'downloading') setSortBy('dlspeed');
+                        else if (item.key === 'uploading') setSortBy('upspeed');
+                      } else {
+                        setFilter(item.key);
+                        if (item.key === 'downloading') setSortBy('dlspeed');
+                        else if (item.key === 'uploading') setSortBy('upspeed');
+                      }
+                    }}
                     activeOpacity={0.7}
                   >
                     <Ionicons
