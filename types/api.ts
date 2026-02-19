@@ -61,7 +61,7 @@ export interface MainData {
   categories_removed?: string[];
   tags?: string[];
   tags_removed?: string[];
-  server_state?: ServerState;
+  server_state?: Partial<ServerState>;
 }
 
 export interface TorrentInfo {
@@ -161,6 +161,7 @@ export interface ServerState {
   total_buffers_size: number;
   total_peer_connections: number;
   total_queued_size: number;
+  total_size?: number;
   up_info_data: number;
   up_info_speed: number;
   up_rate_limit: number;
@@ -259,4 +260,3 @@ export interface ApiResponse<T = any> {
   error?: string;
   status: number;
 }
-

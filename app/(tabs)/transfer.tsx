@@ -814,14 +814,14 @@ export default function TransferScreen() {
                       {formatSize(serverState.total_queued_size || 0)}
                     </Text>
                   </View>
-                  {serverState.average_time_queue > 0 && (
+                  {(serverState.average_time_queue ?? 0) > 0 && (
                     <View style={[styles.infoRow, { backgroundColor: colors.background }]}>
                       <View style={styles.infoLeft}>
                         <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
                         <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Avg Queue Time</Text>
                       </View>
                       <Text style={[styles.infoValue, { color: colors.text }]}>
-                        {formatTime(serverState.average_time_queue)}
+                        {formatTime(serverState.average_time_queue ?? 0)}
                       </Text>
                     </View>
                   )}
