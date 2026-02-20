@@ -46,11 +46,46 @@ import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
 
-// Changelog data
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function formatReleaseDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  if (!y || !m || !d) return isoDate;
+  const month = MONTH_NAMES[m - 1];
+  return month ? `${month} ${d}, ${y}` : isoDate;
+}
+
 const CHANGELOG = [
   {
+    version: '2.0.1',
+    date: '2025-02-19',
+    changes: [
+      'Fixed transfer stats (free disk space, queued size, avg queue time) disappearing after switching server',
+      'What\'s New popup updated with v2.0.0 and v1.1.3 release notes'
+    ],
+  },
+  {
+    version: '2.0.0',
+    date: '2025-02-18',
+    changes: [
+      'Export logs with connectivity logging and debug panel export button',
+      'Applied Apple developer NSAllowsArbitraryLoads flag',
+      'Info button for torrent seed percent/leech',
+      'Sorting by ratio',
+      'Language translation support',
+    ],
+  },
+  {
+    version: '1.1.3',
+    date: '2025-02-06',
+    changes: [
+      'Bugfix: hostname handling',
+      'Fix protocol prefix handling and add community links',
+      'General bugfix and cleanup',
+    ],
+  },
+  {
     version: '1.1.2',
-    date: '2026-02-01',
+    date: '2025-02-05',
     changes: [
       'Backwards compatibility improvements for existing server configs',
       'Fixed basePath persistence for reverse proxy users',
@@ -62,7 +97,7 @@ const CHANGELOG = [
   },
   {
     version: '1.1.1',
-    date: '2026-02-01',
+    date: '2025-02-02',
     changes: [
       'Fixed protocol prefix handling - no more double http:// issues',
       'Simplified server configuration with helpful tooltips',
@@ -74,7 +109,7 @@ const CHANGELOG = [
   },
   {
     version: '1.1.0',
-    date: '2026-02-01',
+    date: '2025-02-01',
     changes: [
       'Fixed hostname handling and connection issues',
       'Improved loading screen experience',
@@ -83,7 +118,7 @@ const CHANGELOG = [
   },
   {
     version: '1.0.6',
-    date: '2025-12-15',
+    date: '2024-12-16',
     changes: [
       'Fixed popup and Android localhost issues',
       'General stability improvements',
@@ -91,7 +126,7 @@ const CHANGELOG = [
   },
   {
     version: '1.0.5',
-    date: '2025-12-13',
+    date: '2024-12-14',
     changes: [
       'Major UI cleanup and enhancements',
       'Improved add server form robustness',
@@ -1335,7 +1370,7 @@ export default function SettingsScreen() {
               <View key={release.version} style={styles.changelogRelease}>
                 <View style={styles.releaseHeader}>
                   <Text style={[styles.releaseVersion, { color: colors.primary }]}>v{release.version}</Text>
-                  <Text style={[styles.releaseDate, { color: colors.textSecondary }]}>{release.date}</Text>
+                  <Text style={[styles.releaseDate, { color: colors.textSecondary }]}>{formatReleaseDate(release.date)}</Text>
                 </View>
                 <View style={[styles.changesList, { backgroundColor: colors.surface }]}>
                   {release.changes.map((change, changeIndex) => (
