@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { TorrentInfo, MainData } from '../types/api';
+import { TorrentInfo, MainData, ServerState } from '../types/api';
 import { syncApi } from '../services/api/sync';
 import { useServer } from './ServerContext';
 
@@ -8,7 +8,7 @@ interface TorrentContextType {
   torrents: TorrentInfo[];
   categories: { [name: string]: any };
   tags: string[];
-  serverState: any;
+  serverState: Partial<ServerState> | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -24,7 +24,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
   const [torrents, setTorrents] = useState<TorrentInfo[]>([]);
   const [categories, setCategories] = useState<{ [name: string]: any }>({});
   const [tags, setTags] = useState<string[]>([]);
-  const [serverState, setServerState] = useState<any>(null);
+  const [serverState, setServerState] = useState<Partial<ServerState> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rid, setRid] = useState(0);
@@ -47,6 +47,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       setError(null);
       const currentRid = ridRef.current;
       const data: MainData = await syncApi.getMainData(currentRid);
+      const isFullUpdate = data.full_update || currentRid === 0;
       
       // Mark initial load as complete after first successful sync
       if (!initialLoadComplete) {
@@ -58,7 +59,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
         isRecoveringFromBackground.current = false;
       }
       
-      if (data.full_update || ridRef.current === 0) {
+      if (isFullUpdate) {
         // Full update
         if (data.torrents && Object.keys(data.torrents).length > 0) {
           const torrentsArray = Object.values(data.torrents);
@@ -150,7 +151,14 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.server_state) {
-        setServerState(data.server_state);
+        setServerState((prev) => {
+          if (isFullUpdate || !prev) {
+            return data.server_state!;
+          }
+
+          // /sync/maindata incremental responses may include only changed server_state fields.
+          return { ...prev, ...data.server_state };
+        });
       }
 
       setRid(data.rid);
@@ -306,4 +314,3 @@ export function useTorrents() {
   }
   return context;
 }
-
