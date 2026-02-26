@@ -241,7 +241,9 @@
     "settingsImported": "Paramètres importés avec succès",
     "settingsExported": "Paramètres exportés",
     "debugCopied": "Infos de débogage copiées",
-    "shutdownInitiated": "Arrêt de l'application lancé"
+    "shutdownInitiated": "Arrêt de l'application lancé",
+    "savePathUpdated": "Chemin de sauvegarde par défaut mis à jour sur le serveur",
+    "savePathSavedLocally": "Enregistré localement. Connectez-vous à un serveur pour mettre à jour sur qBittorrent."
   },
   "errors": {
     "generic": "Une erreur s'est produite",
@@ -279,6 +281,7 @@
     "failedToDeleteCategory": "Échec de la suppression de la catégorie",
     "failedToDeleteTag": "Échec de la suppression de l'étiquette",
     "failedToVerify": "Échec de la vérification du torrent",
-    "failedToPickFile": "Échec de la sélection du fichier"
+    "failedToPickFile": "Échec de la sélection du fichier",
+    "failedToUpdateSavePath": "Échec de la mise à jour du chemin de sauvegarde sur le serveur"
   }
 }

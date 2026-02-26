@@ -241,7 +241,9 @@
     "settingsImported": "设置导入成功",
     "settingsExported": "设置已导出",
     "debugCopied": "调试信息已复制",
-    "shutdownInitiated": "应用关闭已启动"
+    "shutdownInitiated": "应用关闭已启动",
+    "savePathUpdated": "服务器上的默认保存路径已更新",
+    "savePathSavedLocally": "已本地保存。连接到服务器以在 qBittorrent 上更新。"
   },
   "errors": {
     "generic": "发生错误",
@@ -279,6 +281,7 @@
     "failedToDeleteCategory": "删除分类失败",
     "failedToDeleteTag": "删除标签失败",
     "failedToVerify": "校验种子失败",
-    "failedToPickFile": "选择文件失败"
+    "failedToPickFile": "选择文件失败",
+    "failedToUpdateSavePath": "无法更新服务器上的保存路径"
   }
 }

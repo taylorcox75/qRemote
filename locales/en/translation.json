@@ -246,7 +246,9 @@
     "settingsImported": "Settings imported successfully",
     "settingsExported": "Settings exported",
     "debugCopied": "Debug info copied to clipboard",
-    "shutdownInitiated": "Application shutdown initiated"
+    "shutdownInitiated": "Application shutdown initiated",
+    "savePathUpdated": "Default save path updated on server",
+    "savePathSavedLocally": "Saved locally. Connect to a server to update on qBittorrent."
   },
   "errors": {
     "generic": "An error occurred",
@@ -284,6 +286,7 @@
     "failedToDeleteCategory": "Failed to delete category",
     "failedToDeleteTag": "Failed to delete tag",
     "failedToVerify": "Failed to verify torrent",
-    "failedToPickFile": "Failed to pick file"
+    "failedToPickFile": "Failed to pick file",
+    "failedToUpdateSavePath": "Failed to update save path on server"
   }
 }

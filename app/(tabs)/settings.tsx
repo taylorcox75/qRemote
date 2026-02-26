@@ -59,6 +59,7 @@ const CHANGELOG = [
     version: '2.0.1',
     date: '2025-02-19',
     changes: [
+      'Fixed default save path updates not being applied on the qBittorrent server',
       'Fixed transfer stats (free disk space, queued size, avg queue time) disappearing after switching server',
       'What\'s New popup updated with v2.0.0 and v1.1.3 release notes'
     ],
@@ -1341,10 +1342,20 @@ export default function SettingsScreen() {
         defaultValue={defaultSavePath}
         keyboardType="default"
         onCancel={() => setSavePathModalVisible(false)}
-        onConfirm={(path: string) => {
+        onConfirm={async (path: string) => {
           setDefaultSavePath(path);
           savePreference('defaultSavePath', path);
           setSavePathModalVisible(false);
+          if (isConnected) {
+            try {
+              await applicationApi.setPreferences({ save_path: path });
+              showToast(t('toast.savePathUpdated'), 'success');
+            } catch (error) {
+              showToast(t('errors.failedToUpdateSavePath'), 'error');
+            }
+          } else {
+            showToast(t('toast.savePathSavedLocally'), 'info');
+          }
         }}
       />
 
