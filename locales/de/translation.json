@@ -241,7 +241,9 @@
     "settingsImported": "Einstellungen erfolgreich importiert",
     "settingsExported": "Einstellungen exportiert",
     "debugCopied": "Debug-Infos kopiert",
-    "shutdownInitiated": "Anwendungsherunterfahren gestartet"
+    "shutdownInitiated": "Anwendungsherunterfahren gestartet",
+    "savePathUpdated": "Standard-Speicherpfad auf dem Server aktualisiert",
+    "savePathSavedLocally": "Lokal gespeichert. Mit einem Server verbinden, um auf qBittorrent zu aktualisieren."
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten",
@@ -279,6 +281,7 @@
     "failedToDeleteCategory": "Kategorie löschen fehlgeschlagen",
     "failedToDeleteTag": "Tag löschen fehlgeschlagen",
     "failedToVerify": "Torrent-Verifizierung fehlgeschlagen",
-    "failedToPickFile": "Dateiauswahl fehlgeschlagen"
+    "failedToPickFile": "Dateiauswahl fehlgeschlagen",
+    "failedToUpdateSavePath": "Speicherpfad auf dem Server konnte nicht aktualisiert werden"
   }
 }

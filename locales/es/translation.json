@@ -241,7 +241,9 @@
     "settingsImported": "Configuración importada correctamente",
     "settingsExported": "Configuración exportada",
     "debugCopied": "Información de depuración copiada",
-    "shutdownInitiated": "Apagado de la aplicación iniciado"
+    "shutdownInitiated": "Apagado de la aplicación iniciado",
+    "savePathUpdated": "Ruta de guardado predeterminada actualizada en el servidor",
+    "savePathSavedLocally": "Guardado localmente. Conéctate a un servidor para actualizar en qBittorrent."
   },
   "errors": {
     "generic": "Ocurrió un error",
@@ -279,6 +281,7 @@
     "failedToDeleteCategory": "Error al eliminar categoría",
     "failedToDeleteTag": "Error al eliminar etiqueta",
     "failedToVerify": "Error al verificar torrent",
-    "failedToPickFile": "Error al seleccionar archivo"
+    "failedToPickFile": "Error al seleccionar archivo",
+    "failedToUpdateSavePath": "Error al actualizar la ruta de guardado en el servidor"
   }
 }
