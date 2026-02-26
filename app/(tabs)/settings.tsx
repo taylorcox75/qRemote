@@ -56,17 +56,23 @@ function formatReleaseDate(isoDate: string): string {
 
 const CHANGELOG = [
   {
-    version: '2.0.1',
-    date: '2025-02-19',
+    version: '2.0.2',
+    date: '2026-02-26',
     changes: [
       'Fixed default save path updates not being applied on the qBittorrent server',
+    ],
+  },
+  {
+    version: '2.0.1',
+    date: '2026-02-19',
+    changes: [
       'Fixed transfer stats (free disk space, queued size, avg queue time) disappearing after switching server',
-      'What\'s New popup updated with v2.0.0 and v1.1.3 release notes'
+      'What\'s New popup updated with v2.0.0 and v1.1.3 release notes',
     ],
   },
   {
     version: '2.0.0',
-    date: '2025-02-18',
+    date: '2026-02-18',
     changes: [
       'Export logs with connectivity logging and debug panel export button',
       'Applied Apple developer NSAllowsArbitraryLoads flag',
@@ -77,7 +83,7 @@ const CHANGELOG = [
   },
   {
     version: '1.1.3',
-    date: '2025-02-06',
+    date: '2026-02-06',
     changes: [
       'Bugfix: hostname handling',
       'Fix protocol prefix handling and add community links',
@@ -86,7 +92,7 @@ const CHANGELOG = [
   },
   {
     version: '1.1.2',
-    date: '2025-02-05',
+    date: '2026-02-05',
     changes: [
       'Backwards compatibility improvements for existing server configs',
       'Fixed basePath persistence for reverse proxy users',
@@ -98,7 +104,7 @@ const CHANGELOG = [
   },
   {
     version: '1.1.1',
-    date: '2025-02-02',
+    date: '2026-02-02',
     changes: [
       'Fixed protocol prefix handling - no more double http:// issues',
       'Simplified server configuration with helpful tooltips',
@@ -110,7 +116,7 @@ const CHANGELOG = [
   },
   {
     version: '1.1.0',
-    date: '2025-02-01',
+    date: '2026-02-01',
     changes: [
       'Fixed hostname handling and connection issues',
       'Improved loading screen experience',
