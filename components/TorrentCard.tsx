@@ -344,52 +344,61 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
     setTimeout(() => action(), 100);
   };
 
-  const getStateColor = (state: TorrentState, progress: number): string => {
-    // If torrent is 100% complete and stalled, show as green (Seeding)
-    if (state === 'stalledUP' && progress >= 1) {
-      return colors.success;
-    }
-    
+  const getStateColor = (state: TorrentState, progress: number, dlspeed: number, upspeed: number): string => {
+    const downloading = dlspeed > 0;
+    const uploading = upspeed > 0;
+
+    // Active transfer: DL+UL uses DL color; upload-only uses upload color
+    if (downloading && uploading) return colors.stateDownloading;
+    if (uploading && !downloading) return colors.stateUploadOnly;
+
+    // Idle seeding (100% complete, no active download)
+    if (state === 'stalledUP' && progress >= 1) return colors.stateSeeding;
+
     switch (state) {
       case 'downloading':
-        
       case 'forcedDL':
-        return colors.primary; // Blue for downloading states
+        return colors.stateDownloading;
       case 'metaDL':
-        return colors.warning
       case 'forcedMetaDL':
-        return colors.primary; // Blue for forced metadata download
+        return colors.stateMetadata;
       case 'uploading':
       case 'forcedUP':
-        return  colors.success // Green for uploading states
+        return colors.stateUploadOnly;
       case 'pausedDL':
       case 'pausedUP':
-        return isDark ? colors.surfaceOutline : colors.text
+      case 'stoppedDL':
+      case 'stoppedUP':
+        return colors.statePaused;
       case 'error':
-        return '#FF3B30';
+      case 'missingFiles':
+      case 'stalledDL':
+        return colors.stateError;
       case 'checkingDL':
       case 'checkingUP':
-        return colors.warning
-        case 'stoppedDL':
-          return isDark ? colors.surfaceOutline : colors.text
-      case 'stoppedUP':
-        // Don't show as green/seeding - it's stopped!
-        return isDark ? colors.surfaceOutline : colors.text // Gray (paused)
-      case 'stalledDL':
-        return colors.error
+        return colors.stateChecking;
+      case 'queuedDL':
+      case 'queuedUP':
+        return colors.stateQueued;
       case 'stalledUP':
-        return isDark ? colors.surfaceOutline : colors.text
-        default:
-        return isDark ? colors.surfaceOutline : colors.text
-    } 
+        return colors.stateStalled;
+      case 'allocating':
+      case 'checkingResumeData':
+      case 'moving':
+      case 'unknown':
+      default:
+        return colors.stateOther;
+    }
   };
 
-  const getStateLabel = (state: TorrentState, progress: number): string => {
-    // If torrent is 100% complete and stalled, show as "Seeding"
-    if (state === 'stalledUP' && progress >= 1) {
-      return 'Seeding';
-    }
-    
+  const getStateLabel = (state: TorrentState, progress: number, dlspeed: number, upspeed: number): string => {
+    const downloading = dlspeed > 0;
+    const uploading = upspeed > 0;
+    if (downloading && uploading) return 'DL + UL';
+    if (uploading && !downloading) return 'Uploading';
+
+    if (state === 'stalledUP' && progress >= 1) return 'Seeding';
+
     switch (state) {
       case 'downloading':
         return 'Downloading';
@@ -430,37 +439,19 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
   };
 
   const progress = (torrent.progress || 0) * 100;
-  const stateColor = getStateColor(torrent.state, torrent.progress);
-  const stateLabel = getStateLabel(torrent.state, torrent.progress);
+  const dlspeed = torrent.dlspeed ?? 0;
+  const upspeed = torrent.upspeed ?? 0;
+  const stateColor = getStateColor(torrent.state, torrent.progress, dlspeed, upspeed);
+  const stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed);
 
-  // Determine card state styling
+  // Determine card state styling (left border uses stateColor for all states)
   const cardStateStyle = () => {
     const styles: any = {};
-    
-    // Add colored left border for active states
-    if (torrent.state === 'downloading' || torrent.state === 'forcedDL') {
-      styles.borderLeftWidth = 3;
-      styles.borderLeftColor = colors.primary;
-    } else if (torrent.state === 'uploading' || torrent.state === 'forcedUP') {
-      styles.borderLeftWidth = 3;
-      styles.borderLeftColor = colors.success;
-    } else if (torrent.state === 'stalledUP' && torrent.progress >= 1) {
-      // Seeding (100% complete)
-      styles.borderLeftWidth = 3;
-      styles.borderLeftColor = colors.success;
-    } else if (torrent.state === 'error') {
-      styles.borderLeftWidth = 3;
-      styles.borderLeftColor = colors.error;
-    } else if (torrent.state === 'stalledDL' || torrent.state === 'stalledUP') {
-      styles.borderLeftWidth = 3;
-      styles.borderLeftColor = colors.error;
-    }
-    
-    // Reduce opacity for paused/stopped
+    styles.borderLeftWidth = 3;
+    styles.borderLeftColor = stateColor;
     if (isPaused || torrent.state === 'stoppedDL') {
       styles.opacity = 0.6;
     }
-    
     return styles;
   };
 
@@ -476,9 +467,9 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
           </View>
           <View style={styles.headerRight}>
             <View style={[
-              styles.stateBadge, 
+              styles.stateBadge,
               { backgroundColor: stateColor },
-              isStalled && { borderWidth: 0, borderColor: colors.error },
+              isStalled && { borderWidth: 1, borderColor: stateColor },
               torrent.state === 'forcedMetaDL' && { borderWidth: 1, borderColor: '#FFD700' }
             ]}>
               <Text style={styles.stateText}>{stateLabel}</Text>
@@ -544,14 +535,14 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             </Text>
             <Text style={[styles.compactDivider, { color: colors.textSecondary }]}>|</Text>
             <View style={styles.compactSpeedContainer}>
-              <Ionicons name="arrow-down" size={10} color={colors.primary} />
+              <Ionicons name="arrow-down" size={10} color={colors.stateDownloading} />
               <Text style={[styles.compactStat, { color: colors.text }]}>
                 {formatSpeed(torrent.dlspeed)}
               </Text>
             </View>
             <Text style={[styles.compactDivider, { color: colors.textSecondary }]}>|</Text>
             <View style={styles.compactSpeedContainer}>
-              <Ionicons name="arrow-up" size={10} color={colors.success} />
+              <Ionicons name="arrow-up" size={10} color={colors.stateUploadOnly} />
               <Text style={[styles.compactStat, { color: colors.text }]}>
                 {formatSpeed(torrent.upspeed)}
               </Text>

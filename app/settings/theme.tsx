@@ -97,6 +97,104 @@ export default function ThemeSettingsScreen() {
           </View>
         </View>
 
+        {/* Torrent state colors (badge & border by activity) */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT STATE COLORS</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  await colorThemeManager.resetTorrentStateColors(isDark);
+                  await reloadCustomColors();
+                  showToast('Torrent state colors reset to defaults', 'success');
+                } catch (error) {
+                  showToast('Failed to reset torrent state colors', 'error');
+                }
+              }}
+            >
+              <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <ColorSettingRow
+              label="Downloading"
+              color={colors.stateDownloading}
+              onPress={() => handleColorSelect('stateDownloading')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Seeding (idle)"
+              color={colors.stateSeeding}
+              onPress={() => handleColorSelect('stateSeeding')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Download + Upload"
+              color={colors.stateUploadAndDownload}
+              onPress={() => handleColorSelect('stateUploadAndDownload')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Upload only"
+              color={colors.stateUploadOnly}
+              onPress={() => handleColorSelect('stateUploadOnly')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Error / Stalled DL"
+              color={colors.stateError}
+              onPress={() => handleColorSelect('stateError')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Stalled (upload)"
+              color={colors.stateStalled}
+              onPress={() => handleColorSelect('stateStalled')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Paused / Stopped"
+              color={colors.statePaused}
+              onPress={() => handleColorSelect('statePaused')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Checking"
+              color={colors.stateChecking}
+              onPress={() => handleColorSelect('stateChecking')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Metadata"
+              color={colors.stateMetadata}
+              onPress={() => handleColorSelect('stateMetadata')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Queued"
+              color={colors.stateQueued}
+              onPress={() => handleColorSelect('stateQueued')}
+              colors={colors}
+            />
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <ColorSettingRow
+              label="Other"
+              color={colors.stateOther}
+              onPress={() => handleColorSelect('stateOther')}
+              colors={colors}
+            />
+          </View>
+        </View>
+
         {/* Advanced Color Customization */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
