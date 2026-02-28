@@ -17,6 +17,17 @@ interface ThemeContextType {
     error: string;
     success: string;
     warning: string;
+    stateDownloading: string;
+    stateSeeding: string;
+    stateUploadAndDownload: string;
+    stateUploadOnly: string;
+    stateError: string;
+    stateStalled: string;
+    statePaused: string;
+    stateChecking: string;
+    stateMetadata: string;
+    stateQueued: string;
+    stateOther: string;
   };
 }
 
@@ -31,6 +42,17 @@ const lightColors = {
   error: 'rgb(255, 13, 0,0.5)',
   success: 'rgb(4, 134, 37,0.5)', // Better contrast than pure gray
   warning: 'rgba(255, 153, 0, 0.5)', // Brighter orange
+  stateDownloading: 'rgb(0, 123, 255,0.8)',
+  stateSeeding: 'rgb(4, 134, 37,0.5)',
+  stateUploadAndDownload: '#6B7B8C',
+  stateUploadOnly: '#93C5E4',
+  stateError: 'rgb(255, 13, 0,0.5)',
+  stateStalled: 'rgb(255, 69, 0,0.6)',
+  statePaused: 'rgb(142, 142, 147,0.8)',
+  stateChecking: 'rgba(255, 153, 0, 0.6)',
+  stateMetadata: 'rgba(255, 153, 0, 0.6)',
+  stateQueued: 'rgb(142, 142, 147,0.7)',
+  stateOther: 'rgb(142, 142, 147,0.7)',
 };
 
 const darkColors = {
@@ -44,6 +66,17 @@ const darkColors = {
   error: 'rgb(255, 13, 0,0.8)',
   success: 'rgb(4, 134, 37,0.8)', // Better contrast than pure gray
   warning: 'rgba(255, 153, 0, 0.8)', // Brighter orange
+  stateDownloading: 'rgb(0, 123, 255,0.8)',
+  stateSeeding: 'rgb(4, 134, 37,0.8)',
+  stateUploadAndDownload: '#6B7B8C',
+  stateUploadOnly: '#93C5E4',
+  stateError: 'rgb(255, 13, 0,0.8)',
+  stateStalled: 'rgb(255, 69, 0,0.8)',
+  statePaused: 'rgb(60, 60, 60)',
+  stateChecking: 'rgba(255, 153, 0, 0.8)',
+  stateMetadata: 'rgba(255, 153, 0, 0.8)',
+  stateQueued: 'rgb(100, 100, 100)',
+  stateOther: 'rgb(100, 100, 100)',
 };
 
 // True black theme for OLED displays
@@ -58,6 +91,17 @@ const trueBlackColors = {
   error: 'rgb(255, 69, 58)', // Brighter red
   success: 'rgb(52, 199, 89)',
   warning: 'rgb(252, 151, 0)', // Brighter orange
+  stateDownloading: 'rgb(10, 132, 255)',
+  stateSeeding: 'rgb(52, 199, 89)',
+  stateUploadAndDownload: '#6B7B8C',
+  stateUploadOnly: '#93C5E4',
+  stateError: 'rgb(255, 69, 58)',
+  stateStalled: 'rgb(255, 159, 67)',
+  statePaused: 'rgb(90, 90, 90)',
+  stateChecking: 'rgb(252, 151, 0)',
+  stateMetadata: 'rgb(252, 151, 0)',
+  stateQueued: 'rgb(110, 110, 110)',
+  stateOther: 'rgb(110, 110, 110)',
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);

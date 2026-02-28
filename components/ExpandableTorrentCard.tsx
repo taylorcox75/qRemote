@@ -50,6 +50,32 @@ export function ExpandableTorrentCard({ torrent, onPress }: ExpandableTorrentCar
 
   const progress = (torrent.progress || 0) * 100;
   const isPaused = torrent.state.includes('paused') || torrent.state.includes('stopped');
+  const dlspeed = torrent.dlspeed ?? 0;
+  const upspeed = torrent.upspeed ?? 0;
+  const downloading = dlspeed > 0;
+  const uploading = upspeed > 0;
+  const stateColor =
+    downloading && uploading
+      ? colors.stateDownloading
+      : uploading
+        ? colors.stateUploadOnly
+        : downloading
+          ? colors.stateDownloading
+          : torrent.state === 'stalledUP' && torrent.progress >= 1
+            ? colors.stateSeeding
+            : torrent.state === 'error' || torrent.state === 'missingFiles' || torrent.state === 'stalledDL'
+              ? colors.stateError
+              : torrent.state === 'stalledUP'
+                ? colors.stateStalled
+                : torrent.state === 'pausedDL' || torrent.state === 'pausedUP' || torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP'
+                  ? colors.statePaused
+                  : torrent.state === 'checkingDL' || torrent.state === 'checkingUP'
+                    ? colors.stateChecking
+                    : torrent.state === 'metaDL' || torrent.state === 'forcedMetaDL'
+                      ? colors.stateMetadata
+                      : torrent.state === 'queuedDL' || torrent.state === 'queuedUP'
+                        ? colors.stateQueued
+                        : colors.stateOther;
 
   return (
     <Animated.View
@@ -77,7 +103,7 @@ export function ExpandableTorrentCard({ torrent, onPress }: ExpandableTorrentCar
             <View
               style={[
                 styles.progressFill,
-                { width: `${progress}%`, backgroundColor: colors.primary },
+                { width: `${progress}%`, backgroundColor: stateColor },
               ]}
             />
           </View>
@@ -92,7 +118,7 @@ export function ExpandableTorrentCard({ torrent, onPress }: ExpandableTorrentCar
             {/* Stats Grid */}
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
-                <Ionicons name="arrow-down" size={16} color={colors.primary} />
+                <Ionicons name="arrow-down" size={16} color={colors.stateDownloading} />
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {formatSpeed(torrent.dlspeed)}
                 </Text>
@@ -102,7 +128,7 @@ export function ExpandableTorrentCard({ torrent, onPress }: ExpandableTorrentCar
               </View>
 
               <View style={styles.statItem}>
-                <Ionicons name="arrow-up" size={16} color={colors.success} />
+                <Ionicons name="arrow-up" size={16} color={colors.stateUploadOnly} />
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {formatSpeed(torrent.upspeed)}
                 </Text>

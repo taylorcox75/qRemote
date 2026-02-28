@@ -10,6 +10,28 @@ export interface ColorTheme {
   surfaceOutline?: string;
   text?: string;
   textSecondary?: string;
+  /** Torrent state: downloading only */
+  stateDownloading?: string;
+  /** Torrent state: idle seeding (100% complete) */
+  stateSeeding?: string;
+  /** Torrent state: uploading and downloading at once */
+  stateUploadAndDownload?: string;
+  /** Torrent state: uploading only */
+  stateUploadOnly?: string;
+  /** Torrent state: error / missing files / stalled download */
+  stateError?: string;
+  /** Torrent state: stalled upload (not yet complete) */
+  stateStalled?: string;
+  /** Torrent state: paused or stopped */
+  statePaused?: string;
+  /** Torrent state: checking (hashing) */
+  stateChecking?: string;
+  /** Torrent state: metadata download */
+  stateMetadata?: string;
+  /** Torrent state: queued */
+  stateQueued?: string;
+  /** Torrent state: other (allocating, moving, unknown) */
+  stateOther?: string;
 }
 
 const CUSTOM_COLORS_KEY = 'customColors';
@@ -60,6 +82,27 @@ export const colorThemeManager = {
         ...preferences,
         [CUSTOM_COLORS_KEY]: customColors,
       });
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /** Keys used only for torrent state colors (can be reset independently) */
+  torrentStateColorKeys: [
+    'stateDownloading', 'stateSeeding', 'stateUploadAndDownload', 'stateUploadOnly',
+    'stateError', 'stateStalled', 'statePaused', 'stateChecking', 'stateMetadata', 'stateQueued', 'stateOther',
+  ] as const,
+
+  /**
+   * Reset only torrent state colors to defaults for a specific theme (keeps advanced colors)
+   */
+  async resetTorrentStateColors(isDark: boolean): Promise<void> {
+    try {
+      const custom = await this.getCustomColors(isDark);
+      if (!custom) return;
+      const updated = { ...custom };
+      this.torrentStateColorKeys.forEach((key) => delete updated[key]);
+      await this.saveCustomColors(isDark, updated);
     } catch (error) {
       throw error;
     }

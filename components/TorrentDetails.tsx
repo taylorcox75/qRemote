@@ -774,13 +774,13 @@ export function TorrentDetails({
               icon="speedometer"
               label="Download"
               value={formatSpeed(torrent.dlspeed)}
-              color={colors.primary}
+              color={colors.stateDownloading}
             />
             <StatCard
               icon="cloud-upload"
               label="Upload"
               value={formatSpeed(torrent.upspeed)}
-              color={colors.success}
+              color={colors.stateUploadOnly}
             />
           </View>
         </View>

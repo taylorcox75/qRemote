@@ -164,52 +164,33 @@ export default function TorrentDetail() {
     );
   }
 
-  const getStateColor = (state: string, progress: number): string => {
-    // If torrent is 100% complete and stalled UP, show as green (Seeding)
-    if (state === 'stalledUP' && progress >= 1) {
-      return colors.success;
-    }
-    
-    // Show gray for stoppedUP (it's paused/stopped, not actively seeding)
-    if (state === 'stoppedUP') {
-      return colors.surfaceOutline;
-    }
-    
-    // Show error color for stalledDL
-    if (state === 'stalledDL') {
-      return colors.error;
-    }
-    
-    // Show blue color for forcedMetaDL
-    if (state === 'forcedMetaDL') {
-      return colors.primary;
-    }
-    
-    if (state === 'metaDL') return colors.warning
-    if (state.includes('stalled')) return colors.error
-    if (state.includes('downloading') || state.includes('forcedDL')) return colors.primary
-    if (state.includes('uploading') || state.includes('forcedUP')) return colors.success
-    if (state.includes('paused') || state.includes('stopped')) return colors.surfaceOutline
-    if (state.includes('error')) return '#FF3B30';
-    return '#8E8E93';
+  const getStateColor = (state: string, progress: number, dlspeed: number, upspeed: number): string => {
+    const downloading = dlspeed > 0;
+    const uploading = upspeed > 0;
+    if (downloading && uploading) return colors.stateDownloading;
+    if (uploading && !downloading) return colors.stateUploadOnly;
+
+    if (state === 'stalledUP' && progress >= 1) return colors.stateSeeding;
+    if (state === 'stoppedUP' || state === 'stoppedDL' || state === 'pausedDL' || state === 'pausedUP') return colors.statePaused;
+    if (state === 'stalledDL' || state === 'error' || state === 'missingFiles') return colors.stateError;
+    if (state === 'stalledUP') return colors.stateStalled;
+    if (state === 'forcedMetaDL' || state === 'metaDL') return colors.stateMetadata;
+    if (state === 'checkingDL' || state === 'checkingUP') return colors.stateChecking;
+    if (state === 'queuedDL' || state === 'queuedUP') return colors.stateQueued;
+    if (state.includes('downloading') || state.includes('forcedDL')) return colors.stateDownloading;
+    if (state.includes('uploading') || state.includes('forcedUP')) return colors.stateUploadOnly;
+    return colors.stateOther;
   };
 
-  const getStateLabel = (state: string, progress: number): string => {
-    // If torrent is 100% complete and stalled UP, show as "Seeding"
-    if (state === 'stalledUP' && progress >= 1) {
-      return 'Seeding';
-    }
-    
-    // Show "Paused" for stoppedUP state (it's stopped/paused, not actively seeding)
-    if (state === 'stoppedUP') {
-      return 'Paused';
-    }
-    
-    // Show "Forced Meta" for forcedMetaDL state
-    if (state === 'forcedMetaDL') {
-      return 'Forced Meta';
-    }
-    
+  const getStateLabel = (state: string, progress: number, dlspeed: number, upspeed: number): string => {
+    const downloading = dlspeed > 0;
+    const uploading = upspeed > 0;
+    if (downloading && uploading) return 'DL + UL';
+    if (uploading && !downloading) return 'Uploading';
+
+    if (state === 'stalledUP' && progress >= 1) return 'Seeding';
+    if (state === 'stoppedUP') return 'Paused';
+    if (state === 'forcedMetaDL') return 'Forced Meta';
     if (state.includes('downloading')) return 'Downloading';
     if (state.includes('uploading')) return 'Uploading';
     if (state.includes('paused')) return 'Paused';
@@ -236,26 +217,24 @@ export default function TorrentDetail() {
   };
 
   const progress = (torrent.progress || 0) * 100;
-  // Use optimistic state for immediate visual feedback
+  const dlspeed = torrent.dlspeed ?? 0;
+  const upspeed = torrent.upspeed ?? 0;
   const actualIsPaused = torrent.state.includes('paused') || torrent.state.includes('stopped');
   const isPaused = optimisticPaused !== null ? optimisticPaused : actualIsPaused;
-  
-  // Update state color and label based on optimistic or actual state
-  let stateColor = getStateColor(torrent.state, torrent.progress);
-  let stateLabel = getStateLabel(torrent.state, torrent.progress);
+
+  let stateColor = getStateColor(torrent.state, torrent.progress, dlspeed, upspeed);
+  let stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed);
   
   if (optimisticPaused !== null) {
     if (optimisticPaused) {
-      // User just paused - show as paused
-      stateColor = colors.surfaceOutline;
+      stateColor = colors.statePaused;
       stateLabel = 'Paused';
     } else {
-      // User just resumed - show as downloading/uploading
       if (torrent.progress >= 1) {
-        stateColor = colors.success;
+        stateColor = colors.stateSeeding;
         stateLabel = 'Seeding';
       } else {
-        stateColor = colors.primary;
+        stateColor = colors.stateDownloading;
         stateLabel = 'Downloading';
       }
     }

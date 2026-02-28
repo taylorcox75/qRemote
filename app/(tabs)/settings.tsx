@@ -56,8 +56,17 @@ function formatReleaseDate(isoDate: string): string {
 
 const CHANGELOG = [
   {
+    version: '2.1.0',
+    date: '2025-02-27',
+    changes: [
+      'Customizable torrent state colors in Theme & Colors (downloading, seeding, upload only, error, stalled, paused, checking, metadata, queued, other)',
+      'Separate reset-to-default for torrent state colors (Advanced colors reset unchanged)',
+      'Torrent state colors section moved above Advanced colors in theme settings'
+    ],
+  },
+  {
     version: '2.0.2',
-    date: '2026-02-26',
+    date: '2025-02-26',
     changes: [
       'Fixed default save path updates not being applied on the qBittorrent server',
     ],
