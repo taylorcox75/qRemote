@@ -372,15 +372,13 @@ export default function TorrentsScreen() {
 
     try {
       setAddingTorrent(true);
-      
+
       if (selectedFile) {
-        // Upload .torrent file
         await torrentsApi.addTorrentFile(selectedFile);
       } else {
-        // Add magnet/URL
         await torrentsApi.addTorrent(torrentUrl.trim());
       }
-      
+
       setTorrentUrl('');
       setSelectedFile(null);
       setShowAddModal(false);

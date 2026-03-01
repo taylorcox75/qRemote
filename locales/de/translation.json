@@ -97,6 +97,27 @@
       "sortBy": "Sortieren nach"
     },
     "transfer": { "title": "Übertragung" },
+    "files": {
+      "title": "Dateien",
+      "notConnected": "Nicht mit einem Server verbunden",
+      "noFilesFound": "Keine Dateien gefunden",
+      "selectAll": "Alle auswählen",
+      "deselectAll": "Alle abwählen",
+      "changePriority": "Priorität ändern",
+      "filesCount": "{{count}} Dateien",
+      "setPriority": "Priorität festlegen",
+      "setPriorityForSelected": "Priorität für ausgewählte Dateien festlegen",
+      "selectedCount_one": "{{count}} Datei ausgewählt",
+      "selectedCount_other": "{{count}} Dateien ausgewählt",
+      "skipDontDownload": "Überspringen (nicht herunterladen)",
+      "normalPriority": "Normale Priorität",
+      "highPriority": "Hohe Priorität",
+      "maximumPriority": "Maximale Priorität",
+      "prioritySkip": "Überspringen",
+      "priorityNormal": "Normal",
+      "priorityHigh": "Hoch",
+      "priorityMaximum": "Maximum"
+    },
     "logs": { "title": "Protokolle", "searchLogs": "Protokolle durchsuchen..." }
   },
   "placeholders": {
@@ -243,7 +264,11 @@
     "debugCopied": "Debug-Infos kopiert",
     "shutdownInitiated": "Anwendungsherunterfahren gestartet",
     "savePathUpdated": "Standard-Speicherpfad auf dem Server aktualisiert",
-    "savePathSavedLocally": "Lokal gespeichert. Mit einem Server verbinden, um auf qBittorrent zu aktualisieren."
+    "savePathSavedLocally": "Lokal gespeichert. Mit einem Server verbinden, um auf qBittorrent zu aktualisieren.",
+    "allFilesSelected": "Alle Dateien zum Download ausgewählt",
+    "allFilesDeselected": "Alle Auswahlen aufgehoben",
+    "prioritySet": "Priorität auf {{label}} gesetzt",
+    "prioritySetForCount": "Priorität für {{count}} Datei(en) auf {{label}} gesetzt"
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten",
@@ -282,6 +307,11 @@
     "failedToDeleteTag": "Tag löschen fehlgeschlagen",
     "failedToVerify": "Torrent-Verifizierung fehlgeschlagen",
     "failedToPickFile": "Dateiauswahl fehlgeschlagen",
-    "failedToUpdateSavePath": "Speicherpfad auf dem Server konnte nicht aktualisiert werden"
+    "failedToUpdateSavePath": "Speicherpfad auf dem Server konnte nicht aktualisiert werden",
+    "failedToLoadFiles": "Dateien konnten nicht geladen werden",
+    "failedToSelectAll": "Alle Dateien konnten nicht ausgewählt werden",
+    "failedToDeselectAll": "Alle Auswahlen konnten nicht aufgehoben werden",
+    "failedToUpdateFile": "Datei konnte nicht aktualisiert werden",
+    "failedToSetPriority": "Priorität konnte nicht gesetzt werden"
   }
 }

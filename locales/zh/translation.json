@@ -97,6 +97,27 @@
       "sortBy": "排序方式"
     },
     "transfer": { "title": "传输" },
+    "files": {
+      "title": "文件",
+      "notConnected": "未连接到服务器",
+      "noFilesFound": "未找到文件",
+      "selectAll": "全选",
+      "deselectAll": "取消全选",
+      "changePriority": "更改优先级",
+      "filesCount": "{{count}} 个文件",
+      "setPriority": "设置优先级",
+      "setPriorityForSelected": "为所选文件设置优先级",
+      "selectedCount_one": "已选 {{count}} 个文件",
+      "selectedCount_other": "已选 {{count}} 个文件",
+      "skipDontDownload": "跳过（不下载）",
+      "normalPriority": "普通优先级",
+      "highPriority": "高优先级",
+      "maximumPriority": "最高优先级",
+      "prioritySkip": "跳过",
+      "priorityNormal": "普通",
+      "priorityHigh": "高",
+      "priorityMaximum": "最高"
+    },
     "logs": { "title": "日志", "searchLogs": "搜索日志..." }
   },
   "placeholders": {
@@ -243,7 +264,11 @@
     "debugCopied": "调试信息已复制",
     "shutdownInitiated": "应用关闭已启动",
     "savePathUpdated": "服务器上的默认保存路径已更新",
-    "savePathSavedLocally": "已本地保存。连接到服务器以在 qBittorrent 上更新。"
+    "savePathSavedLocally": "已本地保存。连接到服务器以在 qBittorrent 上更新。",
+    "allFilesSelected": "已选择全部文件以下载",
+    "allFilesDeselected": "已取消全选",
+    "prioritySet": "优先级已设为 {{label}}",
+    "prioritySetForCount": "已为 {{count}} 个文件设置优先级为 {{label}}"
   },
   "errors": {
     "generic": "发生错误",
@@ -282,6 +307,11 @@
     "failedToDeleteTag": "删除标签失败",
     "failedToVerify": "校验种子失败",
     "failedToPickFile": "选择文件失败",
-    "failedToUpdateSavePath": "无法更新服务器上的保存路径"
+    "failedToUpdateSavePath": "无法更新服务器上的保存路径",
+    "failedToLoadFiles": "加载文件失败",
+    "failedToSelectAll": "全选失败",
+    "failedToDeselectAll": "取消全选失败",
+    "failedToUpdateFile": "更新文件失败",
+    "failedToSetPriority": "设置优先级失败"
   }
 }
