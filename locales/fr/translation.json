@@ -97,6 +97,27 @@
       "sortBy": "Trier par"
     },
     "transfer": { "title": "Transfert" },
+    "files": {
+      "title": "Fichiers",
+      "notConnected": "Non connecté à un serveur",
+      "noFilesFound": "Aucun fichier trouvé",
+      "selectAll": "Tout sélectionner",
+      "deselectAll": "Tout désélectionner",
+      "changePriority": "Changer la priorité",
+      "filesCount": "{{count}} fichiers",
+      "setPriority": "Définir la priorité",
+      "setPriorityForSelected": "Définir la priorité pour les fichiers sélectionnés",
+      "selectedCount_one": "{{count}} fichier sélectionné",
+      "selectedCount_other": "{{count}} fichiers sélectionnés",
+      "skipDontDownload": "Ignorer (ne pas télécharger)",
+      "normalPriority": "Priorité normale",
+      "highPriority": "Priorité haute",
+      "maximumPriority": "Priorité maximale",
+      "prioritySkip": "Ignorer",
+      "priorityNormal": "Normal",
+      "priorityHigh": "Haute",
+      "priorityMaximum": "Maximum"
+    },
     "logs": { "title": "Journaux", "searchLogs": "Rechercher dans les journaux..." }
   },
   "placeholders": {
@@ -243,7 +264,11 @@
     "debugCopied": "Infos de débogage copiées",
     "shutdownInitiated": "Arrêt de l'application lancé",
     "savePathUpdated": "Chemin de sauvegarde par défaut mis à jour sur le serveur",
-    "savePathSavedLocally": "Enregistré localement. Connectez-vous à un serveur pour mettre à jour sur qBittorrent."
+    "savePathSavedLocally": "Enregistré localement. Connectez-vous à un serveur pour mettre à jour sur qBittorrent.",
+    "allFilesSelected": "Tous les fichiers sélectionnés pour le téléchargement",
+    "allFilesDeselected": "Toutes les sélections annulées",
+    "prioritySet": "Priorité définie sur {{label}}",
+    "prioritySetForCount": "Priorité définie sur {{label}} pour {{count}} fichier(s)"
   },
   "errors": {
     "generic": "Une erreur s'est produite",
@@ -282,6 +307,11 @@
     "failedToDeleteTag": "Échec de la suppression de l'étiquette",
     "failedToVerify": "Échec de la vérification du torrent",
     "failedToPickFile": "Échec de la sélection du fichier",
-    "failedToUpdateSavePath": "Échec de la mise à jour du chemin de sauvegarde sur le serveur"
+    "failedToUpdateSavePath": "Échec de la mise à jour du chemin de sauvegarde sur le serveur",
+    "failedToLoadFiles": "Échec du chargement des fichiers",
+    "failedToSelectAll": "Échec de la sélection de tous les fichiers",
+    "failedToDeselectAll": "Échec de l'annulation de toutes les sélections",
+    "failedToUpdateFile": "Échec de la mise à jour du fichier",
+    "failedToSetPriority": "Échec de la définition de la priorité"
   }
 }

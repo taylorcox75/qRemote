@@ -97,6 +97,27 @@
       "sortBy": "Ordenar por"
     },
     "transfer": { "title": "Transferencia" },
+    "files": {
+      "title": "Archivos",
+      "notConnected": "No conectado a un servidor",
+      "noFilesFound": "No se encontraron archivos",
+      "selectAll": "Seleccionar todo",
+      "deselectAll": "Deseleccionar todo",
+      "changePriority": "Cambiar prioridad",
+      "filesCount": "{{count}} archivos",
+      "setPriority": "Establecer prioridad",
+      "setPriorityForSelected": "Establecer prioridad para archivos seleccionados",
+      "selectedCount_one": "{{count}} archivo seleccionado",
+      "selectedCount_other": "{{count}} archivos seleccionados",
+      "skipDontDownload": "Omitir (no descargar)",
+      "normalPriority": "Prioridad normal",
+      "highPriority": "Prioridad alta",
+      "maximumPriority": "Prioridad máxima",
+      "prioritySkip": "Omitir",
+      "priorityNormal": "Normal",
+      "priorityHigh": "Alta",
+      "priorityMaximum": "Máxima"
+    },
     "logs": { "title": "Registros", "searchLogs": "Buscar en registros..." }
   },
   "placeholders": {
@@ -243,7 +264,11 @@
     "debugCopied": "Información de depuración copiada",
     "shutdownInitiated": "Apagado de la aplicación iniciado",
     "savePathUpdated": "Ruta de guardado predeterminada actualizada en el servidor",
-    "savePathSavedLocally": "Guardado localmente. Conéctate a un servidor para actualizar en qBittorrent."
+    "savePathSavedLocally": "Guardado localmente. Conéctate a un servidor para actualizar en qBittorrent.",
+    "allFilesSelected": "Todos los archivos seleccionados para descargar",
+    "allFilesDeselected": "Todas las selecciones anuladas",
+    "prioritySet": "Prioridad establecida en {{label}}",
+    "prioritySetForCount": "Prioridad establecida en {{label}} para {{count}} archivo(s)"
   },
   "errors": {
     "generic": "Ocurrió un error",
@@ -282,6 +307,11 @@
     "failedToDeleteTag": "Error al eliminar etiqueta",
     "failedToVerify": "Error al verificar torrent",
     "failedToPickFile": "Error al seleccionar archivo",
-    "failedToUpdateSavePath": "Error al actualizar la ruta de guardado en el servidor"
+    "failedToUpdateSavePath": "Error al actualizar la ruta de guardado en el servidor",
+    "failedToLoadFiles": "Error al cargar los archivos",
+    "failedToSelectAll": "Error al seleccionar todos los archivos",
+    "failedToDeselectAll": "Error al deseleccionar todos los archivos",
+    "failedToUpdateFile": "Error al actualizar el archivo",
+    "failedToSetPriority": "Error al establecer la prioridad"
   }
 }

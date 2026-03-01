@@ -45,6 +45,7 @@ import { shadows } from '../../constants/shadows';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
+import { CHANGELOG } from '../../constants/changelog';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function formatReleaseDate(isoDate: string): string {
@@ -53,104 +54,6 @@ function formatReleaseDate(isoDate: string): string {
   const month = MONTH_NAMES[m - 1];
   return month ? `${month} ${d}, ${y}` : isoDate;
 }
-
-const CHANGELOG = [
-  {
-    version: '2.1.0',
-    date: '2025-02-27',
-    changes: [
-      'Customizable torrent state colors in Theme & Colors (downloading, seeding, upload only, error, stalled, paused, checking, metadata, queued, other)',
-      'Separate reset-to-default for torrent state colors (Advanced colors reset unchanged)',
-      'Torrent state colors section moved above Advanced colors in theme settings'
-    ],
-  },
-  {
-    version: '2.0.2',
-    date: '2025-02-26',
-    changes: [
-      'Fixed default save path updates not being applied on the qBittorrent server',
-    ],
-  },
-  {
-    version: '2.0.1',
-    date: '2026-02-19',
-    changes: [
-      'Fixed transfer stats (free disk space, queued size, avg queue time) disappearing after switching server',
-      'What\'s New popup updated with v2.0.0 and v1.1.3 release notes',
-    ],
-  },
-  {
-    version: '2.0.0',
-    date: '2026-02-18',
-    changes: [
-      'Export logs with connectivity logging and debug panel export button',
-      'Applied Apple developer NSAllowsArbitraryLoads flag',
-      'Info button for torrent seed percent/leech',
-      'Sorting by ratio',
-      'Language translation support',
-    ],
-  },
-  {
-    version: '1.1.3',
-    date: '2026-02-06',
-    changes: [
-      'Bugfix: hostname handling',
-      'Fix protocol prefix handling and add community links',
-      'General bugfix and cleanup',
-    ],
-  },
-  {
-    version: '1.1.2',
-    date: '2026-02-05',
-    changes: [
-      'Backwards compatibility improvements for existing server configs',
-      'Fixed basePath persistence for reverse proxy users',
-      'Normalized host format on load to prevent double-protocol issues on upgrade',
-      'Include basePath in settings export and import',
-      'Defensive theme loading for legacy preference formats',
-      'Coerce numeric preferences (timeouts, intervals) for robustness',
-    ],
-  },
-  {
-    version: '1.1.1',
-    date: '2026-02-02',
-    changes: [
-      'Fixed protocol prefix handling - no more double http:// issues',
-      'Simplified server configuration with helpful tooltips',
-      'Added cancel button during connection testing',
-      'Removed confusing Base Path field',
-      'Added What\'s New section',
-      'Improved UX with cleaner placeholders and info icons',
-    ],
-  },
-  {
-    version: '1.1.0',
-    date: '2026-02-01',
-    changes: [
-      'Fixed hostname handling and connection issues',
-      'Improved loading screen experience',
-      'Better background app restoration',
-    ],
-  },
-  {
-    version: '1.0.6',
-    date: '2024-12-16',
-    changes: [
-      'Fixed popup and Android localhost issues',
-      'General stability improvements',
-    ],
-  },
-  {
-    version: '1.0.5',
-    date: '2024-12-14',
-    changes: [
-      'Major UI cleanup and enhancements',
-      'Improved add server form robustness',
-      'Added credential toggle for local networks',
-      'Fixed Android server configuration issues',
-    ],
-  },
-];
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
@@ -677,7 +580,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* App / Language */}
+        {/* App: Language + What's New */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.app').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
@@ -697,6 +600,18 @@ export default function SettingsScreen() {
                 <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => setShowWhatsNew(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="sparkles-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.whatsNew')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1166,6 +1081,48 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Community */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.community').toUpperCase()}</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://github.com/taylorcox75/qremote')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="logo-github" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.sourceCode')}</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://github.com/taylorcox75/qRemote/issues')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="bug-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.reportIssue')}</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => Linking.openURL('https://www.paypal.com/donate/?business=E9XLGFHN963HN&no_recurring=0&currency_code=USD')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="beer-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.buyMeBeer')}</Text>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Backup & Restore */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.backupRestore').toUpperCase()}</Text>
@@ -1220,65 +1177,11 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* About qRemote - Community Links */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.community').toUpperCase()}</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => Linking.openURL('https://github.com/taylorcox75/qremote')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingLeft}>
-                <Ionicons name="logo-github" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.sourceCode')}</Text>
-              </View>
-              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => Linking.openURL('https://github.com/taylorcox75/qRemote/issues')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingLeft}>
-                <Ionicons name="bug-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.reportIssue')}</Text>
-              </View>
-              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => Linking.openURL('https://www.paypal.com/donate/?business=E9XLGFHN963HN&no_recurring=0&currency_code=USD')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingLeft}>
-                <Ionicons name="beer-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.buyMeBeer')}</Text>
-              </View>
-              <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* App Info */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.appInfo').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <InfoRow icon="information-circle-outline" label={t('screens.settings.appVersion')} value={APP_VERSION} colors={colors} />
-            <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => setShowWhatsNew(true)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingLeft}>
-                <Ionicons name="sparkles-outline" size={22} color={colors.primary} />
-                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.whatsNew')}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
             <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
             <InfoRow icon="logo-react" label="React Native" value={Platform.constants.reactNativeVersion?.major + '.' + Platform.constants.reactNativeVersion?.minor + '.' + Platform.constants.reactNativeVersion?.patch || 'N/A'} colors={colors} />
             <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />

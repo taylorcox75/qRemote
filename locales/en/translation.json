@@ -99,6 +99,27 @@
     "transfer": {
       "title": "Transfer"
     },
+    "files": {
+      "title": "Files",
+      "notConnected": "Not connected to a server",
+      "noFilesFound": "No files found",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "changePriority": "Change Priority",
+      "filesCount": "{{count}} files",
+      "setPriority": "Set Priority",
+      "setPriorityForSelected": "Set priority for selected files",
+      "selectedCount_one": "{{count}} file selected",
+      "selectedCount_other": "{{count}} files selected",
+      "skipDontDownload": "Skip (Don't Download)",
+      "normalPriority": "Normal Priority",
+      "highPriority": "High Priority",
+      "maximumPriority": "Maximum Priority",
+      "prioritySkip": "Skip",
+      "priorityNormal": "Normal",
+      "priorityHigh": "High",
+      "priorityMaximum": "Maximum"
+    },
     "logs": {
       "title": "Logs",
       "searchLogs": "Search logs..."
@@ -248,7 +269,11 @@
     "debugCopied": "Debug info copied to clipboard",
     "shutdownInitiated": "Application shutdown initiated",
     "savePathUpdated": "Default save path updated on server",
-    "savePathSavedLocally": "Saved locally. Connect to a server to update on qBittorrent."
+    "savePathSavedLocally": "Saved locally. Connect to a server to update on qBittorrent.",
+    "allFilesSelected": "All files selected for download",
+    "allFilesDeselected": "All files deselected",
+    "prioritySet": "Priority set to {{label}}",
+    "prioritySetForCount": "Priority set to {{label}} for {{count}} file(s)"
   },
   "errors": {
     "generic": "An error occurred",
@@ -287,6 +312,11 @@
     "failedToDeleteTag": "Failed to delete tag",
     "failedToVerify": "Failed to verify torrent",
     "failedToPickFile": "Failed to pick file",
-    "failedToUpdateSavePath": "Failed to update save path on server"
+    "failedToUpdateSavePath": "Failed to update save path on server",
+    "failedToLoadFiles": "Failed to load files",
+    "failedToSelectAll": "Failed to select all files",
+    "failedToDeselectAll": "Failed to deselect all files",
+    "failedToUpdateFile": "Failed to update file",
+    "failedToSetPriority": "Failed to set priority"
   }
 }
