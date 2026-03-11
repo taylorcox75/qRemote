@@ -59,13 +59,13 @@ jobs:
       - name: Build iOS (production)
         id: build
         run: |
-          BUILD_ID=$(eas build \
+          BUILD_OUTPUT=$(eas build \
             --platform ios \
             --profile production \
             --non-interactive \
             --wait \
-            --json \
-            | jq -r '.[0].id')
+            --json)
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.[0].id')
           echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
           echo "Build ID: $BUILD_ID"
 
