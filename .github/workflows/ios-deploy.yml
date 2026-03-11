@@ -33,6 +33,76 @@ jobs:
             echo "version_changed=false" >> $GITHUB_OUTPUT
           fi
 
+  create-release:
+    name: Create GitHub Release (v${{ needs.check-version.outputs.version }})
+    needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate release notes from changelog.ts
+        run: |
+          cat > /tmp/gen-notes.mjs << 'SCRIPT_EOF'
+          import { readFileSync } from 'fs';
+
+          const version = process.argv[2];
+          const content = readFileSync('constants/changelog.ts', 'utf8');
+
+          const pattern = new RegExp(
+            `version:\\s*'${version.replace(/\./g, '\\.')}',\\s*date:\\s*'([^']+)',\\s*changes:\\s*\\[([\\s\\S]*?)\\]`
+          );
+
+          const match = content.match(pattern);
+          if (!match) {
+            process.stdout.write(`## qRemote v${version}\n\nNo changelog entry found for this version.\n`);
+            process.exit(0);
+          }
+
+          const date = match[1];
+          const changes = [...match[2].matchAll(/'([^']+)'/g)].map(m => m[1]);
+
+          const fixes = changes.filter(c => /^fix(ed)?|^bug/i.test(c));
+          const features = changes.filter(c => !/^fix(ed)?|^bug/i.test(c));
+
+          const dateStr = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric',
+          });
+
+          const lines = [
+            `## qRemote v${version}`,
+            `**Released ${dateStr}**`,
+            '',
+          ];
+
+          if (features.length) {
+            lines.push("### ✨ What's New");
+            features.forEach(c => lines.push(`- ${c}`));
+            lines.push('');
+          }
+          if (fixes.length) {
+            lines.push('### 🐛 Bug Fixes');
+            fixes.forEach(c => lines.push(`- ${c}`));
+            lines.push('');
+          }
+
+          process.stdout.write(lines.join('\n'));
+          SCRIPT_EOF
+
+          node /tmp/gen-notes.mjs "${{ needs.check-version.outputs.version }}" > /tmp/release-notes.md
+          echo "--- Release notes preview ---"
+          cat /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          name: qRemote v${{ needs.check-version.outputs.version }}
+          body_path: /tmp/release-notes.md
+          make_latest: "true"
+
   build-and-submit:
     name: Build & Submit to App Store (${{ needs.check-version.outputs.version }})
     needs: check-version
