@@ -21,7 +21,7 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "YOUR_NUMERIC_APP_STORE_CONNECT_ID"
+        "ascAppId": "6756276747"
       }
     }
   }
