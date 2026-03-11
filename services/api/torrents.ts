@@ -367,67 +367,43 @@ export const torrentsApi = {
   },
 
   /**
-   * Increase torrent priority
+   * Increase torrent priority.
+   * Returns HTTP 409 when queueing is disabled — handled globally by the axios interceptor.
    */
   async increasePriority(hashes: string[]): Promise<void> {
-    try {
-      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/increasePrio`, {
-        hashes: hashes.join('|'),
-      });
-    } catch (error: any) {
-      if (error.response?.status === 409) {
-        throw new Error('Torrent queueing is disabled. Enable it in qBittorrent Settings → BitTorrent → Torrent Queueing.');
-      }
-      throw error;
-    }
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/increasePrio`, {
+      hashes: hashes.join('|'),
+    });
   },
 
   /**
-   * Decrease torrent priority
+   * Decrease torrent priority.
+   * Returns HTTP 409 when queueing is disabled — handled globally by the axios interceptor.
    */
   async decreasePriority(hashes: string[]): Promise<void> {
-    try {
-      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/decreasePrio`, {
-        hashes: hashes.join('|'),
-      });
-    } catch (error: any) {
-      if (error.response?.status === 409) {
-        throw new Error('Torrent queueing is disabled. Enable it in qBittorrent Settings → BitTorrent → Torrent Queueing.');
-      }
-      throw error;
-    }
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/decreasePrio`, {
+      hashes: hashes.join('|'),
+    });
   },
 
   /**
-   * Set maximal torrent priority
+   * Set maximal torrent priority.
+   * Returns HTTP 409 when queueing is disabled — handled globally by the axios interceptor.
    */
   async setMaximalPriority(hashes: string[]): Promise<void> {
-    try {
-      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/topPrio`, {
-        hashes: hashes.join('|'),
-      });
-    } catch (error: any) {
-      if (error.response?.status === 409) {
-        throw new Error('Torrent queueing is disabled. Enable it in qBittorrent Settings → BitTorrent → Torrent Queueing.');
-      }
-      throw error;
-    }
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/topPrio`, {
+      hashes: hashes.join('|'),
+    });
   },
 
   /**
-   * Set minimal torrent priority
+   * Set minimal torrent priority.
+   * Returns HTTP 409 when queueing is disabled — handled globally by the axios interceptor.
    */
   async setMinimalPriority(hashes: string[]): Promise<void> {
-    try {
-      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/bottomPrio`, {
-        hashes: hashes.join('|'),
-      });
-    } catch (error: any) {
-      if (error.response?.status === 409) {
-        throw new Error('Torrent queueing is disabled. Enable it in qBittorrent Settings → BitTorrent → Torrent Queueing.');
-      }
-      throw error;
-    }
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/bottomPrio`, {
+      hashes: hashes.join('|'),
+    });
   },
 
   /**

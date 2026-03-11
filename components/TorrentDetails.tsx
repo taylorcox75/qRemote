@@ -1406,7 +1406,7 @@ export function TorrentDetails({
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Files ({files.length})</Text>
           {files.map((file, filePosition) => (
-            <View key={file.index} style={[styles.fileItem, { backgroundColor: colors.background }]}>
+            <View key={file.index ?? filePosition} style={[styles.fileItem, { backgroundColor: colors.background }]}>
               <View style={styles.fileHeader}>
                 <Text style={[styles.fileName, { color: colors.text }]}>{file.name}</Text>
                 <TouchableOpacity

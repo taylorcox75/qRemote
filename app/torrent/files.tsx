@@ -308,7 +308,7 @@ export default function TorrentFilesScreen() {
     // Build display list with proper hierarchy
     const addedFolders = new Set<string>();
     
-    files.forEach(file => {
+    files.forEach((file, filePosition) => {
       const parts = file.name.split('/');
       const fileName = parts[parts.length - 1];
       const depth = parts.length - 1;
@@ -358,7 +358,7 @@ export default function TorrentFilesScreen() {
 
       if (!parentCollapsed) {
         items.push({
-          id: `file-${file.index}`,
+          id: `file-${file.index ?? filePosition}`,
           type: 'file',
           name: fileName,
           path: file.name,
