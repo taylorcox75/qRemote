@@ -12,6 +12,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '2.1.2',
+    date: '2026-03-11',
+    changes: [
+      'Fixed torrent state colors: torrents uploading and downloading simultaneously now display blue-grey instead of purple',
+    ],
+  },
+  {
     version: '2.1.1',
     date: '2026-03-01',
     changes: [
