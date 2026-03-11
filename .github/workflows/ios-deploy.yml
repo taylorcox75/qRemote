@@ -1,0 +1,162 @@
+name: iOS App Store Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 2.1.1) — overrides package.json check'
+        required: true
+
+jobs:
+  check-version:
+    name: Check version bump
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.check.outputs.version_changed }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if version changed
+        id: check
+        run: |
+          # Manual trigger bypasses the diff check entirely
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          CURRENT=$(node -p "require('./package.json').version")
+          PREVIOUS=$(git show HEAD~1:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version" 2>/dev/null || echo "0.0.0")
+          echo "Current version:  $CURRENT"
+          echo "Previous version: $PREVIOUS"
+          if [ "$CURRENT" != "$PREVIOUS" ]; then
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "version=$CURRENT" >> $GITHUB_OUTPUT
+          else
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  create-release:
+    name: Create GitHub Release (v${{ needs.check-version.outputs.version }})
+    needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate release notes from changelog.ts
+        run: |
+          cat > /tmp/gen-notes.mjs << 'SCRIPT_EOF'
+          import { readFileSync } from 'fs';
+
+          const version = process.argv[2];
+          const content = readFileSync('constants/changelog.ts', 'utf8');
+
+          const pattern = new RegExp(
+            `version:\\s*'${version.replace(/\./g, '\\.')}',\\s*date:\\s*'([^']+)',\\s*changes:\\s*\\[([\\s\\S]*?)\\]`
+          );
+
+          const match = content.match(pattern);
+          if (!match) {
+            process.stdout.write(`## qRemote v${version}\n\nNo changelog entry found for this version.\n`);
+            process.exit(0);
+          }
+
+          const date = match[1];
+          // Match both 'single' and "double" quoted strings (TS allows either)
+          const changes = [...match[2].matchAll(/(?:'([^']*)'|"([^"]*)")/g)]
+            .map(m => m[1] ?? m[2])
+            .filter(Boolean);
+
+          const fixes = changes.filter(c => /^fix(ed)?|^bug/i.test(c));
+          const features = changes.filter(c => !/^fix(ed)?|^bug/i.test(c));
+
+          const dateStr = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric',
+          });
+
+          const lines = [
+            `## qRemote v${version}`,
+            `**Released ${dateStr}**`,
+            '',
+          ];
+
+          if (features.length) {
+            lines.push("### ✨ What's New");
+            features.forEach(c => lines.push(`- ${c}`));
+            lines.push('');
+          }
+          if (fixes.length) {
+            lines.push('### 🐛 Bug Fixes');
+            fixes.forEach(c => lines.push(`- ${c}`));
+            lines.push('');
+          }
+
+          process.stdout.write(lines.join('\n'));
+          SCRIPT_EOF
+
+          node /tmp/gen-notes.mjs "${{ needs.check-version.outputs.version }}" > /tmp/release-notes.md
+          echo "--- Release notes preview ---"
+          cat /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          name: qRemote v${{ needs.check-version.outputs.version }}
+          body_path: /tmp/release-notes.md
+          make_latest: "true"
+
+  build-and-submit:
+    name: Build & Submit to App Store (${{ needs.check-version.outputs.version }})
+    needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS (production)
+        id: build
+        run: |
+          BUILD_OUTPUT=$(eas build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --wait \
+            --json)
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.[0].id')
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Build ID: $BUILD_ID"
+
+      - name: Submit to App Store
+        run: |
+          eas submit \
+            --platform ios \
+            --id ${{ steps.build.outputs.build_id }} \
+            --non-interactive
