@@ -56,7 +56,7 @@ export function ExpandableTorrentCard({ torrent, onPress }: ExpandableTorrentCar
   const uploading = upspeed > 0;
   const stateColor =
     downloading && uploading
-      ? colors.stateDownloading
+      ? colors.stateUploadAndDownload
       : uploading
         ? colors.stateUploadOnly
         : downloading
