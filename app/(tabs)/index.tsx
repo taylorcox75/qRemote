@@ -28,6 +28,7 @@ import { TorrentCard } from '../../components/TorrentCard';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { torrentsApi } from '../../services/api/torrents';
 import { storageService } from '../../services/storage';
+import { haptics } from '../../utils/haptics';
 import { shadows } from '../../constants/shadows';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
@@ -223,6 +224,7 @@ export default function TorrentsScreen() {
 
   // Selection handlers
   const toggleSelectMode = () => {
+    haptics.medium();
     if (selectMode) {
       setSelectedHashes(new Set());
     }
@@ -230,6 +232,7 @@ export default function TorrentsScreen() {
   };
 
   const toggleSelection = (hash: string) => {
+    haptics.selection();
     const newSelection = new Set(selectedHashes);
     if (newSelection.has(hash)) {
       newSelection.delete(hash);
@@ -251,13 +254,16 @@ export default function TorrentsScreen() {
   // Bulk actions
   const handleBulkPause = async () => {
     if (selectedHashes.size === 0) return;
+    haptics.medium();
     setBulkLoading(true);
     try {
       await torrentsApi.pauseTorrents(Array.from(selectedHashes));
+      haptics.success();
       refresh();
       setSelectedHashes(new Set());
       setSelectMode(false);
     } catch (error: any) {
+      haptics.error();
       showToast(error.message || t('errors.failedToPause'), 'error');
     } finally {
       setBulkLoading(false);
@@ -266,13 +272,16 @@ export default function TorrentsScreen() {
 
   const handleBulkResume = async () => {
     if (selectedHashes.size === 0) return;
+    haptics.medium();
     setBulkLoading(true);
     try {
       await torrentsApi.resumeTorrents(Array.from(selectedHashes));
+      haptics.success();
       refresh();
       setSelectedHashes(new Set());
       setSelectMode(false);
     } catch (error: any) {
+      haptics.error();
       showToast(error.message || t('errors.failedToResume'), 'error');
     } finally {
       setBulkLoading(false);
@@ -373,18 +382,26 @@ export default function TorrentsScreen() {
     try {
       setAddingTorrent(true);
 
+      const prefs = await storageService.getPreferences();
+      const addOptions = {
+        stopped: prefs.pauseOnAdd === true,
+        firstLastPiecePrio: Number(prefs.defaultPriority) > 0,
+      };
+
       if (selectedFile) {
-        await torrentsApi.addTorrentFile(selectedFile);
+        await torrentsApi.addTorrentFile(selectedFile, addOptions);
       } else {
-        await torrentsApi.addTorrent(torrentUrl.trim());
+        await torrentsApi.addTorrent(torrentUrl.trim(), addOptions);
       }
 
+      haptics.success();
       setTorrentUrl('');
       setSelectedFile(null);
       setShowAddModal(false);
       refresh();
       showToast(t('toast.torrentAdded'), 'success');
     } catch (error: any) {
+      haptics.error();
       showToast(error.message || t('errors.failedToAdd'), 'error');
     } finally {
       setAddingTorrent(false);
@@ -729,6 +746,7 @@ export default function TorrentsScreen() {
                       },
                     ]}
                     onPress={() => {
+                      haptics.light();
                       if (filter === item.key) {
                         // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
                         setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -801,6 +819,7 @@ export default function TorrentsScreen() {
                       },
                     ]}
                     onPress={() => {
+                      haptics.light();
                       if (sortBy === option.key) {
                         // Toggle direction if clicking the same sort option
                         setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');

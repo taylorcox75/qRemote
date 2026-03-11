@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import Svg, { Polyline, Line, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Polyline, Line, Defs, LinearGradient, Stop, Path } from 'react-native-svg';
 import { useTheme } from '../context/ThemeContext';
 
 interface SpeedGraphProps {
@@ -53,9 +53,14 @@ export function SpeedGraph({ data, color, width = 150, height = 50, maxValue }: 
   if (!data || data.length === 0) {
     return (
       <View style={[styles.container, { width, height, backgroundColor: 'transparent' }]}>
-        <View style={styles.emptyContainer}>
-          {/* Empty state - could show a placeholder */}
-        </View>
+        <Svg width={width} height={height}>
+          <Path
+            d={`M 4,${height / 2} L ${width - 4},${height / 2}`}
+            stroke={colors.surfaceOutline}
+            strokeWidth="1"
+            strokeDasharray="4,4"
+          />
+        </Svg>
       </View>
     );
   }

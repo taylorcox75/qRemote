@@ -35,6 +35,9 @@ import { colorThemeManager } from '../../services/color-theme-manager';
 import { ServerManager } from '../../services/server-manager';
 import { ServerConfig } from '../../types/api';
 import { storageService } from '../../services/storage';
+import { apiClient } from '../../services/api/client';
+import { setHapticsEnabled, haptics } from '../../utils/haptics';
+import { setDebugMode as setConnectivityDebugMode } from '../../services/connectivity-log';
 import { categoriesApi } from '../../services/api/categories';
 import { tagsApi } from '../../services/api/tags';
 import { applicationApi } from '../../services/api/application';
@@ -204,17 +207,30 @@ export default function SettingsScreen() {
       setDefaultPriority(Number(prefs.defaultPriority) || 0);
       
       // Notifications & Feedback
+      const hapticPref = prefs.hapticFeedback !== false; // default true
       setToastDuration(Number(prefs.toastDuration) || 3000);
-      setHapticFeedback(prefs.hapticFeedback !== false); // default true
+      setHapticFeedback(hapticPref);
+      setHapticsEnabled(hapticPref);
       
       // Server Management
-      setAutoConnectLastServer(prefs.autoConnectLastServer || false);
+      setAutoConnectLastServer(prefs.autoConnectLastServer !== false); // default true
       setConnectionTimeout(Number(prefs.connectionTimeout) || 10000);
       
       // Advanced Settings
-      setApiTimeout(Number(prefs.apiTimeout) || 30000);
-      setRetryAttempts(Number(prefs.retryAttempts) || 3);
-      setDebugMode(prefs.debugMode || false);
+      const apiTimeoutPref = Number(prefs.apiTimeout) || 30000;
+      const retryAttemptsPref = Number(prefs.retryAttempts) || 3;
+      const debugModePref = prefs.debugMode || false;
+      setApiTimeout(apiTimeoutPref);
+      setRetryAttempts(retryAttemptsPref);
+      setDebugMode(debugModePref);
+      setConnectivityDebugMode(debugModePref);
+
+      // Apply stored settings to the API client
+      apiClient.updateSettings({
+        connectionTimeout: Number(prefs.connectionTimeout) || 10000,
+        apiTimeout: apiTimeoutPref,
+        retryAttempts: retryAttemptsPref,
+      });
     } catch (error) {
       setAutoRefreshInterval('1000');
       setCardViewMode('compact');
@@ -242,13 +258,27 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleShutdown = async () => {
-    try {
-      await applicationApi.shutdown();
-      showToast(t('toast.shutdownInitiated'), 'success');
-    } catch (error) {
-      showToast(t('errors.failedToShutdown'), 'error');
-    }
+  const handleShutdown = () => {
+    Alert.alert(
+      t('screens.settings.shutdownQbittorrent'),
+      t('alerts.shutdownConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('screens.settings.shutdownQbittorrent'),
+          style: 'destructive',
+          onPress: async () => {
+            haptics.heavy();
+            try {
+              await applicationApi.shutdown();
+              showToast(t('toast.shutdownInitiated'), 'success');
+            } catch (error) {
+              showToast(t('errors.failedToShutdown'), 'error');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Helper functions for saving preferences
@@ -730,6 +760,26 @@ export default function SettingsScreen() {
                 ios_backgroundColor={colors.surfaceOutline}
               />
             </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="layers-outline" size={22} color={colors.primary} />
+                <View>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.firstLastPiecePriority')}</Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.firstLastPiecePriorityHint')}</Text>
+                </View>
+              </View>
+              <Switch
+                value={defaultPriority > 0}
+                onValueChange={(value) => {
+                  const newVal = value ? 1 : 0;
+                  setDefaultPriority(newVal);
+                  savePreference('defaultPriority', newVal);
+                }}
+                trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                ios_backgroundColor={colors.surfaceOutline}
+              />
+            </View>
           </View>
         </View>
 
@@ -959,6 +1009,7 @@ export default function SettingsScreen() {
                 value={hapticFeedback}
                 onValueChange={(value) => {
                   setHapticFeedback(value);
+                  setHapticsEnabled(value);
                   savePreference('hapticFeedback', value);
                 }}
                 trackColor={{ false: colors.surfaceOutline, true: colors.success }}
@@ -1004,6 +1055,7 @@ export default function SettingsScreen() {
                   if (!isNaN(num) && num >= 1000 && num <= 60000) {
                     setConnectionTimeout(num);
                     savePreference('connectionTimeout', num);
+                    apiClient.updateSettings({ connectionTimeout: num });
                   }
                 }}
                 keyboardType="numeric"
@@ -1033,6 +1085,7 @@ export default function SettingsScreen() {
                   if (!isNaN(num) && num >= 5000 && num <= 120000) {
                     setApiTimeout(num);
                     savePreference('apiTimeout', num);
+                    apiClient.updateSettings({ apiTimeout: num });
                   }
                 }}
                 keyboardType="numeric"
@@ -1056,6 +1109,7 @@ export default function SettingsScreen() {
                   if (!isNaN(num) && num >= 0 && num <= 10) {
                     setRetryAttempts(num);
                     savePreference('retryAttempts', num);
+                    apiClient.updateSettings({ retryAttempts: num });
                   }
                 }}
                 keyboardType="numeric"
@@ -1072,12 +1126,25 @@ export default function SettingsScreen() {
                 value={debugMode}
                 onValueChange={(value) => {
                   setDebugMode(value);
+                  setConnectivityDebugMode(value);
                   savePreference('debugMode', value);
                 }}
                 trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                 ios_backgroundColor={colors.surfaceOutline}
               />
             </View>
+            <View style={[styles.separator, { backgroundColor: colors.background }]} />
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => router.push('/(tabs)/logs')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="document-text-outline" size={22} color={colors.primary} />
+                <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.viewLogs')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
         </View>
 

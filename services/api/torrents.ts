@@ -175,7 +175,7 @@ export const torrentsApi = {
       category?: string;
       tags?: string[];
       skip_checking?: boolean;
-      paused?: boolean;
+      stopped?: boolean;
       root_folder?: boolean;
       rename?: string;
       upLimit?: number;
@@ -207,8 +207,8 @@ export const torrentsApi = {
       if (options.skip_checking !== undefined) {
         formData.append('skip_checking', String(options.skip_checking));
       }
-      if (options.paused !== undefined) {
-        formData.append('paused', String(options.paused));
+      if (options.stopped !== undefined) {
+        formData.append('stopped', String(options.stopped));
       }
       if (options.root_folder !== undefined) {
         formData.append('root_folder', String(options.root_folder));
@@ -250,7 +250,7 @@ export const torrentsApi = {
       category?: string;
       tags?: string[];
       skip_checking?: boolean;
-      paused?: boolean;
+      stopped?: boolean;
       root_folder?: boolean;
       rename?: string;
       upLimit?: number;
@@ -280,8 +280,8 @@ export const torrentsApi = {
       if (options.skip_checking !== undefined) {
         formData.append('skip_checking', String(options.skip_checking));
       }
-      if (options.paused !== undefined) {
-        formData.append('paused', String(options.paused));
+      if (options.stopped !== undefined) {
+        formData.append('stopped', String(options.stopped));
       }
       if (options.root_folder !== undefined) {
         formData.append('root_folder', String(options.root_folder));

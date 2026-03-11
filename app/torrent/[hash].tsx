@@ -575,35 +575,6 @@ export default function TorrentDetail() {
     router.push(`/torrent/manage-trackers?hash=${hash}`);
   };
 
-  const handleAddTrackers_OLD = () => {
-    Alert.prompt(
-      'Add Trackers',
-      'Enter tracker URLs (one per line)',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Add',
-          onPress: async (value: string | undefined) => {
-            if (!value || value.trim() === '') return;
-            try {
-              setActionLoading(true);
-              const urls = value.split('\n').filter((url: string) => url.trim() !== '');
-              await torrentsApi.addTrackers(torrent.hash, urls);
-              await new Promise(resolve => setTimeout(resolve, 500));
-              await loadTorrentData();
-              showToast(`Added ${urls.length} tracker(s)`, 'success');
-            } catch (error: any) {
-              showToast(error.message || 'Failed to add trackers', 'error');
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
-  };
-
   const handleSetCategory = () => {
     Alert.prompt(
       'Set Category',
@@ -1490,41 +1461,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     // marginBottom: 16,
     // lineHeight: 20,
-  },
-  trackersInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    // fontSize: 14,
-    minHeight: 150,
-    // maxHeight: 400,
-    marginBottom: 16,
-    textAlignVertical: 'top',
-    fontFamily: 'monospace',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: 'red',
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: 'red',
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalCancelButton: {
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  modalSaveButton: {
-    // Primary color applied inline
   },
 });
 

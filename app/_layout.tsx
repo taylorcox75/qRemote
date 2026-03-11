@@ -1,5 +1,5 @@
 import '../i18n';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Dimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
@@ -9,11 +9,23 @@ import { TransferProvider } from '../context/TransferContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { ToastProvider } from '../context/ToastContext';
 import { logStorage } from '../services/log-storage';
+import { storageService } from '../services/storage';
 
 const { width } = Dimensions.get('window');
 
 function StackNavigator() {
   const { colors } = useTheme();
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      const prefs = await storageService.getPreferences();
+      if (!prefs.hasCompletedOnboarding) {
+        router.replace('/onboarding');
+      }
+    };
+    checkOnboarding();
+  }, []);
   
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -30,6 +42,7 @@ function StackNavigator() {
         }}
       >
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" />
         <Stack.Screen 
           name="server/add" 
           options={{ 

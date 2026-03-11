@@ -7,6 +7,8 @@ class ApiClient {
   private currentServer: ServerConfig | null = null;
   private cookies: string = '';
   private csrfToken: string = '';
+  private retryAttempts: number = 3;
+  private apiTimeout: number = 30000;
 
   constructor() {
     this.client = axios.create({
@@ -171,6 +173,22 @@ class ApiClient {
     );
   }
 
+  updateSettings(config: {
+    connectionTimeout?: number;
+    apiTimeout?: number;
+    retryAttempts?: number;
+  }) {
+    if (config.connectionTimeout !== undefined) {
+      this.client.defaults.timeout = config.connectionTimeout;
+    }
+    if (config.apiTimeout !== undefined) {
+      this.apiTimeout = config.apiTimeout;
+    }
+    if (config.retryAttempts !== undefined) {
+      this.retryAttempts = Math.max(0, config.retryAttempts);
+    }
+  }
+
   setServer(server: ServerConfig | null) {
     // Only clear cookies if we're switching to a different server or disconnecting
     if (!server || (this.currentServer && this.currentServer.id !== server.id)) {
@@ -244,14 +262,47 @@ class ApiClient {
     return response.data;
   }
 
+  private isRetriableError(error: any): boolean {
+    return (
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ETIMEDOUT' ||
+      error.message?.includes('timeout')
+    );
+  }
+
+  private async withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    let lastError: any;
+    for (let attempt = 0; attempt <= this.retryAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error: any) {
+        lastError = error;
+        if (attempt < this.retryAttempts && this.isRetriableError(error)) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+          clogWarn('HTTP', `Retrying request (attempt ${attempt + 1}/${this.retryAttempts})...`);
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw lastError;
+  }
+
   // Helper method for GET requests
   async get(url: string, params?: Record<string, any>, signal?: AbortSignal): Promise<any> {
     if (!this.currentServer) {
       throw new Error('No server configured');
     }
 
-    const response = await this.client.get(url, { params, signal });
-    return response.data;
+    return this.withRetry(async () => {
+      const response = await this.client.get(url, {
+        params,
+        signal,
+        timeout: this.apiTimeout,
+      });
+      return response.data;
+    });
   }
 
   // Helper method for POST requests (JSON)

@@ -10,6 +10,12 @@
 
 const MAX_ENTRIES = 500;
 
+let debugModeEnabled = false;
+
+export function setDebugMode(enabled: boolean) {
+  debugModeEnabled = enabled;
+}
+
 export type ConnectivityLogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
 export interface ConnectivityLogEntry {
@@ -31,6 +37,8 @@ export function clog(
   tag: string,
   message: string,
 ): void {
+  if (level === 'DEBUG' && !debugModeEnabled) return;
+
   entries.push({
     id: nextId++,
     timestamp: Date.now(),

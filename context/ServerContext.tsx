@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { ServerConfig } from '../types/api';
 import { ServerManager } from '../services/server-manager';
 import { apiClient } from '../services/api/client';
+import { storageService } from '../services/storage';
 
 interface ServerContextType {
   currentServer: ServerConfig | null;
@@ -27,16 +28,23 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const loadCurrentServer = async () => {
     try {
       setIsLoading(true);
+
+      const prefs = await storageService.getPreferences();
+      // Default to true if the preference has never been set (undefined)
+      const autoConnectLastServer = prefs.autoConnectLastServer !== false;
       
-      // First, try to get the last connected server (if any)
-      let server = await ServerManager.getCurrentServer();
+      let server: ServerConfig | null = null;
+
+      if (autoConnectLastServer) {
+        // Try to get the last connected server
+        server = await ServerManager.getCurrentServer();
+      }
       
-      // If no last connected server, check if there's exactly one server saved
-      // If so, auto-connect to it
+      // If no last connected server (or auto-connect disabled), check if there's
+      // exactly one server saved and auto-connect to it as a convenience
       if (!server) {
         const allServers = await ServerManager.getServers();
         if (allServers.length === 1) {
-          // Only one server exists, auto-connect to it
           server = allServers[0];
         }
       }
