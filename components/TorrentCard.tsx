@@ -29,7 +29,7 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
   const separatorRole = isIOS ? 'separator' : 'none';
 
   const { isConnected, currentServer, reconnect } = useServer();
-  const { sync } = useTorrents();
+  const { sync, serverState } = useTorrents();
   const { isDark, colors } = useTheme();
   const { transferInfo, toggleAlternativeSpeedLimits, refresh: refreshTransfer } = useTransfer();
   const { t } = useTranslation();
@@ -781,9 +781,10 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
             />
             <MenuOption
               icon="flag"
-              label={t('actions.maxPriority')}
+              label={serverState?.queueing === false ? `${t('actions.maxPriority')} (queueing disabled)` : t('actions.maxPriority')}
               onPress={() => handleMenuAction(handleMaxPriority)}
               colors={colors}
+              disabled={serverState?.queueing === false}
               accessibilityLabel={`Set maximum priority for ${torrent.name}`}
               accessibilityHint="Sets this torrent to the highest download priority"
             />
@@ -842,6 +843,7 @@ function MenuOption({
   onPress,
   colors,
   destructive = false,
+  disabled = false,
   accessibilityLabel,
   accessibilityHint,
 }: {
@@ -850,6 +852,7 @@ function MenuOption({
   onPress: () => void;
   colors: any;
   destructive?: boolean;
+  disabled?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
 }) {
@@ -857,12 +860,13 @@ function MenuOption({
   
   return (
     <TouchableOpacity
-      style={styles.menuOption}
-      onPress={onPress}
-      activeOpacity={0.7}
+      style={[styles.menuOption, disabled && { opacity: 0.4 }]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.7}
       accessibilityRole={menuItemRole}
       accessibilityLabel={accessibilityLabel || label}
       accessibilityHint={accessibilityHint}
+      disabled={disabled}
     >
       <Ionicons
         name={icon as any}

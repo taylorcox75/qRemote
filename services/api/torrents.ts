@@ -15,6 +15,7 @@ import {
   API_HAS_TAG_FILTER,
   API_HAS_INDEX_FILE_PRIO,
   API_HAS_INACTIVE_SEEDING_LIMIT,
+  API_HAS_STOPPED_PARAM,
 } from '../../utils/apiVersion';
 
 const API_VERSION = 'v2';
@@ -207,7 +208,9 @@ export const torrentsApi = {
     }
 
     if (options) {
-      const supportsRatioLimits = !options.apiVersion || API_HAS_ADD_RATIO_LIMITS(options.apiVersion);
+      const av = options.apiVersion;
+      const supportsRatioLimits = !av || API_HAS_ADD_RATIO_LIMITS(av);
+      const supportsStoppedParam = !av || API_HAS_STOPPED_PARAM(av);
       if (options.savepath) formData.append('savepath', options.savepath);
       if (options.cookie) formData.append('cookie', options.cookie);
       if (options.category) formData.append('category', options.category);
@@ -218,7 +221,12 @@ export const torrentsApi = {
         formData.append('skip_checking', String(options.skip_checking));
       }
       if (options.stopped !== undefined) {
-        formData.append('stopped', String(options.stopped));
+        // v5 (API >= 2.9.0) uses `stopped`; v4 used `paused`
+        if (supportsStoppedParam) {
+          formData.append('stopped', String(options.stopped));
+        } else {
+          formData.append('paused', String(options.stopped));
+        }
       }
       if (options.root_folder !== undefined) {
         formData.append('root_folder', String(options.root_folder));
@@ -283,7 +291,9 @@ export const torrentsApi = {
     } as any);
 
     if (options) {
-      const supportsRatioLimits = !options.apiVersion || API_HAS_ADD_RATIO_LIMITS(options.apiVersion);
+      const av = options.apiVersion;
+      const supportsRatioLimits = !av || API_HAS_ADD_RATIO_LIMITS(av);
+      const supportsStoppedParam = !av || API_HAS_STOPPED_PARAM(av);
       if (options.savepath) formData.append('savepath', options.savepath);
       if (options.category) formData.append('category', options.category);
       if (options.tags && options.tags.length > 0) {
@@ -293,7 +303,12 @@ export const torrentsApi = {
         formData.append('skip_checking', String(options.skip_checking));
       }
       if (options.stopped !== undefined) {
-        formData.append('stopped', String(options.stopped));
+        // v5 (API >= 2.9.0) uses `stopped`; v4 used `paused`
+        if (supportsStoppedParam) {
+          formData.append('stopped', String(options.stopped));
+        } else {
+          formData.append('paused', String(options.stopped));
+        }
       }
       if (options.root_folder !== undefined) {
         formData.append('root_folder', String(options.root_folder));

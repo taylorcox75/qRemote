@@ -73,8 +73,9 @@ export const applicationApi = {
     try {
       return await apiClient.get(`/api/${API_VERSION}/app/getCookies`);
     } catch (error: any) {
-      // Return empty object for qBittorrent 4.x compatibility (endpoint doesn't exist)
-      if (error.response?.status === 404) {
+      // The global axios interceptor converts AxiosErrors into plain Errors before they
+      // reach here, so error.response is always undefined. Match on status or message.
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
         return {};
       }
       throw error;
@@ -92,8 +93,9 @@ export const applicationApi = {
         json,
       });
     } catch (error: any) {
-      // Silently ignore 404 for qBittorrent 4.x compatibility
-      if (error.response?.status === 404) {
+      // The global axios interceptor converts AxiosErrors into plain Errors before they
+      // reach here, so error.response is always undefined. Match on status or message.
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
         console.warn('[Application API] setCookies not supported (qBittorrent 4.x?)');
         return;
       }

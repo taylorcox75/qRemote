@@ -48,3 +48,9 @@ export const API_HAS_IS_PRIVATE = (v: ApiVersion): boolean => apiAtLeast(v, 2, 9
 
 /** `setShareLimits` accepts `inactiveSeedingTimeLimit` param (API >= 2.9.0) */
 export const API_HAS_INACTIVE_SEEDING_LIMIT = (v: ApiVersion): boolean => apiAtLeast(v, 2, 9, 0);
+
+/**
+ * `/torrents/add` uses `stopped` (API >= 2.9.0) instead of the legacy `paused` param.
+ * On v4 (< 2.9.0), send `paused=true` to pause-on-add; on v5, send `stopped=true`.
+ */
+export const API_HAS_STOPPED_PARAM = (v: ApiVersion): boolean => apiAtLeast(v, 2, 9, 0);
