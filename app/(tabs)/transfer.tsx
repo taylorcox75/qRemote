@@ -297,7 +297,7 @@ export default function TransferScreen() {
         <Ionicons name="navigate-outline" size={56} color={colors.textSecondary} />
         <Text style={[styles.emptyTitle, { color: colors.text }]}>Not Connected</Text>
         <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-          Dead in the water. Add a server to catch the wind.
+          add a server to set sail 🏴‍☠️
         </Text>
         <TouchableOpacity
           style={[styles.retryButton, { backgroundColor: colors.primary }]}
