@@ -12,6 +12,9 @@ import { ToastProvider } from '../context/ToastContext';
 import { logStorage } from '../services/log-storage';
 import { storageService } from '../services/storage';
 import { ServerManager } from '../services/server-manager';
+import { apiClient } from '../services/api/client';
+import { setHapticsEnabled } from '../utils/haptics';
+import { setDebugMode as setConnectivityDebugMode } from '../services/connectivity-log';
 
 const { width } = Dimensions.get('window');
 
@@ -73,9 +76,22 @@ function StackNavigator() {
 }
 
 export default function RootLayout() {
-  // Auto-delete logs on app launch
   useEffect(() => {
     logStorage.autoDeleteIfNeeded();
+
+    // Apply persisted preferences to global modules at cold start so they
+    // take effect immediately — before the user ever visits Settings.
+    storageService.getPreferences().then((prefs) => {
+      setHapticsEnabled(prefs.hapticFeedback !== false);
+      setConnectivityDebugMode(prefs.debugMode === true);
+      apiClient.updateSettings({
+        connectionTimeout: Number(prefs.connectionTimeout) || 10000,
+        apiTimeout: Number(prefs.apiTimeout) || 30000,
+        retryAttempts: Number(prefs.retryAttempts) || 3,
+      });
+    }).catch(() => {
+      // Defaults already applied in each module — safe to ignore
+    });
   }, []);
 
   return (

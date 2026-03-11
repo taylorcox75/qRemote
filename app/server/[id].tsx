@@ -544,8 +544,8 @@ App Version: ${APP_VERSION}`;
                   trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
+              </View>
             </View>
-          </View>
           </View>
 
           {/* Debug Info - Only shown when toggle is ON */}

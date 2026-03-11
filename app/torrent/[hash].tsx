@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Dimensions,
   Alert,
   Modal,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
@@ -61,6 +63,7 @@ export default function TorrentDetail() {
   const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
   const [peersLoading, setPeersLoading] = useState(false);
 
+  // Initial load
   useEffect(() => {
     if (hash && isConnected) {
       loadTorrentData();
@@ -100,8 +103,7 @@ export default function TorrentDetail() {
     await loadTorrentData();
   };
 
-  const silentRefresh = async () => {
-    // Refresh without showing the pull-down animation
+  const silentRefresh = useCallback(async () => {
     try {
       const [torrentList, props, trackersData, filesData] = await Promise.all([
         torrentsApi.getTorrentList(undefined, undefined, undefined, undefined, undefined, undefined, undefined, [hash], apiVersion),
@@ -116,11 +118,54 @@ export default function TorrentDetail() {
       setProperties(props);
       setTrackers(trackersData);
       setFiles(filesData);
-    } catch (error: any) {
-      // Silent failure - don't alert user
-      console.error('Silent refresh error:', error);
+    } catch {
+      // Silent failure — don't interrupt the user
     }
-  };
+  }, [hash]);
+
+  // Auto-refresh polling — keeps the card and detail sections live
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const appStateRef = useRef(AppState.currentState);
+
+  const startPolling = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      silentRefresh();
+    }, 2000);
+  }, [silentRefresh]);
+
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  // Start/stop polling with connection state
+  useEffect(() => {
+    if (!hash || !isConnected) {
+      stopPolling();
+      return;
+    }
+    startPolling();
+    return stopPolling;
+  }, [hash, isConnected, startPolling, stopPolling]);
+
+  // Pause polling in background, resume on foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+      if (prev === 'background' && nextState === 'active' && isConnected && hash) {
+        silentRefresh();
+        startPolling();
+      } else if (nextState === 'background') {
+        stopPolling();
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [hash, isConnected, silentRefresh, startPolling, stopPolling]);
 
   // Show loading spinner while restoring connection (prevents flash on app launch/resume)
   if (isLoading && !isConnected) {

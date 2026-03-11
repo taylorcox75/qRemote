@@ -17,7 +17,7 @@
   "screens": {
     "torrents": {
       "notConnected": "Not Connected",
-      "notConnectedSubtitle": "Connect to a qBittorrent server to get started",
+      "notConnectedSubtitle": "add a server to set sail 🏴‍☠️",
       "somethingWentWrong": "Something Went Wrong",
       "noTorrents": "No Torrents",
       "noResults": "No Results",

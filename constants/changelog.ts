@@ -12,6 +12,18 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '2.2.0',
+    date: '2026-03-11',
+    changes: [
+      'Quick-connect: tap any saved server directly from the not-connected screen — no digging through Settings',
+      'Torrent detail view now live-updates automatically, so progress, speed, and state stay current without a manual pull-to-refresh',
+      'Transfer tab recovers silently from brief connection drops instead of throwing a full error screen',
+      'Settings preferences now actually do something — connection timeout, retry attempts, haptic feedback, pause-on-add, and more are wired up end-to-end',
+      'Bottom tab bar color is now consistent across all tabs',
+      'Upload-only torrent state color updated to a cleaner green',
+    ],
+  },
+  {
     version: '2.1.2',
     date: '2026-03-11',
     changes: [

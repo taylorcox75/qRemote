@@ -32,6 +32,15 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   const isRecovering = useRef(false);
   const consecutiveFailures = useRef(0);
 
+  // State-backed version so consumers re-render when recovery starts/ends
+  const [isRecoveringState, setIsRecoveringState] = useState(false);
+
+  const setRecovering = useCallback((val: boolean) => {
+    isRecovering.current = val;
+    setIsRecoveringState(val);
+  }, []);
+
+
   const refresh = useCallback(async () => {
     if (!isConnected) {
       setTransferInfo(null);
@@ -52,7 +61,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
       // Clear error and reset counters on success
       setError(null);
       consecutiveFailures.current = 0;
-      isRecovering.current = false;
+      setRecovering(false);
     } catch (err: any) {
       if (isConnected && !isRecovering.current) {
         consecutiveFailures.current += 1;
@@ -127,7 +136,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
 
         if (isConnected) {
           // Suppress errors while recovering; clear stale error immediately
-          isRecovering.current = true;
+          setRecovering(true);
           consecutiveFailures.current = 0;
           setError(null);
 
@@ -140,9 +149,10 @@ export function TransferProvider({ children }: { children: ReactNode }) {
           if (intervalRef.current) clearInterval(intervalRef.current);
           intervalRef.current = setInterval(refresh, 3000);
 
-          // Immediate refresh; recovery flag cleared on first success
+          // Immediate refresh; recovery flag cleared on first success inside refresh()
           await refresh();
-          isRecovering.current = false;
+          // Ensure flag is cleared even if refresh didn't succeed
+          setRecovering(false);
         }
       } else if (nextState === 'background') {
         lastActiveTime.current = Date.now();
@@ -164,7 +174,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         transferInfo,
         isLoading,
         error,
-        isRecoveringFromBackground: isRecovering.current,
+        isRecoveringFromBackground: isRecoveringState,
         refresh,
         toggleAlternativeSpeedLimits,
         setDownloadLimit,

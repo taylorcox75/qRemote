@@ -24,16 +24,35 @@ import { useServer } from '../../context/ServerContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { useApiVersion } from '../../context/ApiVersionContext';
-import { TorrentInfo, TorrentState } from '../../types/api';
+import { TorrentInfo, TorrentState, ServerConfig } from '../../types/api';
 import { TorrentCard } from '../../components/TorrentCard';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { torrentsApi } from '../../services/api/torrents';
 import { storageService } from '../../services/storage';
+import { ServerManager } from '../../services/server-manager';
 import { haptics } from '../../utils/haptics';
 import { shadows } from '../../constants/shadows';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
+
+// ─── Server quick-connect helpers ────────────────────────────────────────────
+
+const AVATAR_PALETTE = [
+  '#0A84FF', '#30D158', '#FF9F0A', '#FF453A',
+  '#BF5AF2', '#FF375F', '#5AC8FA', '#FFD60A',
+];
+
+function avatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
+function serverAddress(server: ServerConfig): string {
+  const port = server.port && server.port > 0 ? `:${server.port}` : '';
+  return `${server.host}${port}`;
+}
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -41,7 +60,7 @@ export default function TorrentsScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { torrents, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
-  const { isConnected, currentServer, isLoading: serverIsLoading } = useServer();
+  const { isConnected, currentServer, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
   const { apiVersion } = useApiVersion();
 
@@ -337,6 +356,35 @@ export default function TorrentsScreen() {
     );
   };
 
+  // ─── Server quick-connect state (used in not-connected early return) ────────
+  const [savedServers, setSavedServers] = useState<ServerConfig[]>([]);
+  const [serversLoaded, setServersLoaded] = useState(false);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!isConnected && !currentServer) {
+      setServersLoaded(false);
+      ServerManager.getServers()
+        .then((s) => { setSavedServers(s); setServersLoaded(true); })
+        .catch(() => { setSavedServers([]); setServersLoaded(true); });
+    }
+  }, [isConnected, currentServer]);
+
+  const handleQuickConnect = useCallback(async (server: ServerConfig) => {
+    haptics.medium();
+    setConnectingId(server.id);
+    setConnectErrors((prev) => { const next = { ...prev }; delete next[server.id]; return next; });
+    try {
+      await connectToServer(server);
+    } catch (err: any) {
+      setConnectErrors((prev) => ({ ...prev, [server.id]: err.message || 'Connection failed' }));
+      haptics.error();
+    } finally {
+      setConnectingId(null);
+    }
+  }, [connectToServer]);
+
   // Torrent actions
   const handleAddTorrent = () => {
     setShowAddModal(true);
@@ -565,24 +613,123 @@ export default function TorrentsScreen() {
   // Early returns
   // Only show "Not Connected" screen if no server is configured (check this FIRST)
   if (!isConnected && !currentServer && !serverIsLoading) {
+    // No servers saved yet — simple centred prompt (also shown while loading to avoid flash)
+    if (!serversLoaded || savedServers.length === 0) {
+      return (
+        <>
+          <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+          <View style={[styles.center, { backgroundColor: colors.background }]}>
+            <Ionicons name="navigate-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              {t('screens.torrents.notConnected')}
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500' }]}>
+              {t('screens.torrents.notConnectedSubtitle')}
+            </Text>
+            <TouchableOpacity
+              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/server/add')}
+            >
+              <Text style={styles.emptyButtonText}>{t('screens.settings.addServer')}</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      );
+    }
+
+    // Servers exist — scrollable quick-connect layout
     return (
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Ionicons name="cloud-offline-outline" size={64} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            {t('screens.torrents.notConnected')}
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {t('screens.torrents.notConnectedSubtitle')}
-          </Text>
+        <ScrollView
+          style={{ flex: 1, backgroundColor: colors.background }}
+          contentContainerStyle={styles.notConnectedScroll}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Hero */}
+          <View style={styles.notConnectedHero}>
+            <View style={[styles.notConnectedIconRing, { borderColor: colors.surfaceOutline }]}>
+              <Ionicons name="navigate-outline" size={36} color={colors.textSecondary} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text, marginTop: spacing.lg, fontSize: 20 }]}>
+              {t('screens.torrents.notConnected')}
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500' }]}>
+              {t('screens.torrents.notConnectedSubtitle')}
+            </Text>
+          </View>
+
+          {/* Server cards */}
+          <View style={styles.notConnectedServers}>
+            <Text style={[styles.notConnectedSectionLabel, { color: colors.textSecondary }]}>
+              YOUR SERVERS
+            </Text>
+            <View style={[styles.notConnectedCard, { backgroundColor: colors.surface }]}>
+              {savedServers.map((server, index) => {
+                const color = avatarColor(server.name);
+                const addr = serverAddress(server);
+                const isConnectingThis = connectingId === server.id;
+                const errMsg = connectErrors[server.id];
+                const isLast = index === savedServers.length - 1;
+                return (
+                  <View key={server.id}>
+                    <TouchableOpacity
+                      style={styles.notConnectedServerRow}
+                      onPress={() => handleQuickConnect(server)}
+                      activeOpacity={0.7}
+                      disabled={connectingId !== null}
+                    >
+                      <View style={[styles.serverAvatar, { backgroundColor: color + '22', borderColor: color + '44' }]}>
+                        <Text style={[styles.serverAvatarLetter, { color }]}>
+                          {server.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.serverInfo}>
+                        <Text style={[styles.serverName, { color: colors.text }]} numberOfLines={1}>
+                          {server.name}
+                        </Text>
+                        <View style={styles.serverAddressRow}>
+                          {server.useHttps && (
+                            <Ionicons name="lock-closed" size={10} color={colors.success} style={{ marginRight: 3 }} />
+                          )}
+                          <Text style={[styles.serverAddress, { color: colors.textSecondary }]} numberOfLines={1}>
+                            {addr}
+                          </Text>
+                        </View>
+                        {errMsg && (
+                          <Text style={[styles.serverErrorText, { color: colors.error }]} numberOfLines={1}>
+                            {errMsg}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={[styles.connectPill, { backgroundColor: errMsg ? colors.error + '18' : color + '18', borderColor: errMsg ? colors.error + '40' : color + '40' }]}>
+                        {isConnectingThis
+                          ? <ActivityIndicator size="small" color={color} />
+                          : <Text style={[styles.connectPillText, { color: errMsg ? colors.error : color }]}>{errMsg ? 'Retry' : 'Connect'}</Text>
+                        }
+                      </View>
+                    </TouchableOpacity>
+                    {!isLast && <View style={[styles.notConnectedDivider, { backgroundColor: colors.surfaceOutline }]} />}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Add another server */}
           <TouchableOpacity
-            style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-            onPress={() => router.push('/settings')}
+            style={[styles.addServerRow, { borderColor: colors.surfaceOutline }]}
+            onPress={() => router.push('/server/add')}
+            activeOpacity={0.7}
           >
-            <Text style={styles.emptyButtonText}>{t('common.goToSettings')}</Text>
+            <View style={[styles.addServerIcon, { backgroundColor: colors.surface, borderColor: colors.surfaceOutline }]}>
+              <Ionicons name="add" size={20} color={colors.primary} />
+            </View>
+            <Text style={[styles.addServerText, { color: colors.primary }]}>
+              Connect
+            </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </>
     );
   }
@@ -1174,6 +1321,122 @@ const styles = StyleSheet.create({
   emptyButton: {
     ...buttonStyles.primary,
     marginTop: spacing.sm,
+  },
+  // Not-connected layout
+  notConnectedScroll: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
+  notConnectedHero: {
+    alignItems: 'center',
+    paddingTop: 72,
+    paddingBottom: spacing.xxxl,
+  },
+  notConnectedIconRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notConnectedServers: {
+    marginBottom: spacing.xl,
+  },
+  notConnectedSectionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+  },
+  notConnectedCard: {
+    borderRadius: borderRadius.large,
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  notConnectedServerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
+    gap: spacing.md,
+  },
+  notConnectedDivider: {
+    height: 0.5,
+    marginLeft: 68,
+  },
+  serverAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.medium,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  serverAvatarLetter: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  serverInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  serverName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  serverAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  serverAddress: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
+  serverErrorText: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  connectPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    minWidth: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  connectPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  addServerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.large,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+  },
+  addServerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.medium,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addServerText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   emptyButtonText: {
     ...buttonText.primary,
