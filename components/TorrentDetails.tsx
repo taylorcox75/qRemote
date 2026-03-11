@@ -1214,7 +1214,7 @@ export function TorrentDetails({
               <TouchableOpacity
                 style={[styles.removeTagButton, { backgroundColor: colors.error }]}
                 onPress={() => {
-                  const currentTags = torrent.tags.split(',');
+                  const currentTags = (torrent.tags ?? '').split(',').filter(Boolean);
                   Alert.alert(
                     'Remove Tag',
                     'Select a tag to remove',
@@ -1335,7 +1335,7 @@ export function TorrentDetails({
   const handleSetFilePriority = async (file: TorrentFile, filePositionInArray: number, priority: FilePriority) => {
     try {
       setLoading(true);
-      const fileId = API_HAS_INDEX_FILE_PRIO(apiVersion) ? file.index : filePositionInArray;
+      const fileId = API_HAS_INDEX_FILE_PRIO(apiVersion) ? (file.index ?? filePositionInArray) : filePositionInArray;
       await torrentsApi.setFilePriority(torrent.hash, [fileId], priority);
       await new Promise(resolve => setTimeout(resolve, 500));
       await sync();

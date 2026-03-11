@@ -61,7 +61,8 @@ export default function TorrentFilesScreen() {
    */
   const getFileId = (file: TorrentFile, positionInArray: number): number => {
     if (API_HAS_INDEX_FILE_PRIO(apiVersion)) {
-      return file.index;
+      // file.index is guaranteed present on API >= 2.8.2; fall back to position just in case
+      return file.index ?? positionInArray;
     }
     return positionInArray;
   };

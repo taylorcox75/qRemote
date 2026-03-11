@@ -356,34 +356,55 @@ export const torrentsApi = {
   },
 
   /**
-   * Edit trackers
+   * Edit trackers. Added in API 2.2.0 (qBittorrent 4.2.5+). Silently no-ops on older servers.
    */
   async editTrackers(hash: string, origUrl: string, newUrl: string): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/editTracker`, {
-      hash,
-      origUrl,
-      newUrl,
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/editTracker`, {
+        hash,
+        origUrl,
+        newUrl,
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
+        return;
+      }
+      throw error;
+    }
   },
 
   /**
-   * Remove trackers
+   * Remove trackers. Added in API 2.2.0 (qBittorrent 4.2.5+). Silently no-ops on older servers.
    */
   async removeTrackers(hash: string, urls: string[]): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/removeTrackers`, {
-      hash,
-      urls: urls.join('|'),
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/removeTrackers`, {
+        hash,
+        urls: urls.join('|'),
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
+        return;
+      }
+      throw error;
+    }
   },
 
   /**
-   * Add peers
+   * Add peers. Added in API 2.3.0 (qBittorrent 4.4.0+). Silently no-ops on older servers.
    */
   async addPeers(hashes: string[], peers: string[]): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/addPeers`, {
-      hashes: hashes.join('|'),
-      peers: peers.join('|'),
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/addPeers`, {
+        hashes: hashes.join('|'),
+        peers: peers.join('|'),
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
+        return;
+      }
+      throw error;
+    }
   },
 
   /**
@@ -536,23 +557,37 @@ export const torrentsApi = {
   },
 
   /**
-   * Add torrent tags
+   * Add torrent tags. Tags added in API 2.3.0 (qBittorrent 4.4.0+). Silently no-ops on older servers.
    */
   async addTorrentTags(hashes: string[], tags: string[]): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/addTags`, {
-      hashes: hashes.join('|'),
-      tags: tags.join(','),
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/addTags`, {
+        hashes: hashes.join('|'),
+        tags: tags.join(','),
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
+        return;
+      }
+      throw error;
+    }
   },
 
   /**
-   * Remove torrent tags
+   * Remove torrent tags. Tags added in API 2.3.0 (qBittorrent 4.4.0+). Silently no-ops on older servers.
    */
   async removeTorrentTags(hashes: string[], tags: string[]): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/removeTags`, {
-      hashes: hashes.join('|'),
-      tags: tags.join(','),
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/removeTags`, {
+        hashes: hashes.join('|'),
+        tags: tags.join(','),
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
+        return;
+      }
+      throw error;
+    }
   },
 
   /**
@@ -604,25 +639,39 @@ export const torrentsApi = {
   },
 
   /**
-   * Rename file
+   * Rename file. Added in API 2.4.0 (qBittorrent ~4.3.x). Silently no-ops on older servers.
    */
   async renameFile(hash: string, oldPath: string, newPath: string): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFile`, {
-      hash,
-      oldPath,
-      newPath,
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFile`, {
+        hash,
+        oldPath,
+        newPath,
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
+        return;
+      }
+      throw error;
+    }
   },
 
   /**
-   * Rename folder
+   * Rename folder. Added in API 2.7.0. Silently no-ops on older servers.
    */
   async renameFolder(hash: string, oldPath: string, newPath: string): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFolder`, {
-      hash,
-      oldPath,
-      newPath,
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFolder`, {
+        hash,
+        oldPath,
+        newPath,
+      });
+    } catch (error: any) {
+      if (error.response?.status === 404 || error.message?.includes('Endpoint not found')) {
+        return;
+      }
+      throw error;
+    }
   },
 };
 

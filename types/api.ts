@@ -68,14 +68,14 @@ export interface TorrentInfo {
   added_on: number;
   amount_left: number;
   auto_tmm: boolean;
-  availability: number;
+  availability?: number;
   category: string;
   completed: number;
   completion_on: number;
   content_path?: string;
   dl_limit: number;
   dlspeed: number;
-  download_path: string;
+  download_path?: string;
   downloaded: number;
   downloaded_session: number;
   eta: number;
@@ -103,7 +103,7 @@ export interface TorrentInfo {
   size: number;
   state: TorrentState;
   super_seeding: boolean;
-  tags: string;
+  tags?: string;
   time_active: number;
   total_size: number;
   tracker: string;
@@ -195,13 +195,13 @@ export interface TorrentProperties {
   dl_limit: number;
   dl_speed: number;
   dl_speed_avg: number;
-  download_path: string;
+  download_path?: string;
   downloaded: number;
   downloaded_session: number;
   eta: number;
   hash: string;
-  infohash_v1: string;
-  infohash_v2: string;
+  infohash_v1?: string;
+  infohash_v2?: string;
   last_activity: number;
   peers: number;
   peers_total: number;
@@ -239,7 +239,7 @@ export interface WebSeed {
 }
 
 export interface TorrentFile {
-  index: number;
+  index?: number;
   name: string;
   size: number;
   progress: number;
