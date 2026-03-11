@@ -296,11 +296,7 @@ class ApiClient {
     }
 
     return this.withRetry(async () => {
-      const response = await this.client.get(url, {
-        params,
-        signal,
-        timeout: this.apiTimeout,
-      });
+      const response = await this.client.get(url, { params, signal });
       return response.data;
     });
   }
