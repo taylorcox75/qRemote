@@ -86,23 +86,13 @@ export default function TorrentsScreen() {
     });
   }, [navigation, colors.surface, colors.surfaceOutline]);
 
-  // Reset tab bar visibility when screen is focused; restore when leaving
+  // Reset tab bar visibility when screen is focused
   useFocusEffect(
     useCallback(() => {
       isTabBarVisible.current = true;
       navigation.setOptions({
         tabBarStyle: getTabBarStyle(true),
       });
-      return () => {
-        // Restore visible tab bar for other tabs when Torrents loses focus
-        navigation.setOptions({
-          tabBarStyle: {
-            backgroundColor: colors.surface,
-            borderTopWidth: 0.18,
-            borderTopColor: colors.surfaceOutline,
-          },
-        });
-      };
     }, [navigation, colors.surface, colors.surfaceOutline])
   );
 
