@@ -544,8 +544,23 @@ App Version: ${APP_VERSION}`;
                   trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
+              </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => router.push('/onboarding')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="play-circle-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                  <View>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>View Onboarding</Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Preview the first-launch walkthrough</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
             </View>
-          </View>
           </View>
 
           {/* Debug Info - Only shown when toggle is ON */}
