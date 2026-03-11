@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -57,10 +57,29 @@ export default function TorrentDetail() {
   const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
   const [peersLoading, setPeersLoading] = useState(false);
 
+  // Initial load
   useEffect(() => {
     if (hash && isConnected) {
       loadTorrentData();
     }
+  }, [hash, isConnected]);
+
+  // Auto-refresh polling — keeps the card and detail sections live
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!hash || !isConnected) return;
+
+    intervalRef.current = setInterval(() => {
+      silentRefresh();
+    }, 2000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [hash, isConnected]);
 
   const loadTorrentData = async () => {
@@ -96,8 +115,7 @@ export default function TorrentDetail() {
     await loadTorrentData();
   };
 
-  const silentRefresh = async () => {
-    // Refresh without showing the pull-down animation
+  const silentRefresh = useCallback(async () => {
     try {
       const [torrentList, props, trackersData, filesData] = await Promise.all([
         torrentsApi.getTorrentList(undefined, undefined, undefined, undefined, undefined, undefined, undefined, [hash]),
@@ -112,11 +130,10 @@ export default function TorrentDetail() {
       setProperties(props);
       setTrackers(trackersData);
       setFiles(filesData);
-    } catch (error: any) {
-      // Silent failure - don't alert user
-      console.error('Silent refresh error:', error);
+    } catch {
+      // Silent failure — don't interrupt the user
     }
-  };
+  }, [hash]);
 
   // Show loading spinner while restoring connection (prevents flash on app launch/resume)
   if (isLoading && !isConnected) {
