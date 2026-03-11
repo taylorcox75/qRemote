@@ -9,6 +9,13 @@ import {
   TorrentPieceHash,
   FilePriority,
 } from '../../types/api';
+import {
+  ApiVersion,
+  API_HAS_ADD_RATIO_LIMITS,
+  API_HAS_TAG_FILTER,
+  API_HAS_INDEX_FILE_PRIO,
+  API_HAS_INACTIVE_SEEDING_LIMIT,
+} from '../../utils/apiVersion';
 
 const API_VERSION = 'v2';
 
@@ -24,13 +31,14 @@ export const torrentsApi = {
     reverse?: boolean,
     limit?: number,
     offset?: number,
-    hashes?: string[]
+    hashes?: string[],
+    apiVersion?: ApiVersion
   ): Promise<TorrentInfo[]> {
     const params: Record<string, any> = {};
 
     if (filter) params.filter = filter;
     if (category) params.category = category;
-    if (tag) params.tag = tag;
+    if (tag && (!apiVersion || API_HAS_TAG_FILTER(apiVersion))) params.tag = tag;
     if (sort) params.sort = sort;
     if (reverse !== undefined) params.reverse = reverse;
     if (limit !== undefined) params.limit = limit;
@@ -185,6 +193,7 @@ export const torrentsApi = {
       sequentialDownload?: boolean;
       firstLastPiecePrio?: boolean;
       autoTMM?: boolean;
+      apiVersion?: ApiVersion;
     }
   ): Promise<void> {
     const formData = new FormData();
@@ -198,6 +207,7 @@ export const torrentsApi = {
     }
 
     if (options) {
+      const supportsRatioLimits = !options.apiVersion || API_HAS_ADD_RATIO_LIMITS(options.apiVersion);
       if (options.savepath) formData.append('savepath', options.savepath);
       if (options.cookie) formData.append('cookie', options.cookie);
       if (options.category) formData.append('category', options.category);
@@ -220,10 +230,10 @@ export const torrentsApi = {
       if (options.dlLimit !== undefined) {
         formData.append('dlLimit', String(options.dlLimit));
       }
-      if (options.ratioLimit !== undefined) {
+      if (options.ratioLimit !== undefined && supportsRatioLimits) {
         formData.append('ratioLimit', String(options.ratioLimit));
       }
-      if (options.seedingTimeLimit !== undefined) {
+      if (options.seedingTimeLimit !== undefined && supportsRatioLimits) {
         formData.append('seedingTimeLimit', String(options.seedingTimeLimit));
       }
       if (options.sequentialDownload !== undefined) {
@@ -260,6 +270,7 @@ export const torrentsApi = {
       sequentialDownload?: boolean;
       firstLastPiecePrio?: boolean;
       autoTMM?: boolean;
+      apiVersion?: ApiVersion;
     }
   ): Promise<void> {
     const formData = new FormData();
@@ -272,6 +283,7 @@ export const torrentsApi = {
     } as any);
 
     if (options) {
+      const supportsRatioLimits = !options.apiVersion || API_HAS_ADD_RATIO_LIMITS(options.apiVersion);
       if (options.savepath) formData.append('savepath', options.savepath);
       if (options.category) formData.append('category', options.category);
       if (options.tags && options.tags.length > 0) {
@@ -293,10 +305,10 @@ export const torrentsApi = {
       if (options.dlLimit !== undefined) {
         formData.append('dlLimit', String(options.dlLimit));
       }
-      if (options.ratioLimit !== undefined) {
+      if (options.ratioLimit !== undefined && supportsRatioLimits) {
         formData.append('ratioLimit', String(options.ratioLimit));
       }
-      if (options.seedingTimeLimit !== undefined) {
+      if (options.seedingTimeLimit !== undefined && supportsRatioLimits) {
         formData.append('seedingTimeLimit', String(options.seedingTimeLimit));
       }
       if (options.sequentialDownload !== undefined) {
@@ -358,36 +370,64 @@ export const torrentsApi = {
    * Increase torrent priority
    */
   async increasePriority(hashes: string[]): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/increasePrio`, {
-      hashes: hashes.join('|'),
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/increasePrio`, {
+        hashes: hashes.join('|'),
+      });
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        throw new Error('Torrent queueing is disabled. Enable it in qBittorrent Settings → BitTorrent → Torrent Queueing.');
+      }
+      throw error;
+    }
   },
 
   /**
    * Decrease torrent priority
    */
   async decreasePriority(hashes: string[]): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/decreasePrio`, {
-      hashes: hashes.join('|'),
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/decreasePrio`, {
+        hashes: hashes.join('|'),
+      });
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        throw new Error('Torrent queueing is disabled. Enable it in qBittorrent Settings → BitTorrent → Torrent Queueing.');
+      }
+      throw error;
+    }
   },
 
   /**
    * Set maximal torrent priority
    */
   async setMaximalPriority(hashes: string[]): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/topPrio`, {
-      hashes: hashes.join('|'),
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/topPrio`, {
+        hashes: hashes.join('|'),
+      });
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        throw new Error('Torrent queueing is disabled. Enable it in qBittorrent Settings → BitTorrent → Torrent Queueing.');
+      }
+      throw error;
+    }
   },
 
   /**
    * Set minimal torrent priority
    */
   async setMinimalPriority(hashes: string[]): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/bottomPrio`, {
-      hashes: hashes.join('|'),
-    });
+    try {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/bottomPrio`, {
+        hashes: hashes.join('|'),
+      });
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        throw new Error('Torrent queueing is disabled. Enable it in qBittorrent Settings → BitTorrent → Torrent Queueing.');
+      }
+      throw error;
+    }
   },
 
   /**
@@ -427,7 +467,9 @@ export const torrentsApi = {
   async setTorrentShareLimits(
     hashes: string[],
     ratioLimit?: number,
-    seedingTimeLimit?: number
+    seedingTimeLimit?: number,
+    inactiveSeedingTimeLimit?: number,
+    apiVersion?: ApiVersion
   ): Promise<void> {
     const params: Record<string, any> = {
       hashes: hashes.join('|'),
@@ -437,6 +479,12 @@ export const torrentsApi = {
     }
     if (seedingTimeLimit !== undefined) {
       params.seedingTimeLimit = seedingTimeLimit;
+    }
+    if (
+      inactiveSeedingTimeLimit !== undefined &&
+      (!apiVersion || API_HAS_INACTIVE_SEEDING_LIMIT(apiVersion))
+    ) {
+      params.inactiveSeedingTimeLimit = inactiveSeedingTimeLimit;
     }
     await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/setShareLimits`, params);
   },

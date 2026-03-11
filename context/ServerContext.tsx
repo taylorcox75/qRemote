@@ -3,6 +3,8 @@ import { ServerConfig } from '../types/api';
 import { ServerManager } from '../services/server-manager';
 import { apiClient } from '../services/api/client';
 import { storageService } from '../services/storage';
+import { applicationApi } from '../services/api/application';
+import { useApiVersion } from './ApiVersionContext';
 
 interface ServerContextType {
   currentServer: ServerConfig | null;
@@ -17,9 +19,20 @@ interface ServerContextType {
 const ServerContext = createContext<ServerContextType | undefined>(undefined);
 
 export function ServerProvider({ children }: { children: ReactNode }) {
+  const { setApiVersionFromString } = useApiVersion();
   const [currentServer, setCurrentServer] = useState<ServerConfig | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchAndStoreApiVersion = async () => {
+    try {
+      const raw = await applicationApi.getWebApiVersion();
+      setApiVersionFromString(raw);
+    } catch {
+      // Non-fatal: fall back to 2.9.0 so v5 users are not degraded
+      setApiVersionFromString('2.9.0');
+    }
+  };
 
   useEffect(() => {
     loadCurrentServer();
@@ -54,7 +67,9 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         try {
           const connected = await ServerManager.connectToServer(server);
           setIsConnected(connected);
-          if (!connected) {
+          if (connected) {
+            await fetchAndStoreApiVersion();
+          } else {
             // If connection failed, clear the server
             setCurrentServer(null);
             // Ensure API client server is cleared
@@ -88,6 +103,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       if (success) {
         setCurrentServer(server);
         setIsConnected(true);
+        await fetchAndStoreApiVersion();
       } else {
         setIsConnected(false);
       }

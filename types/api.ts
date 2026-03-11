@@ -72,7 +72,7 @@ export interface TorrentInfo {
   category: string;
   completed: number;
   completion_on: number;
-  content_path: string;
+  content_path?: string;
   dl_limit: number;
   dlspeed: number;
   download_path: string;
@@ -96,7 +96,7 @@ export interface TorrentInfo {
   ratio: number;
   ratio_limit: number;
   save_path: string;
-  seeding_time: number;
+  seeding_time?: number;
   seeding_time_limit: number;
   seen_complete: number;
   seq_dl: boolean;
@@ -111,6 +111,8 @@ export interface TorrentInfo {
   uploaded: number;
   uploaded_session: number;
   upspeed: number;
+  /** Present only on API >= 2.9.0 (qBittorrent v5). Use `=== true` guard before rendering. */
+  isPrivate?: boolean;
 }
 
 export type TorrentState =
@@ -208,7 +210,7 @@ export interface TorrentProperties {
   pieces_num: number;
   reannounce: number;
   save_path: string;
-  seeding_time: number;
+  seeding_time?: number;
   seeds: number;
   seeds_total: number;
   share_ratio: number;
@@ -221,6 +223,8 @@ export interface TorrentProperties {
   up_speed_avg: number;
   uploaded: number;
   uploaded_session: number;
+  /** Present only on API >= 2.9.0 (qBittorrent v5). Use `=== true` guard before rendering. */
+  isPrivate?: boolean;
 }
 
 export interface Tracker {

@@ -21,6 +21,13 @@ export const applicationApi = {
   },
 
   /**
+   * Get the Web API version string (e.g. "2.9.1")
+   */
+  async getWebApiVersion(): Promise<string> {
+    return await apiClient.get(`/api/${API_VERSION}/app/webapiVersion`);
+  },
+
+  /**
    * Get build info
    */
   async getBuildInfo(): Promise<BuildInfo> {

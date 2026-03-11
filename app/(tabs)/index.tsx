@@ -23,6 +23,7 @@ import { useTorrents } from '../../context/TorrentContext';
 import { useServer } from '../../context/ServerContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useApiVersion } from '../../context/ApiVersionContext';
 import { TorrentInfo, TorrentState } from '../../types/api';
 import { TorrentCard } from '../../components/TorrentCard';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
@@ -42,6 +43,7 @@ export default function TorrentsScreen() {
   const { torrents, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
   const { isConnected, currentServer, isLoading: serverIsLoading } = useServer();
   const { colors, isDark } = useTheme();
+  const { apiVersion } = useApiVersion();
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -396,6 +398,7 @@ export default function TorrentsScreen() {
       const addOptions = {
         stopped: prefs.pauseOnAdd === true,
         firstLastPiecePrio: Number(prefs.defaultPriority) > 0,
+        apiVersion,
       };
 
       if (selectedFile) {

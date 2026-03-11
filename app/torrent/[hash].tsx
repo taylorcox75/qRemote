@@ -15,8 +15,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useServer } from '../../context/ServerContext';
+import { useTorrents } from '../../context/TorrentContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useApiVersion } from '../../context/ApiVersionContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { TorrentCard } from '../../components/TorrentCard';
 import { torrentsApi } from '../../services/api/torrents';
@@ -36,8 +38,10 @@ export default function TorrentDetail() {
   const router = useRouter();
   const navigation = useNavigation();
   const { isConnected, isLoading } = useServer();
+  const { serverState } = useTorrents();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
+  const { apiVersion } = useApiVersion();
   
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -67,7 +71,7 @@ export default function TorrentDetail() {
     try {
       setLoading(true);
       const [torrentList, props, trackersData, filesData] = await Promise.all([
-        torrentsApi.getTorrentList(undefined, undefined, undefined, undefined, undefined, undefined, undefined, [hash]),
+        torrentsApi.getTorrentList(undefined, undefined, undefined, undefined, undefined, undefined, undefined, [hash], apiVersion),
         torrentsApi.getTorrentProperties(hash),
         torrentsApi.getTorrentTrackers(hash),
         torrentsApi.getTorrentContents(hash),
@@ -100,7 +104,7 @@ export default function TorrentDetail() {
     // Refresh without showing the pull-down animation
     try {
       const [torrentList, props, trackersData, filesData] = await Promise.all([
-        torrentsApi.getTorrentList(undefined, undefined, undefined, undefined, undefined, undefined, undefined, [hash]),
+        torrentsApi.getTorrentList(undefined, undefined, undefined, undefined, undefined, undefined, undefined, [hash], apiVersion),
         torrentsApi.getTorrentProperties(hash),
         torrentsApi.getTorrentTrackers(hash),
         torrentsApi.getTorrentContents(hash),
@@ -1061,33 +1065,33 @@ export default function TorrentDetail() {
 
               {/* Priority */}
               <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#34C759', opacity: 0.75 }]}
+                style={[styles.advancedToolButton, { backgroundColor: '#34C759', opacity: actionLoading || serverState?.queueing === false ? 0.4 : 0.75 }]}
                 onPress={handleIncreasePriority}
-                disabled={actionLoading}
+                disabled={actionLoading || serverState?.queueing === false}
               >
                 <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
                 <Text style={styles.advancedToolText}>↑ Priority</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#FF9500', opacity: 0.75 }]}
+                style={[styles.advancedToolButton, { backgroundColor: '#FF9500', opacity: actionLoading || serverState?.queueing === false ? 0.4 : 0.75 }]}
                 onPress={handleDecreasePriority}
-                disabled={actionLoading}
+                disabled={actionLoading || serverState?.queueing === false}
               >
                 <Ionicons name="arrow-down" size={18} color="#FFFFFF" />
                 <Text style={styles.advancedToolText}>↓ Priority</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#34C759', opacity: 0.75 }]}
+                style={[styles.advancedToolButton, { backgroundColor: '#34C759', opacity: actionLoading || serverState?.queueing === false ? 0.4 : 0.75 }]}
                 onPress={handleMaxPriority}
-                disabled={actionLoading}
+                disabled={actionLoading || serverState?.queueing === false}
               >
                 <Ionicons name="arrow-up-circle" size={18} color="#FFFFFF" />
                 <Text style={styles.advancedToolText}>Max Priority</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#FF9500', opacity: 0.75 }]}
+                style={[styles.advancedToolButton, { backgroundColor: '#FF9500', opacity: actionLoading || serverState?.queueing === false ? 0.4 : 0.75 }]}
                 onPress={handleMinPriority}
-                disabled={actionLoading}
+                disabled={actionLoading || serverState?.queueing === false}
               >
                 <Ionicons name="arrow-down-circle" size={18} color="#FFFFFF" />
                 <Text style={styles.advancedToolText}>Min Priority</Text>

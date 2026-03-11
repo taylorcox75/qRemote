@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { useServer } from '../../context/ServerContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useApiVersion } from '../../context/ApiVersionContext';
+import { API_HAS_INDEX_FILE_PRIO } from '../../utils/apiVersion';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { torrentsApi } from '../../services/api/torrents';
 import { TorrentFile, FilePriority } from '../../types/api';
@@ -42,6 +44,7 @@ export default function TorrentFilesScreen() {
   const { isConnected } = useServer();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
+  const { apiVersion } = useApiVersion();
 
   const [files, setFiles] = useState<TorrentFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +54,17 @@ export default function TorrentFilesScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuFile, setMenuFile] = useState<TorrentFile | null>(null);
   const [bulkPriorityMenuVisible, setBulkPriorityMenuVisible] = useState(false);
+
+  /**
+   * Returns the id to pass to filePrio for a given file.
+   * API >= 2.8.2 includes an `index` field; older API uses the file's position in the response array.
+   */
+  const getFileId = (file: TorrentFile, positionInArray: number): number => {
+    if (API_HAS_INDEX_FILE_PRIO(apiVersion)) {
+      return file.index;
+    }
+    return positionInArray;
+  };
 
   useEffect(() => {
     if (hash && isConnected) {
@@ -125,7 +139,7 @@ export default function TorrentFilesScreen() {
     if (updating) return;
     try {
       setUpdating(true);
-      const allIndices = files.map(f => f.index);
+      const allIndices = files.map((f, i) => getFileId(f, i));
       await torrentsApi.setFilePriority(hash, allIndices, 1);
       await loadFiles();
       showToast(t('toast.allFilesSelected'), 'success');
@@ -140,7 +154,7 @@ export default function TorrentFilesScreen() {
     if (updating) return;
     try {
       setUpdating(true);
-      const allIndices = files.map(f => f.index);
+      const allIndices = files.map((f, i) => getFileId(f, i));
       await torrentsApi.setFilePriority(hash, allIndices, 0);
       await loadFiles();
       showToast(t('toast.allFilesDeselected'), 'success');
@@ -156,7 +170,8 @@ export default function TorrentFilesScreen() {
     try {
       setUpdating(true);
       const newPriority: FilePriority = file.priority === 0 ? 1 : 0;
-      await torrentsApi.setFilePriority(hash, [file.index], newPriority);
+      const position = files.indexOf(file);
+      await torrentsApi.setFilePriority(hash, [getFileId(file, position)], newPriority);
       await loadFiles();
     } catch (error: any) {
       showToast(error.message || t('errors.failedToUpdateFile'), 'error');
@@ -169,8 +184,9 @@ export default function TorrentFilesScreen() {
     if (updating) return;
     try {
       setUpdating(true);
-      // Check if all files in folder are selected
-      const folderFiles = files.filter(f => fileIndices.includes(f.index));
+      // fileIndices are already resolved (index vs position) by displayItems computation
+      const fileIndexSet = new Set(fileIndices);
+      const folderFiles = files.filter((f, i) => fileIndexSet.has(getFileId(f, i)));
       const allSelected = folderFiles.every(f => f.priority > 0);
       const newPriority: FilePriority = allSelected ? 0 : 1;
       
@@ -206,7 +222,8 @@ export default function TorrentFilesScreen() {
     
     try {
       setUpdating(true);
-      await torrentsApi.setFilePriority(hash, [menuFile.index], priority);
+      const position = files.indexOf(menuFile);
+      await torrentsApi.setFilePriority(hash, [getFileId(menuFile, position)], priority);
       await loadFiles();
       showToast(t('toast.prioritySet', { label: getPriorityLabel(priority) }), 'success');
     } catch (error: any) {
@@ -218,8 +235,11 @@ export default function TorrentFilesScreen() {
   };
 
   const selectedIndices = useMemo(
-    () => files.filter(f => f.priority > 0).map(f => f.index),
-    [files]
+    () => files.reduce<number[]>((acc, f, i) => {
+      if (f.priority > 0) acc.push(getFileId(f, i));
+      return acc;
+    }, []),
+    [files, apiVersion]
   );
   const selectedCount = selectedIndices.length;
 
@@ -266,8 +286,9 @@ export default function TorrentFilesScreen() {
     const folderMap = new Map<string, { files: TorrentFile[], indices: number[], size: number }>();
 
     // Group files by folder and track indices
-    files.forEach(file => {
+    files.forEach((file, filePosition) => {
       const parts = file.name.split('/');
+      const fileId = getFileId(file, filePosition);
       
       // Track folders and their file indices
       for (let i = 0; i < parts.length - 1; i++) {
@@ -276,9 +297,9 @@ export default function TorrentFilesScreen() {
           folderMap.set(folderPath, { files: [], indices: [], size: 0 });
         }
         const folder = folderMap.get(folderPath)!;
-        if (!folder.indices.includes(file.index)) {
+        if (!folder.indices.includes(fileId)) {
           folder.files.push(file);
-          folder.indices.push(file.index);
+          folder.indices.push(fileId);
           folder.size += file.size;
         }
       }
@@ -348,7 +369,7 @@ export default function TorrentFilesScreen() {
     });
 
     return items;
-  }, [files, collapsedFolders]);
+  }, [files, collapsedFolders, apiVersion]);
 
   if (!isConnected) {
     return (

@@ -3,6 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Dimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
+import { ApiVersionProvider } from '../context/ApiVersionContext';
 import { ServerProvider } from '../context/ServerContext';
 import { TorrentProvider } from '../context/TorrentContext';
 import { TransferProvider } from '../context/TransferContext';
@@ -70,17 +71,19 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <ToastProvider>
-          <ServerProvider>
-            <TorrentProvider>
-              <TransferProvider>
-                <StackNavigator />
-              </TransferProvider>
-            </TorrentProvider>
-          </ServerProvider>
-        </ToastProvider>
-      </ThemeProvider>
+      <ApiVersionProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <ServerProvider>
+              <TorrentProvider>
+                <TransferProvider>
+                  <StackNavigator />
+                </TransferProvider>
+              </TorrentProvider>
+            </ServerProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </ApiVersionProvider>
     </SafeAreaProvider>
   );
 }

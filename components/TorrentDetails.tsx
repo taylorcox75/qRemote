@@ -24,6 +24,8 @@ import { useServer } from '../context/ServerContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useTransfer } from '../context/TransferContext';
+import { useApiVersion } from '../context/ApiVersionContext';
+import { API_HAS_INDEX_FILE_PRIO } from '../utils/apiVersion';
 import { apiClient } from '../services/api/client';
 import {
   TorrentInfo,
@@ -52,11 +54,12 @@ export function TorrentDetails({
   onRefresh,
 }: TorrentDetailsProps) {
   const router = useRouter();
-  const { categories, tags, sync, torrents } = useTorrents();
+  const { categories, tags, sync, torrents, serverState } = useTorrents();
   const { isConnected, currentServer, reconnect } = useServer();
   const { colors } = useTheme();
   const { showToast } = useToast();
   const { transferInfo, toggleAlternativeSpeedLimits } = useTransfer();
+  const { apiVersion } = useApiVersion();
   const [loading, setLoading] = useState(false);
   const [activeButton, setActiveButton] = useState<string | null>(null);
   const [optimisticPriority, setOptimisticPriority] = useState<number>(torrent.priority);
@@ -482,7 +485,7 @@ export function TorrentDetails({
             try {
               setLoading(true);
               const ratioLimit = ratioValue && ratioValue.trim() ? parseFloat(ratioValue) : undefined;
-              await torrentsApi.setTorrentShareLimits([torrent.hash], ratioLimit);
+              await torrentsApi.setTorrentShareLimits([torrent.hash], ratioLimit, undefined, undefined, apiVersion);
               await new Promise(resolve => setTimeout(resolve, 1000));
               await sync();
               onRefresh();
@@ -889,10 +892,13 @@ export function TorrentDetails({
             <TouchableOpacity
               style={[
                 styles.actionButtonCard,
-                { backgroundColor: (optimisticPriority === 1 || activeButton === 'maxPriority') ? colors.primary : '#6B6B6B' },
+                {
+                  backgroundColor: (optimisticPriority === 1 || activeButton === 'maxPriority') ? colors.primary : '#6B6B6B',
+                  opacity: serverState?.queueing === false ? 0.4 : 1,
+                },
               ]}
               onPress={handleSetMaxPriority}
-              disabled={loading}
+              disabled={loading || serverState?.queueing === false}
             >
               <Ionicons name="arrow-up-circle" size={18} color="#FFFFFF" />
               <View style={styles.actionButtonTextContainer}>
@@ -902,10 +908,13 @@ export function TorrentDetails({
             <TouchableOpacity
               style={[
                 styles.actionButtonCard,
-                { backgroundColor: (optimisticPriority === torrents.length || activeButton === 'minPriority') ? colors.primary : '#6B6B6B' },
+                {
+                  backgroundColor: (optimisticPriority === torrents.length || activeButton === 'minPriority') ? colors.primary : '#6B6B6B',
+                  opacity: serverState?.queueing === false ? 0.4 : 1,
+                },
               ]}
               onPress={handleSetMinPriority}
-              disabled={loading}
+              disabled={loading || serverState?.queueing === false}
             >
               <Ionicons name="arrow-down-circle" size={18} color="#FFFFFF" />
               <View style={styles.actionButtonTextContainer}>
@@ -966,36 +975,43 @@ export function TorrentDetails({
             {/* <View style={styles.actionButtonCard} /> */}
           </View>
           <View style={[styles.queueInfoRow, { borderTopColor: colors.surfaceOutline }]}>
-            <Text style={[styles.queueInfoLabel, { color: colors.textSecondary }]}>Queue Position:</Text>
-            <View style={styles.queueInfoRight}>
-              <Text style={[styles.queueInfoValue, { color: colors.text }]}>
-                {getQueueDisplay()}
-              </Text>
-              <View style={styles.queueButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.queueButton,
-                    { backgroundColor: (loading || optimisticPriority === 1) ? colors.textSecondary : colors.primary }
-                  ]}
-                  onPress={handleIncreasePriority}
-                  disabled={loading || optimisticPriority === 1}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="arrow-up" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.queueButton,
-                    { backgroundColor: (loading || optimisticPriority === torrents.length) ? colors.textSecondary : colors.primary }
-                  ]}
-                  onPress={handleDecreasePriority}
-                  disabled={loading || optimisticPriority === torrents.length}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="arrow-down" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
+            <View style={styles.queueInfoRowInner}>
+              <Text style={[styles.queueInfoLabel, { color: colors.textSecondary }]}>Queue Position:</Text>
+              <View style={styles.queueInfoRight}>
+                <Text style={[styles.queueInfoValue, { color: colors.text }]}>
+                  {serverState?.queueing === false ? 'Queueing disabled' : getQueueDisplay()}
+                </Text>
+                <View style={styles.queueButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.queueButton,
+                      { backgroundColor: (loading || optimisticPriority === 1 || serverState?.queueing === false) ? colors.textSecondary : colors.primary }
+                    ]}
+                    onPress={handleIncreasePriority}
+                    disabled={loading || optimisticPriority === 1 || serverState?.queueing === false}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="arrow-up" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.queueButton,
+                      { backgroundColor: (loading || optimisticPriority === torrents.length || serverState?.queueing === false) ? colors.textSecondary : colors.primary }
+                    ]}
+                    onPress={handleDecreasePriority}
+                    disabled={loading || optimisticPriority === torrents.length || serverState?.queueing === false}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="arrow-down" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
+            {serverState?.queueing === false && (
+              <Text style={[styles.queueDisabledHint, { color: colors.textSecondary }]}>
+                Enable Torrent Queueing in qBittorrent Settings → BitTorrent
+              </Text>
+            )}
           </View>
         </View>
 
@@ -1251,7 +1267,9 @@ export function TorrentDetails({
             <InfoRow icon="time" label="ETA" value={formatTime(torrent.eta)} />
           )}
           <InfoRow icon="time-outline" label="Time Active" value={formatTime(torrent.time_active)} />
-          <InfoRow icon="hourglass" label="Seeding Time" value={formatTime(torrent.seeding_time)} />
+          {torrent.seeding_time != null && (
+            <InfoRow icon="hourglass" label="Seeding Time" value={formatTime(torrent.seeding_time)} />
+          )}
         </View>
 
         {properties && (
@@ -1314,10 +1332,11 @@ export function TorrentDetails({
     );
   }
 
-  const handleSetFilePriority = async (fileIndex: number, priority: FilePriority) => {
+  const handleSetFilePriority = async (file: TorrentFile, filePositionInArray: number, priority: FilePriority) => {
     try {
       setLoading(true);
-      await torrentsApi.setFilePriority(torrent.hash, [fileIndex], priority);
+      const fileId = API_HAS_INDEX_FILE_PRIO(apiVersion) ? file.index : filePositionInArray;
+      await torrentsApi.setFilePriority(torrent.hash, [fileId], priority);
       await new Promise(resolve => setTimeout(resolve, 500));
       await sync();
       onRefresh();
@@ -1386,7 +1405,7 @@ export function TorrentDetails({
       <View style={styles.container}>
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Files ({files.length})</Text>
-          {files.map((file) => (
+          {files.map((file, filePosition) => (
             <View key={file.index} style={[styles.fileItem, { backgroundColor: colors.background }]}>
               <View style={styles.fileHeader}>
                 <Text style={[styles.fileName, { color: colors.text }]}>{file.name}</Text>
@@ -1411,21 +1430,21 @@ export function TorrentDetails({
                 <View style={styles.priorityButtons}>
                   <TouchableOpacity
                     style={[styles.priorityButton, { backgroundColor: colors.background }, file.priority === 0 && { backgroundColor: colors.primary }]}
-                    onPress={() => handleSetFilePriority(file.index, 0)}
+                    onPress={() => handleSetFilePriority(file, filePosition, 0)}
                     disabled={loading}
                   >
                     <Text style={[styles.priorityButtonText, { color: file.priority === 0 ? '#FFFFFF' : colors.text }]}>Skip</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.priorityButton, { backgroundColor: colors.background }, file.priority === 1 && { backgroundColor: colors.primary }]}
-                    onPress={() => handleSetFilePriority(file.index, 1)}
+                    onPress={() => handleSetFilePriority(file, filePosition, 1)}
                     disabled={loading}
                   >
                     <Text style={[styles.priorityButtonText, { color: file.priority === 1 ? '#FFFFFF' : colors.text }]}>Normal</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.priorityButton, { backgroundColor: colors.background }, file.priority === 7 && { backgroundColor: colors.primary }]}
-                    onPress={() => handleSetFilePriority(file.index, 7)}
+                    onPress={() => handleSetFilePriority(file, filePosition, 7)}
                     disabled={loading}
                   >
                     <Text style={[styles.priorityButtonText, { color: file.priority === 7 ? '#FFFFFF' : colors.text }]}>Max</Text>
@@ -1714,11 +1733,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   queueInfoRow: {
-    // marginTop: 12,
+    flexDirection: 'column',
+    paddingTop: 25,
+  },
+  queueInfoRowInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 25,
   },
   queueInfoLabel: {
     fontSize: 13,
@@ -1743,6 +1764,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  queueDisabledHint: {
+    fontSize: 11,
+    marginTop: 6,
+    flex: 1,
   },
   actionButtonTextContainer: {
     alignItems: 'center',
