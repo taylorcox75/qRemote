@@ -715,11 +715,11 @@ export default function TorrentsScreen() {
             onPress={() => router.push('/server/add')}
             activeOpacity={0.7}
           >
-            <View style={[styles.addServerIcon, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
+            <View style={[styles.addServerIcon, { backgroundColor: colors.surface, borderColor: colors.surfaceOutline }]}>
               <Ionicons name="add" size={20} color={colors.primary} />
             </View>
             <Text style={[styles.addServerText, { color: colors.primary }]}>
-              {t('screens.settings.addServer')}
+              Connect
             </Text>
           </TouchableOpacity>
         </ScrollView>
