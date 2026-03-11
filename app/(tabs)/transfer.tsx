@@ -335,6 +335,27 @@ export default function TransferScreen() {
 
   // Only show "Not Connected" screen if no server is configured (check FIRST)
   if (!isConnected && !currentServer && !serverIsLoading) {
+    // No servers yet — simple centred prompt
+    if (savedServers.length === 0) {
+      return (
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+          <Ionicons name="navigate-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text, fontSize: 20 }]}>Not Connected</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500' }]}>
+            add a server to set sail 🏴‍☠️
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/server/add')}
+          >
+            <Text style={styles.retryButtonText}>Add a Server</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Servers exist — scrollable quick-connect layout
     return (
       <ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
@@ -348,66 +369,64 @@ export default function TransferScreen() {
           <View style={[styles.notConnectedIconRing, { borderColor: colors.surfaceOutline }]}>
             <Ionicons name="navigate-outline" size={36} color={colors.textSecondary} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.text, marginTop: spacing.lg }]}>Not Connected</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text, marginTop: spacing.lg, fontSize: 20 }]}>Not Connected</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500', textAlign: 'center' }]}>
             add a server to set sail 🏴‍☠️
           </Text>
         </View>
 
-        {/* Saved servers */}
-        {savedServers.length > 0 && (
-          <View style={styles.notConnectedServers}>
-            <Text style={[styles.notConnectedSectionLabel, { color: colors.textSecondary }]}>
-              YOUR SERVERS
-            </Text>
-            <View style={[styles.notConnectedCard, { backgroundColor: colors.surface }]}>
-              {savedServers.map((server, index) => {
-                const color = avatarColorT(server.name);
-                const addr = serverAddressT(server);
-                const isConnectingThis = connectingId === server.id;
-                const errMsg = connectErrors[server.id];
-                const isLast = index === savedServers.length - 1;
-                return (
-                  <View key={server.id}>
-                    <TouchableOpacity
-                      style={styles.notConnectedServerRow}
-                      onPress={() => handleQuickConnect(server)}
-                      activeOpacity={0.7}
-                      disabled={connectingId !== null}
-                    >
-                      <View style={[styles.serverAvatar, { backgroundColor: color + '22', borderColor: color + '44' }]}>
-                        <Text style={[styles.serverAvatarLetter, { color }]}>
-                          {server.name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={styles.serverInfo}>
-                        <Text style={[styles.serverName, { color: colors.text }]} numberOfLines={1}>{server.name}</Text>
-                        <View style={styles.serverAddressRow}>
-                          {server.useHttps && (
-                            <Ionicons name="lock-closed" size={10} color={colors.success} style={{ marginRight: 3 }} />
-                          )}
-                          <Text style={[styles.serverAddress, { color: colors.textSecondary }]} numberOfLines={1}>{addr}</Text>
-                        </View>
-                        {errMsg && (
-                          <Text style={[styles.serverErrorText, { color: colors.error }]} numberOfLines={1}>{errMsg}</Text>
+        {/* Server cards */}
+        <View style={styles.notConnectedServers}>
+          <Text style={[styles.notConnectedSectionLabel, { color: colors.textSecondary }]}>
+            YOUR SERVERS
+          </Text>
+          <View style={[styles.notConnectedCard, { backgroundColor: colors.surface }]}>
+            {savedServers.map((server, index) => {
+              const color = avatarColorT(server.name);
+              const addr = serverAddressT(server);
+              const isConnectingThis = connectingId === server.id;
+              const errMsg = connectErrors[server.id];
+              const isLast = index === savedServers.length - 1;
+              return (
+                <View key={server.id}>
+                  <TouchableOpacity
+                    style={styles.notConnectedServerRow}
+                    onPress={() => handleQuickConnect(server)}
+                    activeOpacity={0.7}
+                    disabled={connectingId !== null}
+                  >
+                    <View style={[styles.serverAvatar, { backgroundColor: color + '22', borderColor: color + '44' }]}>
+                      <Text style={[styles.serverAvatarLetter, { color }]}>
+                        {server.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.serverInfo}>
+                      <Text style={[styles.serverName, { color: colors.text }]} numberOfLines={1}>{server.name}</Text>
+                      <View style={styles.serverAddressRow}>
+                        {server.useHttps && (
+                          <Ionicons name="lock-closed" size={10} color={colors.success} style={{ marginRight: 3 }} />
                         )}
+                        <Text style={[styles.serverAddress, { color: colors.textSecondary }]} numberOfLines={1}>{addr}</Text>
                       </View>
-                      <View style={[styles.connectPill, { backgroundColor: errMsg ? colors.error + '18' : color + '18', borderColor: errMsg ? colors.error + '40' : color + '40' }]}>
-                        {isConnectingThis
-                          ? <ActivityIndicator size="small" color={color} />
-                          : <Text style={[styles.connectPillText, { color: errMsg ? colors.error : color }]}>{errMsg ? 'Retry' : 'Connect'}</Text>
-                        }
-                      </View>
-                    </TouchableOpacity>
-                    {!isLast && <View style={[styles.notConnectedDivider, { backgroundColor: colors.surfaceOutline }]} />}
-                  </View>
-                );
-              })}
-            </View>
+                      {errMsg && (
+                        <Text style={[styles.serverErrorText, { color: colors.error }]} numberOfLines={1}>{errMsg}</Text>
+                      )}
+                    </View>
+                    <View style={[styles.connectPill, { backgroundColor: errMsg ? colors.error + '18' : color + '18', borderColor: errMsg ? colors.error + '40' : color + '40' }]}>
+                      {isConnectingThis
+                        ? <ActivityIndicator size="small" color={color} />
+                        : <Text style={[styles.connectPillText, { color: errMsg ? colors.error : color }]}>{errMsg ? 'Retry' : 'Connect'}</Text>
+                      }
+                    </View>
+                  </TouchableOpacity>
+                  {!isLast && <View style={[styles.notConnectedDivider, { backgroundColor: colors.surfaceOutline }]} />}
+                </View>
+              );
+            })}
           </View>
-        )}
+        </View>
 
-        {/* Add server */}
+        {/* Add another server */}
         <TouchableOpacity
           style={[styles.addServerRow, { borderColor: colors.surfaceOutline }]}
           onPress={() => router.push('/server/add')}
