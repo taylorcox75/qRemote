@@ -566,7 +566,7 @@ export default function TorrentsScreen() {
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Ionicons name="cloud-offline-outline" size={64} color={colors.textSecondary} />
+          <Ionicons name="navigate-outline" size={64} color={colors.textSecondary} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             {t('screens.torrents.notConnected')}
           </Text>
@@ -575,9 +575,9 @@ export default function TorrentsScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-            onPress={() => router.push('/settings')}
+            onPress={() => router.push('/server/add')}
           >
-            <Text style={styles.emptyButtonText}>{t('common.goToSettings')}</Text>
+            <Text style={styles.emptyButtonText}>{t('screens.settings.addServer')}</Text>
           </TouchableOpacity>
         </View>
       </>

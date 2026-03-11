@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useTransfer } from '../../context/TransferContext';
 import { useServer } from '../../context/ServerContext';
 import { useTorrents } from '../../context/TorrentContext';
@@ -47,6 +48,7 @@ export default function TransferScreen() {
   const isRecoveringFromBackground = transferRecovering || torrentRecovering;
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
+  const router = useRouter();
   const [settingLimit, setSettingLimit] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [limitModalVisible, setLimitModalVisible] = useState(false);
@@ -292,11 +294,17 @@ export default function TransferScreen() {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <Ionicons name="cloud-offline-outline" size={56} color={colors.textSecondary} />
+        <Ionicons name="navigate-outline" size={56} color={colors.textSecondary} />
         <Text style={[styles.emptyTitle, { color: colors.text }]}>Not Connected</Text>
         <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-          Connect to a server in Settings
+          Dead in the water. Add a server to catch the wind.
         </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          onPress={() => router.push('/server/add')}
+        >
+          <Text style={styles.retryButtonText}>Add a Server</Text>
+        </TouchableOpacity>
       </View>
     );
   }
