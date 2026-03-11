@@ -105,15 +105,17 @@ export const torrentsApi = {
   },
 
   /**
-   * Pause torrents
+   * Pause / stop torrents.
+   * Uses the v4-compatible `/torrents/pause` endpoint, which qBittorrent 5.x
+   * keeps as a supported alias for `/torrents/stop`. Using the v4 name ensures
+   * this works on both API generations without a version check.
    */
   async pauseTorrents(hashes: string[]): Promise<void> {
     const hashString = hashes.join('|');
     try {
-      const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/stop`, {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/pause`, {
         hashes: hashString,
       });
-      // console.log('Pause response:', response);
     } catch (error: any) {
       console.error('Pause API error:', {
         message: error.message,
@@ -126,12 +128,15 @@ export const torrentsApi = {
   },
 
   /**
-   * Resume torrents
+   * Resume / start torrents.
+   * Uses the v4-compatible `/torrents/resume` endpoint, which qBittorrent 5.x
+   * keeps as a supported alias for `/torrents/start`. Using the v4 name ensures
+   * this works on both API generations without a version check.
    */
   async resumeTorrents(hashes: string[]): Promise<void> {
     const hashString = hashes.join('|');
     try {
-      const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/start`, {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/resume`, {
         hashes: hashString,
       });
     } catch (error: any) {
