@@ -6,11 +6,6 @@ on:
       - main
     paths:
       - 'package.json'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g. 2.1.1) — overrides package.json check'
-        required: true
 
 jobs:
   check-version:
@@ -27,13 +22,6 @@ jobs:
       - name: Check if version changed
         id: check
         run: |
-          # Manual trigger bypasses the diff check entirely
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "version_changed=true" >> $GITHUB_OUTPUT
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
           CURRENT=$(node -p "require('./package.json').version")
           PREVIOUS=$(git show HEAD~1:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version" 2>/dev/null || echo "0.0.0")
           echo "Current version:  $CURRENT"
