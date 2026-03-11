@@ -172,4 +172,5 @@ jobs:
           eas submit \
             --platform ios \
             --id ${{ needs.build.outputs.build_id }} \
-            --non-interactive
+            --non-interactive \
+            --no-wait
