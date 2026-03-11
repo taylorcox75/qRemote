@@ -570,7 +570,7 @@ export default function TorrentsScreen() {
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             {t('screens.torrents.notConnected')}
           </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500' }]}>
             {t('screens.torrents.notConnectedSubtitle')}
           </Text>
           <TouchableOpacity
