@@ -20,18 +20,26 @@ function StackNavigator() {
 
   useEffect(() => {
     const checkOnboarding = async () => {
-      const prefs = await storageService.getPreferences();
-      if (prefs.hasCompletedOnboarding) return;
+      try {
+        const prefs = await storageService.getPreferences();
 
-      // Existing users who already have servers configured are graduated past
-      // onboarding automatically — only truly new users see the flow.
-      const existingServers = await ServerManager.getServers();
-      if (existingServers.length > 0) {
-        await storageService.savePreferences({ ...prefs, hasCompletedOnboarding: true });
-        return;
+        // Already completed — nothing to do.
+        if (prefs.hasCompletedOnboarding) return;
+
+        // Existing install: any saved server means the user has already set up
+        // the app in a previous version. Graduate them past onboarding silently
+        // so they are never interrupted by an unexpected redirect.
+        const existingServers = await ServerManager.getServers();
+        if (existingServers.length > 0) {
+          await storageService.savePreferences({ ...prefs, hasCompletedOnboarding: true });
+          return;
+        }
+
+        // Genuinely first launch — show onboarding.
+        router.replace('/onboarding');
+      } catch {
+        // Storage failure: let the user reach the main screen normally.
       }
-
-      router.replace('/onboarding');
     };
     checkOnboarding();
   }, []);
