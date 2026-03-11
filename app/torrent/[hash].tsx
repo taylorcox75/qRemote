@@ -10,6 +10,8 @@ import {
   Dimensions,
   Alert,
   Modal,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
@@ -64,24 +66,6 @@ export default function TorrentDetail() {
     }
   }, [hash, isConnected]);
 
-  // Auto-refresh polling — keeps the card and detail sections live
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    if (!hash || !isConnected) return;
-
-    intervalRef.current = setInterval(() => {
-      silentRefresh();
-    }, 2000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [hash, isConnected]);
-
   const loadTorrentData = async () => {
     try {
       setLoading(true);
@@ -134,6 +118,50 @@ export default function TorrentDetail() {
       // Silent failure — don't interrupt the user
     }
   }, [hash]);
+
+  // Auto-refresh polling — keeps the card and detail sections live
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const appStateRef = useRef(AppState.currentState);
+
+  const startPolling = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      silentRefresh();
+    }, 2000);
+  }, [silentRefresh]);
+
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  // Start/stop polling with connection state
+  useEffect(() => {
+    if (!hash || !isConnected) {
+      stopPolling();
+      return;
+    }
+    startPolling();
+    return stopPolling;
+  }, [hash, isConnected, startPolling, stopPolling]);
+
+  // Pause polling in background, resume on foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+      if (prev === 'background' && nextState === 'active' && isConnected && hash) {
+        silentRefresh();
+        startPolling();
+      } else if (nextState === 'background') {
+        stopPolling();
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [hash, isConnected, silentRefresh, startPolling, stopPolling]);
 
   // Show loading spinner while restoring connection (prevents flash on app launch/resume)
   if (isLoading && !isConnected) {

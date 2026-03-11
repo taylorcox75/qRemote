@@ -72,12 +72,16 @@ export default function TransferScreen() {
 
   // Quick-connect state
   const [savedServers, setSavedServers] = useState<ServerConfig[]>([]);
+  const [serversLoaded, setServersLoaded] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isConnected && !currentServer) {
-      ServerManager.getServers().then(setSavedServers).catch(() => setSavedServers([]));
+      setServersLoaded(false);
+      ServerManager.getServers()
+        .then((s) => { setSavedServers(s); setServersLoaded(true); })
+        .catch(() => { setSavedServers([]); setServersLoaded(true); });
     }
   }, [isConnected, currentServer]);
 
@@ -335,8 +339,8 @@ export default function TransferScreen() {
 
   // Only show "Not Connected" screen if no server is configured (check FIRST)
   if (!isConnected && !currentServer && !serverIsLoading) {
-    // No servers yet — simple centred prompt
-    if (savedServers.length === 0) {
+    // No servers yet — simple centred prompt (also shown while loading to avoid flash)
+    if (!serversLoaded || savedServers.length === 0) {
       return (
         <View style={[styles.center, { backgroundColor: colors.background }]}>
           <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />

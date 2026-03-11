@@ -356,12 +356,16 @@ export default function TorrentsScreen() {
 
   // ─── Server quick-connect state (used in not-connected early return) ────────
   const [savedServers, setSavedServers] = useState<ServerConfig[]>([]);
+  const [serversLoaded, setServersLoaded] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isConnected && !currentServer) {
-      ServerManager.getServers().then(setSavedServers).catch(() => setSavedServers([]));
+      setServersLoaded(false);
+      ServerManager.getServers()
+        .then((s) => { setSavedServers(s); setServersLoaded(true); })
+        .catch(() => { setSavedServers([]); setServersLoaded(true); });
     }
   }, [isConnected, currentServer]);
 
@@ -606,8 +610,8 @@ export default function TorrentsScreen() {
   // Early returns
   // Only show "Not Connected" screen if no server is configured (check this FIRST)
   if (!isConnected && !currentServer && !serverIsLoading) {
-    // No servers saved yet — simple centred prompt
-    if (savedServers.length === 0) {
+    // No servers saved yet — simple centred prompt (also shown while loading to avoid flash)
+    if (!serversLoaded || savedServers.length === 0) {
       return (
         <>
           <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
