@@ -348,8 +348,8 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
     const downloading = dlspeed > 0;
     const uploading = upspeed > 0;
 
-    // Active transfer: DL+UL uses DL color; upload-only uses upload color
-    if (downloading && uploading) return colors.stateDownloading;
+    // Active transfer: DL+UL uses blue-grey; upload-only uses pastel blue
+    if (downloading && uploading) return colors.stateUploadAndDownload;
     if (uploading && !downloading) return colors.stateUploadOnly;
 
     // Idle seeding (100% complete, no active download)

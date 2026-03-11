@@ -167,7 +167,7 @@ export default function TorrentDetail() {
   const getStateColor = (state: string, progress: number, dlspeed: number, upspeed: number): string => {
     const downloading = dlspeed > 0;
     const uploading = upspeed > 0;
-    if (downloading && uploading) return colors.stateDownloading;
+    if (downloading && uploading) return colors.stateUploadAndDownload;
     if (uploading && !downloading) return colors.stateUploadOnly;
 
     if (state === 'stalledUP' && progress >= 1) return colors.stateSeeding;
