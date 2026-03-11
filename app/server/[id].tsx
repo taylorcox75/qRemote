@@ -11,6 +11,7 @@ import {
   Platform,
   Switch,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -243,14 +244,27 @@ App Version: ${APP_VERSION}`;
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await ServerManager.deleteServer(id!);
-      showToast(`Server "${name}" deleted`, 'success');
-      router.back();
-    } catch (error) {
-      showToast('Failed to delete server', 'error');
-    }
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Server',
+      `Remove "${name}" from your server list?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ServerManager.deleteServer(id!);
+              showToast(`Server "${name}" deleted`, 'success');
+              router.back();
+            } catch (error) {
+              showToast('Failed to delete server', 'error');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleTest = async () => {
@@ -530,8 +544,8 @@ App Version: ${APP_VERSION}`;
                   trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
+              </View>
             </View>
-          </View>
           </View>
 
           {/* Debug Info - Only shown when toggle is ON */}

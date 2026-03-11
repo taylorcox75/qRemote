@@ -94,7 +94,10 @@
       "defaultSavePathTitle": "Standard-Speicherpfad",
       "defaultSavePathMessage": "Speicherpfad für neue Torrents",
       "defaultSavePathPlaceholder": "/pfad/downloads",
-      "sortBy": "Sortieren nach"
+      "sortBy": "Sortieren nach",
+      "firstLastPiecePriority": "First/Last Piece Priority",
+      "firstLastPiecePriorityHint": "Download first and last pieces first",
+      "viewLogs": "View Connectivity Logs"
     },
     "transfer": { "title": "Übertragung" },
     "files": {
@@ -179,7 +182,8 @@
   "alerts": {
     "deleteTorrent": "Torrent löschen?",
     "deleteTorrents": "{{count}} Torrent(s) löschen?",
-    "deleteConfirm": "Der Torrent wird vom Client entfernt."
+    "deleteConfirm": "Der Torrent wird vom Client entfernt.",
+    "shutdownConfirm": "This will stop the qBittorrent application on your server."
   },
   "server": {
     "serverInfo": "SERVER-INFO",

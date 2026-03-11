@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Dimensions,
   Alert,
   Modal,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
@@ -57,6 +59,7 @@ export default function TorrentDetail() {
   const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
   const [peersLoading, setPeersLoading] = useState(false);
 
+  // Initial load
   useEffect(() => {
     if (hash && isConnected) {
       loadTorrentData();
@@ -96,8 +99,7 @@ export default function TorrentDetail() {
     await loadTorrentData();
   };
 
-  const silentRefresh = async () => {
-    // Refresh without showing the pull-down animation
+  const silentRefresh = useCallback(async () => {
     try {
       const [torrentList, props, trackersData, filesData] = await Promise.all([
         torrentsApi.getTorrentList(undefined, undefined, undefined, undefined, undefined, undefined, undefined, [hash]),
@@ -112,11 +114,54 @@ export default function TorrentDetail() {
       setProperties(props);
       setTrackers(trackersData);
       setFiles(filesData);
-    } catch (error: any) {
-      // Silent failure - don't alert user
-      console.error('Silent refresh error:', error);
+    } catch {
+      // Silent failure — don't interrupt the user
     }
-  };
+  }, [hash]);
+
+  // Auto-refresh polling — keeps the card and detail sections live
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const appStateRef = useRef(AppState.currentState);
+
+  const startPolling = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      silentRefresh();
+    }, 2000);
+  }, [silentRefresh]);
+
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  // Start/stop polling with connection state
+  useEffect(() => {
+    if (!hash || !isConnected) {
+      stopPolling();
+      return;
+    }
+    startPolling();
+    return stopPolling;
+  }, [hash, isConnected, startPolling, stopPolling]);
+
+  // Pause polling in background, resume on foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+      if (prev === 'background' && nextState === 'active' && isConnected && hash) {
+        silentRefresh();
+        startPolling();
+      } else if (nextState === 'background') {
+        stopPolling();
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [hash, isConnected, silentRefresh, startPolling, stopPolling]);
 
   // Show loading spinner while restoring connection (prevents flash on app launch/resume)
   if (isLoading && !isConnected) {
@@ -573,35 +618,6 @@ export default function TorrentDetail() {
 
   const handleEditTrackers = () => {
     router.push(`/torrent/manage-trackers?hash=${hash}`);
-  };
-
-  const handleAddTrackers_OLD = () => {
-    Alert.prompt(
-      'Add Trackers',
-      'Enter tracker URLs (one per line)',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Add',
-          onPress: async (value: string | undefined) => {
-            if (!value || value.trim() === '') return;
-            try {
-              setActionLoading(true);
-              const urls = value.split('\n').filter((url: string) => url.trim() !== '');
-              await torrentsApi.addTrackers(torrent.hash, urls);
-              await new Promise(resolve => setTimeout(resolve, 500));
-              await loadTorrentData();
-              showToast(`Added ${urls.length} tracker(s)`, 'success');
-            } catch (error: any) {
-              showToast(error.message || 'Failed to add trackers', 'error');
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
   };
 
   const handleSetCategory = () => {
@@ -1490,41 +1506,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     // marginBottom: 16,
     // lineHeight: 20,
-  },
-  trackersInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    // fontSize: 14,
-    minHeight: 150,
-    // maxHeight: 400,
-    marginBottom: 16,
-    textAlignVertical: 'top',
-    fontFamily: 'monospace',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: 'red',
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: 'red',
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalCancelButton: {
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  modalSaveButton: {
-    // Primary color applied inline
   },
 });
 

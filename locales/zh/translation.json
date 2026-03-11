@@ -94,7 +94,10 @@
       "defaultSavePathTitle": "默认保存路径",
       "defaultSavePathMessage": "新种子的默认保存路径",
       "defaultSavePathPlaceholder": "/路径/下载",
-      "sortBy": "排序方式"
+      "sortBy": "排序方式",
+      "firstLastPiecePriority": "First/Last Piece Priority",
+      "firstLastPiecePriorityHint": "Download first and last pieces first",
+      "viewLogs": "View Connectivity Logs"
     },
     "transfer": { "title": "传输" },
     "files": {
@@ -179,7 +182,8 @@
   "alerts": {
     "deleteTorrent": "删除种子？",
     "deleteTorrents": "删除 {{count}} 个种子？",
-    "deleteConfirm": "这将从客户端移除种子。"
+    "deleteConfirm": "这将从客户端移除种子。",
+    "shutdownConfirm": "This will stop the qBittorrent application on your server."
   },
   "server": {
     "serverInfo": "服务器信息",

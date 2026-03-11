@@ -17,7 +17,7 @@
   "screens": {
     "torrents": {
       "notConnected": "Not Connected",
-      "notConnectedSubtitle": "Connect to a qBittorrent server to get started",
+      "notConnectedSubtitle": "add a server to set sail 🏴‍☠️",
       "somethingWentWrong": "Something Went Wrong",
       "noTorrents": "No Torrents",
       "noResults": "No Results",
@@ -94,7 +94,10 @@
       "defaultSavePathTitle": "Default Save Path",
       "defaultSavePathMessage": "Enter default save path for new torrents",
       "defaultSavePathPlaceholder": "/path/to/downloads",
-      "sortBy": "Sort By"
+      "sortBy": "Sort By",
+      "firstLastPiecePriority": "First/Last Piece Priority",
+      "firstLastPiecePriorityHint": "Download first and last pieces first",
+      "viewLogs": "View Connectivity Logs"
     },
     "transfer": {
       "title": "Transfer"
@@ -184,7 +187,8 @@
   "alerts": {
     "deleteTorrent": "Delete torrent?",
     "deleteTorrents": "Delete {{count}} torrent(s)?",
-    "deleteConfirm": "This will remove the torrent from the client."
+    "deleteConfirm": "This will remove the torrent from the client.",
+    "shutdownConfirm": "This will stop the qBittorrent application on your server."
   },
   "server": {
     "serverInfo": "SERVER INFO",

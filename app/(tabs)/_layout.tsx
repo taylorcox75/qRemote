@@ -10,7 +10,7 @@ export default function TabsLayout() {
     <SafeAreaView
       style={{
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: colors.surface,
       }}
       edges={['top']}
     >
@@ -22,8 +22,9 @@ export default function TabsLayout() {
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarStyle: {
-            backgroundColor: colors.background,
-            borderTopWidth: 0,
+            backgroundColor: colors.surface,
+            borderTopWidth: 0.18,
+            borderTopColor: colors.surfaceOutline,
           },
         }}
       >
