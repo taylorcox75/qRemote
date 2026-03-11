@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from 'expo-router';
 import { useTransfer } from '../../context/TransferContext';
 import { useServer } from '../../context/ServerContext';
 import { useTorrents } from '../../context/TorrentContext';
@@ -48,21 +47,6 @@ export default function TransferScreen() {
   const isRecoveringFromBackground = transferRecovering || torrentRecovering;
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
-  const navigation = useNavigation();
-
-  // Ensure tab bar is visible with consistent styling when this tab is active
-  useFocusEffect(
-    useCallback(() => {
-      navigation.setOptions({
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 0.18,
-          borderTopColor: colors.surfaceOutline,
-        },
-      });
-    }, [navigation, colors.surface, colors.surfaceOutline])
-  );
-
   const [settingLimit, setSettingLimit] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [limitModalVisible, setLimitModalVisible] = useState(false);

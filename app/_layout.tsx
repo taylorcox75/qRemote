@@ -11,6 +11,7 @@ import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { ToastProvider } from '../context/ToastContext';
 import { logStorage } from '../services/log-storage';
 import { storageService } from '../services/storage';
+import { ServerManager } from '../services/server-manager';
 
 const { width } = Dimensions.get('window');
 
@@ -21,9 +22,17 @@ function StackNavigator() {
   useEffect(() => {
     const checkOnboarding = async () => {
       const prefs = await storageService.getPreferences();
-      if (!prefs.hasCompletedOnboarding) {
-        router.replace('/onboarding');
+      if (prefs.hasCompletedOnboarding) return;
+
+      // Existing users who already have servers configured are graduated past
+      // onboarding automatically — only truly new users see the flow.
+      const existingServers = await ServerManager.getServers();
+      if (existingServers.length > 0) {
+        await storageService.savePreferences({ ...prefs, hasCompletedOnboarding: true });
+        return;
       }
+
+      router.replace('/onboarding');
     };
     checkOnboarding();
   }, []);

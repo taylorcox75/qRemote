@@ -17,7 +17,7 @@ import {
   Modal,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { getStoredLanguage, setStoredLanguage } from '../../i18n';
 import { Ionicons } from '@expo/vector-icons';
 import * as MailComposer from 'expo-mail-composer';
@@ -61,7 +61,6 @@ function formatReleaseDate(isoDate: string): string {
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const navigation = useNavigation();
   const { currentServer, isConnected, connectToServer, disconnect } = useServer();
   const { categories, tags } = useTorrents();
   const { isDark, toggleTheme, colors, reloadCustomColors } = useTheme();
@@ -145,18 +144,6 @@ export default function SettingsScreen() {
     }, [isConnected])
   );
 
-  // Ensure tab bar is visible with consistent styling when this tab is active
-  useFocusEffect(
-    useCallback(() => {
-      navigation.setOptions({
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 0.18,
-          borderTopColor: colors.surfaceOutline,
-        },
-      });
-    }, [navigation, colors.surface, colors.surfaceOutline])
-  );
 
   const loadServers = useCallback(async () => {
     try {
