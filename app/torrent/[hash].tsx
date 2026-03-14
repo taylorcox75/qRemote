@@ -737,7 +737,6 @@ export default function TorrentDetail() {
           {/* Top Card - Using TorrentCard component in expanded view mode */}
           <TorrentCard 
             torrent={torrent}
-            viewMode="expanded"
             onPress={() => {}} 
           />
 
