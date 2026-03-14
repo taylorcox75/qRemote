@@ -5,6 +5,18 @@ import { authApi } from './api/auth';
 import { applicationApi } from './api/application';
 import { clogInfo, clogWarn, clogError } from './connectivity-log';
 
+export function isNetworkError(error: any): boolean {
+  return (
+    error.code === 'ECONNABORTED' ||
+    error.code === 'ERR_NETWORK' ||
+    error.code === 'ETIMEDOUT' ||
+    error.response?.status >= 500 ||
+    error.message?.includes('timeout') ||
+    error.message?.includes('Connection') ||
+    error.message?.includes('Network')
+  );
+}
+
 export class ServerManager {
   /**
    * Add or update a server
@@ -62,16 +74,7 @@ export class ServerManager {
           // Connection test failed, clear server
           apiClient.setServer(null);
           clogError('CONN', `Bypass-auth connect failed: ${error.message}`);
-          // Re-throw network/connection errors so they can be handled by the caller
-          // Check error codes/types first, then fall back to message string matching
-          const isNetworkError = error.code === 'ECONNABORTED' || 
-                                 error.code === 'ERR_NETWORK' || 
-                                 error.code === 'ETIMEDOUT' ||
-                                 error.response?.status >= 500 ||
-                                 error.message?.includes('timeout') || 
-                                 error.message?.includes('Connection') || 
-                                 error.message?.includes('Network');
-          if (isNetworkError) {
+          if (isNetworkError(error)) {
             throw error;
           }
           throw new Error('Failed to connect to server. Please check your settings.');
@@ -93,16 +96,7 @@ export class ServerManager {
           // Connection test failed, clear server
           apiClient.setServer(null);
           clogError('CONN', `Post-login API check failed: ${error.message}`);
-          // Re-throw network/connection errors so they can be handled by the caller
-          // Check error codes/types first, then fall back to message string matching
-          const isNetworkError = error.code === 'ECONNABORTED' || 
-                                 error.code === 'ERR_NETWORK' || 
-                                 error.code === 'ETIMEDOUT' ||
-                                 error.response?.status >= 500 ||
-                                 error.message?.includes('timeout') || 
-                                 error.message?.includes('Connection') || 
-                                 error.message?.includes('Network');
-          if (isNetworkError) {
+          if (isNetworkError(error)) {
             throw error;
           }
           // Authentication error means login didn't actually work
@@ -121,16 +115,7 @@ export class ServerManager {
     } catch (error: any) {
       clogError('CONN', `connectToServer error: ${error.message}`);
       apiClient.setServer(null);
-      // Re-throw network/connection errors so they can be handled by the caller
-      // Check error codes/types first, then fall back to message string matching
-      const isNetworkError = error.code === 'ECONNABORTED' || 
-                             error.code === 'ERR_NETWORK' || 
-                             error.code === 'ETIMEDOUT' ||
-                             error.response?.status >= 500 ||
-                             error.message?.includes('timeout') || 
-                             error.message?.includes('Connection') || 
-                             error.message?.includes('Network');
-      if (isNetworkError) {
+      if (isNetworkError(error)) {
         throw error;
       }
       // Re-throw if it's already a formatted error message
