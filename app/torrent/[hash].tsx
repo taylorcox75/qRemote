@@ -92,6 +92,12 @@ export default function TorrentDetail() {
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
   const [tagsModalVisible, setTagsModalVisible] = useState(false);
 
+  // Optimistic state for toggle rows so they feel instant
+  const [optSeqDl, setOptSeqDl] = useState<boolean | null>(null);
+  const [optFlPiece, setOptFlPiece] = useState<boolean | null>(null);
+  const [optSuperSeeding, setOptSuperSeeding] = useState<boolean | null>(null);
+  const [optForceStart, setOptForceStart] = useState<boolean | null>(null);
+
   // ── Data loading ──────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -304,6 +310,7 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
+      showToast(t('toast.reannounceSent'), 'success');
     } catch (error: unknown) {
       showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
@@ -311,58 +318,76 @@ export default function TorrentDetail() {
   };
 
   const handleForceStart = async () => {
+    if (actionLoading) return;
     try {
       setActionLoading(true);
       const isForceStarted = torrent?.force_start || false;
+      setOptForceStart(!isForceStarted);
       await torrentsApi.setForceStart([torrent!.hash], !isForceStarted);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
+      setOptForceStart(null);
       setActionLoading(false);
       showToast(t('toast.forceStartToggled', { status: t(`common.${!isForceStarted ? 'enabled' : 'disabled'}`) }), 'success');
     } catch (error: unknown) {
+      setOptForceStart(null);
       showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
 
   const handleSuperSeeding = async () => {
+    if (actionLoading) return;
     try {
       setActionLoading(true);
       const isSuperSeeding = torrent?.super_seeding || false;
+      setOptSuperSeeding(!isSuperSeeding);
       await torrentsApi.setSuperSeeding([torrent!.hash], !isSuperSeeding);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
+      setOptSuperSeeding(null);
       setActionLoading(false);
       showToast(t('toast.superSeedingToggled', { status: t(`common.${!isSuperSeeding ? 'enabled' : 'disabled'}`) }), 'success');
     } catch (error: unknown) {
+      setOptSuperSeeding(null);
       showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
 
   const handleSequentialDownload = async () => {
+    if (actionLoading) return;
     try {
       setActionLoading(true);
+      const isSeq = torrent?.seq_dl || false;
+      setOptSeqDl(!isSeq);
       await torrentsApi.toggleSequentialDownload([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
+      setOptSeqDl(null);
       setActionLoading(false);
       showToast(t('toast.sequentialToggled'), 'success');
     } catch (error: unknown) {
+      setOptSeqDl(null);
       showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
 
   const handleFirstLastPiecePriority = async () => {
+    if (actionLoading) return;
     try {
       setActionLoading(true);
+      const isFlPiece = torrent?.f_l_piece_prio || false;
+      setOptFlPiece(!isFlPiece);
       await torrentsApi.setFirstLastPiecePriority([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
+      setOptFlPiece(null);
       setActionLoading(false);
       showToast(t('torrentDetail.firstLastPieceToggled'), 'success');
     } catch (error: unknown) {
+      setOptFlPiece(null);
       showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
@@ -514,9 +539,6 @@ export default function TorrentDetail() {
   };
 
   const handleAddTags = () => setTagsModalVisible(true);
-
-  // kept for backwards-compat with any remaining usages; opens same modal
-  const handleRemoveTags = () => setTagsModalVisible(true);
 
   const handleSetLocation = () => {
     setInputModalConfig({
@@ -746,13 +768,32 @@ export default function TorrentDetail() {
     </TouchableOpacity>
   );
 
+  const categoryBadgeRow = (label: string, category: string, onPress: () => void) => (
+    <TouchableOpacity style={styles.row} onPress={onPress} disabled={actionLoading}>
+      <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+      <View style={styles.rowRight}>
+        {category ? (
+          <View style={[styles.categoryBadge, { backgroundColor: colors.primaryOpac ?? 'rgba(0,122,255,0.15)', borderColor: colors.primary }]}>
+            <Text style={[styles.categoryBadgeText, { color: colors.primary }]} numberOfLines={1}>
+              {category}
+            </Text>
+          </View>
+        ) : (
+          <Text style={[styles.rowValue, { color: colors.textSecondary }]} numberOfLines={1}>
+            {t('common.none')}
+          </Text>
+        )}
+        <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   const toggleRow = (label: string, value: boolean, onToggle: () => void) => (
     <View style={styles.row}>
       <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onToggle}
-        disabled={actionLoading}
         trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
       />
     </View>
@@ -770,6 +811,30 @@ export default function TorrentDetail() {
         <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
       </View>
     </TouchableOpacity>
+  );
+
+  const trackerNavRowWithReannounce = (label: string, value: string, onPress: () => void) => (
+    <View style={styles.trackerRowOuter}>
+      <TouchableOpacity
+        style={styles.reannounceIconBtn}
+        onPress={handleReannounce}
+        disabled={actionLoading}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="megaphone-outline" size={18} color={colors.textSecondary} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.trackerRowContent} onPress={onPress}>
+        <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+        <View style={styles.rowRight}>
+          {value ? (
+            <Text style={[styles.rowValue, { color: colors.textSecondary }]} numberOfLines={1}>
+              {value}
+            </Text>
+          ) : null}
+          <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 
   // ── Main render ───────────────────────────────────────────────────────
@@ -863,9 +928,8 @@ export default function TorrentDetail() {
               staticRow(t('torrentDetail.uploaded'), formatSize(torrent.uploaded)),
               staticRow(t('torrentDetail.ratio'), torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'),
               properties && staticRow(t('torrentDetail.savePath'), properties.save_path),
-              tappableRow(t('torrentDetail.category'), torrent.category || t('common.none'), () => setCategoryPickerVisible(true)),
+              categoryBadgeRow(t('torrentDetail.category'), torrent.category || '', () => setCategoryPickerVisible(true)),
               tappableRow(t('torrentDetail.tags'), torrent.tags || t('common.none'), handleAddTags),
-              tappableRow(t('torrentDetail.removeTags'), '', handleRemoveTags),
             ])}
           </View>
 
@@ -914,8 +978,10 @@ export default function TorrentDetail() {
               navRow(t('torrentDetail.files'), t('torrentDetail.filesCount', { count: files.length }), () =>
                 router.push(`/torrent/files?hash=${hash}`),
               ),
-              navRow(t('torrentDetail.trackers'), t('torrentDetail.trackersCount', { count: trackers.length }), () =>
-                router.push(`/torrent/manage-trackers?hash=${hash}`),
+              trackerNavRowWithReannounce(
+                t('torrentDetail.trackers'),
+                t('torrentDetail.trackersCount', { count: trackers.length }),
+                () => router.push(`/torrent/manage-trackers?hash=${hash}`),
               ),
             ])}
           </View>
@@ -925,13 +991,12 @@ export default function TorrentDetail() {
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               tappableRow(t('torrentDetail.priority'), priorityDisplay, () => setPriorityPickerVisible(true)),
-              toggleRow(t('torrentDetail.sequentialDownload'), torrent.seq_dl ?? false, handleSequentialDownload),
-              toggleRow(t('torrentDetail.firstLastPiecePriority'), torrent.f_l_piece_prio ?? false, handleFirstLastPiecePriority),
-              toggleRow(t('torrentDetail.superSeeding'), torrent.super_seeding ?? false, handleSuperSeeding),
-              toggleRow(t('torrentDetail.forceStart'), torrent.force_start ?? false, handleForceStart),
+              toggleRow(t('torrentDetail.sequentialDownload'), optSeqDl ?? torrent.seq_dl ?? false, handleSequentialDownload),
+              toggleRow(t('torrentDetail.firstLastPiecePriority'), optFlPiece ?? torrent.f_l_piece_prio ?? false, handleFirstLastPiecePriority),
+              toggleRow(t('torrentDetail.superSeeding'), optSuperSeeding ?? torrent.super_seeding ?? false, handleSuperSeeding),
+              toggleRow(t('torrentDetail.forceStart'), optForceStart ?? torrent.force_start ?? false, handleForceStart),
               tappableRow(t('torrentDetail.rename'), torrent.name, handleRenameTorrent),
               tappableRow(t('torrentDetail.moveTo'), properties?.save_path || '', handleSetLocation),
-              tappableRow(t('torrentDetail.reannounce'), '', handleReannounce),
             ])}
           </View>
 
@@ -1290,5 +1355,38 @@ const styles = StyleSheet.create({
   peerClient: {
     fontSize: 12,
     marginTop: 2,
+  },
+
+  // Category badge
+  categoryBadge: {
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    maxWidth: 160,
+  },
+  categoryBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Tracker row with reannounce icon
+  trackerRowOuter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    minHeight: 44,
+    paddingVertical: 10,
+  },
+  reannounceIconBtn: {
+    padding: 4,
+    marginRight: 8,
+  },
+  trackerRowContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 16,
   },
 });
