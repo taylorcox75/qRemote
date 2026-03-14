@@ -28,6 +28,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { buttonStyles, buttonText } from '@/constants/buttons';
 import { typography } from '@/constants/typography';
+import { getErrorMessage } from '@/utils/error';
 
 export default function ManageTrackersScreen() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
@@ -60,8 +61,8 @@ export default function ManageTrackersScreen() {
              !t.url.includes('PEX') && !t.url.includes('LSD')
       );
       setTrackers(realTrackers);
-    } catch (error: any) {
-      showToast(error.message || t('torrentDetail.failedToFetchTrackers'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setLoading(false);
     }
@@ -72,8 +73,8 @@ export default function ManageTrackersScreen() {
       await torrentsApi.removeTrackers(hash!, [tracker.url]);
       fetchTrackers();
       showToast(t('screens.trackers.trackerRemoved'), 'success');
-    } catch (error: any) {
-      showToast(error.message || t('torrentDetail.failedToRemoveTracker'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     }
   };
 
@@ -90,8 +91,8 @@ export default function ManageTrackersScreen() {
       setShowAddInput(false);
       fetchTrackers();
       showToast(t('screens.trackers.trackerAdded'), 'success');
-    } catch (error: any) {
-      showToast(error.message || t('torrentDetail.failedToAddTracker'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setAddingTracker(false);
     }
@@ -141,8 +142,8 @@ export default function ManageTrackersScreen() {
       setEditTrackerUrl('');
       fetchTrackers();
       showToast(t('screens.trackers.trackerUpdated'), 'success');
-    } catch (error: any) {
-      showToast(error.message || t('torrentDetail.failedToUpdateTracker'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setAddingTracker(false);
     }
@@ -155,8 +156,8 @@ export default function ManageTrackersScreen() {
       await torrentsApi.reannounceTorrents([hash]);
       showToast('Tracker reannounce sent', 'success');
       fetchTrackers();
-    } catch (error: any) {
-      showToast(error.message || 'Failed to reannounce', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setReannouncing(false);
     }

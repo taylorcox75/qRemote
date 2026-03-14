@@ -25,6 +25,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
@@ -51,6 +53,8 @@ export default function TorrentDetail() {
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
   const { categories } = useTorrents();
+  const { t } = useTranslation();
+  const { t } = useTranslation();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -111,8 +115,8 @@ export default function TorrentDetail() {
       setTrackers(trackersData);
       setFiles(filesData);
       return torrentList.length > 0 ? torrentList[0] : null;
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load torrent details', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       return null;
     } finally {
       setLoading(false);
@@ -213,41 +217,41 @@ export default function TorrentDetail() {
       }
       setOptimisticPaused(null);
       setActionLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setOptimisticPaused(null);
-      showToast(error.message || 'Failed to update torrent', 'error');
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Torrent',
-      `Delete "${torrent!.name}"?`,
+      t('torrentDetail.deleteTorrent'),
+      t('alerts.deleteName', { name: torrent!.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Torrent Only',
+          text: t('alerts.torrentOnly'),
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent!.hash], false);
-              showToast('Torrent deleted', 'success');
+              showToast(t('toast.torrentDeleted'), 'success');
               router.back();
-            } catch (error: any) {
-              showToast(error.message || 'Failed to delete torrent', 'error');
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
             }
           },
         },
         {
-          text: 'With Files',
+          text: t('alerts.withFiles'),
           style: 'destructive',
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent!.hash], true);
-              showToast('Torrent deleted', 'success');
+              showToast(t('toast.torrentDeleted'), 'success');
               router.back();
-            } catch (error: any) {
-              showToast(error.message || 'Failed to delete torrent', 'error');
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
             }
           },
         },
@@ -262,8 +266,8 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to recheck torrent', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -283,8 +287,8 @@ export default function TorrentDetail() {
       }));
       list.sort((a, b) => b.progress - a.progress);
       setPeersData(list);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load peer details', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setPeersModalVisible(false);
     } finally {
       setPeersLoading(false);
@@ -298,8 +302,8 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to reannounce torrent', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -312,9 +316,9 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-      showToast(`Force start ${!isForceStarted ? 'enabled' : 'disabled'}`, 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to toggle force start', 'error');
+      showToast(t('toast.forceStartToggled', { status: t(`common.${!isForceStarted ? 'enabled' : 'disabled'}`) }), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -327,9 +331,9 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-      showToast(`Super seeding ${!isSuperSeeding ? 'enabled' : 'disabled'}`, 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to toggle super seeding', 'error');
+      showToast(t('toast.superSeedingToggled', { status: t(`common.${!isSuperSeeding ? 'enabled' : 'disabled'}`) }), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -341,9 +345,9 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-      showToast('Sequential download toggled', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to toggle sequential download', 'error');
+      showToast(t('toast.sequentialToggled'), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -355,9 +359,9 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-      showToast('First/Last piece priority toggled', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to set priority', 'error');
+      showToast(t('torrentDetail.firstLastPieceToggled'), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -370,9 +374,9 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-      showToast(`Automatic management ${!isAutoManaged ? 'enabled' : 'disabled'}`, 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to toggle automatic management', 'error');
+      showToast(t('toast.autoManagementToggled', { status: t(`common.${!isAutoManaged ? 'enabled' : 'disabled'}`) }), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -384,8 +388,8 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to increase priority', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -397,8 +401,8 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to decrease priority', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -410,9 +414,9 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-      showToast('Priority set to maximum', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to set priority', 'error');
+      showToast(t('toast.prioritySetMax'), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
@@ -424,17 +428,17 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-      showToast('Priority set to minimum', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to set priority', 'error');
+      showToast(t('toast.prioritySetMin'), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
       setActionLoading(false);
     }
   };
 
   const handleSetDownloadLimit = () => {
     setInputModalConfig({
-      title: 'Set Download Limit',
-      message: 'Enter limit in bytes (0 for unlimited)',
+      title: t('torrentDetail.setDownloadLimit'),
+      message: t('torrentDetail.enterLimitBytes'),
       defaultValue: properties?.dl_limit?.toString() || '0',
       keyboardType: 'numeric',
       allowEmpty: true,
@@ -446,9 +450,9 @@ export default function TorrentDetail() {
           await torrentsApi.setTorrentDownloadLimit([torrent!.hash], limit);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
-          showToast(`Download limit set to ${limit === 0 ? 'unlimited' : formatSpeed(limit)}`, 'success');
-        } catch (error: any) {
-          showToast(error.message || 'Failed to set download limit', 'error');
+          showToast(t('torrentDetail.dlLimitSet', { value: limit === 0 ? t('common.unlimited') : formatSpeed(limit) }), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
         } finally {
           setActionLoading(false);
         }
@@ -459,8 +463,8 @@ export default function TorrentDetail() {
 
   const handleSetUploadLimit = () => {
     setInputModalConfig({
-      title: 'Set Upload Limit',
-      message: 'Enter limit in bytes (0 for unlimited)',
+      title: t('torrentDetail.setUploadLimit'),
+      message: t('torrentDetail.enterLimitBytes'),
       defaultValue: properties?.up_limit?.toString() || '0',
       keyboardType: 'numeric',
       allowEmpty: true,
@@ -472,9 +476,9 @@ export default function TorrentDetail() {
           await torrentsApi.setTorrentUploadLimit([torrent!.hash], limit);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
-          showToast(`Upload limit set to ${limit === 0 ? 'unlimited' : formatSpeed(limit)}`, 'success');
-        } catch (error: any) {
-          showToast(error.message || 'Failed to set upload limit', 'error');
+          showToast(t('torrentDetail.ulLimitSet', { value: limit === 0 ? t('common.unlimited') : formatSpeed(limit) }), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
         } finally {
           setActionLoading(false);
         }
@@ -485,8 +489,8 @@ export default function TorrentDetail() {
 
   const handleSetCategory = () => {
     setInputModalConfig({
-      title: 'Set Category',
-      message: 'Enter category name',
+      title: t('torrentDetail.setCategory'),
+      message: t('torrentDetail.enterCategoryName'),
       defaultValue: torrent!.category || '',
       allowEmpty: true,
       onConfirm: async (value: string) => {
@@ -496,9 +500,9 @@ export default function TorrentDetail() {
           await torrentsApi.setTorrentCategory([torrent!.hash], value || '');
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
-          showToast(`Category set to ${value || 'None'}`, 'success');
-        } catch (error: any) {
-          showToast(error.message || 'Failed to set category', 'error');
+          showToast(t('toast.categorySet', { value: value || t('common.none') }), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
         } finally {
           setActionLoading(false);
         }
@@ -509,8 +513,8 @@ export default function TorrentDetail() {
 
   const handleAddTags = () => {
     setInputModalConfig({
-      title: 'Add Tags',
-      message: 'Enter tags (comma-separated)',
+      title: t('torrentDetail.addTags'),
+      message: t('torrentDetail.enterTagsComma'),
       onConfirm: async (value: string) => {
         setInputModalVisible(false);
         if (!value) return;
@@ -520,9 +524,9 @@ export default function TorrentDetail() {
           await torrentsApi.addTorrentTags([torrent!.hash], tags);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
-          showToast(`Added ${tags.length} tag(s)`, 'success');
-        } catch (error: any) {
-          showToast(error.message || 'Failed to add tags', 'error');
+          showToast(t('torrentDetail.tagsAdded', { count: tags.length }), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
         } finally {
           setActionLoading(false);
         }
@@ -533,8 +537,8 @@ export default function TorrentDetail() {
 
   const handleRemoveTags = () => {
     setInputModalConfig({
-      title: 'Remove Tags',
-      message: 'Enter tags to remove (comma-separated)',
+      title: t('torrentDetail.removeTags'),
+      message: t('torrentDetail.enterTagsToRemove'),
       onConfirm: async (value: string) => {
         setInputModalVisible(false);
         if (!value) return;
@@ -544,9 +548,9 @@ export default function TorrentDetail() {
           await torrentsApi.removeTorrentTags([torrent!.hash], tags);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
-          showToast(`Removed ${tags.length} tag(s)`, 'success');
-        } catch (error: any) {
-          showToast(error.message || 'Failed to remove tags', 'error');
+          showToast(t('torrentDetail.tagsRemoved', { count: tags.length }), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
         } finally {
           setActionLoading(false);
         }
@@ -557,8 +561,8 @@ export default function TorrentDetail() {
 
   const handleSetLocation = () => {
     setInputModalConfig({
-      title: 'Move to…',
-      message: 'Enter new save path',
+      title: t('torrentDetail.moveTo'),
+      message: t('torrentDetail.enterNewSavePath'),
       defaultValue: properties?.save_path || '',
       onConfirm: async (value: string) => {
         setInputModalVisible(false);
@@ -568,9 +572,9 @@ export default function TorrentDetail() {
           await torrentsApi.setTorrentLocation([torrent!.hash], value);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
-          showToast('Location updated', 'success');
-        } catch (error: any) {
-          showToast(error.message || 'Failed to set location', 'error');
+          showToast(t('toast.locationUpdated'), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
         } finally {
           setActionLoading(false);
         }
@@ -581,8 +585,8 @@ export default function TorrentDetail() {
 
   const handleRenameTorrent = () => {
     setInputModalConfig({
-      title: 'Rename Torrent',
-      message: 'Enter new name',
+      title: t('torrentDetail.renameTorrent'),
+      message: t('torrentDetail.enterNewName'),
       defaultValue: torrent!.name,
       onConfirm: async (value: string) => {
         setInputModalVisible(false);
@@ -592,9 +596,9 @@ export default function TorrentDetail() {
           await torrentsApi.setTorrentName(torrent!.hash, value);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
-          showToast('Torrent renamed', 'success');
-        } catch (error: any) {
-          showToast(error.message || 'Failed to rename torrent', 'error');
+          showToast(t('toast.torrentRenamed'), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
         } finally {
           setActionLoading(false);
         }
@@ -626,9 +630,9 @@ export default function TorrentDetail() {
       await torrentsApi.setTorrentCategory([torrent!.hash], value);
       await new Promise(resolve => setTimeout(resolve, 500));
       await loadTorrentData();
-      showToast(`Category set to ${value || 'None'}`, 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to set category', 'error');
+      showToast(t('toast.categorySet', { value: value || t('common.none') }), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setActionLoading(false);
     }
@@ -652,7 +656,7 @@ export default function TorrentDetail() {
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Text style={[styles.message, { color: colors.text }]}>Not connected to a server</Text>
+          <Text style={[styles.message, { color: colors.text }]}>{t('torrentDetail.notConnected')}</Text>
         </View>
       </>
     );
@@ -674,7 +678,7 @@ export default function TorrentDetail() {
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Text style={[styles.message, { color: colors.text }]}>Torrent not found</Text>
+          <Text style={[styles.message, { color: colors.text }]}>{t('torrentDetail.notFound')}</Text>
         </View>
       </>
     );
@@ -719,31 +723,31 @@ export default function TorrentDetail() {
   if (optimisticPaused !== null) {
     if (optimisticPaused) {
       stateColor = colors.statePaused;
-      stateLabel = 'Paused';
+      stateLabel = t('torrentDetail.paused');
     } else {
       if (torrent.progress >= 1) {
         stateColor = colors.stateSeeding;
-        stateLabel = 'Seeding';
+        stateLabel = t('torrentDetail.seeding');
       } else {
         stateColor = colors.stateDownloading;
-        stateLabel = 'Downloading';
+        stateLabel = t('torrentDetail.downloading');
       }
     }
   }
 
-  const priorityDisplay = torrent.priority <= 0 ? 'Not queued' : `#${torrent.priority}`;
+  const priorityDisplay = torrent.priority <= 0 ? t('torrentDetail.notQueued') : `#${torrent.priority}`;
 
   const categoryOptions = [
-    { label: 'None', value: '' },
+    { label: t('common.none'), value: '' },
     ...Object.keys(categories || {}).map(cat => ({ label: cat, value: cat })),
-    { label: 'Add New…', value: '__add_new__' },
+    { label: t('torrentDetail.addNew'), value: '__add_new__' },
   ];
 
   const priorityOptions = [
-    { label: 'Maximum', value: 'max' },
-    { label: 'Increase', value: 'increase' },
-    { label: 'Decrease', value: 'decrease' },
-    { label: 'Minimum', value: 'min' },
+    { label: t('torrentDetail.maximum'), value: 'max' },
+    { label: t('torrentDetail.increase'), value: 'increase' },
+    { label: t('torrentDetail.decrease'), value: 'decrease' },
+    { label: t('torrentDetail.minimum'), value: 'min' },
   ];
 
   // ── Row render helpers ────────────────────────────────────────────────
@@ -850,9 +854,9 @@ export default function TorrentDetail() {
             <View style={styles.heroStatsRow}>
               <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>
                 {torrent.eta > 0 && torrent.eta < 8640000
-                  ? `${formatTime(torrent.eta)} remaining`
+                  ? t('torrentDetail.remaining', { time: formatTime(torrent.eta) })
                   : progress >= 100
-                  ? 'Complete'
+                  ? t('torrentDetail.complete')
                   : '∞'}
               </Text>
               <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>
@@ -870,7 +874,7 @@ export default function TorrentDetail() {
             >
               <Ionicons name={isPaused ? 'play' : 'pause'} size={18} color={colors.primary} />
               <Text style={[styles.actionBtnText, { color: colors.primary }]}>
-                {isPaused ? 'Resume' : 'Pause'}
+                {isPaused ? t('torrentDetail.resume') : t('torrentDetail.pause')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -879,7 +883,7 @@ export default function TorrentDetail() {
               disabled={actionLoading}
             >
               <Ionicons name="checkmark-circle-outline" size={18} color={colors.textSecondary} />
-              <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>Recheck</Text>
+              <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>{t('torrentDetail.recheck')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, { borderColor: colors.error }]}
@@ -887,98 +891,98 @@ export default function TorrentDetail() {
               disabled={actionLoading}
             >
               <Ionicons name="trash-outline" size={18} color={colors.error} />
-              <Text style={[styles.actionBtnText, { color: colors.error }]}>Delete</Text>
+              <Text style={[styles.actionBtnText, { color: colors.error }]}>{t('common.delete')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* ── GENERAL ─────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>GENERAL</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('torrentDetail.general')}</Text>
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
-              staticRow('Size', formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)),
-              staticRow('Downloaded', formatSize(torrent.downloaded)),
-              staticRow('Uploaded', formatSize(torrent.uploaded)),
-              staticRow('Ratio', torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'),
-              properties && staticRow('Save Path', properties.save_path),
-              tappableRow('Category', torrent.category || 'None', () => setCategoryPickerVisible(true)),
-              tappableRow('Tags', torrent.tags || 'None', handleAddTags),
-              tappableRow('Remove Tags', '', handleRemoveTags),
+              staticRow(t('torrentDetail.size'), formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)),
+              staticRow(t('torrentDetail.downloaded'), formatSize(torrent.downloaded)),
+              staticRow(t('torrentDetail.uploaded'), formatSize(torrent.uploaded)),
+              staticRow(t('torrentDetail.ratio'), torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'),
+              properties && staticRow(t('torrentDetail.savePath'), properties.save_path),
+              tappableRow(t('torrentDetail.category'), torrent.category || t('common.none'), () => setCategoryPickerVisible(true)),
+              tappableRow(t('torrentDetail.tags'), torrent.tags || t('common.none'), handleAddTags),
+              tappableRow(t('torrentDetail.removeTags'), '', handleRemoveTags),
             ])}
           </View>
 
           {/* ── TRANSFER ────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>TRANSFER</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('torrentDetail.transfer')}</Text>
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
-              staticRow('DL Speed', formatSpeed(dlspeed)),
-              staticRow('UL Speed', formatSpeed(upspeed)),
-              staticRow('ETA', torrent.eta > 0 && torrent.eta < 8640000 ? formatTime(torrent.eta) : '∞'),
+              staticRow(t('torrentDetail.dlSpeed'), formatSpeed(dlspeed)),
+              staticRow(t('torrentDetail.ulSpeed'), formatSpeed(upspeed)),
+              staticRow(t('torrentDetail.eta'), torrent.eta > 0 && torrent.eta < 8640000 ? formatTime(torrent.eta) : '∞'),
               tappableRow(
-                'DL Limit',
-                properties && properties.dl_limit > 0 ? formatSpeed(properties.dl_limit) : 'Unlimited',
+                t('torrentDetail.dlLimit'),
+                properties && properties.dl_limit > 0 ? formatSpeed(properties.dl_limit) : t('common.unlimited'),
                 handleSetDownloadLimit,
               ),
               tappableRow(
-                'UL Limit',
-                properties && properties.up_limit > 0 ? formatSpeed(properties.up_limit) : 'Unlimited',
+                t('torrentDetail.ulLimit'),
+                properties && properties.up_limit > 0 ? formatSpeed(properties.up_limit) : t('common.unlimited'),
                 handleSetUploadLimit,
               ),
             ])}
           </View>
 
           {/* ── NETWORK ─────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NETWORK</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('torrentDetail.network')}</Text>
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               tappableRow(
-                'Seeds',
+                t('torrentDetail.seeds'),
                 `${torrent.num_seeds || 0} / ${torrent.num_complete || 0}`,
                 handleOpenPeerDetails,
               ),
               tappableRow(
-                'Peers',
+                t('torrentDetail.peers'),
                 `${torrent.num_leechs || 0} / ${torrent.num_incomplete || 0}`,
                 handleOpenPeerDetails,
               ),
-              staticRow('Availability', torrent.availability ? torrent.availability.toFixed(2) : '0.00'),
+              staticRow(t('torrentDetail.availability'), torrent.availability ? torrent.availability.toFixed(2) : '0.00'),
             ])}
           </View>
 
           {/* ── CONTENT ─────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CONTENT</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('torrentDetail.content')}</Text>
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
-              navRow('Files', `${files.length} file${files.length !== 1 ? 's' : ''}`, () =>
+              navRow(t('torrentDetail.files'), t('torrentDetail.filesCount', { count: files.length }), () =>
                 router.push(`/torrent/files?hash=${hash}`),
               ),
-              navRow('Trackers', `${trackers.length} tracker${trackers.length !== 1 ? 's' : ''}`, () =>
+              navRow(t('torrentDetail.trackers'), t('torrentDetail.trackersCount', { count: trackers.length }), () =>
                 router.push(`/torrent/manage-trackers?hash=${hash}`),
               ),
             ])}
           </View>
 
           {/* ── ADVANCED ────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ADVANCED</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('torrentDetail.advanced')}</Text>
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
-              tappableRow('Priority', priorityDisplay, () => setPriorityPickerVisible(true)),
-              toggleRow('Sequential Download', torrent.seq_dl ?? false, handleSequentialDownload),
-              toggleRow('First/Last Piece Priority', torrent.f_l_piece_prio ?? false, handleFirstLastPiecePriority),
-              toggleRow('Super Seeding', torrent.super_seeding ?? false, handleSuperSeeding),
-              toggleRow('Force Start', torrent.force_start ?? false, handleForceStart),
-              tappableRow('Rename', torrent.name, handleRenameTorrent),
-              tappableRow('Move to…', properties?.save_path || '', handleSetLocation),
-              tappableRow('Reannounce', '', handleReannounce),
+              tappableRow(t('torrentDetail.priority'), priorityDisplay, () => setPriorityPickerVisible(true)),
+              toggleRow(t('torrentDetail.sequentialDownload'), torrent.seq_dl ?? false, handleSequentialDownload),
+              toggleRow(t('torrentDetail.firstLastPiecePriority'), torrent.f_l_piece_prio ?? false, handleFirstLastPiecePriority),
+              toggleRow(t('torrentDetail.superSeeding'), torrent.super_seeding ?? false, handleSuperSeeding),
+              toggleRow(t('torrentDetail.forceStart'), torrent.force_start ?? false, handleForceStart),
+              tappableRow(t('torrentDetail.rename'), torrent.name, handleRenameTorrent),
+              tappableRow(t('torrentDetail.moveTo'), properties?.save_path || '', handleSetLocation),
+              tappableRow(t('torrentDetail.reannounce'), '', handleReannounce),
             ])}
           </View>
 
           {/* ── DATES ───────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DATES</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('torrentDetail.dates')}</Text>
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
-              staticRow('Added', formatDate(torrent.added_on)),
-              staticRow('Completed', formatDate(torrent.completion_on)),
-              staticRow('Last Activity', formatDate(torrent.last_activity)),
+              staticRow(t('torrentDetail.added'), formatDate(torrent.added_on)),
+              staticRow(t('torrentDetail.completed'), formatDate(torrent.completion_on)),
+              staticRow(t('torrentDetail.lastActivity'), formatDate(torrent.last_activity)),
             ])}
           </View>
         </ScrollView>
@@ -999,7 +1003,7 @@ export default function TorrentDetail() {
 
         <OptionPicker
           visible={priorityPickerVisible}
-          title="Set Priority"
+          title={t('torrentDetail.setPriority')}
           options={priorityOptions}
           onSelect={handlePrioritySelect}
           onClose={() => setPriorityPickerVisible(false)}
@@ -1007,7 +1011,7 @@ export default function TorrentDetail() {
 
         <OptionPicker
           visible={categoryPickerVisible}
-          title="Set Category"
+          title={t('torrentDetail.setCategory')}
           options={categoryOptions}
           selectedValue={torrent.category || ''}
           onSelect={handleCategorySelect}
@@ -1024,7 +1028,7 @@ export default function TorrentDetail() {
           <View style={styles.peersModalOverlay}>
             <View style={[styles.peersModalContent, { backgroundColor: colors.surface }]}>
               <View style={[styles.peersModalHeader, { borderBottomColor: colors.surfaceOutline }]}>
-                <Text style={[styles.peersModalTitle, { color: colors.text }]}>Connected Peers</Text>
+                <Text style={[styles.peersModalTitle, { color: colors.text }]}>{t('torrentDetail.connectedPeers')}</Text>
                 <TouchableOpacity onPress={() => setPeersModalVisible(false)}>
                   <Ionicons name="close" size={24} color={colors.text} />
                 </TouchableOpacity>
@@ -1033,14 +1037,14 @@ export default function TorrentDetail() {
                 <View style={styles.peersModalBody}>
                   <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={[styles.peersModalLoadingText, { color: colors.textSecondary }]}>
-                    Loading peer details…
+                    {t('torrentDetail.loadingPeers')}
                   </Text>
                 </View>
               ) : peersData.length === 0 ? (
                 <View style={styles.peersModalBody}>
                   <Ionicons name="people-outline" size={48} color={colors.textSecondary} />
                   <Text style={[styles.peersModalEmptyText, { color: colors.textSecondary }]}>
-                    No connected peers
+                    {t('torrentDetail.noConnectedPeers')}
                   </Text>
                 </View>
               ) : (
