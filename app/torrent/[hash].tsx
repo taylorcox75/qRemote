@@ -423,6 +423,7 @@ export default function TorrentDetail() {
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
+      showToast('Reannounce sent', 'success');
     } catch (error: any) {
       showToast(error.message || 'Failed to reannounce torrent', 'error');
       setActionLoading(false);
@@ -649,61 +650,59 @@ export default function TorrentDetail() {
     );
   };
 
-  const handleAddTags = () => {
-    Alert.prompt(
-      'Add Tags',
-      'Enter tags (comma-separated)',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Add',
-          onPress: async (value: string | undefined) => {
-            if (!value || value.trim() === '') return;
-            try {
-              setActionLoading(true);
-              const tags = value.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag !== '');
-              await torrentsApi.addTorrentTags([torrent.hash], tags);
-              await new Promise(resolve => setTimeout(resolve, 500));
-              await loadTorrentData();
-              showToast(`Added ${tags.length} tag(s)`, 'success');
-            } catch (error: any) {
-              showToast(error.message || 'Failed to add tags', 'error');
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
-  };
+  const handleManageTags = () => {
+    const currentTags = torrent.tags ? torrent.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
 
-  const handleRemoveTags = () => {
-    Alert.prompt(
-      'Remove Tags',
-      'Enter tags to remove (comma-separated)',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          onPress: async (value: string | undefined) => {
-            if (!value || value.trim() === '') return;
-            try {
-              setActionLoading(true);
-              const tags = value.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag !== '');
-              await torrentsApi.removeTorrentTags([torrent.hash], tags);
-              await new Promise(resolve => setTimeout(resolve, 500));
-              await loadTorrentData();
-              showToast(`Removed ${tags.length} tag(s)`, 'success');
-            } catch (error: any) {
-              showToast(error.message || 'Failed to remove tags', 'error');
-            } finally {
-              setActionLoading(false);
-            }
-          },
+    const options: Array<{ text: string; style?: 'cancel' | 'default' | 'destructive'; onPress?: () => void }> = [
+      ...currentTags.map(tag => ({
+        text: `✕ ${tag}`,
+        onPress: async () => {
+          try {
+            setActionLoading(true);
+            await torrentsApi.removeTorrentTags([torrent.hash], [tag]);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await loadTorrentData();
+            showToast(`Removed tag "${tag}"`, 'success');
+          } catch (error: any) {
+            showToast(error.message || 'Failed to remove tag', 'error');
+          } finally {
+            setActionLoading(false);
+          }
         },
-      ],
-      'plain-text'
+      })),
+      {
+        text: '+ Add Tags',
+        onPress: () => {
+          Alert.prompt('Add Tags', 'Enter tags (comma-separated)', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Add',
+              onPress: async (value: string | undefined) => {
+                if (!value || !value.trim()) return;
+                try {
+                  setActionLoading(true);
+                  const tags = value.split(',').map((t: string) => t.trim()).filter(Boolean);
+                  await torrentsApi.addTorrentTags([torrent.hash], tags);
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                  await loadTorrentData();
+                  showToast(`Added ${tags.length} tag(s)`, 'success');
+                } catch (error: any) {
+                  showToast(error.message || 'Failed to add tags', 'error');
+                } finally {
+                  setActionLoading(false);
+                }
+              },
+            },
+          ], 'plain-text');
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ];
+
+    Alert.alert(
+      'Manage Tags',
+      currentTags.length > 0 ? 'Tap a tag to remove it' : 'No tags assigned',
+      options
     );
   };
 
@@ -826,14 +825,6 @@ export default function TorrentDetail() {
                 <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
                 <Text style={styles.quickToolText}>Recheck</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleReannounce}
-                disabled={actionLoading}
-          >
-                <Ionicons name="refresh" size={20} color="#FFFFFF" />
-                <Text style={styles.quickToolText}>Reannounce</Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.quickToolButton, { backgroundColor: '#5856D6', opacity: 0.75 }]}
                 onPress={() => router.push(`/torrent/files?hash=${hash}`)}
@@ -881,11 +872,13 @@ export default function TorrentDetail() {
                       {properties.save_path}
                     </Text>
                   </View>
-                  <View style={styles.infoRow}>
+                  <View style={[styles.infoRow, { alignItems: 'center' }]}>
                     <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Category</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>
-                      {torrent.category || 'None'}
-                    </Text>
+                    <View style={[styles.categoryBadge, { backgroundColor: torrent.category ? colors.primary : colors.textSecondary + '40' }]}>
+                      <Text style={[styles.categoryBadgeText, { color: torrent.category ? '#FFFFFF' : colors.textSecondary }]}>
+                        {torrent.category || 'None'}
+                      </Text>
+                    </View>
                   </View>
                   <View style={styles.infoRow}>
                     <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Tags</Text>
@@ -1067,40 +1060,40 @@ export default function TorrentDetail() {
             <View style={styles.advancedToolsGrid}>
               {/* Priority Controls */}
               <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
+                style={[styles.advancedToolButton, { backgroundColor: torrent.force_start ? '#34C759' : '#8E8E93' }]}
                 onPress={handleForceStart}
                 disabled={actionLoading}
               >
                 <Ionicons name="flash" size={18} color="#FFFFFF" />
                 <Text style={styles.advancedToolText}>
-                  {torrent?.force_start ? 'Force Start ON' : 'Force Start'}
+                  {torrent.force_start ? 'Force Start ✓' : 'Force Start'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
+                style={[styles.advancedToolButton, { backgroundColor: torrent.super_seeding ? '#34C759' : '#8E8E93' }]}
                 onPress={handleSuperSeeding}
                 disabled={actionLoading}
               >
                 <Ionicons name="rocket" size={18} color="#FFFFFF" />
                 <Text style={styles.advancedToolText}>
-                  {torrent?.super_seeding ? 'Super Seed ON' : 'Super Seed'}
+                  {torrent.super_seeding ? 'Super Seed ✓' : 'Super Seed'}
             </Text>
           </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
+                style={[styles.advancedToolButton, { backgroundColor: torrent.seq_dl ? '#34C759' : '#8E8E93' }]}
                 onPress={handleSequentialDownload}
                 disabled={actionLoading}
               >
                 <Ionicons name="list" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Sequential DL</Text>
+                <Text style={styles.advancedToolText}>{torrent.seq_dl ? 'Sequential DL ✓' : 'Sequential DL'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
+                style={[styles.advancedToolButton, { backgroundColor: torrent.f_l_piece_prio ? '#34C759' : '#8E8E93' }]}
                 onPress={handleFirstLastPiecePriority}
                 disabled={actionLoading}
               >
                 <Ionicons name="star" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>First/Last Priority</Text>
+                <Text style={styles.advancedToolText}>{torrent.f_l_piece_prio ? 'First/Last Piece ✓' : 'First/Last Piece'}</Text>
               </TouchableOpacity>
         
 
@@ -1157,14 +1150,23 @@ export default function TorrentDetail() {
               </TouchableOpacity>
 
               {/* Trackers & Metadata */}
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#AF52DE', opacity: 0.75 }]}
-                onPress={handleEditTrackers}
-                disabled={actionLoading}
-              >
-                <Ionicons name="create" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Edit Trackers</Text>
-              </TouchableOpacity>
+              <View style={styles.advancedToolFullRow}>
+                <TouchableOpacity
+                  style={[styles.reannounceIconButton, { backgroundColor: '#AF52DE', opacity: 0.75 }]}
+                  onPress={handleReannounce}
+                  disabled={actionLoading}
+                >
+                  <Ionicons name="megaphone" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.advancedToolButton, { backgroundColor: '#AF52DE', opacity: 0.75, flex: 1, minWidth: 0 }]}
+                  onPress={handleEditTrackers}
+                  disabled={actionLoading}
+                >
+                  <Ionicons name="wifi" size={18} color="#FFFFFF" />
+                  <Text style={styles.advancedToolText}>Trackers</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Category & Tags */}
               <TouchableOpacity
@@ -1177,19 +1179,11 @@ export default function TorrentDetail() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.advancedToolButton, { backgroundColor: '#5AC8FA', opacity: 0.75 }]}
-                onPress={handleAddTags}
+                onPress={handleManageTags}
                 disabled={actionLoading}
               >
                 <Ionicons name="pricetag" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Add Tags</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#5AC8FA', opacity: 0.75 }]}
-                onPress={handleRemoveTags}
-                disabled={actionLoading}
-              >
-                <Ionicons name="pricetag-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Remove Tags</Text>
+                <Text style={styles.advancedToolText}>Tags</Text>
               </TouchableOpacity>
 
               {/* Location & Rename */}
@@ -1358,6 +1352,15 @@ const styles = StyleSheet.create({
   infoRowWithButton: {
     position: 'relative',
   },
+  categoryBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  categoryBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   peersInfoBtn: {
     marginLeft: 8,
     padding: 4,
@@ -1452,6 +1455,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     marginTop: 6,
+  },
+  advancedToolFullRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 6,
+  },
+  reannounceIconButton: {
+    width: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
   },
   advancedToolButton: {
     flex: 1,
