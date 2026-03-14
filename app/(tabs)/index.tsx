@@ -32,6 +32,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { TorrentInfo, TorrentState, ServerConfig } from '../../types/api';
 import { TorrentCard } from '../../components/TorrentCard';
+import { ActionMenu } from '@/components/ActionMenu';
+import { InputModal } from '@/components/InputModal';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
 import { torrentsApi } from '../../services/api/torrents';
 import { storageService } from '../../services/storage';
@@ -42,6 +44,7 @@ import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
 import { QuickConnectPanel } from '../../components/QuickConnectPanel';
+import { useTorrentActions } from '@/hooks/useTorrentActions';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -65,9 +68,17 @@ export default function TorrentsScreen() {
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'>('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
-  
-  // Card view mode state
-  const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
+
+  // Action menu state
+  const [selectedTorrent, setSelectedTorrent] = useState<TorrentInfo | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const {
+    actionMenuItems,
+    dlLimitModalVisible,
+    setDlLimitModalVisible,
+    handleSetDownloadLimit,
+    dlLimitDefaultValue,
+  } = useTorrentActions(selectedTorrent);
 
   // Scroll animation refs
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -108,24 +119,19 @@ export default function TorrentsScreen() {
   // Track last known default filter so we only sync when user changes it in Settings
   const lastDefaultFilterRef = useRef<string | null>(null);
 
-  // Load card view mode and check for filter preference changes on screen focus
+  // Check for filter preference changes on screen focus
   useFocusEffect(
     useCallback(() => {
       const loadPreferences = async () => {
         try {
           const prefs = await storageService.getPreferences();
-          const viewMode = prefs.cardViewMode || 'compact';
-          setCardViewMode(viewMode);
-          
-          // Only update filter when the default filter preference has changed in Settings
-          // (not when the user selects a different filter on this screen)
           const newDefault = prefs.defaultFilter || 'all';
           if (lastDefaultFilterRef.current !== null && lastDefaultFilterRef.current !== newDefault) {
             setFilter(newDefault);
           }
           lastDefaultFilterRef.current = newDefault;
-        } catch (error) {
-          setCardViewMode('compact');
+        } catch {
+          // ignore
         }
       };
       loadPreferences();
@@ -946,13 +952,17 @@ export default function TorrentsScreen() {
                 <View style={{ flex: 1 }}>
                   <TorrentCard
                     torrent={item}
-                    viewMode={cardViewMode}
                     onPress={() => {
                       if (selectMode) {
                         toggleSelection(item.hash);
                       } else {
                         router.push(`/torrent/${item.hash}`);
                       }
+                    }}
+                    onLongPress={() => {
+                      haptics.medium();
+                      setSelectedTorrent(item);
+                      setMenuVisible(true);
                     }}
                   />
                 </View>
@@ -1158,6 +1168,27 @@ export default function TorrentsScreen() {
             </KeyboardAvoidingView>
           </View>
         </Modal>
+
+        <ActionMenu
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          items={actionMenuItems}
+        />
+
+        <InputModal
+          visible={dlLimitModalVisible}
+          title="Set Download Limit"
+          message="Enter limit in KB/s (0 for unlimited)"
+          placeholder="0"
+          defaultValue={dlLimitDefaultValue}
+          keyboardType="numeric"
+          allowEmpty
+          onCancel={() => setDlLimitModalVisible(false)}
+          onConfirm={(value) => {
+            setDlLimitModalVisible(false);
+            handleSetDownloadLimit(value);
+          }}
+        />
       </View>
     </>
   );
