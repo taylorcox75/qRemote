@@ -16,6 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -66,6 +67,7 @@ const PRESET_COLORS = [
 
 export function ColorPicker({ visible, currentColor, onColorChange, onClose }: ColorPickerProps) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [hexInput, setHexInput] = useState(colorThemeManager.rgbaToHex(currentColor));
   const [inputError, setInputError] = useState(false);
 
@@ -118,7 +120,7 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
       <View style={styles.overlay}>
         <View style={[styles.modal, { backgroundColor: colors.surface, opacity: 1 }]}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>Pick a Color</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('screens.settings.pickAColor')}</Text>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -126,7 +128,7 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
 
           {/* Current color preview */}
           <View style={styles.previewContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Current Color</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.settings.currentColor')}</Text>
             <View style={styles.colorPreview}>
               <View
                 style={[
@@ -143,7 +145,7 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
 
           {/* Hex input */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Hex Color</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.settings.hexColor')}</Text>
             <View style={styles.hexInputRow}>
               <TextInput
                 style={[
@@ -179,7 +181,7 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
 
           {/* Preset colors */}
           <View style={styles.presetsContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Presets</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.settings.presets')}</Text>
             <ScrollView style={styles.presetsScroll} showsVerticalScrollIndicator={false}>
               <View style={styles.presetsGrid}>
                 {PRESET_COLORS.map((color, index) => (

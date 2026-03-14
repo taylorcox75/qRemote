@@ -24,7 +24,7 @@ import { typography } from '@/constants/typography';
 export interface OptionPickerItem {
   label: string;
   value: string;
-  icon?: string;
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
 }
 
 interface OptionPickerProps {
@@ -160,7 +160,7 @@ export function OptionPicker({
               >
                 {option.icon && (
                   <Ionicons
-                    name={option.icon as any}
+                    name={option.icon!}
                     size={20}
                     color={colors.primary}
                     style={styles.menuIcon}

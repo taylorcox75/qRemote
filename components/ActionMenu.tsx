@@ -7,7 +7,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 
 export interface ActionMenuItemDef {
   label: string;
-  icon: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   onPress: () => void;
   destructive?: boolean;
 }
@@ -41,7 +41,7 @@ export function ActionMenu({ visible, onClose, items }: ActionMenuProps) {
                 activeOpacity={0.6}
               >
                 <Ionicons
-                  name={item.icon as any}
+                  name={item.icon}
                   size={22}
                   color={item.destructive ? colors.error : colors.primary}
                   style={styles.icon}

@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -26,6 +26,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { buttonStyles, buttonText } from '@/constants/buttons';
+import { getErrorMessage } from '@/utils/error';
 
 function SwipeableServerItem({
   server,
@@ -39,7 +40,7 @@ function SwipeableServerItem({
 }: {
   server: ServerConfig;
   currentServer: ServerConfig | null;
-  colors: any;
+  colors: ThemeColors;
   onPress: () => void;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -184,7 +185,7 @@ export default function ServersSettingsScreen() {
     }
   };
 
-  const savePreference = async (key: keyof AppPreferences, value: any) => {
+  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -205,8 +206,8 @@ export default function ServersSettingsScreen() {
       } else {
         showToast(t('errors.checkCredentials'), 'error');
       }
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToConnect'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     }
   };
 

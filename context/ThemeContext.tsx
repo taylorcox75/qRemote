@@ -2,33 +2,35 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { storageService } from '@/services/storage';
 import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
 
+export interface ThemeColors {
+  background: string;
+  surface: string;
+  surfaceOutline: string;
+  text: string;
+  textSecondary: string;
+  primary: string;
+  primaryOpac?: string;
+  error: string;
+  success: string;
+  warning: string;
+  stateDownloading: string;
+  stateSeeding: string;
+  stateUploadAndDownload: string;
+  stateUploadOnly: string;
+  stateError: string;
+  stateStalled: string;
+  statePaused: string;
+  stateChecking: string;
+  stateMetadata: string;
+  stateQueued: string;
+  stateOther: string;
+}
+
 interface ThemeContextType {
   isDark: boolean;
   toggleTheme: () => void;
   reloadCustomColors: () => Promise<void>;
-  colors: {
-    background: string;
-    surface: string;
-    surfaceOutline: string;
-    text: string;
-    textSecondary: string;
-    primary: string;
-    primaryOpac?: string;
-    error: string;
-    success: string;
-    warning: string;
-    stateDownloading: string;
-    stateSeeding: string;
-    stateUploadAndDownload: string;
-    stateUploadOnly: string;
-    stateError: string;
-    stateStalled: string;
-    statePaused: string;
-    stateChecking: string;
-    stateMetadata: string;
-    stateQueued: string;
-    stateOther: string;
-  };
+  colors: ThemeColors;
 }
 
 const lightColors = {

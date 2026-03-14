@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { GlobalTransferInfo } from '@/types/api';
 import { transferApi } from '@/services/api/transfer';
 import { useServer } from './ServerContext';
+import { getErrorMessage } from '@/utils/error';
 
 interface TransferContextType {
   transferInfo: GlobalTransferInfo | null;
@@ -61,12 +62,11 @@ export function TransferProvider({ children }: { children: ReactNode }) {
       setError(null);
       consecutiveFailures.current = 0;
       setRecovering(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isConnected && !isRecovering.current) {
         consecutiveFailures.current += 1;
-        // Only surface the error after sustained failures to suppress transient blips
         if (consecutiveFailures.current >= FAILURE_THRESHOLD) {
-          setError(err.message || 'Failed to load transfer info');
+          setError(getErrorMessage(err));
         }
       }
     } finally {
@@ -79,8 +79,8 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     try {
       await transferApi.toggleAlternativeSpeedLimits();
       await refresh();
-    } catch (err: any) {
-      setError(err.message || 'Failed to toggle speed limits');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     }
   }, [isConnected, refresh]);
 
@@ -89,8 +89,8 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     try {
       await transferApi.setGlobalDownloadLimit(limit);
       await refresh();
-    } catch (err: any) {
-      setError(err.message || 'Failed to set download limit');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     }
   }, [isConnected, refresh]);
 
@@ -99,8 +99,8 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     try {
       await transferApi.setGlobalUploadLimit(limit);
       await refresh();
-    } catch (err: any) {
-      setError(err.message || 'Failed to set upload limit');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     }
   }, [isConnected, refresh]);
 

@@ -277,9 +277,9 @@ export default function TorrentDetail() {
     setPeersLoading(true);
     setPeersData([]);
     try {
-      const data = await syncApi.getTorrentPeers(hash, 0);
+      const data = await syncApi.getTorrentPeers(hash, 0) as { peers?: Record<string, { progress?: number; client?: string }> };
       const peersObj = data?.peers ?? {};
-      const list = Object.entries(peersObj).map(([addr, p]: [string, any]) => ({
+      const list = Object.entries(peersObj).map(([addr, p]) => ({
         ip: addr,
         progress: typeof p?.progress === 'number' ? p.progress : 0,
         client: p?.client || '',

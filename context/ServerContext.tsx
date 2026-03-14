@@ -60,7 +60,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
             // Ensure API client server is cleared
             apiClient.setServer(null);
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           // If connection fails, don't set as connected
           setIsConnected(false);
           setCurrentServer(null);
@@ -92,7 +92,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         setIsConnected(false);
       }
       return success;
-    } catch (error: any) {
+    } catch (error: unknown) {
       setIsConnected(false);
       // Re-throw so callers can show the actual error message in a toast
       throw error;

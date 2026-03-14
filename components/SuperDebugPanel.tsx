@@ -26,6 +26,7 @@ import { APP_VERSION } from '@/utils/version';
 import { getConnectivityLog, formatConnectivityLog } from '@/services/connectivity-log';
 import { logsApi } from '@/services/api/logs';
 import { apiClient } from '@/services/api/client';
+import { getErrorMessage } from '@/utils/error';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -151,9 +152,9 @@ export function SuperDebugPanel({
       } else {
         addEntry('REACH', `Host responded with HTTP ${response.status} in ${latency}ms`, 'warning');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const latency = Date.now() - start;
-      const msg = err.message || 'Unknown error';
+      const msg = getErrorMessage(err) || 'Unknown error';
       addEntry('REACH', `Host unreachable after ${latency}ms`, 'error');
 
       // Provide specific guidance based on error type
@@ -191,8 +192,8 @@ export function SuperDebugPanel({
         return;
       }
       await Linking.openURL(url);
-    } catch (err: any) {
-      addEntry('ERROR', `Failed to open URL: ${err.message}`, 'error');
+    } catch (err: unknown) {
+      addEntry('ERROR', `Failed to open URL: ${getErrorMessage(err)}`, 'error');
     }
   };
 
@@ -211,8 +212,8 @@ export function SuperDebugPanel({
         return;
       }
       await Linking.openURL(url);
-    } catch (err: any) {
-      addEntry('ERROR', `Failed to open URL: ${err.message}`, 'error');
+    } catch (err: unknown) {
+      addEntry('ERROR', `Failed to open URL: ${getErrorMessage(err)}`, 'error');
     }
   };
 
@@ -272,11 +273,11 @@ export function SuperDebugPanel({
         const reachLatency = Date.now() - reachStart;
         addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms`, 'success');
         passed++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         clearTimeout(reachTimeout);
-        if (controller.signal.aborted && !err.message?.includes('Timed out')) throw err;
+        if (controller.signal.aborted && !getErrorMessage(err).includes('Timed out')) throw err;
         const reachLatency = Date.now() - reachStart;
-        const msg = err.message || 'Unknown error';
+        const msg = getErrorMessage(err) || 'Unknown error';
         addEntry('REACH', `FAILED — Server unreachable after ${reachLatency}ms`, 'error');
 
         if (msg.includes('Network request failed') || msg.includes('Failed to connect')) {
@@ -365,11 +366,11 @@ export function SuperDebugPanel({
             addEntry('WARN', 'This is common on React Native — the OS networking layer often strips set-cookie headers from responses.\n\nThe app uses Axios which may handle cookies differently, so this is not necessarily a problem. However, if the app connects but then gets "403 Forbidden" errors:\n\n  1. In qBittorrent: Settings > WebUI > enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet (e.g. 192.168.1.0/24 or 100.0.0.0/8 for Tailscale)\n  3. Then enable "Bypass Authentication" in qBitRemote', 'warning');
             passed++; // Not a hard failure — Axios may handle this
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           if (controller.signal.aborted) throw err;
           const loginLatency = Date.now() - loginStart;
           addEntry('LOGIN', `Login request FAILED after ${loginLatency}ms`, 'error');
-          addEntry('WARN', `Error: ${err.message}\n\nThe server is reachable (Step 1 passed) but the login request failed. This could mean:\n  1. qBittorrent has IP-based access restrictions blocking this device\n  2. A reverse proxy is rejecting the POST request\n  3. If using Tailscale/VPN: the WebUI may only be listening on localhost (127.0.0.1) — change it to 0.0.0.0 in qBittorrent settings`, 'warning');
+          addEntry('WARN', `Error: ${getErrorMessage(err)}\n\nThe server is reachable (Step 1 passed) but the login request failed. This could mean:\n  1. qBittorrent has IP-based access restrictions blocking this device\n  2. A reverse proxy is rejecting the POST request\n  3. If using Tailscale/VPN: the WebUI may only be listening on localhost (127.0.0.1) — change it to 0.0.0.0 in qBittorrent settings`, 'warning');
           addEntry('ERROR', 'Stopping diagnostic.', 'error');
           return;
         }
@@ -408,22 +409,23 @@ export function SuperDebugPanel({
         } else {
           addEntry('API', `Unexpected — HTTP ${apiResp.status}: "${apiBody.trim().substring(0, 100)}" (${apiLatency}ms)`, 'warning');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (controller.signal.aborted) throw err;
         const apiLatency = Date.now() - apiStart;
-        addEntry('API', `API request failed after ${apiLatency}ms — ${err.message}`, 'error');
+        addEntry('API', `API request failed after ${apiLatency}ms — ${getErrorMessage(err)}`, 'error');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errName = err instanceof Error ? err.name : '';
       if (
-        err.name === 'AbortError' ||
-        err.name === 'CanceledError' ||
-        err.message === 'Cancelled' ||
+        errName === 'AbortError' ||
+        errName === 'CanceledError' ||
+        getErrorMessage(err) === 'Cancelled' ||
         controller.signal.aborted
       ) {
         addEntry('INFO', 'Diagnostic cancelled.', 'info');
         return;
       }
-      addEntry('ERROR', `Unexpected error: ${err.message}`, 'error');
+      addEntry('ERROR', `Unexpected error: ${getErrorMessage(err)}`, 'error');
     } finally {
       if (!controller.signal.aborted) {
         addEntry('INFO', '', 'info'); // spacer
@@ -476,8 +478,8 @@ export function SuperDebugPanel({
     try {
       await Clipboard.setStringAsync(lines.join('\n'));
       addEntry('INFO', 'Full report copied to clipboard.', 'success');
-    } catch (err: any) {
-      addEntry('ERROR', `Failed to copy: ${err.message}`, 'error');
+    } catch (err: unknown) {
+      addEntry('ERROR', `Failed to copy: ${getErrorMessage(err)}`, 'error');
     }
   };
 
@@ -607,8 +609,8 @@ export function SuperDebugPanel({
             serverLogSection.push('');
             serverLogSection.push('(failed to fetch peer logs)');
           }
-        } catch (err: any) {
-          serverLogSection.push(`(could not fetch server logs: ${err.message})`);
+        } catch (err: unknown) {
+          serverLogSection.push(`(could not fetch server logs: ${getErrorMessage(err)})`);
         }
       } else {
         serverLogSection.push('(not connected — server logs not available)');
@@ -658,7 +660,7 @@ export function SuperDebugPanel({
           dialogTitle: 'Export qBitRemote Logs',
         };
         if (Platform.OS === 'ios') {
-          (shareOptions as any).UTI = 'public.plain-text';
+          shareOptions.UTI = 'public.plain-text';
         }
         await Sharing.shareAsync(fileUri, shareOptions);
         addEntry('INFO', 'Logs exported successfully.', 'success');
@@ -667,9 +669,9 @@ export function SuperDebugPanel({
         await Clipboard.setStringAsync(fullReport);
         addEntry('INFO', 'Sharing unavailable — full report copied to clipboard instead.', 'warning');
       }
-    } catch (err: any) {
-      addEntry('ERROR', `Export failed: ${err.message}`, 'error');
-      Alert.alert('Export Failed', err.message);
+    } catch (err: unknown) {
+      addEntry('ERROR', `Export failed: ${getErrorMessage(err)}`, 'error');
+      Alert.alert('Export Failed', getErrorMessage(err));
     } finally {
       setExporting(false);
     }
@@ -689,7 +691,7 @@ export function SuperDebugPanel({
     }
   };
 
-  const getStepIcon = (status: DiagnosticStatus): string => {
+  const getStepIcon = (status: DiagnosticStatus): React.ComponentProps<typeof Ionicons>['name'] => {
     switch (status) {
       case 'success': return 'checkmark-circle';
       case 'warning': return 'warning';
@@ -822,7 +824,7 @@ export function SuperDebugPanel({
                   <>
                     <View style={styles.logEntryHeader}>
                       <Ionicons
-                        name={getStepIcon(entry.status) as any}
+                        name={getStepIcon(entry.status)}
                         size={13}
                         color={getStepColor(entry.status)}
                       />

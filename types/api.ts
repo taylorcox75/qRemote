@@ -3,7 +3,7 @@
  *
  * Key exports: ServerConfig, TorrentInfo, TorrentState, TorrentProperties, GlobalTransferInfo,
  *   MainData, ServerState, Category, Tracker, TorrentFile, FilePriority, LogEntry, PeerLogEntry
- * Known issues: ApplicationPreferences is typed as Record<string, any> (Task 3.2 will tighten).
+ * Known issues: ApplicationPreferences uses Record<string, unknown> as the full preference schema is extensive.
  */
 
 // Server Configuration
@@ -39,7 +39,7 @@ export interface BuildInfo {
 }
 
 export interface ApplicationPreferences {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Logs
@@ -263,7 +263,7 @@ export interface TorrentPieceHash {
 }
 
 // API Response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   status: number;

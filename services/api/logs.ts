@@ -19,7 +19,7 @@ export const logsApi = {
     critical: boolean = true,
     lastKnownId?: number
   ): Promise<LogEntry[]> {
-    const params: Record<string, any> = {
+    const params: Record<string, string | number | boolean> = {
       normal: normal ? 1 : 0,
       info: info ? 1 : 0,
       warning: warning ? 1 : 0,
@@ -32,14 +32,13 @@ export const logsApi = {
 
     const response = await apiClient.get(`/api/${API_VERSION}/log/main`, params);
     
-    // Parse the response - qBittorrent returns log entries as an array
     if (Array.isArray(response)) {
-      return response;
+      return response as LogEntry[];
     }
     
-    // Sometimes it returns an object with an array
-    if (response && Array.isArray(response.data)) {
-      return response.data;
+    const obj = response as Record<string, unknown>;
+    if (obj && Array.isArray(obj.data)) {
+      return obj.data as LogEntry[];
     }
     
     return [];
@@ -50,7 +49,7 @@ export const logsApi = {
    * @param lastKnownId Last known log ID (for incremental updates)
    */
   async getPeerLog(lastKnownId?: number): Promise<PeerLogEntry[]> {
-    const params: Record<string, any> = {};
+    const params: Record<string, string | number | boolean> = {};
     if (lastKnownId !== undefined) {
       params.last_known_id = lastKnownId;
     }
@@ -58,14 +57,14 @@ export const logsApi = {
     const response = await apiClient.get(`/api/${API_VERSION}/log/peers`, params);
     
     if (Array.isArray(response)) {
-      return response;
+      return response as PeerLogEntry[];
     }
     
-    if (response && Array.isArray(response.data)) {
-      return response.data;
+    const obj = response as Record<string, unknown>;
+    if (obj && Array.isArray(obj.data)) {
+      return obj.data as PeerLogEntry[];
     }
     
     return [];
   },
 };
-

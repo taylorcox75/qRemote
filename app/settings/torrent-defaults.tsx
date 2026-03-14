@@ -23,7 +23,7 @@ import { storageService } from '@/services/storage';
 import { applicationApi } from '@/services/api/application';
 import { categoriesApi } from '@/services/api/categories';
 import { tagsApi } from '@/services/api/tags';
-import { AppPreferences } from '@/types/preferences';
+import { AppPreferences, SortField } from '@/types/preferences';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
@@ -112,7 +112,7 @@ export default function TorrentDefaultsScreen() {
     }
   };
 
-  const savePreference = async (key: keyof AppPreferences, value: any) => {
+  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -431,8 +431,9 @@ export default function TorrentDefaultsScreen() {
         options={sortByOptions}
         selectedValue={defaultSortBy}
         onSelect={(value) => {
-          setDefaultSortBy(value as any);
-          savePreference('defaultSortBy', value);
+          const sortField = value as SortField;
+          setDefaultSortBy(sortField);
+          savePreference('defaultSortBy', sortField);
           setSortByPickerVisible(false);
         }}
         onClose={() => setSortByPickerVisible(false)}

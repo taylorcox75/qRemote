@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -37,6 +38,7 @@ export function InputModal({
   allowEmpty = false,
 }: InputModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [value, setValue] = useState(defaultValue || '');
 
   // Update value when defaultValue changes (e.g., when modal opens)
@@ -92,13 +94,13 @@ export function InputModal({
               style={[styles.button, { backgroundColor: colors.surfaceOutline }]}
               onPress={handleCancel}
             >
-              <Text style={[styles.buttonText, { color: colors.text }]}>Cancel</Text>
+              <Text style={[styles.buttonText, { color: colors.text }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, { backgroundColor: colors.primary }]}
               onPress={handleConfirm}
             >
-              <Text style={[styles.buttonText, { color: colors.surface }]}>Confirm</Text>
+              <Text style={[styles.buttonText, { color: colors.surface }]}>{t('common.confirm')}</Text>
             </TouchableOpacity>
           </View>
         </View>

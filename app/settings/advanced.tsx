@@ -32,6 +32,7 @@ import { AppPreferences } from '@/types/preferences';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
+import { getErrorMessage } from '@/utils/error';
 
 export default function AdvancedSettingsScreen() {
   const { t } = useTranslation();
@@ -63,7 +64,7 @@ export default function AdvancedSettingsScreen() {
     }
   };
 
-  const savePreference = async (key: keyof AppPreferences, value: any) => {
+  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -104,7 +105,7 @@ export default function AdvancedSettingsScreen() {
       await FileSystem.writeAsStringAsync(fileUri, jsonString);
 
       if (await Sharing.isAvailableAsync()) {
-        const shareOptions: any = {
+        const shareOptions: Sharing.SharingOptions = {
           mimeType: 'application/json',
           dialogTitle: 'Save Settings',
         };
@@ -115,9 +116,9 @@ export default function AdvancedSettingsScreen() {
       } else {
         showToast(t('errors.sharingNotAvailable'), 'error');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Export settings error:', error);
-      showToast(error.message || t('errors.failedToExportSettings'), 'error');
+      showToast(getErrorMessage(error), 'error');
     }
   };
 
@@ -152,12 +153,12 @@ export default function AdvancedSettingsScreen() {
 
       await loadPreferences();
       showToast(t('toast.settingsImported'), 'success');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Import settings error:', error);
-      if (error.message?.includes('JSON')) {
+      if (getErrorMessage(error).includes('JSON')) {
         showToast(t('errors.failedToParseSettings'), 'error');
       } else {
-        showToast(error.message || t('errors.failedToImportSettings'), 'error');
+        showToast(getErrorMessage(error), 'error');
       }
     }
   };
@@ -277,7 +278,7 @@ export default function AdvancedSettingsScreen() {
 
           {/* Debug */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>DEBUG</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.debug')}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>

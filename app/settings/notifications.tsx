@@ -46,7 +46,7 @@ export default function NotificationsSettingsScreen() {
     }
   };
 
-  const savePreference = async (key: keyof AppPreferences, value: any) => {
+  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });

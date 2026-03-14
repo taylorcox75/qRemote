@@ -494,7 +494,7 @@ export default function TorrentsScreen() {
   }, [refresh, showToast, t]);
 
   // Scroll handler — header show/hide only
-  const handleScroll = useCallback((event: any) => {
+  const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
     const currentScrollY = event.nativeEvent.contentOffset.y;
     const scrollDifference = currentScrollY - lastScrollY.current;
 
@@ -545,23 +545,23 @@ export default function TorrentsScreen() {
 
   // Filter options
   const filterOptions = [
-    { key: 'all', labelKey: 'filters.all', icon: 'grid-outline' },
-    { key: 'active', labelKey: 'filters.active', icon: 'pulse' },
-    { key: 'completed', labelKey: 'filters.completed', icon: 'checkmark-circle' },
-    { key: 'paused', labelKey: 'filters.paused', icon: 'pause-circle' },
-    { key: 'stuck', labelKey: 'filters.stuck', icon: 'warning' },
-    { key: 'downloading', labelKey: 'filters.downloading', icon: 'arrow-down' },
-    { key: 'uploading', labelKey: 'filters.uploading', icon: 'arrow-up' },
+    { key: 'all', labelKey: 'filters.all', icon: 'grid-outline' as const },
+    { key: 'active', labelKey: 'filters.active', icon: 'pulse' as const },
+    { key: 'completed', labelKey: 'filters.completed', icon: 'checkmark-circle' as const },
+    { key: 'paused', labelKey: 'filters.paused', icon: 'pause-circle' as const },
+    { key: 'stuck', labelKey: 'filters.stuck', icon: 'warning' as const },
+    { key: 'downloading', labelKey: 'filters.downloading', icon: 'arrow-down' as const },
+    { key: 'uploading', labelKey: 'filters.uploading', icon: 'arrow-up' as const },
   ];
 
   const sortOptions = [
-    { key: 'added_on' as const, labelKey: 'sort.dateAdded', icon: 'time-outline' },
-    { key: 'name' as const, labelKey: 'sort.name', icon: 'text-outline' },
-    { key: 'size' as const, labelKey: 'sort.size', icon: 'albums-outline' },
-    { key: 'progress' as const, labelKey: 'sort.progress', icon: 'stats-chart-outline' },
-    { key: 'ratio' as const, labelKey: 'sort.ulRatio', icon: 'swap-horizontal-outline' },
-    { key: 'dlspeed' as const, labelKey: 'sort.dlSpeed', icon: 'arrow-down-outline' },
-    { key: 'upspeed' as const, labelKey: 'sort.ulSpeed', icon: 'arrow-up-outline' },
+    { key: 'added_on' as const, labelKey: 'sort.dateAdded', icon: 'time-outline' as const },
+    { key: 'name' as const, labelKey: 'sort.name', icon: 'text-outline' as const },
+    { key: 'size' as const, labelKey: 'sort.size', icon: 'albums-outline' as const },
+    { key: 'progress' as const, labelKey: 'sort.progress', icon: 'stats-chart-outline' as const },
+    { key: 'ratio' as const, labelKey: 'sort.ulRatio', icon: 'swap-horizontal-outline' as const },
+    { key: 'dlspeed' as const, labelKey: 'sort.dlSpeed', icon: 'arrow-down-outline' as const },
+    { key: 'upspeed' as const, labelKey: 'sort.ulSpeed', icon: 'arrow-up-outline' as const },
   ];
 
   // Early returns
@@ -770,7 +770,7 @@ export default function TorrentsScreen() {
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name={item.icon as any}
+                      name={item.icon}
                       size={14}
                       color={filter === item.key ? '#FFFFFF' : colors.text}
                     />
@@ -842,7 +842,7 @@ export default function TorrentsScreen() {
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name={option.icon as any}
+                      name={option.icon}
                       size={18}
                       color={sortBy === option.key ? (isDark ? colors.primary : '#FFFFFF') : (isDark ? colors.textSecondary : colors.text)}
                     />

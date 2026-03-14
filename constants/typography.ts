@@ -112,7 +112,7 @@ export const typography = {
     fontWeight: '600' as const,
     lineHeight: 16,
     includeFontPadding: false,
-    textAlignVertical: 'center' as any,
+    textAlignVertical: 'center' as const,
   },
 
   // Labels (uppercase, small)

@@ -64,7 +64,7 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
     });
   };
 
-  const getIcon = (): string => {
+  const getIcon = (): React.ComponentProps<typeof Ionicons>['name'] => {
     switch (type) {
       case 'success':
         return 'checkmark-circle';
@@ -110,7 +110,7 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
         onPress={hide}
         activeOpacity={0.9}
       >
-        <Ionicons name={getIcon() as any} size={24} color={getColor()} />
+        <Ionicons name={getIcon()} size={24} color={getColor()} />
         <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
           {message}
         </Text>

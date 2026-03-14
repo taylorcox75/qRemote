@@ -228,21 +228,24 @@ class ApiClient {
     return response.data;
   }
 
-  private isRetriableError(error: any): boolean {
-    return (
-      error.code === 'ECONNABORTED' ||
-      error.code === 'ERR_NETWORK' ||
-      error.code === 'ETIMEDOUT' ||
-      error.message?.includes('timeout')
-    );
+  private isRetriableError(error: unknown): boolean {
+    if (error instanceof AxiosError) {
+      return (
+        error.code === 'ECONNABORTED' ||
+        error.code === 'ERR_NETWORK' ||
+        error.code === 'ETIMEDOUT' ||
+        error.message?.includes('timeout')
+      );
+    }
+    return error instanceof Error && error.message.includes('timeout');
   }
 
   private async withRetry<T>(fn: () => Promise<T>): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
     for (let attempt = 0; attempt <= this.retryAttempts; attempt++) {
       try {
         return await fn();
-      } catch (error: any) {
+      } catch (error: unknown) {
         lastError = error;
         if (attempt < this.retryAttempts && this.isRetriableError(error)) {
           await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
@@ -255,8 +258,7 @@ class ApiClient {
     throw lastError;
   }
 
-  // Helper method for GET requests
-  async get(url: string, params?: Record<string, any>, signal?: AbortSignal): Promise<any> {
+  async get(url: string, params?: Record<string, string | number | boolean>, signal?: AbortSignal): Promise<unknown> {
     if (!this.currentServer) {
       throw new Error('No server configured');
     }
@@ -267,8 +269,7 @@ class ApiClient {
     });
   }
 
-  // Helper method for POST requests (JSON)
-  async post(url: string, data?: any, signal?: AbortSignal): Promise<any> {
+  async post(url: string, data?: unknown, signal?: AbortSignal): Promise<unknown> {
     if (!this.currentServer) {
       throw new Error('No server configured');
     }

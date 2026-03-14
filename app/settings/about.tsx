@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { applicationApi } from '@/services/api/application';
@@ -23,11 +23,13 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 
-function InfoRow({ icon, label, value, colors }: { icon: string; label: string; value: string; colors: any }) {
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+function InfoRow({ icon, label, value, colors }: { icon: IconName; label: string; value: string; colors: ThemeColors }) {
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoLeft}>
-        <Ionicons name={icon as any} size={20} color={colors.primary} />
+        <Ionicons name={icon} size={20} color={colors.primary} />
         <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{label}</Text>
       </View>
       <Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text>
@@ -77,7 +79,7 @@ export default function AboutScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>About</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.about')}</Text>
           <View style={styles.headerButton} />
         </View>
 

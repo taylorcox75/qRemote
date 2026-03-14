@@ -27,6 +27,7 @@ import { torrentsApi } from '@/services/api/torrents';
 import { TorrentFile, FilePriority } from '@/types/api';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
+import { getErrorMessage } from '@/utils/error';
 
 interface FileTreeItem {
   type: 'file' | 'folder';
@@ -82,8 +83,8 @@ export default function TorrentFilesScreen() {
         });
         setCollapsedFolders(folders);
       }
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToLoadFiles'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setLoading(false);
     }
@@ -135,8 +136,8 @@ export default function TorrentFilesScreen() {
       await torrentsApi.setFilePriority(hash, allIndices, 1);
       await loadFiles();
       showToast(t('toast.allFilesSelected'), 'success');
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToSelectAll'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setUpdating(false);
     }
@@ -150,8 +151,8 @@ export default function TorrentFilesScreen() {
       await torrentsApi.setFilePriority(hash, allIndices, 0);
       await loadFiles();
       showToast(t('toast.allFilesDeselected'), 'success');
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToDeselectAll'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setUpdating(false);
     }
@@ -164,8 +165,8 @@ export default function TorrentFilesScreen() {
       const newPriority: FilePriority = file.priority === 0 ? 1 : 0;
       await torrentsApi.setFilePriority(hash, [file.index], newPriority);
       await loadFiles();
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToUpdateFile'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setUpdating(false);
     }
@@ -182,8 +183,8 @@ export default function TorrentFilesScreen() {
       
       await torrentsApi.setFilePriority(hash, fileIndices, newPriority);
       await loadFiles();
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToSetPriority'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setUpdating(false);
     }
@@ -215,8 +216,8 @@ export default function TorrentFilesScreen() {
       await torrentsApi.setFilePriority(hash, [menuFile.index], priority);
       await loadFiles();
       showToast(t('toast.prioritySet', { label: getPriorityLabel(priority) }), 'success');
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToSetPriority'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setUpdating(false);
       setMenuFile(null);
@@ -237,14 +238,14 @@ export default function TorrentFilesScreen() {
       await torrentsApi.setFilePriority(hash, selectedIndices, priority);
       await loadFiles();
       showToast(t('toast.prioritySetForCount', { label: getPriorityLabel(priority), count: selectedCount }), 'success');
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToSetPriority'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setUpdating(false);
     }
   };
 
-  const getFileIcon = (fileName: string): string => {
+  const getFileIcon = (fileName: string): React.ComponentProps<typeof Ionicons>['name'] => {
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
     
     if (['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v'].includes(ext)) {
@@ -505,7 +506,7 @@ export default function TorrentFilesScreen() {
                     >
                       <View style={styles.fileHeader}>
                         <Ionicons 
-                          name={getFileIcon(item.name) as any} 
+                          name={getFileIcon(item.name)} 
                           size={20} 
                           color={getPriorityColor(file.priority)} 
                         />

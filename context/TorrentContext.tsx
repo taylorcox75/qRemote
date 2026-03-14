@@ -6,13 +6,14 @@
  */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { TorrentInfo, MainData, ServerState } from '@/types/api';
+import { TorrentInfo, MainData, ServerState, Category } from '@/types/api';
 import { syncApi } from '@/services/api/sync';
 import { useServer } from './ServerContext';
+import { getErrorMessage } from '@/utils/error';
 
 interface TorrentContextType {
   torrents: TorrentInfo[];
-  categories: { [name: string]: any };
+  categories: { [name: string]: Category };
   tags: string[];
   serverState: Partial<ServerState> | null;
   isLoading: boolean;
@@ -28,7 +29,7 @@ const TorrentContext = createContext<TorrentContextType | undefined>(undefined);
 export function TorrentProvider({ children }: { children: ReactNode }) {
   const { isConnected, checkAndReconnect } = useServer();
   const [torrents, setTorrents] = useState<TorrentInfo[]>([]);
-  const [categories, setCategories] = useState<{ [name: string]: any }>({});
+  const [categories, setCategories] = useState<{ [name: string]: Category }>({});
   const [tags, setTags] = useState<string[]>([]);
   const [serverState, setServerState] = useState<Partial<ServerState> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -175,10 +176,9 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
 
       setRid(data.rid);
       ridRef.current = data.rid;
-    } catch (err: any) {
-      // Don't set error if we're recovering from background - transient network issues are expected
+    } catch (err: unknown) {
       if (isConnected && !isRecoveringRef.current) {
-        setError(err.message || 'Failed to sync torrents');
+        setError(getErrorMessage(err));
       }
     }
   }, [isConnected]);

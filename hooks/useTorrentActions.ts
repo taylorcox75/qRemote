@@ -9,13 +9,9 @@ import { useTransfer } from '@/context/TransferContext';
 import { useToast } from '@/context/ToastContext';
 import { apiClient } from '@/services/api/client';
 import * as Clipboard from 'expo-clipboard';
+import { ActionMenuItemDef } from '@/components/ActionMenu';
 
-export interface ActionMenuItem {
-  label: string;
-  icon: string;
-  onPress: () => void;
-  destructive?: boolean;
-}
+export type ActionMenuItem = ActionMenuItemDef;
 
 export function useTorrentActions(torrent: TorrentInfo | null) {
   const { isConnected, currentServer, reconnect } = useServer();
@@ -126,11 +122,11 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     if (!torrent) return;
     Alert.alert(
       t('common.delete'),
-      `Delete "${torrent.name}"?`,
+      t('alerts.deleteName', { name: torrent.name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Torrent Only',
+          text: t('alerts.torrentOnly'),
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent.hash], false);
@@ -143,7 +139,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
           },
         },
         {
-          text: 'With Files',
+          text: t('alerts.withFiles'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -187,7 +183,9 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
         await torrentsApi.setTorrentDownloadLimit([torrent.hash], limitBytes);
         sync().catch(() => {});
         showToast(
-          `Download limit set to ${limitKB === 0 ? 'unlimited' : `${limitKB} KB/s`}`,
+          limitKB === 0
+            ? t('toast.downloadLimitSet', { value: t('common.unlimited') })
+            : t('toast.dlLimitSetKb', { value: limitKB }),
           'success',
         );
       } catch (error: unknown) {
@@ -242,7 +240,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
         onPress: handleForceStart,
       },
       {
-        label: `Global Speed Limit (${transferInfo?.use_alt_speed_limits ? 'ON' : 'OFF'})`,
+        label: t('actions.globalSpeedLimit', { status: transferInfo?.use_alt_speed_limits ? t('common.on') : t('common.off') }),
         icon: 'speedometer',
         onPress: handleToggleGlobalSpeedLimit,
       },

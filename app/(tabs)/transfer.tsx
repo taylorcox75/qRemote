@@ -37,6 +37,7 @@ import { useSpeedTracker } from '@/hooks/useSpeedTracker';
 import { SpeedGraph } from '@/components/SpeedGraph';
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { OptionPicker } from '@/components/OptionPicker';
+import { getErrorMessage } from '@/utils/error';
 
 const SPEED_PRESETS = [
   { label: '∞', value: 0 },
@@ -54,7 +55,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRAPH_HORIZONTAL_PADDING = spacing.lg * 2;
 const GRAPH_WIDTH = SCREEN_WIDTH - GRAPH_HORIZONTAL_PADDING;
 
-function buildSpeedOptions(t: (key: string, opts?: any) => string) {
+function buildSpeedOptions(t: (key: string, opts?: Record<string, unknown>) => string) {
   const options = SPEED_PRESETS.map((p) => ({
     label: p.value === 0 ? t('common.unlimited') : p.label,
     value: String(p.value),
@@ -119,8 +120,8 @@ export default function TransferScreen() {
       });
       try {
         await connectToServer(server);
-      } catch (err: any) {
-        setConnectErrors((prev) => ({ ...prev, [server.id]: err.message || 'Connection failed' }));
+      } catch (err: unknown) {
+        setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
       } finally {
         setConnectingId(null);
       }
@@ -177,8 +178,8 @@ export default function TransferScreen() {
       await torrentsApi.pauseTorrents(['all']);
       await syncTorrents();
       showToast(t('screens.transfer.allPaused'), 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to pause all torrents', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -190,8 +191,8 @@ export default function TransferScreen() {
       await torrentsApi.resumeTorrents(['all']);
       await syncTorrents();
       showToast(t('screens.transfer.allResumed'), 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to resume all torrents', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -203,8 +204,8 @@ export default function TransferScreen() {
       await torrentsApi.setForceStart(['all'], true);
       await syncTorrents();
       showToast(t('screens.transfer.forceStartEnabled'), 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to force start all torrents', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -229,8 +230,8 @@ export default function TransferScreen() {
         t('screens.transfer.pausedDl', { count: downloadingHashes.length }),
         'success',
       );
-    } catch (err: any) {
-      showToast(err.message || 'Failed to pause downloads', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -255,8 +256,8 @@ export default function TransferScreen() {
         t('screens.transfer.pausedUl', { count: uploadingHashes.length }),
         'success',
       );
-    } catch (err: any) {
-      showToast(err.message || 'Failed to pause uploads', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -266,8 +267,8 @@ export default function TransferScreen() {
     setActionLoading('altSpeed');
     try {
       await toggleAlternativeSpeedLimits();
-    } catch (err: any) {
-      showToast(err.message || 'Failed to toggle alternative speed limits', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -303,8 +304,8 @@ export default function TransferScreen() {
           'success',
         );
       }
-    } catch (err: any) {
-      showToast(err.message || `Failed to set ${type} limit`, 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setSettingLimit(false);
     }
@@ -328,8 +329,8 @@ export default function TransferScreen() {
       }
       setLimitInput('');
       setLimitType(null);
-    } catch (err: any) {
-      showToast(err.message || `Failed to set ${limitType} limit`, 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err), 'error');
     } finally {
       setSettingLimit(false);
     }
