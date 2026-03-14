@@ -12,6 +12,7 @@ import { useTransfer } from '../context/TransferContext';
 import { useToast } from '../context/ToastContext';
 import { apiClient } from '../services/api/client';
 import { formatSpeed, formatSize, formatTime } from '../utils/format';
+import { getStateColor as getStateColorUtil, getStateLabel as getStateLabelUtil } from '../utils/torrent-state';
 import * as Clipboard from 'expo-clipboard';
 import { shadows } from '../constants/shadows';
 import { spacing, borderRadius } from '../constants/spacing';
@@ -344,105 +345,11 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
     setTimeout(() => action(), 100);
   };
 
-  const getStateColor = (state: TorrentState, progress: number, dlspeed: number, upspeed: number): string => {
-    const downloading = dlspeed > 0;
-    const uploading = upspeed > 0;
-
-    // Active transfer: DL+UL uses blue-grey; upload-only uses pastel blue
-    if (downloading && uploading) return colors.stateUploadAndDownload;
-    if (uploading && !downloading) return colors.stateUploadOnly;
-
-    // Idle seeding (100% complete, no active download)
-    if (state === 'stalledUP' && progress >= 1) return colors.stateSeeding;
-
-    switch (state) {
-      case 'downloading':
-      case 'forcedDL':
-        return colors.stateDownloading;
-      case 'metaDL':
-      case 'forcedMetaDL':
-        return colors.stateMetadata;
-      case 'uploading':
-      case 'forcedUP':
-        return colors.stateUploadOnly;
-      case 'pausedDL':
-      case 'pausedUP':
-      case 'stoppedDL':
-      case 'stoppedUP':
-        return colors.statePaused;
-      case 'error':
-      case 'missingFiles':
-      case 'stalledDL':
-        return colors.stateError;
-      case 'checkingDL':
-      case 'checkingUP':
-        return colors.stateChecking;
-      case 'queuedDL':
-      case 'queuedUP':
-        return colors.stateQueued;
-      case 'stalledUP':
-        return colors.stateStalled;
-      case 'allocating':
-      case 'checkingResumeData':
-      case 'moving':
-      case 'unknown':
-      default:
-        return colors.stateOther;
-    }
-  };
-
-  const getStateLabel = (state: TorrentState, progress: number, dlspeed: number, upspeed: number): string => {
-    const downloading = dlspeed > 0;
-    const uploading = upspeed > 0;
-    if (downloading && uploading) return 'DL + UL';
-    if (uploading && !downloading) return 'Uploading';
-
-    if (state === 'stalledUP' && progress >= 1) return 'Seeding';
-
-    switch (state) {
-      case 'downloading':
-        return 'Downloading';
-      case 'metaDL':
-        return 'Metadata';
-      case 'forcedMetaDL':
-        return 'Forced Meta';
-      case 'forcedDL':
-        return 'Forced DL';
-      case 'uploading':
-        return 'Uploading';
-      case 'forcedUP':
-        return 'Forced UP';
-      case 'pausedDL':
-        return 'Paused';
-      case 'pausedUP':
-        return 'Paused';
-      case 'error':
-        return 'Error';
-      case 'checkingDL':
-      case 'checkingUP':
-        return 'Checking';
-      case 'queuedDL':
-        return 'Queued';
-      case 'queuedUP':
-        return 'Queued';
-      case 'stalledDL':
-        return 'Stalled DL';
-      case 'stalledUP':
-        return 'Stalled UP';
-      case 'stoppedDL':
-        return 'Stopped';
-      case 'stoppedUP':
-        return 'Paused'; // NOT "Seeding" - it's stopped!
-      default:
-        return state;
-    }
-  };
-
   const progress = (torrent.progress || 0) * 100;
   const dlspeed = torrent.dlspeed ?? 0;
   const upspeed = torrent.upspeed ?? 0;
-  const stateColor = getStateColor(torrent.state, torrent.progress, dlspeed, upspeed);
-  const stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed);
+  const stateColor = getStateColorUtil(torrent.state, torrent.progress, dlspeed, upspeed, colors);
+  const stateLabel = getStateLabelUtil(torrent.state, torrent.progress, dlspeed, upspeed);
 
   // Determine card state styling (left border uses stateColor for all states)
   const cardStateStyle = () => {

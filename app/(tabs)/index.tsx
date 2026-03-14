@@ -34,24 +34,7 @@ import { shadows } from '../../constants/shadows';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { buttonStyles, buttonText } from '../../constants/buttons';
 import { typography } from '../../constants/typography';
-
-// ─── Server quick-connect helpers ────────────────────────────────────────────
-
-const AVATAR_PALETTE = [
-  '#0A84FF', '#30D158', '#FF9F0A', '#FF453A',
-  '#BF5AF2', '#FF375F', '#5AC8FA', '#FFD60A',
-];
-
-function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
-}
-
-function serverAddress(server: ServerConfig): string {
-  const port = server.port && server.port > 0 ? `:${server.port}` : '';
-  return `${server.host}${port}`;
-}
+import { QuickConnectPanel } from '../../components/QuickConnectPanel';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -610,124 +593,15 @@ export default function TorrentsScreen() {
   // Early returns
   // Only show "Not Connected" screen if no server is configured (check this FIRST)
   if (!isConnected && !currentServer && !serverIsLoading) {
-    // No servers saved yet — simple centred prompt (also shown while loading to avoid flash)
-    if (!serversLoaded || savedServers.length === 0) {
-      return (
-        <>
-          <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-          <View style={[styles.center, { backgroundColor: colors.background }]}>
-            <Ionicons name="navigate-outline" size={64} color={colors.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {t('screens.torrents.notConnected')}
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500' }]}>
-              {t('screens.torrents.notConnectedSubtitle')}
-            </Text>
-            <TouchableOpacity
-              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/server/add')}
-            >
-              <Text style={styles.emptyButtonText}>{t('screens.settings.addServer')}</Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      );
-    }
-
-    // Servers exist — scrollable quick-connect layout
     return (
-      <>
-        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <ScrollView
-          style={{ flex: 1, backgroundColor: colors.background }}
-          contentContainerStyle={styles.notConnectedScroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Hero */}
-          <View style={styles.notConnectedHero}>
-            <View style={[styles.notConnectedIconRing, { borderColor: colors.surfaceOutline }]}>
-              <Ionicons name="navigate-outline" size={36} color={colors.textSecondary} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text, marginTop: spacing.lg, fontSize: 20 }]}>
-              {t('screens.torrents.notConnected')}
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500' }]}>
-              {t('screens.torrents.notConnectedSubtitle')}
-            </Text>
-          </View>
-
-          {/* Server cards */}
-          <View style={styles.notConnectedServers}>
-            <Text style={[styles.notConnectedSectionLabel, { color: colors.textSecondary }]}>
-              YOUR SERVERS
-            </Text>
-            <View style={[styles.notConnectedCard, { backgroundColor: colors.surface }]}>
-              {savedServers.map((server, index) => {
-                const color = avatarColor(server.name);
-                const addr = serverAddress(server);
-                const isConnectingThis = connectingId === server.id;
-                const errMsg = connectErrors[server.id];
-                const isLast = index === savedServers.length - 1;
-                return (
-                  <View key={server.id}>
-                    <TouchableOpacity
-                      style={styles.notConnectedServerRow}
-                      onPress={() => handleQuickConnect(server)}
-                      activeOpacity={0.7}
-                      disabled={connectingId !== null}
-                    >
-                      <View style={[styles.serverAvatar, { backgroundColor: color + '22', borderColor: color + '44' }]}>
-                        <Text style={[styles.serverAvatarLetter, { color }]}>
-                          {server.name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={styles.serverInfo}>
-                        <Text style={[styles.serverName, { color: colors.text }]} numberOfLines={1}>
-                          {server.name}
-                        </Text>
-                        <View style={styles.serverAddressRow}>
-                          {server.useHttps && (
-                            <Ionicons name="lock-closed" size={10} color={colors.success} style={{ marginRight: 3 }} />
-                          )}
-                          <Text style={[styles.serverAddress, { color: colors.textSecondary }]} numberOfLines={1}>
-                            {addr}
-                          </Text>
-                        </View>
-                        {errMsg && (
-                          <Text style={[styles.serverErrorText, { color: colors.error }]} numberOfLines={1}>
-                            {errMsg}
-                          </Text>
-                        )}
-                      </View>
-                      <View style={[styles.connectPill, { backgroundColor: errMsg ? colors.error + '18' : color + '18', borderColor: errMsg ? colors.error + '40' : color + '40' }]}>
-                        {isConnectingThis
-                          ? <ActivityIndicator size="small" color={color} />
-                          : <Text style={[styles.connectPillText, { color: errMsg ? colors.error : color }]}>{errMsg ? 'Retry' : 'Connect'}</Text>
-                        }
-                      </View>
-                    </TouchableOpacity>
-                    {!isLast && <View style={[styles.notConnectedDivider, { backgroundColor: colors.surfaceOutline }]} />}
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Add another server */}
-          <TouchableOpacity
-            style={[styles.addServerRow, { borderColor: colors.surfaceOutline }]}
-            onPress={() => router.push('/server/add')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.addServerIcon, { backgroundColor: colors.surface, borderColor: colors.surfaceOutline }]}>
-              <Ionicons name="add" size={20} color={colors.primary} />
-            </View>
-            <Text style={[styles.addServerText, { color: colors.primary }]}>
-              Connect
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </>
+      <QuickConnectPanel
+        savedServers={savedServers}
+        serversLoaded={serversLoaded}
+        connectingId={connectingId}
+        connectErrors={connectErrors}
+        onConnect={handleQuickConnect}
+        onAddServer={() => router.push('/server/add')}
+      />
     );
   }
 

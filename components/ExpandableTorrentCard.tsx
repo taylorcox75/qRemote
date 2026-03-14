@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TorrentInfo } from '../types/api';
 import { useTheme } from '../context/ThemeContext';
 import { formatSpeed, formatSize, formatTime } from '../utils/format';
+import { getStateColor } from '../utils/torrent-state';
 import { spacing, borderRadius } from '../constants/spacing';
 import { shadows } from '../constants/shadows';
 
@@ -52,30 +53,7 @@ export function ExpandableTorrentCard({ torrent, onPress }: ExpandableTorrentCar
   const isPaused = torrent.state.includes('paused') || torrent.state.includes('stopped');
   const dlspeed = torrent.dlspeed ?? 0;
   const upspeed = torrent.upspeed ?? 0;
-  const downloading = dlspeed > 0;
-  const uploading = upspeed > 0;
-  const stateColor =
-    downloading && uploading
-      ? colors.stateUploadAndDownload
-      : uploading
-        ? colors.stateUploadOnly
-        : downloading
-          ? colors.stateDownloading
-          : torrent.state === 'stalledUP' && torrent.progress >= 1
-            ? colors.stateSeeding
-            : torrent.state === 'error' || torrent.state === 'missingFiles' || torrent.state === 'stalledDL'
-              ? colors.stateError
-              : torrent.state === 'stalledUP'
-                ? colors.stateStalled
-                : torrent.state === 'pausedDL' || torrent.state === 'pausedUP' || torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP'
-                  ? colors.statePaused
-                  : torrent.state === 'checkingDL' || torrent.state === 'checkingUP'
-                    ? colors.stateChecking
-                    : torrent.state === 'metaDL' || torrent.state === 'forcedMetaDL'
-                      ? colors.stateMetadata
-                      : torrent.state === 'queuedDL' || torrent.state === 'queuedUP'
-                        ? colors.stateQueued
-                        : colors.stateOther;
+  const stateColor = getStateColor(torrent.state, torrent.progress, dlspeed, upspeed, colors);
 
   return (
     <Animated.View
