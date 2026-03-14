@@ -34,6 +34,7 @@ import { InputModal } from '../../components/InputModal';
 import { colorThemeManager } from '../../services/color-theme-manager';
 import { ServerManager } from '../../services/server-manager';
 import { ServerConfig } from '../../types/api';
+import { AppPreferences } from '../../types/preferences';
 import { storageService } from '../../services/storage';
 import { apiClient } from '../../services/api/client';
 import { setHapticsEnabled, haptics } from '../../utils/haptics';
