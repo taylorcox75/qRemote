@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ServerConfig } from '../types/api';
-import { ServerManager } from '../services/server-manager';
-import { apiClient } from '../services/api/client';
-import { storageService } from '../services/storage';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { ServerConfig } from '@/types/api';
+import { ServerManager } from '@/services/server-manager';
+import { apiClient } from '@/services/api/client';
+import { storageService } from '@/services/storage';
 
 interface ServerContextType {
   currentServer: ServerConfig | null;
@@ -19,140 +20,132 @@ const ServerContext = createContext<ServerContextType | undefined>(undefined);
 export function ServerProvider({ children }: { children: ReactNode }) {
   const [currentServer, setCurrentServer] = useState<ServerConfig | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initLoading, setInitLoading] = useState(true);
+  const [reconnecting, setReconnecting] = useState(false);
 
   useEffect(() => {
-    loadCurrentServer();
-  }, []);
+    async function autoConnect() {
+      try {
+        const prefs = await storageService.getPreferences();
+        const autoConnectLastServer = prefs.autoConnectLastServer !== false;
 
-  const loadCurrentServer = async () => {
-    try {
-      setIsLoading(true);
+        let server: ServerConfig | null = null;
 
-      const prefs = await storageService.getPreferences();
-      // Default to true if the preference has never been set (undefined)
-      const autoConnectLastServer = prefs.autoConnectLastServer !== false;
-      
-      let server: ServerConfig | null = null;
-
-      if (autoConnectLastServer) {
-        // Try to get the last connected server
-        server = await ServerManager.getCurrentServer();
-      }
-      
-      // If no last connected server (or auto-connect disabled), check if there's
-      // exactly one server saved and auto-connect to it as a convenience
-      if (!server) {
-        const allServers = await ServerManager.getServers();
-        if (allServers.length === 1) {
-          server = allServers[0];
+        if (autoConnectLastServer) {
+          server = await ServerManager.getCurrentServer();
         }
-      }
-      
-      if (server) {
-        setCurrentServer(server);
-        try {
-          const connected = await ServerManager.connectToServer(server);
-          setIsConnected(connected);
-          if (!connected) {
-            // If connection failed, clear the server
+
+        if (!server) {
+          const allServers = await ServerManager.getServers();
+          if (allServers.length === 1) {
+            server = allServers[0];
+          }
+        }
+
+        if (server) {
+          setCurrentServer(server);
+          try {
+            const connected = await ServerManager.connectToServer(server);
+            setIsConnected(connected);
+            if (!connected) {
+              setCurrentServer(null);
+              apiClient.setServer(null);
+            }
+          } catch {
+            setIsConnected(false);
             setCurrentServer(null);
-            // Ensure API client server is cleared
             apiClient.setServer(null);
           }
-        } catch (error: any) {
-          // If connection fails, don't set as connected
+        } else {
           setIsConnected(false);
-          setCurrentServer(null);
-          // Ensure API client server is cleared
           apiClient.setServer(null);
         }
-      } else {
+      } catch {
         setIsConnected(false);
-        // Ensure API client server is cleared
         apiClient.setServer(null);
+      } finally {
+        setInitLoading(false);
       }
-    } catch (error) {
-      setIsConnected(false);
-      // Ensure API client server is cleared
-      apiClient.setServer(null);
-    } finally {
-      setIsLoading(false);
     }
-  };
+    autoConnect();
+  }, []);
 
-  const connectToServer = async (server: ServerConfig): Promise<boolean> => {
-    try {
-      setIsLoading(true);
-      const success = await ServerManager.connectToServer(server);
+  const connectMutation = useMutation({
+    mutationFn: (server: ServerConfig) => ServerManager.connectToServer(server),
+    onSuccess: (success: boolean, server: ServerConfig) => {
       if (success) {
         setCurrentServer(server);
         setIsConnected(true);
       } else {
         setIsConnected(false);
       }
-      return success;
-    } catch (error: any) {
+    },
+    onError: () => {
       setIsConnected(false);
-      // Re-throw so callers can show the actual error message in a toast
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+    },
+  });
+
+  const connectToServer = async (server: ServerConfig): Promise<boolean> => {
+    const success = await connectMutation.mutateAsync(server);
+    return success;
   };
 
-  const disconnect = async () => {
-    try {
-      setIsLoading(true);
-      await ServerManager.disconnect();
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      try {
+        await ServerManager.disconnect();
+      } catch {
+        // Best-effort — ignore disconnect errors (same as original)
+      }
+    },
+    onSuccess: () => {
       setCurrentServer(null);
       setIsConnected(false);
-    } catch (error) {
-      // Ignore disconnect errors
-    } finally {
-      setIsLoading(false);
-    }
+    },
+  });
+
+  const disconnect = async () => {
+    await disconnectMutation.mutateAsync();
   };
 
-  const reconnect = async (): Promise<boolean> => {
+  const reconnect = useCallback(async (): Promise<boolean> => {
     try {
-      setIsLoading(true);
+      setReconnecting(true);
       const success = await ServerManager.reconnect();
       setIsConnected(success);
       return success;
-    } catch (error) {
+    } catch {
       setIsConnected(false);
       return false;
     } finally {
-      setIsLoading(false);
+      setReconnecting(false);
     }
-  };
+  }, []);
 
-  const checkAndReconnect = async (): Promise<boolean> => {
-    // Silently check if connection is still alive and reconnect if needed
-    // This is used when app comes back from background
+  const checkAndReconnect = useCallback(async (): Promise<boolean> => {
     if (!currentServer) {
       setIsConnected(false);
       return false;
     }
 
     try {
-      // Try a lightweight API call to test connection (don't set loading state)
       const success = await ServerManager.reconnect();
       setIsConnected(success);
       return success;
-    } catch (error) {
-      // Connection is stale, try to reconnect
+    } catch {
       try {
         const reconnected = await ServerManager.connectToServer(currentServer);
         setIsConnected(reconnected);
         return reconnected;
-      } catch (reconnectError) {
+      } catch {
         setIsConnected(false);
         return false;
       }
     }
-  };
+  }, [currentServer]);
+
+  const isLoading =
+    initLoading || connectMutation.isPending || disconnectMutation.isPending || reconnecting;
 
   return (
     <ServerContext.Provider
@@ -178,4 +171,3 @@ export function useServer() {
   }
   return context;
 }
-

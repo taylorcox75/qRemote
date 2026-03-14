@@ -1,6 +1,7 @@
+import { AxiosError } from 'axios';
 import { apiClient } from './client';
-import { LoginResponse } from '../../types/api';
-import { clogInfo, clogWarn, clogError, clogDebug } from '../connectivity-log';
+import { LoginResponse } from '@/types/api';
+import { clogInfo, clogWarn, clogError, clogDebug } from '@/services/connectivity-log';
 
 const API_VERSION = 'v2';
 
@@ -22,15 +23,12 @@ export const authApi = {
       
       // Check if cookies were set after login
       const cookies = apiClient.getCookies();
-      const csrfToken = apiClient.getCsrfToken();
       
-      // Log for debugging (helps diagnose qBittorrent 5.x issues)
       const responsePreview = typeof response === 'string' ? response.substring(0, 50) : 'non-string response';
       console.log('[Auth] Login response:', responsePreview);
       console.log('[Auth] Cookies received:', cookies ? 'Yes (' + cookies.length + ' chars)' : 'No');
-      console.log('[Auth] CSRF token received:', csrfToken ? 'Yes' : 'No');
 
-      clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'} | CSRF: ${csrfToken ? 'Yes' : 'No'}`);
+      clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`);
       
       // qBittorrent returns 'Ok.' on success, 'Fails.' on failure
       // Handle both string and trimmed string responses
@@ -49,28 +47,28 @@ export const authApi = {
       console.warn('[Auth] Login failed with response:', responseStr);
       clogWarn('AUTH', `Login failed — server responded: "${responseStr}"`);
       return { status: 'Fails' };
-    } catch (error: any) {
-      // Re-throw abort errors immediately
-      if (error.name === 'AbortError' || error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
+        throw error;
+      }
+      if (error instanceof AxiosError && error.code === 'ERR_CANCELED') {
+        throw error;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      const axiosErr = error instanceof AxiosError ? error : undefined;
+      const statusHint = axiosErr?.response?.status ? ` (HTTP ${axiosErr.response.status})` : '';
+      console.warn('[Auth] Login error:', message, statusHint);
+      clogError('AUTH', `Login error: ${message}${statusHint}`);
+      
+      if (message.includes('timeout') || message.includes('Connection') || message.includes('Network')) {
         throw error;
       }
       
-      // Log error details for debugging (warn, not error, to avoid scary stack traces)
-      const statusHint = error.response?.status ? ` (HTTP ${error.response.status})` : '';
-      console.warn('[Auth] Login error:', error.message, statusHint);
-      clogError('AUTH', `Login error: ${error.message}${statusHint}`);
-      
-      // Re-throw network/connection errors as-is
-      if (error.message?.includes('timeout') || error.message?.includes('Connection') || error.message?.includes('Network')) {
-        throw error;
-      }
-      
-      // For authentication errors, provide better error messages
-      if (error.response?.status === 403) {
+      if (axiosErr?.response?.status === 403) {
         throw new Error('Authentication failed. Please check your username and password.');
       }
       
-      // For other errors, return Fails status
       return { status: 'Fails' };
     }
   },

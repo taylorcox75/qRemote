@@ -1,3 +1,9 @@
+/**
+ * LogViewer.tsx — Modal viewer for locally stored connectivity/debug logs with export support.
+ *
+ * Key exports: LogViewer
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -9,12 +15,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { logStorage, StoredLogEntry } from '../services/log-storage';
-import { spacing, borderRadius } from '../constants/spacing';
-import { shadows } from '../constants/shadows';
-import { typography } from '../constants/typography';
+import { useTheme } from '@/context/ThemeContext';
+import { logStorage, StoredLogEntry } from '@/services/log-storage';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
+import { typography } from '@/constants/typography';
 
 interface LogViewerProps {
   visible: boolean;
@@ -25,6 +32,7 @@ interface LogViewerProps {
 
 export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogViewerProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [logs, setLogs] = useState<StoredLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -90,13 +98,13 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
   const getLogTypeLabel = (type: number): string => {
     switch (type) {
       case 1:
-        return 'Normal';
+        return t('screens.logs.normal');
       case 2:
-        return 'Warning';
+        return t('screens.logs.warning');
       case 4:
-        return 'Critical';
+        return t('screens.logs.critical');
       default:
-        return 'Info';
+        return t('screens.logs.info');
     }
   };
 
@@ -117,7 +125,7 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
         <View style={[styles.container, { backgroundColor: colors.surface }]}>
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.surfaceOutline, backgroundColor: colors.surface }]}>
-            <Text style={[styles.title, { color: colors.text }]}>Logs</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('screens.settings.logsTitle')}</Text>
             <View style={styles.headerButtons}>
               <TouchableOpacity
                 onPress={handleClear}
@@ -125,7 +133,7 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
                 disabled={logs.length === 0}
               >
                 <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.clearButtonText}>Clear</Text>
+                <Text style={styles.clearButtonText}>{t('screens.settings.clearLogs')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={onClose}
@@ -144,9 +152,9 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
           ) : logs.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="document-text-outline" size={64} color={colors.textSecondary} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No logs available</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('screens.settings.noLogsAvailable')}</Text>
               <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                Logs are automatically cleared after 5 minutes or on app launch
+                {t('screens.settings.logsAutoClear')}
               </Text>
             </View>
           ) : (

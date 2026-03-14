@@ -1,9 +1,10 @@
+import { AxiosError } from 'axios';
 import { apiClient } from './client';
 import {
   ApplicationVersion,
   BuildInfo,
   ApplicationPreferences,
-} from '../../types/api';
+} from '@/types/api';
 
 const API_VERSION = 'v2';
 
@@ -24,7 +25,7 @@ export const applicationApi = {
    * Get build info
    */
   async getBuildInfo(): Promise<BuildInfo> {
-    return await apiClient.get(`/api/${API_VERSION}/app/buildInfo`);
+    return await apiClient.get(`/api/${API_VERSION}/app/buildInfo`) as BuildInfo;
   },
 
   /**
@@ -38,7 +39,7 @@ export const applicationApi = {
    * Get application preferences
    */
   async getPreferences(): Promise<ApplicationPreferences> {
-    return await apiClient.get(`/api/${API_VERSION}/app/preferences`);
+    return await apiClient.get(`/api/${API_VERSION}/app/preferences`) as ApplicationPreferences;
   },
 
   /**
@@ -55,7 +56,7 @@ export const applicationApi = {
    * Get default save path
    */
   async getDefaultSavePath(): Promise<string> {
-    return await apiClient.get(`/api/${API_VERSION}/app/defaultSavePath`);
+    return await apiClient.get(`/api/${API_VERSION}/app/defaultSavePath`) as string;
   },
 
   /**
@@ -64,10 +65,9 @@ export const applicationApi = {
    */
   async getCookies(): Promise<{ [domain: string]: string }> {
     try {
-      return await apiClient.get(`/api/${API_VERSION}/app/getCookies`);
-    } catch (error: any) {
-      // Return empty object for qBittorrent 4.x compatibility (endpoint doesn't exist)
-      if (error.response?.status === 404) {
+      return await apiClient.get(`/api/${API_VERSION}/app/getCookies`) as { [domain: string]: string };
+    } catch (error: unknown) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
         return {};
       }
       throw error;
@@ -84,9 +84,8 @@ export const applicationApi = {
       await apiClient.postUrlEncoded(`/api/${API_VERSION}/app/setCookies`, {
         json,
       });
-    } catch (error: any) {
-      // Silently ignore 404 for qBittorrent 4.x compatibility
-      if (error.response?.status === 404) {
+    } catch (error: unknown) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
         console.warn('[Application API] setCookies not supported (qBittorrent 4.x?)');
         return;
       }

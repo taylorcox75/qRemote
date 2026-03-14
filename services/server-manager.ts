@@ -1,9 +1,38 @@
-import { ServerConfig } from '../types/api';
+/**
+ * server-manager.ts — Server CRUD, connection lifecycle, and auto-reconnect logic.
+ *
+ * Key exports: ServerManager, isNetworkError
+ * Known issues: isNetworkError was duplicated inline 3× (deduplicated in Task 1.6).
+ */
+import { AxiosError } from 'axios';
+import { ServerConfig } from '@/types/api';
 import { storageService } from './storage';
 import { apiClient } from './api/client';
 import { authApi } from './api/auth';
 import { applicationApi } from './api/application';
 import { clogInfo, clogWarn, clogError } from './connectivity-log';
+
+export function isNetworkError(error: unknown): boolean {
+  if (error instanceof AxiosError) {
+    return (
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ETIMEDOUT' ||
+      (error.response?.status ?? 0) >= 500 ||
+      error.message.includes('timeout') ||
+      error.message.includes('Connection') ||
+      error.message.includes('Network')
+    );
+  }
+  if (error instanceof Error) {
+    return (
+      error.message.includes('timeout') ||
+      error.message.includes('Connection') ||
+      error.message.includes('Network')
+    );
+  }
+  return false;
+}
 
 export class ServerManager {
   /**
@@ -54,24 +83,14 @@ export class ServerManager {
         // For bypass auth, still verify the connection works by making a test API call
         try {
           await applicationApi.getVersion();
-          // Connection verified, save as current server
           await storageService.setCurrentServerId(server.id);
           clogInfo('CONN', 'Connected successfully (bypass auth)');
           return true;
-        } catch (error: any) {
-          // Connection test failed, clear server
+        } catch (error: unknown) {
           apiClient.setServer(null);
-          clogError('CONN', `Bypass-auth connect failed: ${error.message}`);
-          // Re-throw network/connection errors so they can be handled by the caller
-          // Check error codes/types first, then fall back to message string matching
-          const isNetworkError = error.code === 'ECONNABORTED' || 
-                                 error.code === 'ERR_NETWORK' || 
-                                 error.code === 'ETIMEDOUT' ||
-                                 error.response?.status >= 500 ||
-                                 error.message?.includes('timeout') || 
-                                 error.message?.includes('Connection') || 
-                                 error.message?.includes('Network');
-          if (isNetworkError) {
+          const message = error instanceof Error ? error.message : String(error);
+          clogError('CONN', `Bypass-auth connect failed: ${message}`);
+          if (isNetworkError(error)) {
             throw error;
           }
           throw new Error('Failed to connect to server. Please check your settings.');
@@ -85,29 +104,18 @@ export class ServerManager {
         // Verify connection by making a test API call
         try {
           await applicationApi.getVersion();
-          // Connection verified, save as current server
           await storageService.setCurrentServerId(server.id);
           clogInfo('CONN', 'Connected successfully (authenticated)');
           return true;
-        } catch (error: any) {
-          // Connection test failed, clear server
+        } catch (error: unknown) {
           apiClient.setServer(null);
-          clogError('CONN', `Post-login API check failed: ${error.message}`);
-          // Re-throw network/connection errors so they can be handled by the caller
-          // Check error codes/types first, then fall back to message string matching
-          const isNetworkError = error.code === 'ECONNABORTED' || 
-                                 error.code === 'ERR_NETWORK' || 
-                                 error.code === 'ETIMEDOUT' ||
-                                 error.response?.status >= 500 ||
-                                 error.message?.includes('timeout') || 
-                                 error.message?.includes('Connection') || 
-                                 error.message?.includes('Network');
-          if (isNetworkError) {
+          const message = error instanceof Error ? error.message : String(error);
+          const axiosErr = error instanceof AxiosError ? error : undefined;
+          clogError('CONN', `Post-login API check failed: ${message}`);
+          if (isNetworkError(error)) {
             throw error;
           }
-          // Authentication error means login didn't actually work
-          // Check status code first, then fall back to message string matching
-          if (error.response?.status === 403 || error.response?.status === 401 || error.message?.includes('Authentication')) {
+          if (axiosErr?.response?.status === 403 || axiosErr?.response?.status === 401 || message.includes('Authentication')) {
             throw new Error('Authentication failed. Please check your credentials.');
           }
           throw new Error('Failed to connect to server. Please check your settings.');
@@ -118,23 +126,14 @@ export class ServerManager {
       clogWarn('CONN', 'Login returned Fails — clearing server');
       apiClient.setServer(null);
       return false;
-    } catch (error: any) {
-      clogError('CONN', `connectToServer error: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      clogError('CONN', `connectToServer error: ${message}`);
       apiClient.setServer(null);
-      // Re-throw network/connection errors so they can be handled by the caller
-      // Check error codes/types first, then fall back to message string matching
-      const isNetworkError = error.code === 'ECONNABORTED' || 
-                             error.code === 'ERR_NETWORK' || 
-                             error.code === 'ETIMEDOUT' ||
-                             error.response?.status >= 500 ||
-                             error.message?.includes('timeout') || 
-                             error.message?.includes('Connection') || 
-                             error.message?.includes('Network');
-      if (isNetworkError) {
+      if (isNetworkError(error)) {
         throw error;
       }
-      // Re-throw if it's already a formatted error message
-      if (error.message && (error.message.includes('Failed to connect') || error.message.includes('Authentication failed'))) {
+      if (message.includes('Failed to connect') || message.includes('Authentication failed')) {
         throw error;
       }
       return false;
@@ -204,50 +203,44 @@ export class ServerManager {
         
         clogInfo('CONN', 'testConnection succeeded');
         return { success: true };
-      } catch (error: any) {
-        // Handle cancellation - check for axios cancel errors
-        if (error.name === 'AbortError' || 
-            error.name === 'CanceledError' || 
-            error.code === 'ERR_CANCELED' ||
-            error.message === 'Test cancelled' ||
-            error.message?.includes('cancel')) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        const axiosErr = error instanceof AxiosError ? error : undefined;
+
+        if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
+          throw error;
+        }
+        if (axiosErr?.code === 'ERR_CANCELED' || message === 'Test cancelled' || message.includes('cancel')) {
           throw error;
         }
         
-        // Provide more specific error messages
-        // Check status codes first, then error codes, then fall back to message string matching
-        if (error.response?.status === 403 || error.response?.status === 401 || error.message?.includes('Authentication')) {
-          clogWarn('CONN', `testConnection failed: auth error (${error.response?.status || error.message})`);
+        if (axiosErr?.response?.status === 403 || axiosErr?.response?.status === 401 || message.includes('Authentication')) {
+          clogWarn('CONN', `testConnection failed: auth error (${axiosErr?.response?.status || message})`);
           return { success: false, error: 'Authentication failed. Please check your credentials.' };
-        } else if (error.code === 'ECONNABORTED' || 
-                   error.code === 'ERR_NETWORK' || 
-                   error.code === 'ETIMEDOUT' ||
-                   error.response?.status >= 500 ||
-                   error.message?.includes('timeout') || 
-                   error.message?.includes('Connection') || 
-                   error.message?.includes('Network')) {
-          clogError('CONN', `testConnection failed: network error (${error.code || error.message})`);
+        } else if (isNetworkError(error)) {
+          clogError('CONN', `testConnection failed: network error (${axiosErr?.code || message})`);
           return { success: false, error: 'Connection failed. Please check your server address and network connection.' };
         } else {
-          clogError('CONN', `testConnection failed: ${error.message}`);
-          return { success: false, error: error.message || 'Connection test failed. Please check your settings.' };
+          clogError('CONN', `testConnection failed: ${message}`);
+          return { success: false, error: message || 'Connection test failed. Please check your settings.' };
         }
       } finally {
         // Restore previous server state
         apiClient.setServer(previousServer);
       }
-    } catch (error: any) {
-      // Ensure cleanup even if outer try fails
+    } catch (error: unknown) {
       apiClient.setServer(previousServer);
-      // Re-throw cancellation errors
-      if (error.name === 'AbortError' || 
-          error.name === 'CanceledError' || 
-          error.code === 'ERR_CANCELED' ||
-          error.message === 'Test cancelled' ||
-          error.message?.includes('cancel')) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
         throw error;
       }
-      return { success: false, error: error.message || 'Connection test failed. Please check your settings.' };
+      if (error instanceof AxiosError && error.code === 'ERR_CANCELED') {
+        throw error;
+      }
+      if (message === 'Test cancelled' || message.includes('cancel')) {
+        throw error;
+      }
+      return { success: false, error: message || 'Connection test failed. Please check your settings.' };
     }
   }
 }

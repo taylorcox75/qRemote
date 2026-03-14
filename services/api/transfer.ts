@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { GlobalTransferInfo } from '../../types/api';
+import { GlobalTransferInfo } from '@/types/api';
 
 const API_VERSION = 'v2';
 
@@ -8,7 +8,7 @@ export const transferApi = {
    * Get global transfer info
    */
   async getGlobalTransferInfo(): Promise<GlobalTransferInfo> {
-    return await apiClient.get(`/api/${API_VERSION}/transfer/info`);
+    return await apiClient.get(`/api/${API_VERSION}/transfer/info`) as GlobalTransferInfo;
   },
 
   /**
@@ -30,7 +30,7 @@ export const transferApi = {
    * Get global download limit
    */
   async getGlobalDownloadLimit(): Promise<number> {
-    return await apiClient.get(`/api/${API_VERSION}/transfer/downloadLimit`);
+    return await apiClient.get(`/api/${API_VERSION}/transfer/downloadLimit`) as number;
   },
 
   /**
@@ -46,7 +46,7 @@ export const transferApi = {
    * Get global upload limit
    */
   async getGlobalUploadLimit(): Promise<number> {
-    return await apiClient.get(`/api/${API_VERSION}/transfer/uploadLimit`);
+    return await apiClient.get(`/api/${API_VERSION}/transfer/uploadLimit`) as number;
   },
 
   /**

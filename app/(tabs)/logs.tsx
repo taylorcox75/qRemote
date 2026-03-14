@@ -1,3 +1,9 @@
+/**
+ * logs.tsx — Server log viewer with app-log and peer-log tabs, search, and severity filters.
+ *
+ * Key exports: LogsScreen (default)
+ * Known issues: Hardcoded English strings (Task 3.3).
+ */
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
@@ -10,14 +16,16 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useServer } from '../../context/ServerContext';
-import { useTorrents } from '../../context/TorrentContext';
-import { useTheme } from '../../context/ThemeContext';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { logsApi } from '../../services/api/logs';
-import { LogEntry, PeerLogEntry } from '../../types/api';
+import { useTranslation } from 'react-i18next';
+import { useServer } from '@/context/ServerContext';
+import { useTorrents } from '@/context/TorrentContext';
+import { useTheme } from '@/context/ThemeContext';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { logsApi } from '@/services/api/logs';
+import { LogEntry, PeerLogEntry } from '@/types/api';
 
 export default function LogsScreen() {
+  const { t } = useTranslation();
   const { isConnected, currentServer, isLoading: serverIsLoading } = useServer();
   const { initialLoadComplete } = useTorrents();
   const { colors, isDark } = useTheme();
@@ -108,13 +116,13 @@ export default function LogsScreen() {
   const getLogTypeLabel = (type: number): string => {
     switch (type) {
       case 1:
-        return 'Normal';
+        return t('screens.logs.normal');
       case 2:
-        return 'Warning';
+        return t('screens.logs.warning');
       case 4:
-        return 'Critical';
+        return t('screens.logs.critical');
       default:
-        return 'Info';
+        return t('screens.logs.info');
     }
   };
 
@@ -145,9 +153,9 @@ export default function LogsScreen() {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <Text style={[styles.message, { color: colors.text }]}>Not connected to a server</Text>
+        <Text style={[styles.message, { color: colors.text }]}>{t('screens.logs.notConnected')}</Text>
         <Text style={[styles.subMessage, { color: colors.textSecondary }]}>
-          Go to Settings to connect to a qBittorrent server
+          {t('screens.logs.notConnectedHint')}
         </Text>
       </View>
     );
@@ -160,7 +168,7 @@ export default function LogsScreen() {
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[styles.subMessage, { color: colors.textSecondary, marginTop: 16 }]}>
-          Loading...
+          {t('common.loading')}
         </Text>
       </View>
     );
@@ -182,7 +190,7 @@ export default function LogsScreen() {
               activeTab === 'app' && { fontWeight: '600' },
             ]}
           >
-            Application Logs
+            {t('screens.logs.applicationLogs')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -196,7 +204,7 @@ export default function LogsScreen() {
               activeTab === 'peer' && { fontWeight: '600' },
             ]}
           >
-            Peer Logs
+            {t('screens.logs.peerLogs')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -207,7 +215,7 @@ export default function LogsScreen() {
           <Ionicons name="search" size={18} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search logs..."
+            placeholder={t('screens.logs.searchLogs')}
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -222,7 +230,7 @@ export default function LogsScreen() {
 
       {activeTab === 'app' && (
         <View style={[styles.filters, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Filter:</Text>
+          <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('screens.logs.filter')}</Text>
           <TouchableOpacity
             style={[
               styles.filterButton,
@@ -236,7 +244,7 @@ export default function LogsScreen() {
                 { color: filters.normal ? '#FFFFFF' : colors.text },
               ]}
             >
-              Normal
+              {t('screens.logs.normal')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -252,7 +260,7 @@ export default function LogsScreen() {
                 { color: filters.info ? '#FFFFFF' : colors.text },
               ]}
             >
-              Info
+              {t('screens.logs.info')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -268,7 +276,7 @@ export default function LogsScreen() {
                 { color: filters.warning ? '#FFFFFF' : colors.text },
               ]}
             >
-              Warning
+              {t('screens.logs.warning')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -286,7 +294,7 @@ export default function LogsScreen() {
                 { color: filters.critical ? '#FFFFFF' : colors.text },
               ]}
             >
-              Critical
+              {t('screens.logs.critical')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -306,7 +314,7 @@ export default function LogsScreen() {
           filteredAppLogs.length === 0 ? (
             <View style={styles.center}>
               <Text style={[styles.message, { color: colors.textSecondary }]}>
-                {searchQuery ? 'No logs match your search' : 'No logs available'}
+                {searchQuery ? t('screens.logs.noLogsMatch') : t('screens.logs.noLogsAvailable')}
               </Text>
             </View>
           ) : (
@@ -333,8 +341,8 @@ export default function LogsScreen() {
           )
         ) : filteredPeerLogs.length === 0 ? (
           <View style={styles.center}>
-            <Text style={[styles.message, { color: colors.textSecondary }]}>
-              {searchQuery ? 'No peer logs match your search' : 'No peer logs available'}
+              <Text style={[styles.message, { color: colors.textSecondary }]}>
+              {searchQuery ? t('screens.logs.noPeerLogsMatch') : t('screens.logs.noPeerLogsAvailable')}
             </Text>
           </View>
         ) : (
@@ -346,9 +354,9 @@ export default function LogsScreen() {
                   {formatTimestamp(log.id)}
                 </Text>
               </View>
-              <Text style={[styles.logMessage, { color: colors.text }]}>Client: {log.client}</Text>
-              <Text style={[styles.logMessage, { color: colors.text }]}>Connection: {log.connection}</Text>
-              <Text style={[styles.logMessage, { color: colors.text }]}>Flags: {log.flags}</Text>
+              <Text style={[styles.logMessage, { color: colors.text }]}>{t('screens.logs.client', { value: log.client })}</Text>
+              <Text style={[styles.logMessage, { color: colors.text }]}>{t('screens.logs.connectionLabel', { value: log.connection })}</Text>
+              <Text style={[styles.logMessage, { color: colors.text }]}>{t('screens.logs.flags', { value: log.flags })}</Text>
             </View>
           ))
         )}

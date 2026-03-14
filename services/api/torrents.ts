@@ -1,3 +1,10 @@
+/**
+ * torrents.ts — API wrapper for all qBittorrent /api/v2/torrents/* endpoints (CRUD, priorities, limits, trackers, files).
+ *
+ * Key exports: torrentsApi
+ * Known issues: None currently tracked.
+ */
+import { AxiosError } from 'axios';
 import { apiClient } from './client';
 import {
   TorrentInfo,
@@ -8,7 +15,7 @@ import {
   TorrentPieceState,
   TorrentPieceHash,
   FilePriority,
-} from '../../types/api';
+} from '@/types/api';
 
 const API_VERSION = 'v2';
 
@@ -26,7 +33,7 @@ export const torrentsApi = {
     offset?: number,
     hashes?: string[]
   ): Promise<TorrentInfo[]> {
-    const params: Record<string, any> = {};
+    const params: Record<string, string | number | boolean> = {};
 
     if (filter) params.filter = filter;
     if (category) params.category = category;
@@ -40,7 +47,7 @@ export const torrentsApi = {
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/info`, params);
     
     if (Array.isArray(response)) {
-      return response;
+      return response as TorrentInfo[];
     }
     
     return [];
@@ -50,7 +57,7 @@ export const torrentsApi = {
    * Get torrent generic properties
    */
   async getTorrentProperties(hash: string): Promise<TorrentProperties> {
-    return await apiClient.get(`/api/${API_VERSION}/torrents/properties`, { hash });
+    return await apiClient.get(`/api/${API_VERSION}/torrents/properties`, { hash }) as TorrentProperties;
   },
 
   /**
@@ -58,7 +65,7 @@ export const torrentsApi = {
    */
   async getTorrentTrackers(hash: string): Promise<Tracker[]> {
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/trackers`, { hash });
-    return Array.isArray(response) ? response : [];
+    return Array.isArray(response) ? (response as Tracker[]) : [];
   },
 
   /**
@@ -66,33 +73,33 @@ export const torrentsApi = {
    */
   async getTorrentWebSeeds(hash: string): Promise<WebSeed[]> {
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/webseeds`, { hash });
-    return Array.isArray(response) ? response : [];
+    return Array.isArray(response) ? (response as WebSeed[]) : [];
   },
 
   /**
    * Get torrent contents (files)
    */
   async getTorrentContents(hash: string, indexes?: number[]): Promise<TorrentFile[]> {
-    const params: Record<string, any> = { hash };
+    const params: Record<string, string | number | boolean> = { hash };
     if (indexes && indexes.length > 0) {
       params.indexes = indexes.join('|');
     }
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/files`, params);
-    return Array.isArray(response) ? response : [];
+    return Array.isArray(response) ? (response as TorrentFile[]) : [];
   },
 
   /**
    * Get torrent pieces' states
    */
   async getTorrentPiecesStates(hash: string): Promise<TorrentPieceState> {
-    return await apiClient.get(`/api/${API_VERSION}/torrents/pieceStates`, { hash });
+    return await apiClient.get(`/api/${API_VERSION}/torrents/pieceStates`, { hash }) as TorrentPieceState;
   },
 
   /**
    * Get torrent pieces' hashes
    */
   async getTorrentPiecesHashes(hash: string): Promise<TorrentPieceHash> {
-    return await apiClient.get(`/api/${API_VERSION}/torrents/pieceHashes`, { hash });
+    return await apiClient.get(`/api/${API_VERSION}/torrents/pieceHashes`, { hash }) as TorrentPieceHash;
   },
 
   /**
@@ -105,13 +112,15 @@ export const torrentsApi = {
         hashes: hashString,
       });
       // console.log('Pause response:', response);
-    } catch (error: any) {
-      console.error('Pause API error:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url,
-      });
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        console.error('Pause API error:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          url: error.config?.url,
+        });
+      }
       throw error;
     }
   },
@@ -125,13 +134,15 @@ export const torrentsApi = {
       const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/start`, {
         hashes: hashString,
       });
-    } catch (error: any) {
-      console.error('Resume API error:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url,
-      });
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        console.error('Resume API error:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          url: error.config?.url,
+        });
+      }
       throw error;
     }
   },
@@ -265,11 +276,12 @@ export const torrentsApi = {
     const formData = new FormData();
     
     // Add the torrent file
+    // @ts-expect-error React Native FormData accepts { uri, type, name } objects for file uploads
     formData.append('torrents', {
       uri: file.uri,
       type: file.type || 'application/x-bittorrent',
       name: file.name,
-    } as any);
+    });
 
     if (options) {
       if (options.savepath) formData.append('savepath', options.savepath);
@@ -408,7 +420,7 @@ export const torrentsApi = {
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/downloadLimit`, {
       hashes: hashes.join('|'),
     });
-    return response || {};
+    return (response as { [hash: string]: number }) || {};
   },
 
   /**
@@ -429,7 +441,7 @@ export const torrentsApi = {
     ratioLimit?: number,
     seedingTimeLimit?: number
   ): Promise<void> {
-    const params: Record<string, any> = {
+    const params: Record<string, string | number | boolean> = {
       hashes: hashes.join('|'),
     };
     if (ratioLimit !== undefined) {
@@ -448,7 +460,7 @@ export const torrentsApi = {
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/uploadLimit`, {
       hashes: hashes.join('|'),
     });
-    return response || {};
+    return (response as { [hash: string]: number }) || {};
   },
 
   /**

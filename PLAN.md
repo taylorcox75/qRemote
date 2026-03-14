@@ -1,0 +1,1518 @@
+# qRemote v3 — Master Plan
+
+> Single source of truth for all codebase improvements, UI redesign, and restructuring.
+> Organized into parallelizable work streams for AI agent execution.
+>
+> **Codebase:** ~23,000 LOC · 70+ source files · Expo SDK 54 · React Native 0.81 · TypeScript (strict)
+
+---
+
+## How to Use This Document
+
+This plan is organized into **three phases** executed in order. Within each phase, work is broken into **independent tasks** that can be assigned to parallel agents. Each task includes:
+
+- **Files to read** before starting
+- **Files to modify** (the blast radius)
+- **Acceptance criteria** (how to verify the task is done)
+- **Risks** (things that will break if you're not careful)
+
+**Golden rule:** Every task should be independently testable and independently revertible. Never combine a visual change with a structural change in the same commit. The app must build and run at every commit.
+
+### Task Dependencies
+
+Most Phase 1 tasks are independent and can run in parallel, with these constraints:
+- **1.6** must complete before **1.8** (`tests/utils/torrent-state.test.ts` depends on extracted utilities)
+- **1.7** should run after structural edits in the same files to avoid merge conflicts
+
+Phase 2 tasks have ordering constraints:
+- **2.1** (design system) must complete before 2.2–2.7 (they use updated constants)
+- **2.2** (TorrentCard) must complete before 2.4 (swipe actions) and 2.5 (FAB removal), because 2.2 creates `useTorrentActions.ts` and modifies `index.tsx`
+- **2.3** (torrent detail), **2.6** (transfer), **2.7** (settings) can run in parallel after 2.1
+- **2.4** and **2.5** can run in parallel after 2.2
+
+Phase 3 tasks are sequential (each builds on the prior).
+
+### Import Convention for New Code
+
+After Task 1.3 (path aliases), all **newly created files and new imports** must use `@/` aliases. Do NOT use relative `../` paths in new code. Task 3.1 migrates old imports later, but new code should be clean from the start.
+
+### Naming Conventions
+
+- **`app/(tabs)/`** — The parentheses are an Expo Router framework requirement. `(tabs)` is a "route group" — the parens tell Expo Router this folder is a layout group that won't appear in the URL. The parens **cannot be removed** without breaking routing. The name inside can change (e.g. `(main)`) but the syntax is mandatory.
+- **Test directories** — Use `tests/` at the repo root, not `__tests__/` colocated. Keep tests organized by module: `tests/utils/`, `tests/services/`, etc.
+- **Files** — PascalCase for components (`TorrentCard.tsx`), camelCase for utilities and hooks (`formatSpeed.ts`, `useTorrentActions.ts`), kebab-case for services (`server-manager.ts`). Match whatever convention the file already uses.
+
+---
+
+## Phase 1: AI & Developer Infrastructure ✅ COMPLETE
+
+> Make the codebase faster and safer for AI agents to work with.
+> These tasks have ZERO user-facing impact and should not break anything.
+
+---
+
+### Task 1.1 — Create AGENTS.md
+
+**Read first:** `README.md`, `app/_layout.tsx`, `tsconfig.json`, `app.config.js`, `package.json`
+
+**Create:** `AGENTS.md` at repo root with this content:
+
+```markdown
+# AGENTS.md
+
+## Project Overview
+qRemote is a React Native (Expo SDK 54) mobile app for remotely controlling
+qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
+
+## Dev Commands
+- `npm start` — Start Expo dev server (Expo Go)
+- `npm run ios` — iOS simulator
+- `npm run android` — Android emulator
+- No test runner configured yet (adding tests is a separate task)
+
+## Architecture
+- **Routing:** Expo Router file-based routing in `app/`. The `(tabs)` directory uses parentheses because Expo Router requires this syntax for route groups — it is a framework convention, not a naming choice. The parens cannot be removed.
+- **State:** React Context (ThemeContext, ServerContext, TorrentContext, TransferContext, ToastContext)
+- **Data sync:** Polling-based, 2-3s interval, rid-based incremental sync for torrents
+- **Storage:** AsyncStorage for preferences, SecureStore for passwords
+- **API:** Thin wrappers in `services/api/` over a singleton axios-based `apiClient`
+- **Styling:** All colors via `useTheme()` → ThemeContext. Users can override any color via the color picker.
+- **i18n:** react-i18next with 5 locales (en, es, zh, fr, de). Many screens still have hardcoded English strings.
+
+## Critical Rules
+1. NEVER hardcode colors — always use `useTheme()` and `colors.*`
+2. Prefer `InputModal` over `Alert.prompt` for user text input. `Alert.prompt` is iOS-only, which is acceptable for the current iOS-first focus, but `InputModal` is already available and provides a consistent UX.
+3. NEVER rename keys in the `colors` object (ThemeContext) — users store color overrides keyed by these names in AsyncStorage. Renaming silently breaks their customizations.
+4. NEVER rename preference keys — there is no migration system. Old keys become orphaned.
+5. All user-facing strings must use i18n: `const { t } = useTranslation()` then `t('key')`.
+6. The preferences object is `Record<string, any>` — see `types/preferences.ts` for the typed version (create if missing).
+7. Color defaults use mixed formats (rgb, rgba, hex). The color picker only handles 6-digit hex. Changing a default from `rgba(...)` to `#hex` removes the alpha channel and changes visual appearance.
+
+## Dead Code (scheduled for deletion in Task 3.5 — do NOT modify, do NOT build on)
+- `App.tsx` — unused boilerplate (entry is `index.ts` → `expo-router/entry`)
+- `app/onboarding.tsx` — route exists but nothing navigates to it (no gate in _layout.tsx)
+- `app/torrent/add.tsx` — standalone screen, superseded by the modal in `app/(tabs)/index.tsx`
+- `hooks/useDynamicColors.ts` — placeholder, always returns null
+- `components/DraggableTorrentList.tsx`, `SwipeableTorrentCard.tsx`, `ExpandableTorrentCard.tsx`, `SharedTransitionCard.tsx`, `AnimatedTorrentCard.tsx`, `ContextualFAB.tsx`, `GradientCard.tsx`, `HealthRing.tsx`, `AnimatedStateIcon.tsx` — none imported by any live screen
+- `apiTimeout` in `services/api/client.ts` — stored but never used
+- `csrfToken` in `services/api/client.ts` — captured but never sent
+
+## Known Bugs
+- `app/_layout.tsx:32` — `backgroundColor: 'colors.r'` is a string literal, should be `colors.background`
+- `components/Confetti.tsx` — `useRef` called inside `Array.from` loop (Rules of Hooks violation)
+- `components/ExpandableTorrentCard.tsx:173-178` — Pause button has no `onPress` handler
+- `app.config.js` — `usesCleartextTraffic: 'true'` should be boolean `true`
+- `app.config.js` — App name has trailing space: `'qRemote '`
+- `Alert.prompt` used in 14 places (iOS-only — acceptable for iOS-first, but Task 1.5 replaces with InputModal for consistency): `TorrentCard.tsx` (1), `torrent/[hash].tsx` (7), `TorrentDetails.tsx` (6)
+- `ActionSheetIOS` in `manage-trackers.tsx` — the `showTrackerMenu` function is dead code (defined but never called from JSX); clean up in Task 3.5
+- `isRecoveringFromBackground` in `TorrentContext.tsx` — exposed as ref value, doesn't trigger re-renders (should be state like TransferContext)
+- `react-native-gesture-handler` imported in 1 component (`SwipeableTorrentCard.tsx`) but NOT in package.json
+
+## Naming Conventions
+- Components: PascalCase (`TorrentCard.tsx`)
+- Utilities/hooks: camelCase (`formatSpeed.ts`, `useTorrentActions.ts`)
+- Services: kebab-case (`server-manager.ts`, `color-theme-manager.ts`)
+- Tests: `tests/` at repo root, organized by module (`tests/utils/`, `tests/services/`). NOT `__tests__/`.
+- Route groups: `(groupname)` with parentheses is Expo Router syntax, not a naming choice.
+- Dynamic routes: `[param].tsx` with square brackets is Expo Router syntax for URL parameters (like `/torrent/:hash`). The brackets cannot be removed. The name inside becomes the param key in `useLocalSearchParams()`.
+- Layout files: `_layout.tsx` with the underscore prefix is Expo Router syntax for layout routes. Cannot be renamed.
+
+## Cursor Cloud Specific Instructions
+- This is an iOS-first app. iOS-only APIs (`ActionSheetIOS`, `Alert.prompt`, etc.) are acceptable. Android parity is a future concern.
+- `expo-*` packages are approved for use even if they require `expo-dev-client` (e.g. `expo-symbols`). Third-party native modules (`react-native-ios-context-menu`, `lottie-react-native`) still require explicit approval before adding.
+- The app cannot be run in this cloud environment (requires Expo Go / dev client on a device/simulator). Verify changes compile with `npx tsc --noEmit`.
+```
+
+**Acceptance:** File exists, contains all sections above. Agent sessions that read this file should not need to explore the codebase to understand architecture or conventions.
+
+---
+
+### Task 1.2 — Type the Preferences Object
+
+**Read first:** `services/storage.ts`, `types/api.ts`, then grep all files for `getPreferences\(\)` and `savePreferences` to find every key used.
+
+**Create:** `types/preferences.ts`
+
+The file must:
+1. Define an `AppPreferences` interface with every preference key currently used in the codebase, with correct types
+2. Export `DEFAULT_PREFERENCES` with sensible defaults matching current behavior
+3. Types should cover: theme, customColors, defaultSortBy, defaultSortDirection, defaultFilter, cardViewMode, pauseOnAdd, defaultSavePath, defaultPriority, toastDuration, hapticFeedback, autoConnect, connectionTimeout, apiTimeout, retryAttempts, debugMode, refreshInterval, hasCompletedOnboarding, and any others found by grepping
+
+Note: `cardViewMode` is transitional. If Task 2.2 removes multi-view UI, keep the key typed as deprecated for backward compatibility unless an explicit migration task is added.
+
+**Modify:** `services/storage.ts` — change `getPreferences` return type to `Promise<Partial<AppPreferences>>` and `savePreferences` param to `Partial<AppPreferences>`. Import from `types/preferences.ts`.
+
+**Risks:** The `as Record<string, any>` cast must be preserved at the AsyncStorage boundary (JSON.parse returns any). The typed interface is a layer on top, not a runtime guarantee.
+
+**Acceptance:** `npx tsc --noEmit` passes. Every call to `getPreferences()` and `savePreferences()` still compiles.
+
+---
+
+### Task 1.3 — Add Path Aliases
+
+**Read first:** `tsconfig.json`, `babel.config.js`, `package.json`
+
+**Modify:** `tsconfig.json` — add `baseUrl` and `paths`:
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["./*"] }
+  }
+}
+```
+
+**Modify:** `babel.config.js` — add `babel-plugin-module-resolver`:
+```javascript
+plugins: [
+  ['module-resolver', { root: ['.'], alias: { '@': '.' } }],
+  'react-native-reanimated/plugin',
+]
+```
+
+**Install:** `npm install --save-dev babel-plugin-module-resolver`
+
+**Do NOT** convert existing imports yet. This task only adds the alias infrastructure. A separate task will migrate imports.
+
+**Acceptance:** `npx tsc --noEmit` passes. A test import using `@/utils/format` resolves correctly.
+
+---
+
+### Task 1.4 — Fix All Critical Bugs
+
+**These are small, isolated fixes. Each can be a separate commit.**
+
+**1.4a** — `app/_layout.tsx:32`: Change `backgroundColor: 'colors.r'` to `backgroundColor: colors.background`. Read the file first — the fix goes inside the `StackNavigator` component which has access to `useTheme()`.
+
+**1.4b** — `app.config.js`: Change `usesCleartextTraffic: 'true'` to `usesCleartextTraffic: true` (boolean). Remove trailing space from app name `'qRemote '` → `'qRemote'`.
+
+**1.4c** — ~~`utils/haptics.ts`: Remove the `Platform.OS === 'ios'` guard.~~ **Removed from scope.** This is an iOS-first app; the guard is intentional. Android haptic feel is a separate concern if/when Android support is added.
+
+**1.4d** — `context/TorrentContext.tsx`: Change `isRecoveringFromBackground` from a ref to state (like `TransferContext` does). Find where it's exposed in the context value and ensure consumers see updates.
+
+**1.4e** — `components/Confetti.tsx`: The `useRef` calls inside `Array.from` violate Rules of Hooks (hooks cannot be called in loops). Fix by creating the refs array at the top level of the component using a single `useRef` that holds an array, or by using `useMemo` to create the animated values once.
+
+**1.4f** — ~~`app/torrent/manage-trackers.tsx`: Replace `ActionSheetIOS` with a cross-platform solution.~~ **Removed from scope.** This is an iOS-first app; `ActionSheetIOS` is acceptable. Additionally, the `showTrackerMenu` function that uses it is **dead code** — defined but never called from the rendered JSX. The tracker rows use explicit buttons for copy/edit/delete. Clean up `showTrackerMenu` and the `ActionSheetIOS` import in Task 3.5 instead.
+
+**1.4g** — `react-native-gesture-handler`: Run `npm install react-native-gesture-handler` to add it to `package.json`. It's currently imported in `SwipeableTorrentCard.tsx` (dead code) but NOT in `package.json` — it only works because it's a transitive dependency. (`DraggableTorrentList.tsx` does NOT import it directly.) Task 2.4 (swipe actions) needs it explicitly installed.
+
+**1.4h** — `package.json`: Move `@react-navigation/bottom-tabs` from `devDependencies` to `dependencies`. It is a runtime navigation package used by the tab layout — placing it in `devDependencies` can cause it to be excluded from production builds.
+
+**Risks for 1.4d:** Components that read `isRecoveringFromBackground` will now trigger re-renders when recovery state changes. This is correct behavior but could cause visual flicker if not handled. Test by reviewing all consumers (grep for `isRecoveringFromBackground`).
+
+**Acceptance:** Each fix compiles. No other files need to change for 1.4a-b, 1.4e, 1.4g-h. For 1.4d, verify all consumers still work.
+
+---
+
+### Task 1.5 — Replace Alert.prompt with InputModal (Android Fix)
+
+**Read first:** `components/InputModal.tsx` (understand its API), then every file using `Alert.prompt`.
+
+**Files to modify (13 callsites — skip TorrentCard.tsx, it's rewritten in Task 2.2):**
+- `app/torrent/[hash].tsx` — `handleSetDownloadLimit`, `handleSetUploadLimit`, `handleSetCategory`, `handleAddTags`, `handleRemoveTags`, `handleSetLocation`, `handleRenameTorrent` (7 callsites)
+- `components/TorrentDetails.tsx` — `handleAddCategory`, `handleShareLimit`, `handleSetLocation`, `handleRenameTorrent`, `handleAddPeers`, `handleRenameFile` (6 callsites — grep confirms lines 410, 474, 504, 539, 612, 1332)
+
+**Do NOT fix Alert.prompt in `TorrentCard.tsx`** — Task 2.2 will remove all action handlers from TorrentCard entirely. Fixing it here is wasted work that creates merge conflicts.
+
+**Pattern:** Each `Alert.prompt` becomes local state (`[modalVisible, setModalVisible]`, `[modalConfig, setModalConfig]`) plus an `<InputModal>` in the JSX. The modal's `onConfirm` callback runs the same logic that was in Alert.prompt's onPress.
+
+**Risks:**
+- `InputModal` validates non-empty trimmed value. Some prompts accept "0" for unlimited. **Before implementing**, verify that `InputModal` passes through zero/empty values. If it blocks empty input, add an `allowEmpty?: boolean` prop to `InputModal` first.
+- `handleSetDownloadLimit` needs `keyboardType="numeric"` on the InputModal.
+- Each file that gains an InputModal needs a new state variable. In `TorrentCard.tsx`, this state lives inside each card instance — OK for now, but note that FlashList migration (later task) will need to lift this out.
+
+**Acceptance:** `grep -r "Alert\.prompt" --include="*.tsx"` returns results ONLY in `components/TorrentCard.tsx` (deferred to Task 2.2) — zero results elsewhere. (14 total calls before this task: 7 in `[hash].tsx`, 6 in `TorrentDetails.tsx`, 1 in `TorrentCard.tsx`.) App compiles.
+
+---
+
+### Task 1.6 — Deduplicate Shared Utilities
+
+**Create:** `utils/server.ts` containing:
+- `avatarColor(name: string): string` — currently duplicated in `app/(tabs)/index.tsx` and `app/(tabs)/transfer.tsx`
+- `serverAddress(server: ServerConfig): string` — same duplication
+- `AVATAR_PALETTE` constant
+
+**Create:** `utils/torrent-state.ts` containing:
+- `getStateColor(state, progress, dlspeed, upspeed, colors): string` — exists in `TorrentCard.tsx`, `torrent/[hash].tsx`, and `ExpandableTorrentCard.tsx`, but implementations have diverged. Reconcile against all three before writing the canonical version.
+- `getStateLabel(state, progress, dlspeed, upspeed): string` — exists in `TorrentCard.tsx` (switch statement) and `torrent/[hash].tsx` (if/else). `ExpandableTorrentCard.tsx` only has inline color logic, no label function.
+
+**Modify:** `services/server-manager.ts` — extract `isNetworkError(error): boolean` helper (currently duplicated 3 times inline at lines 67, 98, 126).
+
+**Create:** `components/QuickConnectPanel.tsx` — the "not connected" server list UI with connect buttons, avatars, and error states. Currently duplicated (~100 lines of identical JSX) in both `app/(tabs)/index.tsx` and `app/(tabs)/transfer.tsx`. Extract into a shared component that takes `onConnect` and `onAddServer` callbacks. Use `t()` throughout — `transfer.tsx` has hardcoded English strings; do NOT copy them verbatim.
+
+**Modify:** Remove inline copies from all source files, replace with imports from the new utility files and shared components.
+
+**Risks:** `getStateColor` currently takes `colors` from `useTheme()` which is a hook — the utility must accept colors as a parameter, not call the hook itself. The three implementations have diverged — verify each before deduplicating and test with `tests/utils/torrent-state.test.ts` (Task 1.8).
+
+**Acceptance:** No duplicate `avatarColor`, `serverAddress`, `getStateColor`, `getStateLabel`, or `isNetworkError` functions remain. `grep` confirms each exists in exactly one file.
+
+---
+
+### Task 1.7 — Add File Headers to Complex Files
+
+**Scope:** Only files over 200 lines. Small, self-explanatory files (e.g. `FocusAwareStatusBar.tsx` at 21 lines) don't need headers. Dead files scheduled for deletion in Task 3.5 don't need headers — they're being deleted.
+
+**Files that need headers (over 200 lines):**
+- `app/(tabs)/index.tsx`, `app/(tabs)/settings.tsx`, `app/(tabs)/transfer.tsx`, `app/(tabs)/logs.tsx`
+- `app/torrent/[hash].tsx`, `app/torrent/files.tsx`, `app/torrent/manage-trackers.tsx`
+- `app/server/add.tsx`, `app/server/[id].tsx`
+- `components/TorrentCard.tsx`, `components/TorrentDetails.tsx`, `components/SuperDebugPanel.tsx`, `components/ColorPicker.tsx`, `components/LogViewer.tsx`, `components/OptionPicker.tsx`
+- `context/TorrentContext.tsx`, `context/TransferContext.tsx`, `context/ServerContext.tsx`
+- `services/api/client.ts`, `services/api/torrents.ts`, `services/server-manager.ts`
+- `types/api.ts`
+
+**Pattern:** Add a JSDoc block at line 1:
+```typescript
+/**
+ * FileName — One-line description of what this file does.
+ *
+ * Key exports: list main exports
+ * Known issues: any bugs or limitations (reference AGENTS.md known bugs)
+ */
+```
+
+**Risks:** None. Comments don't affect behavior.
+
+**Acceptance:** All files over 200 lines have a descriptive header comment.
+
+---
+
+### Task 1.8 — Add Unit Tests for Core Utilities
+
+**Install:** `npm install --save-dev jest @types/jest ts-jest`
+
+**Create:** `jest.config.js` with ts-jest preset for React Native. Configure `roots: ['<rootDir>/tests']`.
+
+**Create test files (all under `tests/` at repo root):**
+- `tests/utils/format.test.ts` — test `formatSize`, `formatSpeed`, `formatTime`, `formatDate`, `formatRatio`, `formatPercent` with edge cases (0, null, undefined, NaN, negative, very large numbers)
+- `tests/utils/torrent-state.test.ts` — test `getStateColor` and `getStateLabel` with a truth table covering all `TorrentState` values (after Task 1.6 extracts them)
+- `tests/services/color-theme-manager.test.ts` — test `mergeColors`, `hexToRgba`, `rgbaToHex`
+
+**Acceptance:** `npx jest` runs and all tests pass. Tests cover the highest-risk pure functions.
+
+---
+
+### Task 1.9 — Add ESLint and Prettier
+
+**Install:** `npm install --save-dev eslint prettier @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-react eslint-plugin-react-hooks eslint-config-prettier`
+
+**Create:** `.eslintrc.js` with TypeScript, React, React Hooks rules. Set `no-explicit-any: warn` (not error — too many existing violations).
+
+**Create:** `.prettierrc` with single quotes, trailing commas, 100 print width, 2-space indent.
+
+**Add scripts to `package.json`:**
+```json
+"lint": "eslint . --ext .ts,.tsx",
+"format": "prettier --write '**/*.{ts,tsx,js,json}'"
+```
+
+**Do NOT** fix all existing lint warnings in this task. Only configure the tools. A separate pass can fix warnings incrementally.
+
+**Acceptance:** `npx eslint . --ext .ts,.tsx` runs without errors (warnings OK). `npx prettier --check .` runs.
+
+---
+
+## Phase 2: UI Redesign
+
+> Transform the app from a utility to a premium iOS experience.
+> Depends on Phase 1 being complete (especially AGENTS.md, path aliases, typed preferences, Alert.prompt fix).
+
+---
+
+### Task 2.1 — Update Design System Constants
+
+**Read first:** `context/ThemeContext.tsx`, `constants/spacing.ts`, `constants/typography.ts`, `constants/shadows.ts`, `constants/buttons.ts`, `services/color-theme-manager.ts`, `app/settings/theme.tsx`
+
+**Modify `context/ThemeContext.tsx`:**
+- Update `darkColors` defaults to cleaner values. Keep ALL 11 state color keys. Map multiple states to fewer visual colors in the defaults (e.g. `stateMetadata`, `stateChecking`, `stateQueued` all default to the same orange/gray).
+- Dark mode background: change from `rgb(15, 15, 15)` to `#000000` (true black for OLED).
+- Fix **all** `rgb()` calls that include an alpha parameter — they are invalid CSS and should be `rgba()`. Scope is wider than just `rgb(0, 0, 0,1)`: `ThemeContext.tsx` has at least `error: 'rgb(255, 13, 0,0.5)'`, `success: 'rgb(4, 134, 37,0.5)'`, `text: 'rgb(0, 0, 0,1)'`, and others. Run `grep -r "rgb(" context/ThemeContext.tsx` to get the full list before editing.
+- Update surface colors to `#1C1C1E` / `#2C2C2E` tier system.
+
+**Modify `constants/typography.ts`:**
+- Add `largeTitle` (34pt Bold), `headline` (17pt Semibold).
+- Increase torrent name size: update the convention from 15pt to 17pt Semibold.
+
+**Modify `constants/shadows.ts`:**
+- Remove or zero-out all dark mode shadows (they're invisible on dark backgrounds anyway).
+- Simplify light mode to a single barely-visible card shadow.
+
+**Risks:**
+- Changing dark mode background from `rgb(15,15,15)` to `#000000` is a visual change every user will see. Users with custom background colors won't be affected (overrides take precedence).
+- The color picker in `settings/theme.tsx` uses `colorThemeManager.rgbaToHex()` to display colors. If you change a default from `rgb(...)` to hex, the display should still work — but test it.
+- **Do NOT remove any color keys from the `ColorTheme` interface.** Only change default values.
+
+**Acceptance:** Both themes render correctly. Color picker still works. `npx tsc --noEmit` passes.
+
+---
+
+### Task 2.2 — Redesign TorrentCard
+
+**Read first:** `components/TorrentCard.tsx`, `app/(tabs)/index.tsx` (how it's used), `utils/torrent-state.ts` (after Task 1.6)
+
+**Modify `components/TorrentCard.tsx`:**
+
+New 4-line card layout:
+```
+  Torrent Name Here                          (17pt Semibold)
+  ● Downloading · 8.4 MB/s ↓                (13pt Regular, secondary color)
+  ████████████████░░░░░░░░  72% · 23m left   (3px progress bar + footnote)
+  3.2 / 4.4 GB                               (13pt, tertiary)
+```
+
+Changes:
+- Remove the 10-value stat grid (expanded mode). Keep compact stats as the only mode.
+- Remove the inline play/pause circle button (will be replaced by swipe in Task 2.4).
+- Replace the solid-color state badge with a small colored dot (4-6px) + text label in secondary color.
+- Remove the left border color stripe.
+- Wrap the component in `React.memo` with a custom comparator.
+- Remove all action handlers from TorrentCard — move them to `useTorrentActions` hook.
+- **Keep the context menu, but simplify it.** Replace the custom `Modal` + `measureInWindow` positioning logic (~200 lines) with a simple `Modal` overlay that doesn't do manual position calculation. Use a centered or bottom-anchored action list instead. Do NOT remove the menu entirely — it's the only way users access 9 actions. A native `react-native-ios-context-menu` could be used (requires explicit approval as a third-party native module), but the `ActionMenu.tsx` approach keeps things simpler.
+
+**The menu replacement approach:** Create a new `components/ActionMenu.tsx` — a reusable bottom-anchored modal with a list of labeled actions. TorrentCard receives an `onLongPress` prop that the parent list uses to open this shared menu (one menu instance at the list level, not per-card). This eliminates the per-card menu state that causes problems with list recycling.
+
+**Create:** `hooks/useTorrentActions.ts` — extract all action handlers from TorrentCard into a reusable hook that takes a `torrent` parameter and returns action callbacks + an `actionMenuItems` array for the menu.
+
+**Create:** `components/ActionMenu.tsx` — a simple, reusable modal that takes `visible`, `onClose`, and `items: { label, icon, onPress, destructive? }[]`. Renders as a bottom-anchored list. No manual positioning math. No `measureInWindow`. This replaces the 200-line custom popup.
+
+**Modify `app/(tabs)/index.tsx`:**
+- Add single shared `ActionMenu` instance at the list level (not per-card)
+- State: `selectedTorrent` for the menu target
+- `onLongPress` on each card sets `selectedTorrent` and opens the menu
+- Action handlers come from `useTorrentActions(selectedTorrent)` hook
+- Remove `viewMode` UI state (one mode only now). Keep reading `cardViewMode` as a deprecated compatibility key until preferences migration is explicitly scheduled.
+
+**Risks:**
+- The custom menu currently uses 9 different actions. All must remain accessible via the new ActionMenu. Don't delete functionality — move it.
+- `TorrentCard` is imported in 5+ files. All must still compile after the props change. New props: `torrent`, `onPress`, `onLongPress` (replaces internal menu).
+- `React.memo` comparator must include all props that affect rendering. Missing a field = stale display.
+- InputModal callsites that were in TorrentCard (Alert.prompt for download limit) move into `useTorrentActions`. These must use InputModal, not Alert.prompt.
+
+**Note on scope:** This task is large. If running parallel agents, consider splitting: **2.2a** (create `useTorrentActions.ts` + `ActionMenu.tsx`) → **2.2b** (visual redesign of `TorrentCard.tsx`) → **2.2c** (update `app/(tabs)/index.tsx`). Each sub-task can then run sequentially with smaller blast radius.
+
+**Acceptance:** Cards render with new layout. Long-press opens the ActionMenu with all 9 actions. No stat grid. No per-card menu state. App compiles.
+
+---
+
+### Task 2.3 — Redesign Torrent Detail
+
+**Read first:** `app/torrent/[hash].tsx`, `components/TorrentDetails.tsx`
+
+Replace the "Quick Tools" (4 colored buttons) + "Advanced" (16 rainbow buttons) layout with grouped inset list sections:
+
+**Sections:** Hero (name, state, progress), Actions (Pause/Delete/Recheck — 3 max), General, Transfer, Network, Content (Files/Trackers as navigation rows), Advanced (Priority picker, toggles for Sequential/First-Last/Super Seed/Force Start, Rename/Move as input rows), Dates.
+
+**Pattern for each row type:**
+- **Static info:** Label left, value right, no interaction
+- **Toggle:** Label left, Switch right, calls API on toggle
+- **Picker:** Label left, current value + `›` right, opens OptionPicker on tap
+- **Input:** Label left, current value + `›` right, opens InputModal on tap
+- **Navigation:** Label left, summary + `›` right, calls `router.push()` on tap
+
+**Risks:**
+- The 16 buttons all call different API endpoints. Every endpoint must remain accessible. Map each button to a row type:
+  - Force Start → toggle
+  - Super Seed → toggle
+  - Sequential DL → toggle
+  - First/Last Priority → toggle
+  - ↑Priority / ↓Priority / Max Priority / Min Priority → single "Priority" picker row with options
+  - DL Limit / UL Limit → input rows
+  - Edit Trackers → navigation row
+  - Set Category → picker row
+  - Add Tags / Remove Tags → input rows
+  - Set Location → input row
+  - Rename → input row
+- All InputModal usage must use the component (not Alert.prompt — Task 1.5 prerequisite).
+
+**Note:** `TorrentDetails.tsx` is ~2,085 lines — larger than `settings.tsx`. This task redesigns its UI but does not split the file structurally. Extracting `TorrentInfoSection`, `TorrentActionsSection`, etc. into sub-components is a follow-up candidate (similar to how Task 2.7 decomposes settings), but is out of scope here.
+
+**Acceptance:** All 16 actions are still accessible. Zero colored button grids remain. Detail screen uses grouped inset sections.
+
+---
+
+### Task 2.4 — Add Swipe Actions to Torrent List
+
+**Read first:** `app/(tabs)/index.tsx`, `components/TorrentCard.tsx`, `hooks/useTorrentActions.ts` (from Task 2.2)
+
+**Install:** Verify `react-native-gesture-handler` is in `package.json`. If not, `npm install react-native-gesture-handler`.
+
+**Implement:** Wrap each torrent card in a swipeable container (can use `Swipeable` from `react-native-gesture-handler`). The existing `SwipeableTorrentCard.tsx` is dead code but can be referenced for patterns.
+
+- **Swipe left (short):** Pause/Resume
+- **Swipe left (full):** Delete (with confirmation alert)
+- **Swipe right (short):** Force start or priority
+
+**Risks:**
+- `react-native-gesture-handler` may not be in `package.json` (it's imported in dead code but might be a transitive dependency). Install it explicitly.
+- Swipe actions need the same optimistic update + error revert pattern as the old play/pause button.
+- Haptic feedback should fire at the swipe threshold.
+
+**Acceptance:** Swipe left on a card shows pause/resume action. Swiping triggers the API call. Haptic fires at threshold.
+
+---
+
+### Task 2.5 — Replace FAB with Nav Bar Button
+
+**Read first:** `app/(tabs)/index.tsx` (the FAB), `app/(tabs)/_layout.tsx` (tab layout)
+
+**Modify `app/(tabs)/index.tsx`:**
+- Remove the `Animated.View` FAB and all FAB-related animation code (fabScale, isFabVisible, etc.)
+- Remove tab bar hide/show logic on scroll (simplify dramatically)
+- The "+" action should be triggered via `navigation.setOptions` with a `headerRight` button, OR via a button in the filter/search bar area (since `headerShown: false`)
+
+**Since `headerShown: false`**, the cleanest approach is a "+" button in the top-right of the custom header area (next to the sort button).
+
+**Modify `app/(tabs)/_layout.tsx`:** If using native header, set `headerShown: true` and configure `headerRight`.
+
+**Risks:**
+- The FAB animation code is intertwined with the header hide/show and tab bar hide/show logic. Removing it cleans up ~100 lines of scroll handling. Make sure pull-to-refresh still works.
+- The add-torrent modal is triggered by `setShowAddModal(true)`. This trigger just moves to a different button.
+
+**Acceptance:** No FAB visible. "+" button accessible in the header/toolbar area. Add torrent modal still opens.
+
+---
+
+### Task 2.6 — Redesign Transfer Screen
+
+**Read first:** `app/(tabs)/transfer.tsx`
+
+**Redesign into grouped inset sections:**
+1. Hero section: large speed numbers (34pt bold) + speed graph full width
+2. SPEED LIMITS: grouped list (Download Limit, Upload Limit, Alternative Speeds toggle). Tapping a limit row opens OptionPicker with presets + custom input.
+3. ACTIONS: grouped list (Resume All, Pause All, Force Start All). Power-user actions (Pause All DL, Pause All UL) behind a long-press or "More" row.
+4. THIS SESSION / ALL TIME / CONNECTION: grouped list sections with static info rows.
+
+**Remove:** The 6 colored square buttons, the chip grid for speed presets, the dashboard-style widget layout.
+
+**Risks:**
+- Quick-connect panel (when disconnected) is duplicated from `index.tsx`. After Task 1.6, it should be a shared component. If 1.6 isn't done yet, leave the duplication.
+- Speed limit presets currently shown as chips need a new UI (OptionPicker with checkmark for current selection).
+- "Force Start All" calls `torrentsApi.setForceStart` on all torrents — verify API call is preserved.
+
+**Acceptance:** Transfer screen uses grouped inset sections. No colored button grid. All functionality preserved.
+
+---
+
+### Task 2.7 — Redesign Settings (Sub-Screen Navigation)
+
+**Read first:** `app/(tabs)/settings.tsx` (1957 lines), `app/settings/theme.tsx`
+
+**This is the hardest UI task.** Break the 1957-line settings screen into sub-screens:
+
+1. **Top-level `settings.tsx`** (~200 lines): Connection status card + 6-8 navigation rows (Servers, Appearance, Torrent Defaults, Notifications, Advanced, What's New, About)
+2. **`app/settings/servers.tsx`** (new): Server list, add/edit/delete, auto-connect toggle
+3. **`app/settings/appearance.tsx`** (new): Theme toggle, refresh interval. Links to existing `settings/theme.tsx` for colors.
+4. **`app/settings/torrent-defaults.tsx`** (new): Default sort, filter, pause-on-add, save path, priority
+5. **`app/settings/notifications.tsx`** (new): Toast duration, haptic feedback
+6. **`app/settings/advanced.tsx`** (new): API timeout, retries, debug mode, logs, backup/restore, danger zone (shutdown)
+7. **`app/settings/whats-new.tsx`** (new): Release notes/changelog currently shown by inline modal
+8. **`app/settings/about.tsx`** (new): App version, build info, links/credits
+
+**Approach:** Extract one section at a time. After each extraction, the app must build and the settings screen must still work. Start with the simplest section (Appearance), end with the most complex (Servers — has the swipeable server list and quick-connect logic).
+
+**Routing requirement:** The new `app/settings/` sub-screens work automatically with Expo Router — they're resolved as routes under the root Stack. However, if you want a "Settings" header with a back button on each sub-screen, you may need to create `app/settings/_layout.tsx` with a nested Stack navigator. Test navigation first: push to `/settings/servers` from the settings tab and verify the back button works. If it doesn't, add the layout file.
+
+**Risks:**
+- Settings currently uses `useFocusEffect` to reload data. Each sub-screen needs its own focus handling.
+- Categories and tags sections depend on `isConnected` — only shown when connected. Handle this in the sub-screen.
+- `SwipeableServerItem` is defined inline in settings.tsx. Extract it as a component.
+- The "What's New" content is currently inline. Move it to `app/settings/whats-new.tsx` and keep behavior equivalent.
+- The existing `app/settings/theme.tsx` already works as a route — use it as a reference for how settings sub-screens should be structured.
+
+**Acceptance:** Top-level settings shows ~8 rows. Each row navigates to a sub-screen. All settings still functional. `settings.tsx` is under 300 lines.
+
+---
+
+## Post-Refactor UI Fixes ✅ COMPLETE
+
+> Six UI issues discovered after Phase 2 redesign. All implemented and verified via `npx tsc --noEmit` and `npx jest`.
+> On-device testing against a live qBittorrent server is still needed — see [Testing Checklist](#testing-checklist) at the bottom of this section.
+
+---
+
+#### Status — All 6 Issues Implemented
+
+All issues below have been implemented and verified via `npx tsc --noEmit` (compiles clean) and `npx jest` (120/120 tests pass). Testing on-device against a live qBittorrent server is still needed — see [Testing Checklist](#testing-checklist) at the bottom.
+
+| Issue | Status | Files Changed |
+|-----|------|---------|
+| Issue 1 — Alt Speed Limits | ✅ Done | `types/api.ts`, `context/TransferContext.tsx`, `app/(tabs)/transfer.tsx` |
+| Issue 2 — Pause/Resume Button | ✅ Done | `components/TorrentCard.tsx`, `app/(tabs)/index.tsx` |
+| Issue 3 — Progress Bar Fill | ✅ Done | `components/TorrentCard.tsx` |
+| Issue 4 — Pause-on-Add Desync | ✅ Done | `app/settings/torrent-defaults.tsx`, `app/(tabs)/index.tsx` |
+| Issue 5 — Expanded Card View | ✅ Done | `components/TorrentCard.tsx`, `app/(tabs)/index.tsx` |
+| Issue 6 — Search Bar Layout | ✅ Done | `app/(tabs)/index.tsx` |
+
+#### Remaining work for next agent
+
+- **On-device testing** — All items in the [Testing Checklist](#testing-checklist) below need manual verification on a device connected to a live qBittorrent server. The cloud environment cannot run Expo Go.
+- **i18n gap** — The `ALT` badge text in `app/(tabs)/transfer.tsx` (lines ~583, ~608) is hardcoded English. Should use `t('common.alt')` or similar key. Minor — it's a technical abbreviation, but other labels are i18n'd.
+- **`DetailRow` labels hardcoded** — In `components/TorrentCard.tsx`, the expanded card `DetailRow` labels (Seeds, Peers, Ratio, Uploaded, Category, Tags, Tracker, Added, Active, Path) are hardcoded English. They should use `t()` keys for consistency with the rest of the app.
+
+---
+
+### Issue 1 — Alt Speed: Show Active Limits in Transfer Screen
+
+#### Root cause
+
+`transfer.tsx` speed limit rows unconditionally read `transferInfo.dl_rate_limit` / `transferInfo.up_rate_limit` from `GlobalTransferInfo`. Alt speed limits (`alt_dl_limit`, `alt_up_limit`) are not in `GlobalTransferInfo` at all — they live in `app/preferences` and are never fetched. `TransferContext.fetchTransferInfo()` only calls `getGlobalTransferInfo()` + `getAlternativeSpeedLimitsState()`.
+
+#### Step 1 — Extend `GlobalTransferInfo` in `types/api.ts`
+
+```ts
+// Before
+export interface GlobalTransferInfo {
+  connection_status: string;
+  dht_nodes: number;
+  dl_info_data: number;
+  dl_info_speed: number;
+  dl_rate_limit: number;
+  up_info_data: number;
+  up_info_speed: number;
+  up_rate_limit: number;
+  use_alt_speed_limits?: boolean;
+}
+
+// After — add alt limit fields
+export interface GlobalTransferInfo {
+  connection_status: string;
+  dht_nodes: number;
+  dl_info_data: number;
+  dl_info_speed: number;
+  dl_rate_limit: number;
+  up_info_data: number;
+  up_info_speed: number;
+  up_rate_limit: number;
+  use_alt_speed_limits?: boolean;
+  alt_dl_limit?: number;   // bytes/s — fetched from app/preferences, converted from kB/s
+  alt_up_limit?: number;   // bytes/s
+}
+```
+
+#### Step 2 — Fetch alt limits in `context/TransferContext.tsx`
+
+`fetchTransferInfo()` currently runs two parallel calls. Add a third:
+
+```ts
+// Before
+async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
+  const [info, altSpeedLimitsState] = await Promise.all([
+    transferApi.getGlobalTransferInfo(),
+    transferApi.getAlternativeSpeedLimitsState().catch(() => false),
+  ]);
+  return {
+    ...info,
+    use_alt_speed_limits: altSpeedLimitsState,
+  };
+}
+
+// After
+async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
+  const [info, altSpeedLimitsState, prefs] = await Promise.all([
+    transferApi.getGlobalTransferInfo(),
+    transferApi.getAlternativeSpeedLimitsState().catch(() => false),
+    applicationApi.getPreferences().catch(() => null),
+  ]);
+  const p = prefs as Record<string, unknown> | null;
+  return {
+    ...info,
+    use_alt_speed_limits: altSpeedLimitsState,
+    // Preferences returns kB/s; multiply by 1024 to normalize to bytes/s like dl_rate_limit
+    alt_dl_limit: p?.alt_dl_limit != null ? (p.alt_dl_limit as number) * 1024 : undefined,
+    alt_up_limit: p?.alt_up_limit != null ? (p.alt_up_limit as number) * 1024 : undefined,
+  };
+}
+```
+
+Add import at top of `TransferContext.tsx`:
+
+```ts
+import { applicationApi } from '@/services/api/application';
+```
+
+#### Step 3 — Update speed limit rows in `app/(tabs)/transfer.tsx`
+
+The download and upload limit rows (~lines 575–605) each have a `<Text>` that reads directly from `transferInfo`. Replace with conditional logic:
+
+```tsx
+// Before — download limit value Text
+{transferInfo.dl_rate_limit > 0
+  ? formatSpeed(transferInfo.dl_rate_limit)
+  : t('common.unlimited')}
+
+// After
+{(() => {
+  const limit = isAltSpeedEnabled
+    ? (transferInfo.alt_dl_limit ?? 0)
+    : transferInfo.dl_rate_limit;
+  return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
+})()}
+```
+
+Same pattern for the upload row (`up_rate_limit` → `alt_up_limit`).
+
+Disable both rows while alt speed is active:
+
+```tsx
+// Before
+<TouchableOpacity style={styles.row} onPress={() => setDlPickerVisible(true)} disabled={settingLimit}>
+
+// After
+<TouchableOpacity style={styles.row} onPress={() => setDlPickerVisible(true)} disabled={settingLimit || isAltSpeedEnabled}>
+```
+
+Add an `ALT` badge in `rowTrailing` when alt is active:
+
+```tsx
+<View style={styles.rowTrailing}>
+  {isAltSpeedEnabled && (
+    <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
+  )}
+  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+    {/* effective limit value */}
+  </Text>
+  <Ionicons
+    name="chevron-forward"
+    size={16}
+    color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
+  />
+</View>
+```
+
+Add to `StyleSheet.create` in `transfer.tsx`:
+
+```ts
+altBadge: {
+  fontSize: 10,
+  fontWeight: '700',
+  letterSpacing: 0.5,
+  marginRight: 4,
+},
+```
+
+**Files:** `types/api.ts`, `context/TransferContext.tsx`, `app/(tabs)/transfer.tsx`
+
+---
+
+### Issue 2 — Pause/Resume Button on Torrent Card
+
+#### Root cause
+
+`TorrentCard` exposes only `onPress` / `onLongPress`. There is no inline action. A working `handleSwipePauseResume` already exists in `index.tsx` that calls `torrentsApi.pauseTorrents` / `resumeTorrents` — it just takes a `swipeableRef` arg that is irrelevant here.
+
+#### Step 1 — Add `onPauseResume` prop to `components/TorrentCard.tsx`
+
+```ts
+// Before
+interface TorrentCardProps {
+  torrent: TorrentInfo;
+  onPress: () => void;
+  onLongPress?: () => void;
+}
+
+// After
+interface TorrentCardProps {
+  torrent: TorrentInfo;
+  onPress: () => void;
+  onLongPress?: () => void;
+  onPauseResume?: () => void;
+}
+```
+
+Destructure in `TorrentCardInner`:
+
+```ts
+function TorrentCardInner({ torrent, onPress, onLongPress, onPauseResume }: TorrentCardProps)
+```
+
+#### Step 2 — Insert button in JSX
+
+Place at the far right of `statusRow`, after `statusText`:
+
+```tsx
+// Before — statusRow
+<View style={styles.statusRow}>
+  <View style={[styles.stateDot, { backgroundColor: stateColor }]} />
+  <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
+    {stateLabel}{speedText}
+  </Text>
+</View>
+
+// After
+<View style={styles.statusRow}>
+  <View style={[styles.stateDot, { backgroundColor: stateColor }]} />
+  <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
+    {stateLabel}{speedText}
+  </Text>
+  {onPauseResume && (
+    <TouchableOpacity
+      onPress={(e) => { e.stopPropagation?.(); onPauseResume(); }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      style={styles.pauseButton}
+      activeOpacity={0.6}
+    >
+      <Ionicons
+        name={isPaused ? 'play-circle-outline' : 'pause-circle-outline'}
+        size={22}
+        color={isPaused ? colors.success : colors.textSecondary}
+      />
+    </TouchableOpacity>
+  )}
+</View>
+```
+
+Add style:
+
+```ts
+pauseButton: {
+  marginLeft: spacing.sm,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+```
+
+#### Step 3 — Update `React.memo` comparator
+
+```ts
+export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
+  return (
+    prev.torrent.hash === next.torrent.hash &&
+    prev.torrent.state === next.torrent.state &&
+    prev.torrent.progress === next.torrent.progress &&
+    prev.torrent.dlspeed === next.torrent.dlspeed &&
+    prev.torrent.upspeed === next.torrent.upspeed &&
+    prev.torrent.name === next.torrent.name &&
+    prev.onPress === next.onPress &&
+    prev.onLongPress === next.onLongPress &&
+    prev.onPauseResume === next.onPauseResume  // add this
+  );
+});
+```
+
+#### Step 4 — Add handler and wire prop in `app/(tabs)/index.tsx`
+
+Add alongside `handleSwipePauseResume` (~line 423):
+
+```ts
+const handleCardPauseResume = useCallback(async (torrent: TorrentInfo) => {
+  haptics.medium();
+  const isPaused =
+    torrent.state === 'pausedDL' || torrent.state === 'pausedUP' ||
+    torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
+  try {
+    if (isPaused) {
+      await torrentsApi.resumeTorrents([torrent.hash]);
+    } else {
+      await torrentsApi.pauseTorrents([torrent.hash]);
+    }
+    refresh();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '';
+    showToast(msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
+  }
+}, [refresh, showToast, t]);
+```
+
+At the `TorrentCard` render site (~line 1032):
+
+```tsx
+<TorrentCard
+  torrent={item}
+  onPress={...}
+  onLongPress={...}
+  onPauseResume={() => handleCardPauseResume(item)}
+/>
+```
+
+**Files:** `components/TorrentCard.tsx`, `app/(tabs)/index.tsx`
+
+---
+
+### Issue 3 — Progress Bar Visual Fill
+
+#### Root cause
+
+`progressRow` is `flexDirection: 'row'` with two flex siblings: `progressBar` (`flex: 1`) and `progressText` (`minWidth: 70`). With `gap: spacing.sm`, the bar's rendered width is `cardWidth - paddingHorizontal*2 - gap - 70`. The `progressFill` `width: "${progress}%"` is a percentage of that narrowed parent — not the full card width. At 100% the fill ends ~80px short of the card right edge. This is a layout sibling problem, not a rounding error.
+
+#### Fix — remove `progressText` as a sibling; fold percent+ETA into `statusRow`
+
+```tsx
+// Before — bottom of TorrentCardInner JSX
+<View style={styles.statusRow}>
+  <View style={[styles.stateDot, { backgroundColor: stateColor }]} />
+  <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
+    {stateLabel}{speedText}
+  </Text>
+</View>
+
+<View style={styles.progressRow}>
+  <View style={[styles.progressBar, { backgroundColor: colors.surfaceOutline }]}>
+    <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: stateColor }]} />
+  </View>
+  <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+    {progress.toFixed(0)}%{hasEta ? ` · ${formatTime(torrent.eta)}` : ''}
+  </Text>
+</View>
+
+<Text style={[styles.sizeText, { color: colors.textSecondary }]}>
+  {formatSize(downloaded)} / {formatSize(totalSize)}
+</Text>
+```
+
+```tsx
+// After
+// Build statusLine to include percent+ETA inline
+const statusLine = [
+  stateLabel,
+  speedText || null,
+  `${progress.toFixed(0)}%`,
+  hasEta ? formatTime(torrent.eta) : null,
+].filter(Boolean).join('  ·  ');
+
+<View style={styles.statusRow}>
+  <View style={[styles.stateDot, { backgroundColor: stateColor }]} />
+  <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
+    {statusLine}
+  </Text>
+  {/* pause button from Issue 2 */}
+</View>
+
+{/* Full-width progress bar — no siblings */}
+<View style={[styles.progressBar, { backgroundColor: colors.surfaceOutline }]}>
+  <View style={[
+    styles.progressFill,
+    { width: `${Math.min(100, Math.max(0, progress))}%`, backgroundColor: stateColor }
+  ]} />
+</View>
+
+<Text style={[styles.sizeText, { color: colors.textSecondary }]}>
+  {formatSize(downloaded)} / {formatSize(totalSize)}
+</Text>
+```
+
+#### Style changes in `StyleSheet.create`
+
+```ts
+// Remove: progressRow, progressText
+
+// Update: progressBar
+progressBar: {
+  // was: flex: 1
+  width: '100%',
+  // was: height: 3
+  height: 4,
+  // was: borderRadius: 1.5
+  borderRadius: 2,
+  overflow: 'hidden',
+  marginBottom: 4,  // moved from progressRow.marginBottom
+},
+```
+
+**Files:** `components/TorrentCard.tsx`
+
+---
+
+### Issue 4 — Pause-on-Add Setting Desync (Server vs. Local State)
+
+#### Root cause
+
+There are two completely separate "pause on add" values that are never reconciled:
+
+1. **Local preference** — `AppPreferences.pauseOnAdd` in AsyncStorage, shown in the app UI toggle
+1. **Server preference** — `start_paused_enabled` in qBittorrent's `app/preferences`, which is what the server actually honors when a torrent is added via the API
+
+The app never reads `start_paused_enabled` from the server on connect. It never writes to it either — `handleSubmitTorrent` passes `stopped: prefs.pauseOnAdd === true` as an add option, but qBittorrent's `torrents/add` endpoint ignores `stopped` if the server's own `start_paused_enabled` is `true`. The server-side setting wins.
+
+So: server had `start_paused_enabled: true`. App UI showed the local toggle as off. Torrent was added paused because the server honored its own setting. Toggling the app UI multiple times eventually triggered a `savePreference` write — but that only updated AsyncStorage, not the server — so behavior appeared to change by coincidence (e.g. test timing, or a different add path).
+
+#### Fix — sync `start_paused_enabled` from server on connect, and write back on toggle
+
+**Step 1 — Read server preference on Settings screen mount in `app/settings/torrent-defaults.tsx`**
+
+In `loadPreferences()` (~line 86), add a parallel fetch of `app/preferences` from the server:
+
+```ts
+// Before
+const loadPreferences = async () => {
+  try {
+    const prefs = await storageService.getPreferences();
+    // ...
+    setPauseOnAdd(prefs.pauseOnAdd || false);
+```
+
+```ts
+// After
+const loadPreferences = async () => {
+  try {
+    const [prefs, serverPrefs] = await Promise.all([
+      storageService.getPreferences(),
+      applicationApi.getPreferences().catch(() => null),
+    ]);
+    // Server is source of truth for pauseOnAdd — local pref is just a cache
+    const serverPauseOnAdd = serverPrefs
+      ? !!(serverPrefs as Record<string, unknown>).start_paused_enabled
+      : (prefs.pauseOnAdd === true);
+    setPauseOnAdd(serverPauseOnAdd);
+    // Keep local cache in sync with what we just read
+    await storageService.savePreferences({ ...prefs, pauseOnAdd: serverPauseOnAdd });
+```
+
+Add import in `torrent-defaults.tsx`:
+
+```ts
+import { applicationApi } from '@/services/api/application';
+```
+
+**Step 2 — Write to server on toggle in `torrent-defaults.tsx` line 238**
+
+```ts
+// Before
+onValueChange={(value) => { setPauseOnAdd(value); savePreference('pauseOnAdd', value); }}
+
+// After
+onValueChange={async (value) => {
+  setPauseOnAdd(value); // optimistic UI update
+  try {
+    // Write to server — this is the source of truth
+    await applicationApi.setPreferences(
+      { start_paused_enabled: value } as ApplicationPreferences
+    );
+    // Also update local cache
+    await savePreference('pauseOnAdd', value);
+  } catch {
+    // Roll back UI if server write fails
+    setPauseOnAdd(!value);
+  }
+}}
+```
+
+Add `ApplicationPreferences` to the import from `@/types/api` in `torrent-defaults.tsx`.
+
+**Step 3 — Remove `stopped` override from `handleSubmitTorrent` in `app/(tabs)/index.tsx`**
+
+The `stopped` field in `torrents/add` is redundant once the server preference is correctly set and synced. However, keep it as an explicit per-add override so the user can still add a single torrent outside the default behavior in future (e.g. a per-add override toggle in the Add modal). No change needed here for now — it will work correctly once the server setting matches the UI state.
+
+**Step 4 — Sync on app connect (optional but thorough)**
+
+In the `loadPreferences` useEffect in `app/(tabs)/index.tsx` (~line 99), add a server preferences read after connection is established and update local `pauseOnAdd` if the value has drifted:
+
+```ts
+// After isConnected is true and prefs are loaded
+if (isConnected) {
+  applicationApi.getPreferences().then((serverPrefs) => {
+    const serverVal = !!(serverPrefs as Record<string, unknown>).start_paused_enabled;
+    storageService.getPreferences().then((localPrefs) => {
+      if (localPrefs.pauseOnAdd !== serverVal) {
+        storageService.savePreferences({ ...localPrefs, pauseOnAdd: serverVal });
+      }
+    });
+  }).catch(() => {});
+}
+```
+
+This is a best-effort background sync — no state update needed here since it only affects the next torrent add, not the current UI.
+
+**Files:** `app/settings/torrent-defaults.tsx`, `app/(tabs)/index.tsx`, `types/api.ts` (add `start_paused_enabled?: boolean` to `ApplicationPreferences` if not already present — currently it's `[key: string]: unknown` so it will pass through without type changes)
+
+---
+
+### Issue 5 — Non-Compact Card: Restore Detailed View
+
+#### Root cause
+
+`AppPreferences.cardViewMode: 'compact' | 'expanded'` exists and is written by `appearance.tsx`. `index.tsx` never reads it. `TorrentCard` has no `compact` prop and no conditional rendering path. The preference is stored but has zero effect on the UI.
+
+#### Step 1 — Add `compact` prop to `components/TorrentCard.tsx`
+
+```ts
+// Before
+interface TorrentCardProps {
+  torrent: TorrentInfo;
+  onPress: () => void;
+  onLongPress?: () => void;
+  onPauseResume?: () => void;
+}
+
+// After
+interface TorrentCardProps {
+  torrent: TorrentInfo;
+  onPress: () => void;
+  onLongPress?: () => void;
+  onPauseResume?: () => void;
+  compact?: boolean;  // default true
+}
+
+// Destructure
+function TorrentCardInner({ torrent, onPress, onLongPress, onPauseResume, compact = true }: TorrentCardProps)
+```
+
+#### Step 2 — Add `DetailRow` helper component (top of file, not exported)
+
+```tsx
+function DetailRow({
+  label,
+  value,
+  truncate = false,
+}: {
+  label: string;
+  value: string;
+  truncate?: boolean;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View style={detailRowStyles.row}>
+      <Text style={[detailRowStyles.label, { color: colors.textSecondary }]}>{label}</Text>
+      <Text
+        style={[detailRowStyles.value, { color: colors.text }]}
+        numberOfLines={truncate ? 1 : undefined}
+        ellipsizeMode="middle"
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+const detailRowStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '500',
+    minWidth: 64,
+    marginRight: 8,
+  },
+  value: {
+    fontSize: 12,
+    fontWeight: '400',
+    flex: 1,
+    textAlign: 'right',
+  },
+});
+```
+
+#### Step 3 — Add detail section to `TorrentCardInner` JSX
+
+After the existing `sizeText`:
+
+```tsx
+{!compact && (
+  <View style={[styles.detailGrid, { borderTopColor: colors.surfaceOutline }]}>
+    <DetailRow label="Seeds"    value={`${torrent.num_seeds} / ${torrent.num_complete}`} />
+    <DetailRow label="Peers"    value={`${torrent.num_leechs} / ${torrent.num_incomplete}`} />
+    <DetailRow label="Ratio"    value={torrent.ratio != null ? torrent.ratio.toFixed(2) : '—'} />
+    <DetailRow label="Uploaded" value={formatSize(torrent.uploaded)} />
+    {!!torrent.category && (
+      <DetailRow label="Category" value={torrent.category} />
+    )}
+    {!!torrent.tags && (
+      <DetailRow label="Tags" value={torrent.tags} />
+    )}
+    {!!torrent.tracker && (
+      <DetailRow label="Tracker" value={torrent.tracker} truncate />
+    )}
+    <DetailRow
+      label="Added"
+      value={new Date(torrent.added_on * 1000).toLocaleDateString()}
+    />
+    <DetailRow label="Active" value={formatTime(torrent.time_active)} />
+    {!!torrent.save_path && (
+      <DetailRow label="Path" value={torrent.save_path} truncate />
+    )}
+  </View>
+)}
+```
+
+Add to main `StyleSheet.create`:
+
+```ts
+detailGrid: {
+  marginTop: spacing.sm,
+  paddingTop: spacing.sm,
+  borderTopWidth: StyleSheet.hairlineWidth,
+  // borderTopColor applied inline — colors not available in StyleSheet.create
+},
+```
+
+#### Step 4 — Update `React.memo` comparator
+
+```ts
+export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
+  return (
+    prev.torrent.hash === next.torrent.hash &&
+    prev.torrent.state === next.torrent.state &&
+    prev.torrent.progress === next.torrent.progress &&
+    prev.torrent.dlspeed === next.torrent.dlspeed &&
+    prev.torrent.upspeed === next.torrent.upspeed &&
+    prev.torrent.name === next.torrent.name &&
+    prev.torrent.num_seeds === next.torrent.num_seeds &&
+    prev.torrent.num_leechs === next.torrent.num_leechs &&
+    prev.torrent.ratio === next.torrent.ratio &&
+    prev.onPress === next.onPress &&
+    prev.onLongPress === next.onLongPress &&
+    prev.onPauseResume === next.onPauseResume &&
+    prev.compact === next.compact
+  );
+});
+```
+
+#### Step 5 — Read `cardViewMode` in `app/(tabs)/index.tsx` and pass to card
+
+```ts
+// Add to component state (~line 59 alongside other useState)
+const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
+
+// Add to the loadPreferences useEffect (~line 99)
+setCardViewMode(prefs.cardViewMode ?? 'compact');
+```
+
+Pass to `TorrentCard` at render site (~line 1032):
+
+```tsx
+<TorrentCard
+  torrent={item}
+  onPress={...}
+  onLongPress={...}
+  onPauseResume={() => handleCardPauseResume(item)}
+  compact={cardViewMode === 'compact'}
+/>
+```
+
+**Files:** `components/TorrentCard.tsx`, `app/(tabs)/index.tsx`
+
+---
+
+### Issue 6 — Search Bar Layout: Sort Left, Search Center, Add Right
+
+#### Root cause
+
+Current `searchRow` child order: `[SearchInput flex:1]` → `[LoadingIndicator?]` → `[Sort]` → `[Add]`. The search input is `flex: 1` but it starts at the left edge and grows rightward, stopping where the trailing siblings begin. It is not centered — it is left-aligned and variable-width. The Sort button needs to move to index 0 in the row.
+
+#### Fix — reorder `searchRow` children in `app/(tabs)/index.tsx`
+
+Replace the entire contents of `<View style={styles.searchRow}>` (~lines 636–705):
+
+```tsx
+<View style={styles.searchRow}>
+
+  {/* LEFT: Sort button — fixed 42×42 */}
+  {!selectMode && (
+    <TouchableOpacity
+      style={[
+        styles.searchSortButton,
+        {
+          backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
+          borderColor: colors.surfaceOutline,
+        },
+      ]}
+      onPress={() => setShowSortMenu(!showSortMenu)}
+      activeOpacity={0.7}
+    >
+      <Ionicons
+        name="swap-vertical"
+        size={18}
+        color={showSortMenu ? colors.primary : colors.text}
+      />
+    </TouchableOpacity>
+  )}
+
+  {/* CENTER: Search input — flex:1, loading indicator inside */}
+  <View
+    style={[
+      styles.searchInputContainer,
+      {
+        backgroundColor: colors.surface,
+        borderWidth: 0.1,
+        borderColor: colors.surfaceOutline,
+      },
+    ]}
+  >
+    <Ionicons
+      name="search"
+      size={18}
+      color={colors.textSecondary}
+      style={styles.searchIcon}
+    />
+    <TextInput
+      style={[styles.searchInputCompact, { color: colors.text }]}
+      placeholder={t('placeholders.searchTorrents')}
+      value={searchQuery}
+      onChangeText={setSearchQuery}
+      placeholderTextColor={colors.textSecondary}
+    />
+    {isLoading && (
+      <ActivityIndicator
+        size="small"
+        color={colors.primary}
+        style={{ marginLeft: spacing.xs }}
+      />
+    )}
+  </View>
+
+  {/* RIGHT: Add torrent button — fixed 42×42 */}
+  {!selectMode && (
+    <TouchableOpacity
+      style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
+      onPress={() => setShowAddModal(true)}
+      activeOpacity={0.7}
+    >
+      <Ionicons name="add" size={20} color="#FFFFFF" />
+    </TouchableOpacity>
+  )}
+
+</View>
+```
+
+#### Style changes
+
+```ts
+// searchSortButton — match headerAddButton dimensions exactly
+searchSortButton: {
+  width: 42,
+  height: 42,
+  borderRadius: borderRadius.medium,
+  borderWidth: 0.5,
+  justifyContent: 'center',
+  alignItems: 'center',
+  ...shadows.small,
+},
+
+// Remove syncIndicator from StyleSheet.create entirely
+```
+
+The loading `ActivityIndicator` is now inside `searchInputContainer` as an inline sibling of the `TextInput` — both are `flex: 1` children of the input container, so the spinner appears at the right edge of the search box without affecting the 3-column row layout.
+
+In `selectMode` (Sort and Add hidden), `searchInputContainer` with `flex: 1` expands to fill the full row — no additional handling needed.
+
+**Files:** `app/(tabs)/index.tsx`
+
+---
+
+### Implementation Order
+
+1. **Issue 4** — `torrent-defaults.tsx` line 238, single `async`/`await` change
+1. **Issue 6** — JSX reorder + style update, no logic change
+1. **Issue 3** — Restructure `progressRow`, remove `progressText` style, fold into `statusLine`
+1. **Issue 2** — New prop, new callback, comparator update
+1. **Issue 5** — Largest diff: new `DetailRow` component, conditional render block, preference wire-up
+1. **Issue 1** — Type extension, third parallel fetch in `TransferContext`, conditional display in `transfer.tsx`
+
+---
+
+### Testing Checklist
+
+> **Status:** Code implemented and compiles. All items below require **on-device testing** against a live qBittorrent server (cannot be verified in CI/cloud).
+
+**Issue 4 — Pause-on-Add Sync:**
+- [ ] On Settings screen open while connected: `pauseOnAdd` toggle reflects the server's actual `start_paused_enabled` value, not stale local cache
+- [ ] Toggling "Pause on Add" writes to `app/setPreferences` on the server (`start_paused_enabled`); verify via qBittorrent Web UI
+- [ ] Toggle off (server confirmed) → add torrent → starts active
+- [ ] Toggle on (server confirmed) → add torrent → starts paused
+- [ ] Server write failure rolls back the UI toggle
+
+**Issue 1 — Alt Speed Limits:**
+- [ ] Alt speed **on**: Download and Upload rows show alt values; `ALT` badge visible; rows non-tappable
+- [ ] Alt speed **off**: rows show global limits; `ALT` badge absent; rows tappable
+
+**Issue 3 — Progress Bar:**
+- [ ] Progress bar spans full card width at all progress values including 100%
+- [ ] Percent and ETA appear correctly in status line; no orphaned `progressText` rendered
+
+**Issue 2 — Pause/Resume Button:**
+- [ ] Pause button visible on far right of status row; correct icon per torrent state
+- [ ] Tapping pause button does not trigger card `onPress` navigation
+
+**Issue 6 — Search Bar Layout:**
+- [ ] Search bar: Sort is leftmost, search is centered/flex, Add is rightmost
+- [ ] Loading spinner appears inside search box right edge; no standalone sync indicator block visible
+- [ ] `selectMode`: Sort and Add hidden; search bar expands to fill full row
+
+**Issue 5 — Expanded Card View:**
+- [ ] Compact card (`cardViewMode: 'compact'`): layout unchanged from pre-fix
+- [ ] Detailed card (`cardViewMode: 'expanded'`): all 10 rows render; `category`/`tags`/`tracker`/`save_path` absent when empty string; `tracker` and `save_path` truncate with `ellipsizeMode="middle"`
+
+---
+
+## Phase 3: Architecture & Restructure
+
+> Deeper structural changes. Depends on Phase 1 and Phase 2 being substantially complete.
+
+---
+
+### Task 3.1 — Migrate Imports to Path Aliases
+
+**Prerequisite:** Task 1.3 (path aliases configured)
+
+**Scope:** Every `.ts` and `.tsx` file in the project.
+
+**Pattern:** Replace all relative imports with `@/` prefixed imports:
+```typescript
+// Before
+import { useTheme } from '../../context/ThemeContext';
+import { formatSpeed } from '../utils/format';
+
+// After
+import { useTheme } from '@/context/ThemeContext';
+import { formatSpeed } from '@/utils/format';
+```
+
+**Approach:** Process one directory at a time. After each directory, run `npx tsc --noEmit` to verify.
+
+**Risks:** Expo Router requires `app/` relative paths for route resolution. Do NOT change imports inside `app/_layout.tsx` that reference route files — only change imports of non-route modules (context, components, utils, services, etc.).
+
+**Acceptance:** All relative `../` imports of shared modules are replaced with `@/`. `npx tsc --noEmit` passes.
+
+---
+
+### Task 3.2 — Eliminate Remaining `any` Types
+
+**Scope:** All source files.
+
+**Target replacements:**
+- `error: any` → `error: unknown` with type narrowing (`if (error instanceof Error)`)
+- `colors: any` in component props → import and use the `ThemeContextType['colors']` type or define `ThemeColors`
+- `categories: { [name: string]: any }` → type `Category` from `types/api.ts`
+- `ApplicationPreferences: { [key: string]: any }` → type against qBittorrent API docs
+- `as any` casts in constants → use proper RN style types
+- `menuButtonRef: useRef<any>` → `useRef<TouchableOpacity>`
+
+**Risks:** Some `any` types exist because React Native's type system is imprecise (e.g. `formData.append` with file objects). These may need `@ts-expect-error` comments instead. Don't force-type things that genuinely don't fit — document why.
+
+**Acceptance:** `grep -r ": any" --include="*.ts" --include="*.tsx"` returns fewer than 5 results (down from ~30+).
+
+---
+
+### Task 3.3 — Complete i18n Coverage
+
+**Read first:** `locales/en/translation.json`, then grep for hardcoded strings in all screen files.
+
+**Files with hardcoded English strings:**
+- `app/(tabs)/logs.tsx`
+- `app/torrent/manage-trackers.tsx`
+- `app/torrent/[hash].tsx`
+- `app/(tabs)/transfer.tsx`
+- `app/(tabs)/index.tsx`
+- `app/(tabs)/settings.tsx`
+- `components/TorrentCard.tsx`
+- `components/TorrentDetails.tsx`
+
+**For each file:**
+1. Find all raw string literals in JSX (button labels, section headers, error messages, placeholder text)
+2. Add keys to `locales/en/translation.json`
+3. Replace with `t('key')` calls
+4. Add the same keys (with English values as placeholders) to `locales/es/translation.json`, `locales/zh/translation.json`, `locales/fr/translation.json`, `locales/de/translation.json`
+
+**Risks:** Some strings contain interpolation (e.g. `Download limit set to ${limitKB} KB/s`). These need i18next interpolation: `t('toast.dlLimitSet', { limit: limitKB })`.
+
+**Acceptance:** `grep -rn "'\w.*'" --include="*.tsx" app/` returns no user-visible hardcoded English strings (ignore imports, keys, style values).
+
+---
+
+### Task 3.4 — Introduce TanStack Query
+
+**This is the highest-effort task.** It replaces the hand-rolled polling in TorrentContext, TransferContext, and ServerContext.
+
+**Install:** `npm install @tanstack/react-query`
+
+**Create:** `services/query-client.ts` — configure a QueryClient with defaults.
+
+**Modify `app/_layout.tsx`:** Wrap the app in `QueryClientProvider`.
+
+**Migrate one context at a time:**
+
+1. **TransferContext** (simplest — single `transferApi.getGlobalTransferInfo()` call):
+   - Replace the `setInterval` polling with `useQuery({ queryKey: ['transfer'], queryFn: ..., refetchInterval: 3000 })`
+   - Replace `refresh()` with `queryClient.invalidateQueries(['transfer'])`
+   - Keep the context wrapper but make it thin — just provides the query result
+
+2. **TorrentContext** (complex — has `rid`-based incremental sync):
+   - The `rid` flow doesn't map cleanly to TanStack Query's cache model. Options:
+     - Use `useQuery` with a custom `queryFn` that internally tracks `rid` via a ref
+     - Or keep the manual sync but wrap it in a query for retry/refetch/background handling
+   - Mutation hooks for pause, resume, delete, etc.
+
+3. **ServerContext** (auth + connection state):
+   - `useMutation` for connect/disconnect
+   - Server list as a query
+
+**Risks:**
+- TanStack Query's background refetch fires when the app comes to foreground — this replaces the manual `AppState` handling but may have different timing.
+- The `rid`-based sync is qBittorrent-specific and not a standard cache-invalidation pattern. Don't try to force it into TanStack Query's model — use a custom queryFn that handles `rid` internally.
+- Every screen that calls `useTorrents()`, `useTransfer()`, `useServer()` must still work with the same API. Change the implementation, not the interface.
+
+**Acceptance:** All polling works as before. `AppState` background recovery works. No manual `setInterval` in any context file.
+
+---
+
+### Task 3.5 — Delete Dead Code
+
+Git history preserves everything. Dead code doesn't belong in the working tree.
+
+**Delete these files (verify zero live imports before each deletion):**
+- `App.tsx` — unused boilerplate, entry is `expo-router/entry`
+- `hooks/useDynamicColors.ts` — placeholder, always returns null
+- `app/onboarding.tsx` — route exists but has no active navigation path
+- `app/torrent/add.tsx` — superseded by the add-torrent modal in `app/(tabs)/index.tsx`
+- `components/DraggableTorrentList.tsx` — not imported by any screen
+- `components/SwipeableTorrentCard.tsx` — not imported by any screen
+- `components/ExpandableTorrentCard.tsx` — not imported by any screen
+- `components/SharedTransitionCard.tsx` — not imported by any screen
+- `components/AnimatedTorrentCard.tsx` — not imported by any screen
+- `components/ContextualFAB.tsx` — not imported by any screen
+- `components/GradientCard.tsx` — not imported by any screen
+- `components/HealthRing.tsx` — not imported by any screen
+- `components/AnimatedStateIcon.tsx` — not imported by any screen
+
+**In `services/api/client.ts`:** Remove unused `csrfToken` storage. Remove unused `apiTimeout` field (or actually use it — pick one).
+
+**In `app/torrent/manage-trackers.tsx`:** Remove the dead `showTrackerMenu` function and the `ActionSheetIOS` import. The function was never called from the rendered JSX — tracker rows already use explicit inline buttons.
+
+**Verification before each delete:** `grep -r "from.*FileName" --include="*.ts" --include="*.tsx"` must return zero results (excluding the file itself and this plan). If a file IS imported somewhere, do NOT delete it — investigate.
+
+**Acceptance:** All listed files deleted. `npx tsc --noEmit` passes. App compiles.
+
+---
+
+## Appendix A: Missing Features (Future Backlog)
+
+Not part of the v3 launch, but documented for future planning:
+
+| Feature | qBittorrent API | Priority | Effort |
+|-------|----------|------|------|
+| RSS Feed Management | `/api/v2/rss/*` | High | High |
+| Torrent Search | `/api/v2/search/*` | High | High |
+| Bandwidth Scheduling | Via app preferences | Medium | Medium |
+| API Key Auth (v5.1+) | Header-based | Medium | Medium |
+| Push Notifications | N/A (client-side) | Medium | Medium |
+| Home Screen Widgets | N/A (native) | Medium | High |
+| Tablet/iPad Layout | N/A (responsive) | Medium | High |
+| Multi-Server Dashboard | N/A (client-side) | Low | Medium |
+| Torrent Creation | N/A (client-side) | Low | Medium |
+| Queue Management | `/api/v2/torrents/*Prio` | Low | Low |
+| Deep Links / Magnet Handling | N/A (client-side) | Low | Medium |
+| Connection Profiles | N/A (client-side) | Low | Medium |
+
+---
+
+## Appendix B: Risk Quick-Reference
+
+| Risk | Why It Breaks | How to Avoid |
+|----|----------|---------|
+| Renaming a color key | Users' saved overrides keyed by old name become orphaned | Never rename keys. Change defaults only. |
+| Renaming a preference key | No migration system. Old value silently ignored. | Never rename. Add new keys. |
+| Adding native modules | Third-party native modules add maintenance burden and may require a custom dev-client build. | `expo-*` packages are approved (including `expo-symbols`). Third-party native modules (`react-native-ios-context-menu`, `lottie-react-native`) require explicit approval before adding. |
+| Removing the context menu without a replacement | Users lose access to 9 torrent actions (pause, delete, force start, priority, limit, verify, reannounce, magnet copy) | Always provide a working replacement BEFORE removing the existing UI. Task 2.2 uses `ActionMenu.tsx` as the replacement. |
+| Moving `app/` directory | Expo Router requires `app/` at root. | Never move `app/`. Only move shared code. |
+| Changing `RGB(...)` defaults to `#hex` | Removes alpha channel. Badges and borders look more saturated. | Test visually in both themes after changes. |
+| FlashList + card-local state | Recycling causes state bleed between cards. | Lift menu/loading state out of card first (Task 2.2 does this). |
+| `react-native-gesture-handler` | Imported in `SwipeableTorrentCard.tsx` (dead code) but not in package.json. | Task 1.4g installs it explicitly. Must be done before Task 2.4. |
+| Two agents editing the same file | Merge conflicts between parallel tasks. | Check task dependencies section. Tasks 2.2 and 2.5 both edit `index.tsx` — they cannot run in parallel. |
+| Settings sub-screens need routing | New files in `app/settings/` may need a `_layout.tsx` for proper navigation. | Test navigation after creating the first sub-screen. Add layout if back button doesn't work. |
+
+---
+
+*Combined from codebase review, UI redesign, risk register, and AI maintainability audit. 2026-03-14. Revised 2026-03-14: iOS-first scope confirmed; expo-* packages approved; all review findings (two independent passes) incorporated and PLAN_REVIEW.md deleted.*

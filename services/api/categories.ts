@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { Category } from '../../types/api';
+import { Category } from '@/types/api';
 
 const API_VERSION = 'v2';
 
@@ -9,14 +9,14 @@ export const categoriesApi = {
    */
   async getAllCategories(): Promise<{ [name: string]: Category }> {
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/categories`);
-    return response || {};
+    return (response as { [name: string]: Category }) || {};
   },
 
   /**
    * Add new category
    */
   async addCategory(category: string, savePath?: string): Promise<void> {
-    const params: Record<string, any> = { category };
+    const params: Record<string, string | number | boolean> = { category };
     if (savePath) {
       params.savePath = savePath;
     }
@@ -42,4 +42,3 @@ export const categoriesApi = {
     });
   },
 };
-

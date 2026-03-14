@@ -2,9 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal, StatusBar } from 'react-native';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { shadows } from '../constants/shadows';
-import { spacing, borderRadius } from '../constants/spacing';
+import { useTheme } from '@/context/ThemeContext';
+import { shadows } from '@/constants/shadows';
+import { spacing, borderRadius } from '@/constants/spacing';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -64,7 +64,7 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
     });
   };
 
-  const getIcon = (): string => {
+  const getIcon = (): React.ComponentProps<typeof Ionicons>['name'] => {
     switch (type) {
       case 'success':
         return 'checkmark-circle';
@@ -110,7 +110,7 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
         onPress={hide}
         activeOpacity={0.9}
       >
-        <Ionicons name={getIcon() as any} size={24} color={getColor()} />
+        <Ionicons name={getIcon()} size={24} color={getColor()} />
         <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
           {message}
         </Text>
