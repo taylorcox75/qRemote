@@ -30,7 +30,9 @@
       "noStuckResults": "Keine feststeckenden Torrents gefunden",
       "urlOrMagnet": "Torrent URL or Magnet Link",
       "selectTorrentFile": "Select .torrent file",
-      "yourServers": "YOUR SERVERS"
+      "yourServers": "YOUR SERVERS",
+      "fileSelected": "File selected: {{name}}",
+      "enterLimitKbs": "Enter limit in KB/s (0 for unlimited)"
     },
     "settings": {
       "title": "Einstellungen",

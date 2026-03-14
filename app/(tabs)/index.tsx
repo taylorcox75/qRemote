@@ -45,6 +45,7 @@ import { buttonStyles, buttonText } from '@/constants/buttons';
 import { typography } from '@/constants/typography';
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { useTorrentActions } from '@/hooks/useTorrentActions';
+import { getErrorMessage } from '@/utils/error';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -250,9 +251,9 @@ export default function TorrentsScreen() {
       refresh();
       setSelectedHashes(new Set());
       setSelectMode(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       haptics.error();
-      showToast(error.message || t('errors.failedToPause'), 'error');
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -268,9 +269,9 @@ export default function TorrentsScreen() {
       refresh();
       setSelectedHashes(new Set());
       setSelectMode(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       haptics.error();
-      showToast(error.message || t('errors.failedToResume'), 'error');
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -285,7 +286,7 @@ export default function TorrentsScreen() {
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Torrent Only',
+          text: t('torrentDetail.torrentOnly'),
           onPress: async () => {
             setBulkLoading(true);
             try {
@@ -294,15 +295,15 @@ export default function TorrentsScreen() {
               setSelectedHashes(new Set());
               setSelectMode(false);
               showToast(t('toast.torrentsDeleted_other', { count }), 'success');
-            } catch (error: any) {
-              showToast(error.message || t('errors.failedToDelete'), 'error');
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
             } finally {
               setBulkLoading(false);
             }
           },
         },
         {
-          text: 'With Files',
+          text: t('torrentDetail.withFiles'),
           style: 'destructive',
           onPress: async () => {
             setBulkLoading(true);
@@ -312,8 +313,8 @@ export default function TorrentsScreen() {
               setSelectedHashes(new Set());
               setSelectMode(false);
               showToast(t('toast.torrentsDeleted_other', { count }), 'success');
-            } catch (error: any) {
-              showToast(error.message || t('errors.failedToDelete'), 'error');
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
             } finally {
               setBulkLoading(false);
             }
@@ -344,8 +345,8 @@ export default function TorrentsScreen() {
     setConnectErrors((prev) => { const next = { ...prev }; delete next[server.id]; return next; });
     try {
       await connectToServer(server);
-    } catch (err: any) {
-      setConnectErrors((prev) => ({ ...prev, [server.id]: err.message || 'Connection failed' }));
+    } catch (err: unknown) {
+      setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
       haptics.error();
     } finally {
       setConnectingId(null);
@@ -373,10 +374,10 @@ export default function TorrentsScreen() {
           name: file.name,
         });
         setTorrentUrl(''); // Clear URL input when file is selected
-        showToast(`File selected: ${file.name}`, 'success');
+        showToast(t('screens.torrents.fileSelected', { name: file.name }), 'success');
       }
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToPickFile'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     }
   };
 
@@ -412,9 +413,9 @@ export default function TorrentsScreen() {
       setShowAddModal(false);
       refresh();
       showToast(t('toast.torrentAdded'), 'success');
-    } catch (error: any) {
+    } catch (error: unknown) {
       haptics.error();
-      showToast(error.message || t('errors.failedToAdd'), 'error');
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setAddingTorrent(false);
     }
@@ -444,11 +445,11 @@ export default function TorrentsScreen() {
     haptics.medium();
     Alert.alert(
       t('common.delete'),
-      `Delete "${torrent.name}"?`,
+      t('torrentDetail.deleteConfirm', { name: torrent.name }),
       [
         { text: t('common.cancel'), style: 'cancel', onPress: () => swipeableRef?.close() },
         {
-          text: 'Torrent Only',
+          text: t('torrentDetail.torrentOnly'),
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent.hash], false);
@@ -462,7 +463,7 @@ export default function TorrentsScreen() {
           },
         },
         {
-          text: 'With Files',
+          text: t('torrentDetail.withFiles'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -1123,7 +1124,7 @@ export default function TorrentsScreen() {
                 </View>
 
                 <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
-                  Torrent URL or Magnet Link
+                  {t('screens.torrents.urlOrMagnet')}
                 </Text>
                 <TextInput
                   style={[
@@ -1152,7 +1153,7 @@ export default function TorrentsScreen() {
 
                 <View style={styles.divider}>
                   <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
-                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>{t('common.or')}</Text>
                   <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
                 </View>
 
@@ -1179,7 +1180,7 @@ export default function TorrentsScreen() {
                       fontWeight: selectedFile ? '600' : '400',
                     }
                   ]}>
-                    {selectedFile ? selectedFile.name : 'Select .torrent file'}
+                    {selectedFile ? selectedFile.name : t('screens.torrents.selectTorrentFile')}
                   </Text>
                   {selectedFile && (
                     <TouchableOpacity
@@ -1219,7 +1220,7 @@ export default function TorrentsScreen() {
                     {addingTorrent ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>Add</Text>
+                      <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>{t('common.add')}</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1237,8 +1238,8 @@ export default function TorrentsScreen() {
 
         <InputModal
           visible={dlLimitModalVisible}
-          title="Set Download Limit"
-          message="Enter limit in KB/s (0 for unlimited)"
+          title={t('torrentDetail.setDownloadLimit')}
+          message={t('screens.torrents.enterLimitKbs')}
           placeholder="0"
           defaultValue={dlLimitDefaultValue}
           keyboardType="numeric"
