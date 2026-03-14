@@ -2,7 +2,7 @@ const packageJson = require('./package.json');
 
 module.exports = {
   expo: {
-    name: 'qRemote ',
+    name: 'qRemote',
     slug: 'qremote',
     version: packageJson.version, // Single source of truth: package.json
     orientation: 'portrait',
@@ -33,7 +33,7 @@ module.exports = {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: 'com.qRemote.app',
-	  usesCleartextTraffic: 'true',
+	  usesCleartextTraffic: true,
     },
     web: {
       favicon: './assets/favicon.png',
