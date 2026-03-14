@@ -72,60 +72,64 @@ export function getStateColor(
   }
 }
 
+type TranslateFn = (key: string) => string;
+
 export function getStateLabel(
   state: string,
   progress: number,
   dlspeed: number,
   upspeed: number,
+  t?: TranslateFn,
 ): string {
+  const s = (key: string, fallback: string) => (t ? t(`states.${key}`) : fallback);
   const downloading = dlspeed > 0;
   const uploading = upspeed > 0;
 
-  if (downloading && uploading) return 'DL + UL';
-  if (uploading && !downloading) return 'Uploading';
+  if (downloading && uploading) return s('dlAndUl', 'DL + UL');
+  if (uploading && !downloading) return s('uploading', 'Uploading');
 
-  if (state === 'stalledUP' && progress >= 1) return 'Seeding';
+  if (state === 'stalledUP' && progress >= 1) return s('seeding', 'Seeding');
 
   switch (state) {
     case 'downloading':
-      return 'Downloading';
+      return s('downloading', 'Downloading');
     case 'metaDL':
-      return 'Metadata';
+      return s('metadata', 'Metadata');
     case 'forcedMetaDL':
-      return 'Forced Meta';
+      return s('forcedMeta', 'Forced Meta');
     case 'forcedDL':
-      return 'Forced DL';
+      return s('forcedDl', 'Forced DL');
     case 'uploading':
-      return 'Uploading';
+      return s('uploading', 'Uploading');
     case 'forcedUP':
-      return 'Forced UP';
+      return s('forcedUp', 'Forced UP');
     case 'pausedDL':
     case 'pausedUP':
-      return 'Paused';
+      return s('paused', 'Paused');
     case 'stoppedDL':
-      return 'Stopped';
+      return s('stopped', 'Stopped');
     case 'stoppedUP':
-      return 'Paused';
+      return s('paused', 'Paused');
     case 'error':
-      return 'Error';
+      return s('error', 'Error');
     case 'missingFiles':
-      return 'Missing Files';
+      return s('missingFiles', 'Missing Files');
     case 'checkingDL':
     case 'checkingUP':
-      return 'Checking';
+      return s('checking', 'Checking');
     case 'queuedDL':
     case 'queuedUP':
-      return 'Queued';
+      return s('queued', 'Queued');
     case 'stalledDL':
-      return 'Stalled DL';
+      return s('stalledDl', 'Stalled DL');
     case 'stalledUP':
-      return 'Stalled UP';
+      return s('stalledUp', 'Stalled UP');
     case 'allocating':
-      return 'Allocating';
+      return s('allocating', 'Allocating');
     case 'checkingResumeData':
-      return 'Checking';
+      return s('checking', 'Checking');
     case 'moving':
-      return 'Moving';
+      return s('moving', 'Moving');
     default:
       return state;
   }

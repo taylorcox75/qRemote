@@ -481,7 +481,11 @@
     "prioritySet": "Priorität auf {{label}} gesetzt",
     "prioritySetForCount": "Priorität für {{count}} Datei(en) auf {{label}} gesetzt",
     "fileSelected": "File selected: {{name}}",
-    "dlLimitSetKb": "Download limit set to {{value}} KB/s"
+    "dlLimitSetKb": "Download limit set to {{value}} KB/s",
+    "stateColorsReset": "Torrent state colors reset to defaults",
+    "colorsReset": "Colors reset to defaults",
+    "serverNotFound": "Server not found",
+    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually."
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten",
@@ -556,5 +560,25 @@
     "failedToToggleAltSpeed": "Failed to toggle alternative speed limits",
     "failedToSetSpeedLimit": "Failed to set {{type}} limit",
     "enterTrackerUrl": "Please enter a tracker URL"
+  },
+  "states": {
+    "dlAndUl": "DL + UL",
+    "uploading": "Uploading",
+    "seeding": "Seeding",
+    "downloading": "Downloading",
+    "metadata": "Metadata",
+    "forcedMeta": "Forced Meta",
+    "forcedDl": "Forced DL",
+    "forcedUp": "Forced UP",
+    "paused": "Paused",
+    "stopped": "Stopped",
+    "error": "Error",
+    "missingFiles": "Missing Files",
+    "checking": "Checking",
+    "queued": "Queued",
+    "stalledDl": "Stalled DL",
+    "stalledUp": "Stalled UP",
+    "allocating": "Allocating",
+    "moving": "Moving"
   }
 }

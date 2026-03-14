@@ -16,6 +16,26 @@
     "connect": "Connect",
     "or": "OR"
   },
+  "states": {
+    "dlAndUl": "DL + UL",
+    "uploading": "Uploading",
+    "seeding": "Seeding",
+    "downloading": "Downloading",
+    "metadata": "Metadata",
+    "forcedMeta": "Forced Meta",
+    "forcedDl": "Forced DL",
+    "forcedUp": "Forced UP",
+    "paused": "Paused",
+    "stopped": "Stopped",
+    "error": "Error",
+    "missingFiles": "Missing Files",
+    "checking": "Checking",
+    "queued": "Queued",
+    "stalledDl": "Stalled DL",
+    "stalledUp": "Stalled UP",
+    "allocating": "Allocating",
+    "moving": "Moving"
+  },
   "screens": {
     "torrents": {
       "notConnected": "Not Connected",
@@ -474,6 +494,10 @@
     "settingsExported": "Settings exported",
     "debugCopied": "Debug info copied to clipboard",
     "shutdownInitiated": "Application shutdown initiated",
+    "stateColorsReset": "Torrent state colors reset to defaults",
+    "colorsReset": "Colors reset to defaults",
+    "serverNotFound": "Server not found",
+    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually.",
     "savePathUpdated": "Default save path updated on server",
     "savePathSavedLocally": "Saved locally. Connect to a server to update on qBittorrent.",
     "allFilesSelected": "All files selected for download",

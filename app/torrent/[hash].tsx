@@ -717,7 +717,7 @@ export default function TorrentDetail() {
   const isPaused = optimisticPaused !== null ? optimisticPaused : actualIsPaused;
 
   let stateColor = getStateColor(torrent.state, torrent.progress, dlspeed, upspeed, colors);
-  let stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed);
+  let stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed, t);
 
   if (optimisticPaused !== null) {
     if (optimisticPaused) {

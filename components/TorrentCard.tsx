@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { TorrentInfo } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
 import { getStateColor, getStateLabel } from '@/utils/torrent-state';
@@ -16,12 +17,13 @@ interface TorrentCardProps {
 
 function TorrentCardInner({ torrent, onPress, onLongPress }: TorrentCardProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const progress = (torrent.progress || 0) * 100;
   const dlspeed = torrent.dlspeed ?? 0;
   const upspeed = torrent.upspeed ?? 0;
   const stateColor = getStateColor(torrent.state, torrent.progress, dlspeed, upspeed, colors);
-  const stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed);
+  const stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed, t);
 
   const isPaused =
     torrent.state === 'pausedDL' ||
