@@ -154,7 +154,7 @@ export default function ManageTrackersScreen() {
     try {
       setReannouncing(true);
       await torrentsApi.reannounceTorrents([hash]);
-      showToast('Tracker reannounce sent', 'success');
+      showToast(t('screens.trackers.reannounced'), 'success');
       fetchTrackers();
     } catch (error: unknown) {
       showToast(getErrorMessage(error), 'error');

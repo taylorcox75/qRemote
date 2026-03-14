@@ -23,6 +23,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ServerManager } from '@/services/server-manager';
 import { ServerConfig } from '@/types/api';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
 import { useToast, ModalToast } from '@/context/ToastContext';
@@ -32,12 +33,14 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
 import { APP_VERSION } from '@/utils/version';
+import { getErrorMessage } from '@/utils/error';
 
 export default function AddServerScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { connectToServer } = useServer();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('');
@@ -153,9 +156,9 @@ App Version: ${APP_VERSION}`;
 
     try {
       await Clipboard.setStringAsync(debugText);
-      showToast('Debug info copied to clipboard', 'success');
+      showToast(t('toast.debugCopied'), 'success');
     } catch (error) {
-      showToast('Failed to copy debug info', 'error');
+      showToast(t('errors.failedToCopyDebug'), 'error');
     }
   };
 
@@ -169,18 +172,18 @@ App Version: ${APP_VERSION}`;
 
   const handleSave = async () => {
     if (!name.trim() || !host.trim()) {
-      showToast('Please fill in server name and host', 'error');
+      showToast(t('errors.fillNameAndHost'), 'error');
       return;
     }
 
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      showToast('Please fill in username and password, or enable bypass authentication', 'error');
+      showToast(t('errors.fillUsernamePassword'), 'error');
       return;
     }
 
     const portNum = (port.trim() ? parseInt(port, 10) : undefined);
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
-      showToast('Please enter a valid port number (1-65535)', 'error');
+      showToast(t('errors.validPort'), 'error');
       return;
     }
 
@@ -204,23 +207,23 @@ App Version: ${APP_VERSION}`;
       };
 
       await ServerManager.saveServer(server);
-      showToast('Server saved successfully', 'success');
+      showToast(t('toast.serverSaved'), 'success');
       
       // If this is the first server, auto-connect
       if (isFirstServer) {
         try {
           const connected = await connectToServer(server);
           if (!connected) {
-            showToast('Connection failed. Please check your settings and try connecting manually.', 'warning');
+            showToast(t('toast.connectionFailedCheck'), 'warning');
           }
-        } catch (error: any) {
-          showToast(`Connection failed: ${error.message || 'Unknown error'}. Please try connecting manually.`, 'warning');
+        } catch (error: unknown) {
+          showToast(`Connection failed: ${getErrorMessage(error)}. Please try connecting manually.`, 'warning');
         }
       }
       
       router.back();
     } catch (error) {
-      showToast('Failed to save server', 'error');
+      showToast(t('errors.failedToSaveServer'), 'error');
     } finally {
       setLoading(false);
     }
@@ -228,18 +231,18 @@ App Version: ${APP_VERSION}`;
 
   const handleTest = async () => {
     if (!name.trim() || !host.trim()) {
-      showToast('Please fill in server name and host', 'error');
+      showToast(t('errors.fillNameAndHost'), 'error');
       return;
     }
 
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      showToast('Please fill in username and password, or enable bypass authentication', 'error');
+      showToast(t('errors.fillUsernamePassword'), 'error');
       return;
     }
 
     const portNum = (port.trim() ? parseInt(port, 10) : undefined);
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
-      showToast('Please enter a valid port number (1-65535)', 'error');
+      showToast(t('errors.validPort'), 'error');
       return;
     }
 
@@ -261,17 +264,15 @@ App Version: ${APP_VERSION}`;
       const result = await ServerManager.testConnection(server, testAbortController.current.signal);
       
       if (result.success) {
-        showToast('Connection test successful!', 'success');
+        showToast(t('toast.connectionTestSuccess'), 'success');
       } else {
         showToast(result.error || 'Connection test failed. Please check your settings.', 'error');
       }
-    } catch (error: any) {
-      // Only show error if not cancelled
-      if (error.name !== 'AbortError' && 
-          error.name !== 'CanceledError' && 
-          error.code !== 'ERR_CANCELED' &&
-          !error.message?.includes('cancel')) {
-        showToast(error.message || 'Connection test failed. Please check your settings.', 'error');
+    } catch (error: unknown) {
+      const isCancelled = (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) ||
+        getErrorMessage(error).includes('cancel');
+      if (!isCancelled) {
+        showToast(getErrorMessage(error), 'error');
       }
     } finally {
       testAbortController.current = null;

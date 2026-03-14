@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTheme } from '@/context/ThemeContext';
+import { useTranslation } from 'react-i18next';
+import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ColorPicker } from '@/components/ColorPicker';
 import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
@@ -24,7 +25,7 @@ interface ColorSettingRowProps {
   label: string;
   color: string;
   onPress: () => void;
-  colors: any;
+  colors: ThemeColors;
 }
 
 function ColorSettingRow({ label, color, onPress, colors }: ColorSettingRowProps) {
@@ -44,6 +45,7 @@ export default function ThemeSettingsScreen() {
   const router = useRouter();
   const { isDark, toggleTheme, colors, reloadCustomColors } = useTheme();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [colorPickerKey, setColorPickerKey] = useState<keyof ColorTheme | null>(null);
 
@@ -75,15 +77,15 @@ export default function ThemeSettingsScreen() {
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Theme Toggle */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>APPEARANCE</Text>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.appearance').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="moon-outline" size={22} color={colors.primary} />
                 <View style={styles.settingText}>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Dark Mode</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.darkMode')}</Text>
                   <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                    Switch between light and dark theme
+                    {t('screens.settings.darkModeHint')}
                   </Text>
                 </View>
               </View>
@@ -100,15 +102,15 @@ export default function ThemeSettingsScreen() {
         {/* Torrent state colors (badge & border by activity) */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>TORRENT STATE COLORS</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.torrentStateColors')}</Text>
             <TouchableOpacity
               onPress={async () => {
                 try {
                   await colorThemeManager.resetTorrentStateColors(isDark);
                   await reloadCustomColors();
-                  showToast('Torrent state colors reset to defaults', 'success');
+                  showToast(t('toast.stateColorsReset'), 'success');
                 } catch (error) {
-                  showToast('Failed to reset torrent state colors', 'error');
+                  showToast(t('errors.failedToResetStateColors'), 'error');
                 }
               }}
             >
@@ -198,15 +200,15 @@ export default function ThemeSettingsScreen() {
         {/* Advanced Color Customization */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>ADVANCED COLORS</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.advancedColors')}</Text>
             <TouchableOpacity
               onPress={async () => {
                 try {
                   await colorThemeManager.resetCustomColors(isDark);
                   await reloadCustomColors();
-                  showToast('Colors reset to defaults', 'success');
+                  showToast(t('toast.colorsReset'), 'success');
                 } catch (error) {
-                  showToast('Failed to reset colors', 'error');
+                  showToast(t('errors.failedToResetColors'), 'error');
                 }
               }}
             >
@@ -293,7 +295,7 @@ export default function ThemeSettingsScreen() {
               await reloadCustomColors();
               showToast(`${colorPickerKey} color updated`, 'success');
             } catch (error) {
-              showToast('Failed to save color', 'error');
+              showToast(t('errors.failedToSaveColor'), 'error');
             }
           }}
           onClose={() => setColorPickerVisible(false)}
