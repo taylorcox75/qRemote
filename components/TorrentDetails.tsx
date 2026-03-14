@@ -1121,7 +1121,7 @@ export function TorrentDetails({
           <InfoRow icon="stats-chart" label={t('torrentDetail.state')} value={torrent.state} />
           <InfoRow icon="pie-chart" label={t('torrentDetail.progress')} value={`${(torrent.progress * 100).toFixed(1)}%`} />
           <InfoRow icon="disc" label={t('torrentDetail.size')} value={formatSize(torrent.total_size)} />
-          <InfoRow icon="download" label={t('torrentDetail.downloaded')} value={formatSize(torrent.downloaded)} />
+          <InfoRow icon="download" label={t('torrentDetail.downloaded')} value={formatSize(torrent.completed)} />
           <InfoRow icon="cloud-done" label={t('torrentDetail.uploaded')} value={formatSize(torrent.uploaded)} />
           <InfoRow icon="swap-horizontal" label={t('torrentDetail.ratio')} value={torrent.ratio.toFixed(2)} />
           <InfoRow icon="time" label={t('torrentDetail.lastSeenComplete')} value={formatDate(torrent.seen_complete)} />

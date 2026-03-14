@@ -899,7 +899,7 @@ export default function TorrentDetail() {
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               staticRow(t('torrentDetail.size'), formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)),
-              staticRow(t('torrentDetail.downloaded'), formatSize(torrent.downloaded)),
+              staticRow(t('torrentDetail.downloaded'), formatSize(torrent.completed)),
               staticRow(t('torrentDetail.uploaded'), formatSize(torrent.uploaded)),
               staticRow(t('torrentDetail.ratio'), torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'),
               properties && staticRow(t('torrentDetail.savePath'), properties.save_path),

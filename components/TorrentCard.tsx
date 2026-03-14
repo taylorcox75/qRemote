@@ -80,7 +80,7 @@ function TorrentCardInner({ torrent, onPress, onLongPress, onPauseResume, compac
     torrent.state === 'stoppedUP';
 
   const totalSize = torrent.total_size > 0 ? torrent.total_size : torrent.size || 0;
-  const downloaded = torrent.downloaded || 0;
+  const downloaded = torrent.completed || 0;
   const hasEta = torrent.eta > 0 && torrent.eta < 8640000;
 
   const speedParts: string[] = [];
