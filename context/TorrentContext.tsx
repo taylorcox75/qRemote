@@ -6,8 +6,8 @@
  */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { TorrentInfo, MainData, ServerState } from '../types/api';
-import { syncApi } from '../services/api/sync';
+import { TorrentInfo, MainData, ServerState } from '@/types/api';
+import { syncApi } from '@/services/api/sync';
 import { useServer } from './ServerContext';
 
 interface TorrentContextType {

@@ -1,6 +1,6 @@
 import { apiClient } from './client';
-import { LoginResponse } from '../../types/api';
-import { clogInfo, clogWarn, clogError, clogDebug } from '../connectivity-log';
+import { LoginResponse } from '@/types/api';
+import { clogInfo, clogWarn, clogError, clogDebug } from '@/services/connectivity-log';
 
 const API_VERSION = 'v2';
 

@@ -3,7 +3,7 @@ import {
   ApplicationVersion,
   BuildInfo,
   ApplicationPreferences,
-} from '../../types/api';
+} from '@/types/api';
 
 const API_VERSION = 'v2';
 

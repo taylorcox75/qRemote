@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { storageService } from '../services/storage';
-import { colorThemeManager, ColorTheme } from '../services/color-theme-manager';
+import { storageService } from '@/services/storage';
+import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
 
 interface ThemeContextType {
   isDark: boolean;

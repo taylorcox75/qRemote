@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { GlobalTransferInfo } from '../types/api';
-import { transferApi } from '../services/api/transfer';
+import { GlobalTransferInfo } from '@/types/api';
+import { transferApi } from '@/services/api/transfer';
 import { useServer } from './ServerContext';
 
 interface TransferContextType {

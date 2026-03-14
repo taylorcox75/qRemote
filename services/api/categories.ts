@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { Category } from '../../types/api';
+import { Category } from '@/types/api';
 
 const API_VERSION = 'v2';
 

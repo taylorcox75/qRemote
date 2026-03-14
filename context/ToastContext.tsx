@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Platform } from 'react-native';
-import { Toast, ToastType } from '../components/Toast';
-import { storageService } from '../services/storage';
+import { Toast, ToastType } from '@/components/Toast';
+import { storageService } from '@/services/storage';
 
 interface ToastState {
   message: string;

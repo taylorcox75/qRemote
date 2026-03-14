@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { LogEntry, PeerLogEntry } from '../../types/api';
+import { LogEntry, PeerLogEntry } from '@/types/api';
 
 const API_VERSION = 'v2';
 

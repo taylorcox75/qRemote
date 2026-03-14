@@ -4,8 +4,8 @@
  * Key exports: apiClient (singleton ApiClient instance)
  */
 import axios, { AxiosInstance, AxiosError, AxiosHeaders } from 'axios';
-import { ServerConfig } from '../../types/api';
-import { clogDebug, clogInfo, clogWarn, clogError } from '../connectivity-log';
+import { ServerConfig } from '@/types/api';
+import { clogDebug, clogInfo, clogWarn, clogError } from '@/services/connectivity-log';
 
 class ApiClient {
   private client: AxiosInstance;

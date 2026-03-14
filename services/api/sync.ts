@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { MainData, TorrentInfo } from '../../types/api';
+import { MainData, TorrentInfo } from '@/types/api';
 
 const API_VERSION = 'v2';
 

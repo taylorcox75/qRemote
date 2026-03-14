@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import { ServerConfig } from '../types/api';
-import { AppPreferences } from '../types/preferences';
+import { ServerConfig } from '@/types/api';
+import { AppPreferences } from '@/types/preferences';
 
 const STORAGE_KEYS = {
   SERVERS: 'servers',

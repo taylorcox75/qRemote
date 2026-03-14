@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ServerConfig } from '../types/api';
-import { ServerManager } from '../services/server-manager';
-import { apiClient } from '../services/api/client';
-import { storageService } from '../services/storage';
+import { ServerConfig } from '@/types/api';
+import { ServerManager } from '@/services/server-manager';
+import { apiClient } from '@/services/api/client';
+import { storageService } from '@/services/storage';
 
 interface ServerContextType {
   currentServer: ServerConfig | null;

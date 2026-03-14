@@ -14,7 +14,7 @@ import {
   TorrentPieceState,
   TorrentPieceHash,
   FilePriority,
-} from '../../types/api';
+} from '@/types/api';
 
 const API_VERSION = 'v2';
 

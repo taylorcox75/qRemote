@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { GlobalTransferInfo } from '../../types/api';
+import { GlobalTransferInfo } from '@/types/api';
 
 const API_VERSION = 'v2';
 
