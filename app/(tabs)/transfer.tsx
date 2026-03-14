@@ -568,18 +568,28 @@ export default function TransferScreen() {
               <TouchableOpacity
                 style={styles.row}
                 onPress={() => setDlPickerVisible(true)}
-                disabled={settingLimit}
+                disabled={settingLimit || isAltSpeedEnabled}
               >
                 <Text style={[styles.rowLabel, { color: colors.text }]}>
                   {t('screens.transfer.downloadLimit')}
                 </Text>
                 <View style={styles.rowTrailing}>
+                  {isAltSpeedEnabled && (
+                    <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
+                  )}
                   <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {transferInfo.dl_rate_limit > 0
-                      ? formatSpeed(transferInfo.dl_rate_limit)
-                      : t('common.unlimited')}
+                    {(() => {
+                      const limit = isAltSpeedEnabled
+                        ? (transferInfo.alt_dl_limit ?? 0)
+                        : transferInfo.dl_rate_limit;
+                      return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
+                    })()}
                   </Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
+                  />
                 </View>
               </TouchableOpacity>
 
@@ -588,18 +598,28 @@ export default function TransferScreen() {
               <TouchableOpacity
                 style={styles.row}
                 onPress={() => setUlPickerVisible(true)}
-                disabled={settingLimit}
+                disabled={settingLimit || isAltSpeedEnabled}
               >
                 <Text style={[styles.rowLabel, { color: colors.text }]}>
                   {t('screens.transfer.uploadLimit')}
                 </Text>
                 <View style={styles.rowTrailing}>
+                  {isAltSpeedEnabled && (
+                    <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
+                  )}
                   <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {transferInfo.up_rate_limit > 0
-                      ? formatSpeed(transferInfo.up_rate_limit)
-                      : t('common.unlimited')}
+                    {(() => {
+                      const limit = isAltSpeedEnabled
+                        ? (transferInfo.alt_up_limit ?? 0)
+                        : transferInfo.up_rate_limit;
+                      return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
+                    })()}
                   </Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
+                  />
                 </View>
               </TouchableOpacity>
 
@@ -938,6 +958,12 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     ...typography.body,
+  },
+  altBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginRight: 4,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
