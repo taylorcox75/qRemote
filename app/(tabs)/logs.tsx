@@ -16,12 +16,12 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useServer } from '../../context/ServerContext';
-import { useTorrents } from '../../context/TorrentContext';
-import { useTheme } from '../../context/ThemeContext';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { logsApi } from '../../services/api/logs';
-import { LogEntry, PeerLogEntry } from '../../types/api';
+import { useServer } from '@/context/ServerContext';
+import { useTorrents } from '@/context/TorrentContext';
+import { useTheme } from '@/context/ThemeContext';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { logsApi } from '@/services/api/logs';
+import { LogEntry, PeerLogEntry } from '@/types/api';
 
 export default function LogsScreen() {
   const { isConnected, currentServer, isLoading: serverIsLoading } = useServer();
