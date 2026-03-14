@@ -112,6 +112,8 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - Services: kebab-case (`server-manager.ts`, `color-theme-manager.ts`)
 - Tests: `tests/` at repo root, organized by module (`tests/utils/`, `tests/services/`). NOT `__tests__/`.
 - Route groups: `(groupname)` with parentheses is Expo Router syntax, not a naming choice.
+- Dynamic routes: `[param].tsx` with square brackets is Expo Router syntax for URL parameters (like `/torrent/:hash`). The brackets cannot be removed. The name inside becomes the param key in `useLocalSearchParams()`.
+- Layout files: `_layout.tsx` with the underscore prefix is Expo Router syntax for layout routes. Cannot be renamed.
 
 ## Cursor Cloud Specific Instructions
 - This is an Expo Go project. Do NOT add native modules that require `expo-dev-client` without explicit approval.
