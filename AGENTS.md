@@ -28,14 +28,8 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 6. The preferences object is `Record<string, any>` — see `types/preferences.ts` for the typed version (create if missing).
 7. Color defaults use mixed formats (rgb, rgba, hex). The color picker only handles 6-digit hex. Changing a default from `rgba(...)` to `#hex` removes the alpha channel and changes visual appearance.
 
-## Dead Code (scheduled for deletion in Task 3.5 — do NOT modify, do NOT build on)
-- `App.tsx` — unused boilerplate (entry is `index.ts` → `expo-router/entry`)
-- `app/onboarding.tsx` — route exists but nothing navigates to it (no gate in _layout.tsx)
-- `app/torrent/add.tsx` — standalone screen, superseded by the modal in `app/(tabs)/index.tsx`
-- `hooks/useDynamicColors.ts` — placeholder, always returns null
-- `components/DraggableTorrentList.tsx`, `SwipeableTorrentCard.tsx`, `ExpandableTorrentCard.tsx`, `SharedTransitionCard.tsx`, `AnimatedTorrentCard.tsx`, `ContextualFAB.tsx`, `GradientCard.tsx`, `HealthRing.tsx`, `AnimatedStateIcon.tsx` — none imported by any live screen
-- `apiTimeout` in `services/api/client.ts` — stored but never used
-- `csrfToken` in `services/api/client.ts` — captured but never sent
+## Dead Code
+All dead code files and unused client fields have been removed (Task 3.5 complete).
 
 ## Known Bugs
 - `app/_layout.tsx:32` — `backgroundColor: 'colors.r'` is a string literal, should be `colors.background`
@@ -44,9 +38,9 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - `app.config.js` — `usesCleartextTraffic: 'true'` should be boolean `true`
 - `app.config.js` — App name has trailing space: `'qRemote '`
 - `Alert.prompt` used in 14 places (iOS-only — acceptable for iOS-first, but Task 1.5 replaces with InputModal for consistency): `TorrentCard.tsx` (1), `torrent/[hash].tsx` (7), `TorrentDetails.tsx` (6)
-- `ActionSheetIOS` in `manage-trackers.tsx` — the `showTrackerMenu` function is dead code (defined but never called from JSX); clean up in Task 3.5
+
 - `isRecoveringFromBackground` in `TorrentContext.tsx` — exposed as ref value, doesn't trigger re-renders (should be state like TransferContext)
-- `react-native-gesture-handler` imported in 1 component (`SwipeableTorrentCard.tsx`) but NOT in package.json
+- `react-native-gesture-handler` installed explicitly in package.json (Task 1.4g)
 
 ## Naming Conventions
 - Components: PascalCase (`TorrentCard.tsx`)

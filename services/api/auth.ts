@@ -22,15 +22,12 @@ export const authApi = {
       
       // Check if cookies were set after login
       const cookies = apiClient.getCookies();
-      const csrfToken = apiClient.getCsrfToken();
       
-      // Log for debugging (helps diagnose qBittorrent 5.x issues)
       const responsePreview = typeof response === 'string' ? response.substring(0, 50) : 'non-string response';
       console.log('[Auth] Login response:', responsePreview);
       console.log('[Auth] Cookies received:', cookies ? 'Yes (' + cookies.length + ' chars)' : 'No');
-      console.log('[Auth] CSRF token received:', csrfToken ? 'Yes' : 'No');
 
-      clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'} | CSRF: ${csrfToken ? 'Yes' : 'No'}`);
+      clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`);
       
       // qBittorrent returns 'Ok.' on success, 'Fails.' on failure
       // Handle both string and trimmed string responses

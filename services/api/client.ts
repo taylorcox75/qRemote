@@ -2,9 +2,8 @@
  * client.ts — Singleton axios-based HTTP client for the qBittorrent WebUI API with cookie auth, retry, and request logging.
  *
  * Key exports: apiClient (singleton ApiClient instance)
- * Known issues: csrfToken is captured but never sent; apiTimeout is stored but never used (both are dead code, Task 3.5).
  */
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosHeaders } from 'axios';
 import { ServerConfig } from '../../types/api';
 import { clogDebug, clogInfo, clogWarn, clogError } from '../connectivity-log';
 
@@ -12,9 +11,7 @@ class ApiClient {
   private client: AxiosInstance;
   private currentServer: ServerConfig | null = null;
   private cookies: string = '';
-  private csrfToken: string = '';
   private retryAttempts: number = 3;
-  private apiTimeout: number = 30000;
 
   constructor() {
     this.client = axios.create({
@@ -94,29 +91,10 @@ class ApiClient {
             // Join multiple cookies with semicolon and space
             // Also extract CSRF token if present in cookies
             this.cookies = setCookieHeader.map(cookie => {
-              // Extract just the cookie name=value part (before semicolon if there are attributes)
-              const cookieValue = cookie.split(';')[0].trim();
-              
-              // Check for CSRF token in cookie (qBittorrent 5.x)
-              if (cookieValue.toLowerCase().startsWith('sid=')) {
-                // Extract SID token which is used as CSRF in qBittorrent 5.x
-                const sidMatch = cookieValue.match(/SID=([^;]+)/i);
-                if (sidMatch) {
-                  this.csrfToken = sidMatch[1];
-                }
-              }
-              
-              return cookieValue;
+              return cookie.split(';')[0].trim();
             }).join('; ');
           } else {
-            // Extract just the cookie name=value part
             this.cookies = setCookieHeader.split(';')[0].trim();
-            
-            // Check for CSRF token in cookie
-            const sidMatch = this.cookies.match(/SID=([^;]+)/i);
-            if (sidMatch) {
-              this.csrfToken = sidMatch[1];
-            }
           }
           clogDebug('HTTP', `Cookies captured: ${this.cookies.substring(0, 60)}...`);
           // console.log('Cookies captured after request:', this.cookies.substring(0, 100));
@@ -144,9 +122,8 @@ class ApiClient {
 
         // Handle rate limiting
         if (status === 429) {
-          const retryAfter =
-            (error.response!.headers as any)?.['retry-after'] ??
-            (error.response!.headers as any)?.['Retry-After'];
+          const headers = error.response?.headers ?? {};
+          const retryAfter = headers['retry-after'] ?? headers['Retry-After'];
           const waitMsg = retryAfter ? ` Please retry after ${retryAfter} seconds.` : '';
           clogWarn('HTTP', `429 Rate Limited — ${reqUrl}${waitMsg}`);
           throw new Error(`Rate limited by server.${waitMsg}`.trim());
@@ -181,14 +158,10 @@ class ApiClient {
 
   updateSettings(config: {
     connectionTimeout?: number;
-    apiTimeout?: number;
     retryAttempts?: number;
   }) {
     if (config.connectionTimeout !== undefined) {
       this.client.defaults.timeout = config.connectionTimeout;
-    }
-    if (config.apiTimeout !== undefined) {
-      this.apiTimeout = config.apiTimeout;
     }
     if (config.retryAttempts !== undefined) {
       this.retryAttempts = Math.max(0, config.retryAttempts);
@@ -199,7 +172,6 @@ class ApiClient {
     // Only clear cookies if we're switching to a different server or disconnecting
     if (!server || (this.currentServer && this.currentServer.id !== server.id)) {
       this.cookies = '';
-      this.csrfToken = '';
     }
     this.currentServer = server;
     if (server) {
@@ -215,39 +187,27 @@ class ApiClient {
 
   clearCookies() {
     this.cookies = '';
-    this.csrfToken = '';
   }
 
   getCookies(): string {
     return this.cookies;
   }
-  
-  getCsrfToken(): string {
-    return this.csrfToken;
-  }
 
-  // Helper method for form data requests
-  async postFormData(url: string, data: FormData): Promise<any> {
+  async postFormData(url: string, data: FormData): Promise<unknown> {
     if (!this.currentServer) {
       throw new Error('No server configured');
     }
 
-    const config: InternalAxiosRequestConfig = {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      } as any,
-    };
-
+    const headers = new AxiosHeaders({ 'Content-Type': 'multipart/form-data' });
     if (this.cookies) {
-      config.headers!.Cookie = this.cookies;
+      headers.set('Cookie', this.cookies);
     }
 
-    const response = await this.client.post(url, data, config);
+    const response = await this.client.post(url, data, { headers });
     return response.data;
   }
 
-  // Helper method for URL-encoded requests
-  async postUrlEncoded(url: string, data: Record<string, any>, signal?: AbortSignal): Promise<any> {
+  async postUrlEncoded(url: string, data: Record<string, string | number | boolean>, signal?: AbortSignal): Promise<unknown> {
     // Check server is configured (interceptor will also check, but fail early with better error)
     if (!this.currentServer) {
       throw new Error('No server configured. Please connect to a server first.');

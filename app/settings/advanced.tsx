@@ -242,7 +242,6 @@ export default function AdvancedSettingsScreen() {
                     if (!isNaN(num) && num >= 5000 && num <= 120000) {
                       setApiTimeout(num);
                       savePreference('apiTimeout', num);
-                      apiClient.updateSettings({ apiTimeout: num });
                     }
                   }}
                   keyboardType="numeric"
