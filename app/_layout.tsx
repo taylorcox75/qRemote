@@ -4,6 +4,8 @@ import { Dimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/services/query-client';
 import { ServerProvider } from '@/context/ServerContext';
 import { TorrentProvider } from '@/context/TorrentContext';
 import { TransferProvider } from '@/context/TransferContext';
@@ -76,15 +78,17 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <ToastProvider>
-            <ServerProvider>
-              <TorrentProvider>
-                <TransferProvider>
-                  <StackNavigator />
-                </TransferProvider>
-              </TorrentProvider>
-            </ServerProvider>
-          </ToastProvider>
+          <QueryClientProvider client={queryClient}>
+            <ToastProvider>
+              <ServerProvider>
+                <TorrentProvider>
+                  <TransferProvider>
+                    <StackNavigator />
+                  </TransferProvider>
+                </TorrentProvider>
+              </ServerProvider>
+            </ToastProvider>
+          </QueryClientProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
