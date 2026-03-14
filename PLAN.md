@@ -20,7 +20,9 @@ This plan is organized into **three phases** executed in order. Within each phas
 
 ### Task Dependencies
 
-Phase 1 tasks are truly independent — run them all in parallel.
+Most Phase 1 tasks are independent and can run in parallel, with these constraints:
+- **1.6** must complete before **1.8** (`tests/utils/torrent-state.test.ts` depends on extracted utilities)
+- **1.7** should run after structural edits in the same files to avoid merge conflicts
 
 Phase 2 tasks have ordering constraints:
 - **2.1** (design system) must complete before 2.2–2.7 (they use updated constants)
@@ -101,7 +103,7 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - `components/ExpandableTorrentCard.tsx:173-178` — Pause button has no `onPress` handler
 - `app.config.js` — `usesCleartextTraffic: 'true'` should be boolean `true`
 - `app.config.js` — App name has trailing space: `'qRemote '`
-- `Alert.prompt` used in 13 places (all broken on Android): `TorrentCard.tsx`, `torrent/[hash].tsx` (7 places), `TorrentDetails.tsx` (5 places)
+- `Alert.prompt` used in multiple places (all broken on Android), including `TorrentCard.tsx`, `torrent/[hash].tsx`, and `TorrentDetails.tsx`
 - `ActionSheetIOS` in `manage-trackers.tsx` — no Android fallback
 - `isRecoveringFromBackground` in `TorrentContext.tsx` — exposed as ref value, doesn't trigger re-renders (should be state like TransferContext)
 - `react-native-gesture-handler` imported in 2 components but NOT in package.json
@@ -134,6 +136,8 @@ The file must:
 1. Define an `AppPreferences` interface with every preference key currently used in the codebase, with correct types
 2. Export `DEFAULT_PREFERENCES` with sensible defaults matching current behavior
 3. Types should cover: theme, customColors, defaultSortBy, defaultSortDirection, defaultFilter, cardViewMode, pauseOnAdd, defaultSavePath, defaultPriority, toastDuration, hapticFeedback, autoConnect, connectionTimeout, apiTimeout, retryAttempts, debugMode, refreshInterval, hasCompletedOnboarding, and any others found by grepping
+
+Note: `cardViewMode` is transitional. If Task 2.2 removes multi-view UI, keep the key typed as deprecated for backward compatibility unless an explicit migration task is added.
 
 **Modify:** `services/storage.ts` — change `getPreferences` return type to `Promise<Partial<AppPreferences>>` and `savePreferences` param to `Partial<AppPreferences>`. Import from `types/preferences.ts`.
 
@@ -201,9 +205,9 @@ plugins: [
 
 **Read first:** `components/InputModal.tsx` (understand its API), then every file using `Alert.prompt`.
 
-**Files to modify (12 callsites — skip TorrentCard.tsx, it's rewritten in Task 2.2):**
-- `app/torrent/[hash].tsx` — `handleSetDownloadLimit`, `handleSetUploadLimit`, `handleSetCategory`, `handleAddTags`, `handleRemoveTags`, `handleSetLocation`, `handleRenameTorrent` (7 callsites)
-- `components/TorrentDetails.tsx` — `handleAddCategory`, `handleShareLimit`, `handleSetLocation`, `handleRenameTorrent`, `handleAddPeers`, `handleRenameFile` (6 callsites)
+**Files to modify (all Alert.prompt callsites in these files — skip TorrentCard.tsx, it's rewritten in Task 2.2):**
+- `app/torrent/[hash].tsx` — `handleSetDownloadLimit`, `handleSetUploadLimit`, `handleSetCategory`, `handleAddTags`, `handleRemoveTags`, `handleSetLocation`, `handleRenameTorrent`
+- `components/TorrentDetails.tsx` — `handleAddCategory`, `handleShareLimit`, `handleSetLocation`, `handleRenameTorrent`, `handleAddPeers`, `handleRenameFile`
 
 **Do NOT fix Alert.prompt in `TorrentCard.tsx`** — Task 2.2 will remove all action handlers from TorrentCard entirely. Fixing it here is wasted work that creates merge conflicts.
 
@@ -249,7 +253,6 @@ plugins: [
 - `app/(tabs)/index.tsx`, `app/(tabs)/settings.tsx`, `app/(tabs)/transfer.tsx`, `app/(tabs)/logs.tsx`
 - `app/torrent/[hash].tsx`, `app/torrent/files.tsx`, `app/torrent/manage-trackers.tsx`
 - `app/server/add.tsx`, `app/server/[id].tsx`
-- `app/onboarding.tsx`
 - `components/TorrentCard.tsx`, `components/TorrentDetails.tsx`, `components/SuperDebugPanel.tsx`, `components/ColorPicker.tsx`, `components/LogViewer.tsx`, `components/OptionPicker.tsx`
 - `context/TorrentContext.tsx`, `context/TransferContext.tsx`, `context/ServerContext.tsx`
 - `services/api/client.ts`, `services/api/torrents.ts`, `services/server-manager.ts`
@@ -296,7 +299,7 @@ plugins: [
 
 **Add scripts to `package.json`:**
 ```json
-"lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+"lint": "eslint . --ext .ts,.tsx",
 "format": "prettier --write '**/*.{ts,tsx,js,json}'"
 ```
 
@@ -374,7 +377,7 @@ Changes:
 - State: `selectedTorrent` for the menu target
 - `onLongPress` on each card sets `selectedTorrent` and opens the menu
 - Action handlers come from `useTorrentActions(selectedTorrent)` hook
-- Remove `viewMode` state and `cardViewMode` preference (one mode only now)
+- Remove `viewMode` UI state (one mode only now). Keep reading `cardViewMode` as a deprecated compatibility key until preferences migration is explicitly scheduled.
 
 **Risks:**
 - The custom menu currently uses 9 different actions. All must remain accessible via the new ActionMenu. Don't delete functionality — move it.
@@ -491,10 +494,12 @@ Replace the "Quick Tools" (4 colored buttons) + "Advanced" (16 rainbow buttons) 
 
 1. **Top-level `settings.tsx`** (~200 lines): Connection status card + 6-8 navigation rows (Servers, Appearance, Torrent Defaults, Notifications, Advanced, What's New, About)
 2. **`app/settings/servers.tsx`** (new): Server list, add/edit/delete, auto-connect toggle
-3. **`app/settings/appearance.tsx`** (new): Theme toggle, card view, refresh interval. Links to existing `settings/theme.tsx` for colors.
+3. **`app/settings/appearance.tsx`** (new): Theme toggle, refresh interval. Links to existing `settings/theme.tsx` for colors.
 4. **`app/settings/torrent-defaults.tsx`** (new): Default sort, filter, pause-on-add, save path, priority
 5. **`app/settings/notifications.tsx`** (new): Toast duration, haptic feedback
 6. **`app/settings/advanced.tsx`** (new): API timeout, retries, debug mode, logs, backup/restore, danger zone (shutdown)
+7. **`app/settings/whats-new.tsx`** (new): Release notes/changelog currently shown by inline modal
+8. **`app/settings/about.tsx`** (new): App version, build info, links/credits
 
 **Approach:** Extract one section at a time. After each extraction, the app must build and the settings screen must still work. Start with the simplest section (Appearance), end with the most complex (Servers — has the swipeable server list and quick-connect logic).
 
@@ -504,7 +509,7 @@ Replace the "Quick Tools" (4 colored buttons) + "Advanced" (16 rainbow buttons) 
 - Settings currently uses `useFocusEffect` to reload data. Each sub-screen needs its own focus handling.
 - Categories and tags sections depend on `isConnected` — only shown when connected. Handle this in the sub-screen.
 - `SwipeableServerItem` is defined inline in settings.tsx. Extract it as a component.
-- The "What's New" modal is defined inline. Extract it or move to its own route.
+- The "What's New" content is currently inline. Move it to `app/settings/whats-new.tsx` and keep behavior equivalent.
 - The existing `app/settings/theme.tsx` already works as a route — use it as a reference for how settings sub-screens should be structured.
 
 **Acceptance:** Top-level settings shows ~8 rows. Each row navigates to a sub-screen. All settings still functional. `settings.tsx` is under 300 lines.
@@ -566,12 +571,10 @@ import { formatSpeed } from '@/utils/format';
 
 **Files with hardcoded English strings:**
 - `app/(tabs)/logs.tsx`
-- `app/torrent/add.tsx`
 - `app/torrent/manage-trackers.tsx`
 - `app/torrent/[hash].tsx`
 - `app/(tabs)/transfer.tsx`
 - `app/(tabs)/index.tsx`
-- `app/onboarding.tsx`
 - `app/(tabs)/settings.tsx`
 - `components/TorrentCard.tsx`
 - `components/TorrentDetails.tsx`
@@ -631,6 +634,7 @@ Git history preserves everything. Dead code doesn't belong in the working tree.
 **Delete these files (verify zero live imports before each deletion):**
 - `App.tsx` — unused boilerplate, entry is `expo-router/entry`
 - `hooks/useDynamicColors.ts` — placeholder, always returns null
+- `app/onboarding.tsx` — route exists but has no active navigation path
 - `app/torrent/add.tsx` — superseded by the add-torrent modal in `app/(tabs)/index.tsx`
 - `components/DraggableTorrentList.tsx` — not imported by any screen
 - `components/SwipeableTorrentCard.tsx` — not imported by any screen
