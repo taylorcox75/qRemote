@@ -32,8 +32,14 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const appState = useRef(AppState.currentState);
   const lastActiveTime = useRef(Date.now());
-  const isRecoveringFromBackground = useRef(false);
+  const isRecoveringRef = useRef(false);
+  const [isRecoveringState, setIsRecoveringState] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  const setRecovering = useCallback((val: boolean) => {
+    isRecoveringRef.current = val;
+    setIsRecoveringState(val);
+  }, []);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -55,8 +61,8 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       }
       
       // Clear recovery flag on successful sync
-      if (isRecoveringFromBackground.current) {
-        isRecoveringFromBackground.current = false;
+      if (isRecoveringRef.current) {
+        setRecovering(false);
       }
       
       if (isFullUpdate) {
@@ -165,7 +171,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       ridRef.current = data.rid;
     } catch (err: any) {
       // Don't set error if we're recovering from background - transient network issues are expected
-      if (isConnected && !isRecoveringFromBackground.current) {
+      if (isConnected && !isRecoveringRef.current) {
         setError(err.message || 'Failed to sync torrents');
       }
     }
@@ -229,7 +235,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
         
         // If app was in background for more than 30 seconds, connection might be stale
         if (timeInBackground > 30000 && isConnected) {
-          isRecoveringFromBackground.current = true;
+          setRecovering(true);
           
           // Try to reconnect silently
           const reconnected = await checkAndReconnect();
@@ -252,7 +258,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
             await sync();
           }
           
-          isRecoveringFromBackground.current = false;
+          setRecovering(false);
         } else if (isConnected) {
           // Just resume polling, connection should still be good
           if (intervalRef.current) {
@@ -298,7 +304,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
         error,
         refresh,
         sync,
-        isRecoveringFromBackground: isRecoveringFromBackground.current,
+        isRecoveringFromBackground: isRecoveringState,
         initialLoadComplete,
       }}
     >
