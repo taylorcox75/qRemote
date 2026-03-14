@@ -318,6 +318,7 @@ export default function TorrentDetail() {
   };
 
   const handleForceStart = async () => {
+    if (actionLoading) return;
     try {
       setActionLoading(true);
       const isForceStarted = torrent?.force_start || false;
@@ -336,6 +337,7 @@ export default function TorrentDetail() {
   };
 
   const handleSuperSeeding = async () => {
+    if (actionLoading) return;
     try {
       setActionLoading(true);
       const isSuperSeeding = torrent?.super_seeding || false;
@@ -354,6 +356,7 @@ export default function TorrentDetail() {
   };
 
   const handleSequentialDownload = async () => {
+    if (actionLoading) return;
     try {
       setActionLoading(true);
       const isSeq = torrent?.seq_dl || false;
@@ -372,6 +375,7 @@ export default function TorrentDetail() {
   };
 
   const handleFirstLastPiecePriority = async () => {
+    if (actionLoading) return;
     try {
       setActionLoading(true);
       const isFlPiece = torrent?.f_l_piece_prio || false;
@@ -535,9 +539,6 @@ export default function TorrentDetail() {
   };
 
   const handleAddTags = () => setTagsModalVisible(true);
-
-  // kept for backwards-compat with any remaining usages; opens same modal
-  const handleRemoveTags = () => setTagsModalVisible(true);
 
   const handleSetLocation = () => {
     setInputModalConfig({
