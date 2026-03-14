@@ -26,7 +26,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useTranslation } from 'react-i18next';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
@@ -44,6 +43,7 @@ import {
   TorrentInfo,
 } from '@/types/api';
 import { formatDate } from '@/utils/format';
+import { getErrorMessage } from '@/utils/error';
 
 export default function TorrentDetail() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
@@ -53,7 +53,6 @@ export default function TorrentDetail() {
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
   const { categories } = useTorrents();
-  const { t } = useTranslation();
   const { t } = useTranslation();
 
   useLayoutEffect(() => {
