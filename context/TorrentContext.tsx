@@ -6,6 +6,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TorrentInfo, MainData, ServerState, Category } from '@/types/api';
 import { syncApi } from '@/services/api/sync';
 import { useServer } from './ServerContext';
@@ -24,280 +25,208 @@ interface TorrentContextType {
   initialLoadComplete: boolean;
 }
 
+interface SyncState {
+  torrents: TorrentInfo[];
+  categories: { [name: string]: Category };
+  tags: string[];
+  serverState: Partial<ServerState> | null;
+}
+
+const EMPTY_STATE: SyncState = { torrents: [], categories: {}, tags: [], serverState: null };
+
 const TorrentContext = createContext<TorrentContextType | undefined>(undefined);
 
 export function TorrentProvider({ children }: { children: ReactNode }) {
   const { isConnected, checkAndReconnect } = useServer();
-  const [torrents, setTorrents] = useState<TorrentInfo[]>([]);
-  const [categories, setCategories] = useState<{ [name: string]: Category }>({});
-  const [tags, setTags] = useState<string[]>([]);
-  const [serverState, setServerState] = useState<Partial<ServerState> | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [rid, setRid] = useState(0);
+  const queryClient = useQueryClient();
+
   const ridRef = useRef(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const appState = useRef(AppState.currentState);
+  const stateRef = useRef<SyncState>({ ...EMPTY_STATE });
+  const syncVersionRef = useRef(0);
+
+  const appStateRef = useRef(AppState.currentState);
   const lastActiveTime = useRef(Date.now());
-  const isRecoveringRef = useRef(false);
   const [isRecoveringState, setIsRecoveringState] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  const setRecovering = useCallback((val: boolean) => {
-    isRecoveringRef.current = val;
-    setIsRecoveringState(val);
-  }, []);
+  const syncQueryFn = useCallback(async (): Promise<SyncState> => {
+    const version = syncVersionRef.current;
+    const currentRid = ridRef.current;
+    const data: MainData = await syncApi.getMainData(currentRid);
 
-  // Keep ref in sync with state
-  useEffect(() => {
-    ridRef.current = rid;
-  }, [rid]);
+    // A newer sync was requested while this one was in-flight — discard side-effects
+    if (version !== syncVersionRef.current) {
+      return stateRef.current;
+    }
 
-  const sync = useCallback(async () => {
-    if (!isConnected) return;
+    const isFullUpdate = data.full_update || currentRid === 0;
+    let state: SyncState;
 
-    try {
-      setError(null);
-      const currentRid = ridRef.current;
-      const data: MainData = await syncApi.getMainData(currentRid);
-      const isFullUpdate = data.full_update || currentRid === 0;
-      
-      // Mark initial load as complete after first successful sync
-      if (!initialLoadComplete) {
-        setInitialLoadComplete(true);
+    if (isFullUpdate) {
+      const torrentsArray = data.torrents ? Object.values(data.torrents) : [];
+      const validTorrents = torrentsArray.filter((t) => {
+        if (!t || !t.hash) return false;
+        if (typeof t.progress !== 'number' || isNaN(t.progress)) t.progress = 0;
+        return true;
+      });
+
+      state = {
+        torrents: validTorrents,
+        categories: data.categories ?? {},
+        tags: data.tags ?? [],
+        serverState: data.server_state ?? null,
+      };
+    } else {
+      const prev = stateRef.current;
+      let torrents = [...prev.torrents];
+      let categories = { ...prev.categories };
+      let tags = [...prev.tags];
+      let serverState: Partial<ServerState> | null = prev.serverState
+        ? { ...prev.serverState }
+        : null;
+
+      if (data.torrents) {
+        const torrentMap = new Map<string, TorrentInfo>();
+        torrents.forEach((t) => {
+          if (t && t.hash) torrentMap.set(t.hash, t);
+        });
+
+        Object.keys(data.torrents).forEach((hashKey) => {
+          const update = data.torrents![hashKey];
+          const existing = torrentMap.get(hashKey);
+          if (existing) {
+            torrentMap.set(hashKey, { ...existing, ...update, hash: hashKey });
+          } else {
+            if (!update.hash) update.hash = hashKey;
+            torrentMap.set(hashKey, update);
+          }
+        });
+
+        torrents = Array.from(torrentMap.values())
+          .map((t) => {
+            if (typeof t.progress !== 'number' || isNaN(t.progress)) t.progress = 0;
+            return t;
+          })
+          .filter((t) => t && t.hash);
       }
-      
-      // Clear recovery flag on successful sync
-      if (isRecoveringRef.current) {
-        setRecovering(false);
+
+      if (data.torrents_removed) {
+        torrents = torrents.filter((t) => !data.torrents_removed!.includes(t.hash));
       }
-      
-      if (isFullUpdate) {
-        // Full update
-        if (data.torrents && Object.keys(data.torrents).length > 0) {
-          const torrentsArray = Object.values(data.torrents);
-          // Filter out invalid torrents (only check for essential fields)
-          const validTorrents = torrentsArray.filter((t) => {
-            if (!t || !t.hash) {
-              return false;
-            }
-            // Ensure progress is a valid number (default to 0 if invalid)
-            if (typeof t.progress !== 'number' || isNaN(t.progress)) {
-              t.progress = 0;
-            }
-            return true;
-          });
-          setTorrents(validTorrents);
-        } else {
-          setTorrents([]);
-        }
-        if (data.categories) {
-          setCategories(data.categories);
-        }
-        if (data.tags) {
-          setTags(data.tags);
-        }
-      } else {
-        // Incremental update - qBittorrent only sends changed fields, so we need to merge
-        if (data.torrents) {
-          setTorrents((prev) => {
-            // Convert previous array to map for efficient lookup
-            const torrentMap = new Map<string, TorrentInfo>();
-            prev.forEach((t) => {
-              if (t && t.hash) {
-                torrentMap.set(t.hash, t);
-              }
-            });
-            
-            // Merge incremental updates with existing torrent data
-            if (data.torrents) {
-              Object.keys(data.torrents).forEach((hashKey) => {
-                const incrementalUpdate = data.torrents![hashKey];
-                // The key IS the hash - use it to look up existing torrent
-                const existingTorrent = torrentMap.get(hashKey);
-                if (existingTorrent) {
-                  // Merge: keep existing data, update with new fields
-                  // Ensure hash is preserved from existing torrent
-                  const merged = { ...existingTorrent, ...incrementalUpdate, hash: hashKey };
-                  torrentMap.set(hashKey, merged);
-                } else {
-                  // New torrent (shouldn't happen in incremental, but handle it)
-                  // Ensure hash is set from the key
-                  if (!incrementalUpdate.hash) {
-                    incrementalUpdate.hash = hashKey;
-                  }
-                  torrentMap.set(hashKey, incrementalUpdate);
-                }
-              });
-            }
-            
-            // Convert back to array and ensure valid data
-            const torrentsArray = Array.from(torrentMap.values());
-            return torrentsArray.map((t) => {
-              // Ensure progress is a valid number (default to 0 if invalid)
-              if (typeof t.progress !== 'number' || isNaN(t.progress)) {
-                t.progress = 0;
-              }
-              return t;
-            }).filter((t) => t && t.hash); // Only filter out torrents without hash
-          });
-        }
-        if (data.torrents_removed) {
-          setTorrents((prev) => prev.filter((t) => !data.torrents_removed!.includes(t.hash)));
-        }
-        if (data.categories) {
-          setCategories((prev) => ({ ...prev, ...data.categories }));
-        }
-        if (data.categories_removed) {
-          setCategories((prev) => {
-            const updated = { ...prev };
-            data.categories_removed!.forEach((name) => delete updated[name]);
-            return updated;
-          });
-        }
-        if (data.tags) {
-          setTags((prev) => [...new Set([...prev, ...data.tags!])]);
-        }
-        if (data.tags_removed) {
-          setTags((prev) => prev.filter((tag) => !data.tags_removed!.includes(tag)));
-        }
+
+      if (data.categories) {
+        categories = { ...categories, ...data.categories };
+      }
+      if (data.categories_removed) {
+        data.categories_removed.forEach((name) => delete categories[name]);
+      }
+
+      if (data.tags) {
+        tags = [...new Set([...tags, ...data.tags])];
+      }
+      if (data.tags_removed) {
+        tags = tags.filter((tag) => !data.tags_removed!.includes(tag));
       }
 
       if (data.server_state) {
-        setServerState((prev) => {
-          if (isFullUpdate || !prev) {
-            return data.server_state!;
-          }
-
-          // /sync/maindata incremental responses may include only changed server_state fields.
-          return { ...prev, ...data.server_state };
-        });
+        serverState = serverState
+          ? { ...serverState, ...data.server_state }
+          : data.server_state;
       }
 
-      setRid(data.rid);
-      ridRef.current = data.rid;
-    } catch (err: unknown) {
-      if (isConnected && !isRecoveringRef.current) {
-        setError(getErrorMessage(err));
-      }
+      state = { torrents, categories, tags, serverState };
     }
-  }, [isConnected]);
 
-  const refresh = useCallback(async () => {
-    if (!isConnected) return;
+    ridRef.current = data.rid;
+    stateRef.current = state;
+    return state;
+  }, []);
 
-    setIsLoading(true);
-    setRid(0);
-    ridRef.current = 0;
-    try {
-      await sync();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isConnected, sync]);
+  const {
+    data: syncData,
+    isLoading: queryIsLoading,
+    error: queryError,
+    dataUpdatedAt,
+  } = useQuery<SyncState>({
+    queryKey: ['torrents'],
+    queryFn: syncQueryFn,
+    refetchInterval: 2000,
+    enabled: isConnected,
+  });
 
+  // Mark initial load complete once we receive data (persists across disconnects)
   useEffect(() => {
-    if (isConnected) {
-      // Initial refresh
-      setIsLoading(true);
-      setRid(0);
-      ridRef.current = 0;
-      sync().finally(() => {
-        setIsLoading(false);
-      });
-      
-      // Set up polling for real-time updates
-      intervalRef.current = setInterval(() => {
-        sync();
-      }, 2000); // Poll every 2 seconds
-
-      return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      };
-    } else {
-      setTorrents([]);
-      setCategories({});
-      setTags([]);
-      setServerState(null);
-      setRid(0);
-      ridRef.current = 0;
-      setError(null);
+    if (dataUpdatedAt > 0 && !initialLoadComplete) {
+      setInitialLoadComplete(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected]);
+  }, [dataUpdatedAt, initialLoadComplete]);
 
-  // AppState listener for background/foreground handling
+  // Clear recovery state after successful fetch
+  useEffect(() => {
+    if (dataUpdatedAt > 0 && isRecoveringState) {
+      setIsRecoveringState(false);
+    }
+  }, [dataUpdatedAt, isRecoveringState]);
+
+  // Reset sync state when disconnected
+  useEffect(() => {
+    if (!isConnected) {
+      ridRef.current = 0;
+      stateRef.current = { ...EMPTY_STATE };
+      syncVersionRef.current++;
+      queryClient.removeQueries({ queryKey: ['torrents'] });
+    }
+  }, [isConnected, queryClient]);
+
+  // AppState handler: background/foreground recovery
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      const previousAppState = appState.current;
-      appState.current = nextAppState;
+      const previousAppState = appStateRef.current;
+      appStateRef.current = nextAppState;
 
       if (previousAppState === 'background' && nextAppState === 'active') {
-        // App came back to foreground
         const timeInBackground = Date.now() - lastActiveTime.current;
-        
-        // If app was in background for more than 30 seconds, connection might be stale
-        if (timeInBackground > 30000 && isConnected) {
-          setRecovering(true);
-          
-          // Try to reconnect silently
-          const reconnected = await checkAndReconnect();
-          
-          if (reconnected) {
-            // Clear error and force a fresh sync
-            setError(null);
-            setRid(0);
-            ridRef.current = 0;
-            
-            // Resume polling
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-            }
-            intervalRef.current = setInterval(() => {
-              sync();
-            }, 2000);
-            
-            // Do an immediate sync
-            await sync();
-          }
-          
-          setRecovering(false);
-        } else if (isConnected) {
-          // Just resume polling, connection should still be good
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-          }
-          intervalRef.current = setInterval(() => {
-            sync();
-          }, 2000);
-          
-          // Do an immediate sync
-          await sync();
-        }
-        
         lastActiveTime.current = Date.now();
+
+        if (isConnected) {
+          setIsRecoveringState(true);
+
+          if (timeInBackground > 30000) {
+            await checkAndReconnect();
+          }
+
+          // Force full re-sync on foreground
+          syncVersionRef.current++;
+          ridRef.current = 0;
+          await queryClient.invalidateQueries({ queryKey: ['torrents'] });
+          setIsRecoveringState(false);
+        }
       } else if (nextAppState === 'background') {
-        // App went to background - pause polling to save battery
-        lastActiveTime.current = Date.now();
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      } else if (nextAppState === 'active') {
-        // App became active (but wasn't in background before)
         lastActiveTime.current = Date.now();
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [isConnected, checkAndReconnect, queryClient]);
 
-    return () => {
-      subscription?.remove();
-    };
-  }, [isConnected, checkAndReconnect, sync]);
+  const refresh = useCallback(async () => {
+    if (!isConnected) return;
+    syncVersionRef.current++;
+    ridRef.current = 0;
+    await queryClient.invalidateQueries({ queryKey: ['torrents'] });
+  }, [isConnected, queryClient]);
+
+  const sync = useCallback(async () => {
+    if (!isConnected) return;
+    await queryClient.invalidateQueries({ queryKey: ['torrents'] });
+  }, [isConnected, queryClient]);
+
+  const torrents = isConnected ? (syncData?.torrents ?? []) : [];
+  const categories = isConnected ? (syncData?.categories ?? {}) : {};
+  const tags = isConnected ? (syncData?.tags ?? []) : [];
+  const serverState = isConnected ? (syncData?.serverState ?? null) : null;
+  const error = isRecoveringState ? null : queryError ? getErrorMessage(queryError) : null;
 
   return (
     <TorrentContext.Provider
@@ -306,7 +235,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
         categories,
         tags,
         serverState,
-        isLoading,
+        isLoading: queryIsLoading,
         error,
         refresh,
         sync,
