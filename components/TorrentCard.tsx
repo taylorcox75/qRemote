@@ -150,6 +150,27 @@ function TorrentCardInner({ torrent, onPress, onLongPress, onPauseResume, compac
           <DetailRow label="Peers" value={`${torrent.num_leechs} / ${torrent.num_incomplete}`} />
           <DetailRow label="Ratio" value={torrent.ratio != null ? torrent.ratio.toFixed(2) : '—'} />
           <DetailRow label="Uploaded" value={formatSize(torrent.uploaded)} />
+          {torrent.uploaded_session > 0 && (
+            <DetailRow label="Uploaded (Session)" value={formatSize(torrent.uploaded_session)} />
+          )}
+          {torrent.downloaded_session > 0 && (
+            <DetailRow label="Downloaded (Session)" value={formatSize(torrent.downloaded_session)} />
+          )}
+          {torrent.amount_left > 0 && (
+            <DetailRow label="Remaining" value={formatSize(torrent.amount_left)} />
+          )}
+          {torrent.availability > 0 && torrent.availability < 1 && (
+            <DetailRow label="Availability" value={`${(torrent.availability * 100).toFixed(1)}%`} />
+          )}
+          {torrent.seeding_time > 0 && (
+            <DetailRow label="Seeding Time" value={formatTime(torrent.seeding_time)} />
+          )}
+          {torrent.dl_limit > 0 && (
+            <DetailRow label="DL Limit" value={formatSpeed(torrent.dl_limit)} />
+          )}
+          {torrent.up_limit > 0 && (
+            <DetailRow label="UL Limit" value={formatSpeed(torrent.up_limit)} />
+          )}
           {!!torrent.category && (
             <DetailRow label="Category" value={torrent.category} />
           )}
@@ -184,6 +205,14 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.torrent.num_seeds === next.torrent.num_seeds &&
     prev.torrent.num_leechs === next.torrent.num_leechs &&
     prev.torrent.ratio === next.torrent.ratio &&
+    prev.torrent.uploaded === next.torrent.uploaded &&
+    prev.torrent.uploaded_session === next.torrent.uploaded_session &&
+    prev.torrent.downloaded_session === next.torrent.downloaded_session &&
+    prev.torrent.amount_left === next.torrent.amount_left &&
+    prev.torrent.availability === next.torrent.availability &&
+    prev.torrent.seeding_time === next.torrent.seeding_time &&
+    prev.torrent.dl_limit === next.torrent.dl_limit &&
+    prev.torrent.up_limit === next.torrent.up_limit &&
     prev.onPress === next.onPress &&
     prev.onLongPress === next.onLongPress &&
     prev.onPauseResume === next.onPauseResume &&

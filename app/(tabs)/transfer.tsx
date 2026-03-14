@@ -424,21 +424,16 @@ export default function TransferScreen() {
 
   const isAltSpeedEnabled = transferInfo.use_alt_speed_limits ?? false;
 
-  const getEffectiveLimit = (globalLimit: number) => {
-    // dl_rate_limit / up_rate_limit already reflect the current effective limit
-    // (qBittorrent returns the alt limits in these fields when alt speed is active).
-    return globalLimit > 0 ? formatSpeed(globalLimit) : t('common.unlimited');
+  const getDisplayLimit = (regularLimit: number, altLimit: number | undefined) => {
+    // When alt speed is active, show the configured alt limit; otherwise show the regular limit.
+    const limit = isAltSpeedEnabled ? (altLimit ?? 0) : regularLimit;
+    return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
   };
 
   const formatAltLimitLabel = () => {
-    // When alt speed is active the current rate limits ARE the alt limits.
-    // When inactive, fall back to the stored alt_dl_limit / alt_up_limit from prefs.
-    const dlLimit = isAltSpeedEnabled
-      ? transferInfo.dl_rate_limit
-      : (transferInfo.alt_dl_limit ?? 0);
-    const ulLimit = isAltSpeedEnabled
-      ? transferInfo.up_rate_limit
-      : (transferInfo.alt_up_limit ?? 0);
+    // Always show the configured alt speed limits from preferences.
+    const dlLimit = transferInfo.alt_dl_limit ?? 0;
+    const ulLimit = transferInfo.alt_up_limit ?? 0;
     const dl = dlLimit > 0 ? formatSpeed(dlLimit) : t('common.unlimited');
     const ul = ulLimit > 0 ? formatSpeed(ulLimit) : t('common.unlimited');
     return `DL: ${dl}  ·  UL: ${ul}`;
@@ -598,7 +593,7 @@ export default function TransferScreen() {
                     <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
                   )}
                   <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {getEffectiveLimit(transferInfo.dl_rate_limit)}
+                    {getDisplayLimit(transferInfo.dl_rate_limit, transferInfo.alt_dl_limit)}
                   </Text>
                   <Ionicons
                     name="chevron-forward"
@@ -623,7 +618,7 @@ export default function TransferScreen() {
                     <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
                   )}
                   <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {getEffectiveLimit(transferInfo.up_rate_limit)}
+                    {getDisplayLimit(transferInfo.up_rate_limit, transferInfo.alt_up_limit)}
                   </Text>
                   <Ionicons
                     name="chevron-forward"
