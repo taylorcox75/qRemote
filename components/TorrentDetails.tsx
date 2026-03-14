@@ -5,7 +5,7 @@
  * Known issues: Alert.prompt used in 6 places (iOS-only, Task 1.5 replaces with InputModal);
  *   2,085 lines — decomposition into sub-components is a future candidate.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,8 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +45,7 @@ import {
 import { formatDate } from '@/utils/format';
 import { InputModal } from './InputModal';
 import { TagsModal } from './TagsModal';
+import { OptionPicker } from './OptionPicker';
 import { getErrorMessage } from '@/utils/error';
 
 interface TorrentDetailsProps {
@@ -90,8 +93,37 @@ export function TorrentDetails({
     onConfirm: (value: string) => void;
   }>({ title: '', onConfirm: () => {} });
   const [tagsModalVisible, setTagsModalVisible] = useState(false);
-  
-  // Display queue position (1 = top, higher = lower)
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+
+  // Reannounce spinning animation
+  const reannounceSpinAnim = useRef(new Animated.Value(0)).current;
+  const reannounceAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const reannounceRotate = reannounceSpinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  useEffect(() => {
+    if (activeButton === 'reannounce' && loading) {
+      reannounceAnimRef.current = Animated.loop(
+        Animated.timing(reannounceSpinAnim, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      reannounceAnimRef.current.start();
+    } else {
+      reannounceAnimRef.current?.stop();
+      reannounceAnimRef.current = null;
+      reannounceSpinAnim.setValue(0);
+    }
+    return () => {
+      reannounceAnimRef.current?.stop();
+    };
+  }, [activeButton, loading, reannounceSpinAnim]);
+
   const getQueueDisplay = () => {
     const priority = optimisticPriority;
     const totalTorrents = torrents.length;
@@ -394,73 +426,53 @@ export function TorrentDetails({
 
   const handleSetCategory = () => {
     setActiveButton('category');
-    const categoryOptions = [t('common.none'), ...Object.keys(categories)];
-    Alert.alert(
-      t('torrentDetail.setCategory'),
-      t('torrentDetail.selectCategory'),
-      [
-        ...categoryOptions.map((cat) => ({
-          text: cat,
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await torrentsApi.setTorrentCategory(
-                [torrent.hash],
-                cat === t('common.none') ? '' : cat
-              );
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              await sync();
-              onRefresh();
-            } catch (error: unknown) {
-              showToast(getErrorMessage(error), 'error');
-              setActiveButton(null);
-            } finally {
-              setLoading(false);
-              setActiveButton(null);
-            }
-          },
-        })),
-        {
-          text: t('torrentDetail.addNewCategory'),
-          onPress: () => {
+    setCategoryPickerVisible(true);
+  };
+
+  const handleCategorySelect = async (value: string) => {
+    setCategoryPickerVisible(false);
+    if (value === '__new__') {
+      setActiveButton(null);
+      setInputModalConfig({
+        title: t('torrentDetail.addNewCategory'),
+        message: t('torrentDetail.enterCategoryName'),
+        onConfirm: async (categoryName: string) => {
+          setInputModalVisible(false);
+          if (!categoryName) {
+            showToast(t('errors.validCategoryName'), 'error');
+            return;
+          }
+          try {
+            setLoading(true);
+            setActiveButton('category');
+            await categoriesApi.addCategory(categoryName, '');
+            await torrentsApi.setTorrentCategory([torrent.hash], categoryName);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await sync();
+            onRefresh();
+          } catch (error: unknown) {
+            showToast(getErrorMessage(error), 'error');
+          } finally {
+            setLoading(false);
             setActiveButton(null);
-            setInputModalConfig({
-              title: t('torrentDetail.addNewCategory'),
-              message: t('torrentDetail.enterCategoryName'),
-              onConfirm: async (categoryName: string) => {
-                setInputModalVisible(false);
-                if (!categoryName) {
-                  showToast(t('errors.validCategoryName'), 'error');
-                  return;
-                }
-                try {
-                  setLoading(true);
-                  setActiveButton('category');
-                  await categoriesApi.addCategory(categoryName, '');
-                  await torrentsApi.setTorrentCategory([torrent.hash], categoryName);
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                  await sync();
-                  onRefresh();
-                } catch (error: unknown) {
-                  showToast(getErrorMessage(error), 'error');
-                } finally {
-                  setLoading(false);
-                  setActiveButton(null);
-                }
-              },
-            });
-            setInputModalVisible(true);
-          },
+          }
         },
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-          onPress: () => {
-            setActiveButton(null);
-          },
-        },
-      ]
-    );
+      });
+      setInputModalVisible(true);
+      return;
+    }
+    try {
+      setLoading(true);
+      await torrentsApi.setTorrentCategory([torrent.hash], value);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sync();
+      onRefresh();
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
+    } finally {
+      setLoading(false);
+      setActiveButton(null);
+    }
   };
 
   const handleSetDownloadLimit = () => {
@@ -732,6 +744,22 @@ export function TorrentDetails({
     return (
       <View style={styles.container}>
         {renderInputModal()}
+        {/* Category Picker */}
+        <OptionPicker
+          visible={categoryPickerVisible}
+          title={t('torrentDetail.setCategory')}
+          options={[
+            { label: t('common.none'), value: '' },
+            ...Object.keys(categories).map((cat) => ({ label: cat, value: cat })),
+            { label: `${t('torrentDetail.addNewCategory')}…`, value: '__new__', icon: 'add-circle-outline' as const },
+          ]}
+          selectedValue={torrent.category || ''}
+          onSelect={handleCategorySelect}
+          onClose={() => {
+            setCategoryPickerVisible(false);
+            setActiveButton(null);
+          }}
+        />
         {/* Speed Limit Modal */}
         <Modal
           visible={limitModalVisible}
@@ -849,7 +877,9 @@ export function TorrentDetails({
               onPress={handleReannounce}
               disabled={loading}
             >
-              <Ionicons name="refresh" size={18} color="#FFFFFF" />
+              <Animated.View style={{ transform: [{ rotate: reannounceRotate }] }}>
+                <Ionicons name="refresh" size={18} color="#FFFFFF" />
+              </Animated.View>
               <View style={styles.actionButtonTextContainer}>
                 <Text style={[styles.actionButtonText]}>{t('torrentDetail.reannounce')}</Text>
               </View>
@@ -1131,30 +1161,7 @@ export function TorrentDetails({
             <Text style={[styles.actionButtonTextLong, { color: colors.textSecondary}]}>{t('torrentDetail.categoryColon')}</Text>
             <TouchableOpacity
               style={[styles.categoryButton, { backgroundColor: colors.primary }]}
-              onPress={() => {
-                const categoryOptions = [t('common.none'), ...Object.keys(categories)];
-                Alert.alert(
-                  t('torrentDetail.setCategory'),
-                  t('torrentDetail.selectCategory'),
-                  categoryOptions.map((cat) => ({
-                    text: cat,
-                    onPress: async () => {
-                      try {
-                        setLoading(true);
-                        await torrentsApi.setTorrentCategory(
-                          [torrent.hash],
-                          cat === t('common.none') ? '' : cat
-                        );
-                        onRefresh();
-                      } catch (error: unknown) {
-                        showToast(getErrorMessage(error), 'error');
-                      } finally {
-                        setLoading(false);
-                      }
-                    },
-                  }))
-                );
-              }}
+              onPress={handleSetCategory}
             >
               <Text style={styles.categoryButtonText}>
                 {torrent.category || t('common.none')}
