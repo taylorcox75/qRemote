@@ -157,7 +157,26 @@
       "priorityHigh": "Alta",
       "priorityMaximum": "Máxima"
     },
-    "logs": { "title": "Registros", "searchLogs": "Buscar en registros..." }
+    "logs": {
+      "title": "Registros",
+      "searchLogs": "Buscar en registros...",
+      "notConnected": "Not connected to a server",
+      "notConnectedHint": "Go to Settings to connect to a qBittorrent server",
+      "applicationLogs": "Application Logs",
+      "peerLogs": "Peer Logs",
+      "filter": "Filter:",
+      "normal": "Normal",
+      "info": "Info",
+      "warning": "Warning",
+      "critical": "Critical",
+      "noLogsMatch": "No logs match your search",
+      "noLogsAvailable": "No logs available",
+      "noPeerLogsMatch": "No peer logs match your search",
+      "noPeerLogsAvailable": "No peer logs available",
+      "client": "Client: {{value}}",
+      "connectionLabel": "Connection: {{value}}",
+      "flags": "Flags: {{value}}"
+    }
   },
   "placeholders": {
     "searchTorrents": "Buscar torrents...",

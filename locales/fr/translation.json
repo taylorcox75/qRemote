@@ -157,7 +157,26 @@
       "priorityHigh": "Haute",
       "priorityMaximum": "Maximum"
     },
-    "logs": { "title": "Journaux", "searchLogs": "Rechercher dans les journaux..." }
+    "logs": {
+      "title": "Journaux",
+      "searchLogs": "Rechercher dans les journaux...",
+      "notConnected": "Not connected to a server",
+      "notConnectedHint": "Go to Settings to connect to a qBittorrent server",
+      "applicationLogs": "Application Logs",
+      "peerLogs": "Peer Logs",
+      "filter": "Filter:",
+      "normal": "Normal",
+      "info": "Info",
+      "warning": "Warning",
+      "critical": "Critical",
+      "noLogsMatch": "No logs match your search",
+      "noLogsAvailable": "No logs available",
+      "noPeerLogsMatch": "No peer logs match your search",
+      "noPeerLogsAvailable": "No peer logs available",
+      "client": "Client: {{value}}",
+      "connectionLabel": "Connection: {{value}}",
+      "flags": "Flags: {{value}}"
+    }
   },
   "placeholders": {
     "searchTorrents": "Rechercher des torrents...",
