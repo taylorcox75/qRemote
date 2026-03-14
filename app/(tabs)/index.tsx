@@ -1506,7 +1506,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 100,
     borderRadius: borderRadius.large,
-    // paddingBottom: 50, // Space for FAB and last card interaction
   },
   selectionHeader: {
     flexDirection: 'row',
