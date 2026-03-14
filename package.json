@@ -45,19 +45,18 @@
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.1.10",
-    "@typescript-eslint/eslint-plugin": "^8.57.0",
-    "@typescript-eslint/parser": "^8.57.0",
     "babel-plugin-module-resolver": "^5.0.2",
-    "eslint": "^8.57.1",
+    "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "jest": "^30.3.0",
     "prettier": "^3.8.1",
     "ts-jest": "^29.4.6",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.57.0"
   },
   "private": true
 }
