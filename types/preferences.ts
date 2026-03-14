@@ -1,4 +1,4 @@
-import { ColorTheme } from '../services/color-theme-manager';
+import { ColorTheme } from '@/services/color-theme-manager';
 
 export type SortField =
   | 'name'
