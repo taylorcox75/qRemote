@@ -12,8 +12,8 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 
 ## Architecture
 - **Routing:** Expo Router file-based routing in `app/`. The `(tabs)` directory uses parentheses because Expo Router requires this syntax for route groups — it is a framework convention, not a naming choice. The parens cannot be removed.
-- **State:** React Context (ThemeContext, ServerContext, TorrentContext, TransferContext, ToastContext)
-- **Data sync:** Polling-based, 2-3s interval, rid-based incremental sync for torrents
+- **State:** React Context + TanStack Query (ThemeContext, ServerContext, TorrentContext, TransferContext, ToastContext)
+- **Data sync:** TanStack Query with `refetchInterval` (2-3s), rid-based incremental sync for torrents via custom queryFn
 - **Storage:** AsyncStorage for preferences, SecureStore for passwords
 - **API:** Thin wrappers in `services/api/` over a singleton axios-based `apiClient`
 - **Styling:** All colors via `useTheme()` → ThemeContext. Users can override any color via the color picker.
