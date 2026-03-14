@@ -36,6 +36,7 @@ import { ActionMenu } from '@/components/ActionMenu';
 import { InputModal } from '@/components/InputModal';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { torrentsApi } from '@/services/api/torrents';
+import { applicationApi } from '@/services/api/application';
 import { storageService } from '@/services/storage';
 import { ServerManager } from '@/services/server-manager';
 import { haptics } from '@/utils/haptics';
@@ -68,6 +69,7 @@ export default function TorrentsScreen() {
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'>('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
 
   // Action menu state
   const [selectedTorrent, setSelectedTorrent] = useState<TorrentInfo | null>(null);
@@ -127,6 +129,7 @@ export default function TorrentsScreen() {
         if (prefs.defaultFilter) {
           setFilter(prefs.defaultFilter);
         }
+        setCardViewMode(prefs.cardViewMode ?? 'compact');
       } catch (error) {
         // Use defaults if loading fails
       }
@@ -135,6 +138,24 @@ export default function TorrentsScreen() {
     // Only run once on mount (app launch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync pauseOnAdd from server when connected (best-effort background sync)
+  useEffect(() => {
+    if (isConnected) {
+      (async () => {
+        try {
+          const serverPrefs = await applicationApi.getPreferences();
+          const serverVal = !!(serverPrefs as Record<string, unknown>).start_paused_enabled;
+          const localPrefs = await storageService.getPreferences();
+          if (localPrefs.pauseOnAdd !== serverVal) {
+            await storageService.savePreferences({ ...localPrefs, pauseOnAdd: serverVal });
+          }
+        } catch {
+          // Best-effort sync — ignore errors
+        }
+      })();
+    }
+  }, [isConnected]);
 
   // Filter, sort, and search logic
   const filteredTorrents = useMemo(() => {
@@ -441,6 +462,24 @@ export default function TorrentsScreen() {
     swipeableRef?.close();
   }, [refresh, showToast, t]);
 
+  const handleCardPauseResume = useCallback(async (torrent: TorrentInfo) => {
+    haptics.medium();
+    const isPaused =
+      torrent.state === 'pausedDL' || torrent.state === 'pausedUP' ||
+      torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
+    try {
+      if (isPaused) {
+        await torrentsApi.resumeTorrents([torrent.hash]);
+      } else {
+        await torrentsApi.pauseTorrents([torrent.hash]);
+      }
+      refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      showToast(msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
+    }
+  }, [refresh, showToast, t]);
+
   const handleSwipeDelete = useCallback((torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
     haptics.medium();
     Alert.alert(
@@ -634,14 +673,36 @@ export default function TorrentsScreen() {
           <View style={[styles.searchCard, { backgroundColor: "transparent" }]}>
             {/* Search bar with Sort button */}
             <View style={styles.searchRow}>
-              {/* Search input */}
+
+              {/* LEFT: Sort button — fixed 42×42 */}
+              {!selectMode && (
+                <TouchableOpacity
+                  style={[
+                    styles.searchSortButton,
+                    {
+                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
+                      borderColor: colors.surfaceOutline,
+                    },
+                  ]}
+                  onPress={() => setShowSortMenu(!showSortMenu)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="swap-vertical"
+                    size={18}
+                    color={showSortMenu ? colors.primary : colors.text}
+                  />
+                </TouchableOpacity>
+              )}
+
+              {/* CENTER: Search input — flex:1, loading indicator inside */}
               <View
                 style={[
                   styles.searchInputContainer,
                   {
                     backgroundColor: colors.surface,
                     borderWidth: 0.1,
-                    borderColor: colors.surfaceOutline
+                    borderColor: colors.surfaceOutline,
                   },
                 ]}
               >
@@ -658,49 +719,26 @@ export default function TorrentsScreen() {
                   onChangeText={setSearchQuery}
                   placeholderTextColor={colors.textSecondary}
                 />
-              </View>
-              
-              {/* Loading indicator when syncing */}
-              {isLoading && (
-                <View style={[styles.syncIndicator, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                </View>
-              )}
-              
-              {/* Sort button */}
-              {!selectMode && (
-                <TouchableOpacity
-                  style={[
-                    styles.searchSortButton,
-                    {
-                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
-                      borderColor: colors.surfaceOutline,
-                    },
-                  ]}
-                  onPress={() => setShowSortMenu(!showSortMenu)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons 
-                    name="swap-vertical" 
-                    size={18} 
-                    color={showSortMenu ? colors.primary : colors.text} 
+                {isLoading && (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.primary}
+                    style={{ marginLeft: spacing.xs }}
                   />
-                </TouchableOpacity>
-              )}
+                )}
+              </View>
 
-              {/* Add torrent button */}
+              {/* RIGHT: Add torrent button — fixed 42×42 */}
               {!selectMode && (
                 <TouchableOpacity
-                  style={[
-                    styles.headerAddButton,
-                    { backgroundColor: colors.primary },
-                  ]}
+                  style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
                   onPress={() => setShowAddModal(true)}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
+
             </View>
 
             {/* Filter row */}
@@ -1043,6 +1081,8 @@ export default function TorrentsScreen() {
                           setSelectedTorrent(item);
                           setMenuVisible(true);
                         }}
+                        onPauseResume={() => handleCardPauseResume(item)}
+                        compact={cardViewMode === 'compact'}
                       />
                     </View>
                   </View>
@@ -1673,9 +1713,6 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   searchSortButton: {
-    ...buttonStyles.icon,
-  },
-  syncIndicator: {
     width: 42,
     height: 42,
     borderRadius: borderRadius.medium,

@@ -85,11 +85,22 @@ export default function TorrentDefaultsScreen() {
 
   const loadPreferences = async () => {
     try {
-      const prefs = await storageService.getPreferences();
+      const [prefs, serverPrefs] = await Promise.all([
+        storageService.getPreferences(),
+        applicationApi.getPreferences().catch(() => null),
+      ]);
       setDefaultSortBy(prefs.defaultSortBy || 'added_on');
       setDefaultSortDirection(prefs.defaultSortDirection || 'desc');
       setDefaultFilter(prefs.defaultFilter || 'all');
-      setPauseOnAdd(prefs.pauseOnAdd || false);
+      // Server is source of truth for pauseOnAdd — local pref is just a cache
+      const serverPauseOnAdd = serverPrefs
+        ? !!(serverPrefs as Record<string, unknown>).start_paused_enabled
+        : (prefs.pauseOnAdd === true);
+      setPauseOnAdd(serverPauseOnAdd);
+      // Keep local cache in sync with what we just read
+      if (serverPrefs && prefs.pauseOnAdd !== serverPauseOnAdd) {
+        await storageService.savePreferences({ ...prefs, pauseOnAdd: serverPauseOnAdd });
+      }
       setDefaultSavePath(prefs.defaultSavePath || '');
       setAutoCategorizeByTracker(prefs.autoCategorizeByTracker || false);
       setDefaultPriority(Number(prefs.defaultPriority) || 0);
@@ -235,7 +246,18 @@ export default function TorrentDefaultsScreen() {
                 </View>
                 <Switch
                   value={pauseOnAdd}
-                  onValueChange={(value) => { setPauseOnAdd(value); savePreference('pauseOnAdd', value); }}
+                  onValueChange={async (value) => {
+                    setPauseOnAdd(value); // optimistic UI update
+                    try {
+                      // Write to server — this is the source of truth
+                      await applicationApi.setPreferences({ start_paused_enabled: value });
+                      // Also update local cache
+                      await savePreference('pauseOnAdd', value);
+                    } catch {
+                      // Roll back UI if server write fails
+                      setPauseOnAdd(!value);
+                    }
+                  }}
                   trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                   ios_backgroundColor={colors.surfaceOutline}
                 />

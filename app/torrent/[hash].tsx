@@ -33,9 +33,11 @@ import { useTorrents } from '@/context/TorrentContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { InputModal } from '@/components/InputModal';
 import { OptionPicker } from '@/components/OptionPicker';
+import { TagsModal } from '@/components/TagsModal';
 import { getStateColor, getStateLabel } from '@/utils/torrent-state';
 import { torrentsApi } from '@/services/api/torrents';
 import { syncApi } from '@/services/api/sync';
+import { tagsApi } from '@/services/api/tags';
 import {
   TorrentProperties,
   Tracker,
@@ -52,7 +54,7 @@ export default function TorrentDetail() {
   const { isConnected, isLoading } = useServer();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
-  const { categories } = useTorrents();
+  const { categories, tags } = useTorrents();
   const { t } = useTranslation();
 
   useLayoutEffect(() => {
@@ -88,6 +90,7 @@ export default function TorrentDetail() {
 
   const [priorityPickerVisible, setPriorityPickerVisible] = useState(false);
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [tagsModalVisible, setTagsModalVisible] = useState(false);
 
   // ── Data loading ──────────────────────────────────────────────────────
 
@@ -510,53 +513,10 @@ export default function TorrentDetail() {
     setInputModalVisible(true);
   };
 
-  const handleAddTags = () => {
-    setInputModalConfig({
-      title: t('torrentDetail.addTags'),
-      message: t('torrentDetail.enterTagsComma'),
-      onConfirm: async (value: string) => {
-        setInputModalVisible(false);
-        if (!value) return;
-        try {
-          setActionLoading(true);
-          const tags = value.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag !== '');
-          await torrentsApi.addTorrentTags([torrent!.hash], tags);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          await loadTorrentData();
-          showToast(t('torrentDetail.tagsAdded', { count: tags.length }), 'success');
-        } catch (error: unknown) {
-          showToast(getErrorMessage(error), 'error');
-        } finally {
-          setActionLoading(false);
-        }
-      },
-    });
-    setInputModalVisible(true);
-  };
+  const handleAddTags = () => setTagsModalVisible(true);
 
-  const handleRemoveTags = () => {
-    setInputModalConfig({
-      title: t('torrentDetail.removeTags'),
-      message: t('torrentDetail.enterTagsToRemove'),
-      onConfirm: async (value: string) => {
-        setInputModalVisible(false);
-        if (!value) return;
-        try {
-          setActionLoading(true);
-          const tags = value.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag !== '');
-          await torrentsApi.removeTorrentTags([torrent!.hash], tags);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          await loadTorrentData();
-          showToast(t('torrentDetail.tagsRemoved', { count: tags.length }), 'success');
-        } catch (error: unknown) {
-          showToast(getErrorMessage(error), 'error');
-        } finally {
-          setActionLoading(false);
-        }
-      },
-    });
-    setInputModalVisible(true);
-  };
+  // kept for backwards-compat with any remaining usages; opens same modal
+  const handleRemoveTags = () => setTagsModalVisible(true);
 
   const handleSetLocation = () => {
     setInputModalConfig({
@@ -899,7 +859,7 @@ export default function TorrentDetail() {
           <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               staticRow(t('torrentDetail.size'), formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)),
-              staticRow(t('torrentDetail.downloaded'), formatSize(torrent.downloaded)),
+              staticRow(t('torrentDetail.downloaded'), formatSize(torrent.completed)),
               staticRow(t('torrentDetail.uploaded'), formatSize(torrent.uploaded)),
               staticRow(t('torrentDetail.ratio'), torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'),
               properties && staticRow(t('torrentDetail.savePath'), properties.save_path),
@@ -1015,6 +975,48 @@ export default function TorrentDetail() {
           selectedValue={torrent.category || ''}
           onSelect={handleCategorySelect}
           onClose={() => setCategoryPickerVisible(false)}
+        />
+
+        <TagsModal
+          visible={tagsModalVisible}
+          currentTagsCsv={torrent.tags || ''}
+          allServerTags={tags}
+          loading={actionLoading}
+          onAddTag={async (tag) => {
+            try {
+              setActionLoading(true);
+              await torrentsApi.addTorrentTags([torrent.hash], [tag]);
+              await loadTorrentData();
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
+            } finally {
+              setActionLoading(false);
+            }
+          }}
+          onRemoveTag={async (tag) => {
+            try {
+              setActionLoading(true);
+              await torrentsApi.removeTorrentTags([torrent.hash], [tag]);
+              await loadTorrentData();
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
+            } finally {
+              setActionLoading(false);
+            }
+          }}
+          onCreateTag={async (tag) => {
+            try {
+              setActionLoading(true);
+              await tagsApi.createTags([tag]);
+              await torrentsApi.addTorrentTags([torrent.hash], [tag]);
+              await loadTorrentData();
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
+            } finally {
+              setActionLoading(false);
+            }
+          }}
+          onClose={() => setTagsModalVisible(false)}
         />
 
         {/* Peers Modal */}

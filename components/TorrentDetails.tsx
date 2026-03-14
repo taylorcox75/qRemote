@@ -42,6 +42,7 @@ import {
 } from '@/types/api';
 import { formatDate } from '@/utils/format';
 import { InputModal } from './InputModal';
+import { TagsModal } from './TagsModal';
 import { getErrorMessage } from '@/utils/error';
 
 interface TorrentDetailsProps {
@@ -88,6 +89,7 @@ export function TorrentDetails({
     allowEmpty?: boolean;
     onConfirm: (value: string) => void;
   }>({ title: '', onConfirm: () => {} });
+  const [tagsModalVisible, setTagsModalVisible] = useState(false);
   
   // Display queue position (1 = top, higher = lower)
   const getQueueDisplay = () => {
@@ -1121,7 +1123,7 @@ export function TorrentDetails({
           <InfoRow icon="stats-chart" label={t('torrentDetail.state')} value={torrent.state} />
           <InfoRow icon="pie-chart" label={t('torrentDetail.progress')} value={`${(torrent.progress * 100).toFixed(1)}%`} />
           <InfoRow icon="disc" label={t('torrentDetail.size')} value={formatSize(torrent.total_size)} />
-          <InfoRow icon="download" label={t('torrentDetail.downloaded')} value={formatSize(torrent.downloaded)} />
+          <InfoRow icon="download" label={t('torrentDetail.downloaded')} value={formatSize(torrent.completed)} />
           <InfoRow icon="cloud-done" label={t('torrentDetail.uploaded')} value={formatSize(torrent.uploaded)} />
           <InfoRow icon="swap-horizontal" label={t('torrentDetail.ratio')} value={torrent.ratio.toFixed(2)} />
           <InfoRow icon="time" label={t('torrentDetail.lastSeenComplete')} value={formatDate(torrent.seen_complete)} />
@@ -1160,7 +1162,16 @@ export function TorrentDetails({
             </TouchableOpacity>
           </View>
           <View style={[styles.tagsSection, { borderBottomColor: colors.surfaceOutline }]}>
-            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('torrentDetail.tagsLabel')}</Text>
+            <View style={styles.tagsSectionHeader}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('torrentDetail.tagsLabel')}</Text>
+              <TouchableOpacity
+                style={[styles.manageTagsButton, { backgroundColor: colors.primary }]}
+                onPress={() => setTagsModalVisible(true)}
+              >
+                <Ionicons name="pricetag" size={12} color="#FFFFFF" />
+                <Text style={styles.manageTagsButtonText}>{t('torrentDetail.manageTags')}</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.tagsContainer}>
               {torrent.tags
                 ? torrent.tags.split(',').map((tag, idx) => (
@@ -1168,69 +1179,50 @@ export function TorrentDetails({
                       <Text style={[styles.tagText, { color: colors.textSecondary }]}>{tag.trim()}</Text>
                     </View>
                   ))
-                : null}
+                : <Text style={[styles.tagText, { color: colors.textSecondary }]}>{t('common.none')}</Text>}
             </View>
-            <TouchableOpacity
-              style={[styles.addTagButton, { backgroundColor: colors.primary }]}
-              onPress={() => {
-                const availableTags = tags.filter(
-                  (t) => !torrent.tags || !torrent.tags.split(',').includes(t)
-                );
-                if (availableTags.length === 0) {
-                  showToast(t('errors.allTagsAssigned'), 'info');
-                  return;
-                }
-                Alert.alert(
-                  t('torrentDetail.addTag'),
-                  t('torrentDetail.selectTagToAdd'),
-                  availableTags.map((tag) => ({
-                    text: tag,
-                    onPress: async () => {
-                      try {
-                        setLoading(true);
-                        await torrentsApi.addTorrentTags([torrent.hash], [tag]);
-                        onRefresh();
-                      } catch (error: unknown) {
-                        showToast(getErrorMessage(error), 'error');
-                      } finally {
-                        setLoading(false);
-                      }
-                    },
-                  }))
-                );
-              }}
-            >
-              <Text style={styles.addTagButtonText}>{t('torrentDetail.addTagButton')}</Text>
-            </TouchableOpacity>
-            {torrent.tags && (
-              <TouchableOpacity
-                style={[styles.removeTagButton, { backgroundColor: colors.error }]}
-                onPress={() => {
-                  const currentTags = torrent.tags.split(',');
-                  Alert.alert(
-                    t('torrentDetail.removeTag'),
-                    t('torrentDetail.selectTagToRemove'),
-                    currentTags.map((tag) => ({
-                      text: tag.trim(),
-                      onPress: async () => {
-                        try {
-                          setLoading(true);
-                          await torrentsApi.removeTorrentTags([torrent.hash], [tag.trim()]);
-                          onRefresh();
-                        } catch (error: unknown) {
-                          showToast(getErrorMessage(error), 'error');
-                        } finally {
-                          setLoading(false);
-                        }
-                      },
-                    }))
-                  );
-                }}
-              >
-                <Text style={styles.removeTagButtonText}>{t('torrentDetail.removeTag')}</Text>
-              </TouchableOpacity>
-            )}
           </View>
+          <TagsModal
+            visible={tagsModalVisible}
+            currentTagsCsv={torrent.tags || ''}
+            allServerTags={tags}
+            loading={loading}
+            onAddTag={async (tag) => {
+              try {
+                setLoading(true);
+                await torrentsApi.addTorrentTags([torrent.hash], [tag]);
+                onRefresh();
+              } catch (error: unknown) {
+                showToast(getErrorMessage(error), 'error');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onRemoveTag={async (tag) => {
+              try {
+                setLoading(true);
+                await torrentsApi.removeTorrentTags([torrent.hash], [tag]);
+                onRefresh();
+              } catch (error: unknown) {
+                showToast(getErrorMessage(error), 'error');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onCreateTag={async (tag) => {
+              try {
+                setLoading(true);
+                await tagsApi.createTags([tag]);
+                await torrentsApi.addTorrentTags([torrent.hash], [tag]);
+                onRefresh();
+              } catch (error: unknown) {
+                showToast(getErrorMessage(error), 'error');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onClose={() => setTagsModalVisible(false)}
+          />
         </View>
 
         {properties && (
@@ -1962,6 +1954,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
+  },
+  tagsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  manageTagsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  manageTagsButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   tagsContainer: {
     flexDirection: 'row',

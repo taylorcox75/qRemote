@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { GlobalTransferInfo } from '@/types/api';
 import { transferApi } from '@/services/api/transfer';
+import { applicationApi } from '@/services/api/application';
 import { useServer } from './ServerContext';
 import { getErrorMessage } from '@/utils/error';
 
@@ -20,13 +21,18 @@ interface TransferContextType {
 const TransferContext = createContext<TransferContextType | undefined>(undefined);
 
 async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
-  const [info, altSpeedLimitsState] = await Promise.all([
+  const [info, altSpeedLimitsState, prefs] = await Promise.all([
     transferApi.getGlobalTransferInfo(),
     transferApi.getAlternativeSpeedLimitsState().catch(() => false),
+    applicationApi.getPreferences().catch(() => null),
   ]);
+  const serverPrefs = prefs as Record<string, unknown> | null;
   return {
     ...info,
     use_alt_speed_limits: altSpeedLimitsState,
+    // Preferences returns kB/s; multiply by 1024 to normalize to bytes/s like dl_rate_limit
+    alt_dl_limit: serverPrefs?.alt_dl_limit != null ? (serverPrefs.alt_dl_limit as number) * 1024 : undefined,
+    alt_up_limit: serverPrefs?.alt_up_limit != null ? (serverPrefs.alt_up_limit as number) * 1024 : undefined,
   };
 }
 

@@ -494,6 +494,7 @@
     "addTagButton": "+ Add Tag",
     "removeTag": "Remove Tag",
     "selectTagToRemove": "Select a tag to remove",
+    "manageTags": "Manage Tags",
     "renameFile": "Rename File",
     "filePriority": "Priority: {{priority}}",
     "doNotDownload": "Do not download",
