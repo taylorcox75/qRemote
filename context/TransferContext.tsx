@@ -16,6 +16,8 @@ interface TransferContextType {
   toggleAlternativeSpeedLimits: () => Promise<void>;
   setDownloadLimit: (limit: number) => Promise<void>;
   setUploadLimit: (limit: number) => Promise<void>;
+  setAltDownloadLimit: (kbLimit: number) => Promise<void>;
+  setAltUploadLimit: (kbLimit: number) => Promise<void>;
 }
 
 const TransferContext = createContext<TransferContextType | undefined>(undefined);
@@ -138,6 +140,26 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, queryClient]);
 
+  const setAltDownloadLimit = useCallback(async (kbLimit: number) => {
+    if (!isConnected) return;
+    try {
+      await applicationApi.setPreferences({ alt_dl_limit: kbLimit });
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+    } catch (err: unknown) {
+      setMutationError(getErrorMessage(err));
+    }
+  }, [isConnected, queryClient]);
+
+  const setAltUploadLimit = useCallback(async (kbLimit: number) => {
+    if (!isConnected) return;
+    try {
+      await applicationApi.setPreferences({ alt_ul_limit: kbLimit });
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+    } catch (err: unknown) {
+      setMutationError(getErrorMessage(err));
+    }
+  }, [isConnected, queryClient]);
+
   const transferInfo = isConnected ? (transferData ?? null) : null;
   const error = mutationError
     ?? (isRecoveringState ? null : queryError ? getErrorMessage(queryError) : null);
@@ -153,6 +175,8 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         toggleAlternativeSpeedLimits,
         setDownloadLimit,
         setUploadLimit,
+        setAltDownloadLimit,
+        setAltUploadLimit,
       }}
     >
       {children}

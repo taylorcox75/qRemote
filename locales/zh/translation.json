@@ -167,7 +167,13 @@
       "noDlTorrents": "No downloading torrents to pause",
       "noUlTorrents": "No uploading torrents to pause",
       "pausedDl": "Paused {{count}} downloading torrent(s)",
-      "pausedUl": "Paused {{count}} uploading torrent(s)"
+      "pausedUl": "Paused {{count}} uploading torrent(s)",
+      "altDownloadLimit": "备用下载",
+      "altUploadLimit": "备用上传",
+      "altDownloadLimitSet": "备用下载限速已设置为 {{value}} KB/s",
+      "altUploadLimitSet": "备用上传限速已设置为 {{value}} KB/s",
+      "altDownloadLimitRemoved": "备用下载限速已移除",
+      "altUploadLimitRemoved": "备用上传限速已移除"
     },
     "files": {
       "title": "文件",
