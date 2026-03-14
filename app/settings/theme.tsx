@@ -324,9 +324,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    ...typography.headlineSmall,
+    ...typography.headline,
     fontSize: 18,
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
