@@ -81,7 +81,7 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 
 ## Critical Rules
 1. NEVER hardcode colors — always use `useTheme()` and `colors.*`
-2. NEVER use `Alert.prompt` — it is iOS-only and silently fails on Android. Use the `InputModal` component.
+2. Prefer `InputModal` over `Alert.prompt` for user text input. `Alert.prompt` is iOS-only, which is acceptable for the current iOS-first focus, but `InputModal` is already available and provides a consistent UX.
 3. NEVER rename keys in the `colors` object (ThemeContext) — users store color overrides keyed by these names in AsyncStorage. Renaming silently breaks their customizations.
 4. NEVER rename preference keys — there is no migration system. Old keys become orphaned.
 5. All user-facing strings must use i18n: `const { t } = useTranslation()` then `t('key')`.
@@ -103,10 +103,10 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - `components/ExpandableTorrentCard.tsx:173-178` — Pause button has no `onPress` handler
 - `app.config.js` — `usesCleartextTraffic: 'true'` should be boolean `true`
 - `app.config.js` — App name has trailing space: `'qRemote '`
-- `Alert.prompt` used in multiple places (all broken on Android), including `TorrentCard.tsx`, `torrent/[hash].tsx`, and `TorrentDetails.tsx`
-- `ActionSheetIOS` in `manage-trackers.tsx` — no Android fallback
+- `Alert.prompt` used in 14 places (iOS-only — acceptable for iOS-first, but Task 1.5 replaces with InputModal for consistency): `TorrentCard.tsx` (1), `torrent/[hash].tsx` (7), `TorrentDetails.tsx` (6)
+- `ActionSheetIOS` in `manage-trackers.tsx` — the `showTrackerMenu` function is dead code (defined but never called from JSX); clean up in Task 3.5
 - `isRecoveringFromBackground` in `TorrentContext.tsx` — exposed as ref value, doesn't trigger re-renders (should be state like TransferContext)
-- `react-native-gesture-handler` imported in 2 components but NOT in package.json
+- `react-native-gesture-handler` imported in 1 component (`SwipeableTorrentCard.tsx`) but NOT in package.json
 
 ## Naming Conventions
 - Components: PascalCase (`TorrentCard.tsx`)
@@ -118,8 +118,9 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - Layout files: `_layout.tsx` with the underscore prefix is Expo Router syntax for layout routes. Cannot be renamed.
 
 ## Cursor Cloud Specific Instructions
-- This is an Expo Go project. Do NOT add native modules that require `expo-dev-client` without explicit approval.
-- The app cannot be run in this cloud environment (requires Expo Go on a device/simulator). Verify changes compile with `npx tsc --noEmit`.
+- This is an iOS-first app. iOS-only APIs (`ActionSheetIOS`, `Alert.prompt`, etc.) are acceptable. Android parity is a future concern.
+- `expo-*` packages are approved for use even if they require `expo-dev-client` (e.g. `expo-symbols`). Third-party native modules (`react-native-ios-context-menu`, `lottie-react-native`) still require explicit approval before adding.
+- The app cannot be run in this cloud environment (requires Expo Go / dev client on a device/simulator). Verify changes compile with `npx tsc --noEmit`.
 ```
 
 **Acceptance:** File exists, contains all sections above. Agent sessions that read this file should not need to explore the codebase to understand architecture or conventions.
@@ -185,19 +186,21 @@ plugins: [
 
 **1.4b** — `app.config.js`: Change `usesCleartextTraffic: 'true'` to `usesCleartextTraffic: true` (boolean). Remove trailing space from app name `'qRemote '` → `'qRemote'`.
 
-**1.4c** — `utils/haptics.ts`: Remove the `Platform.OS === 'ios'` guard. `expo-haptics` supports Android. Keep the `hapticsEnabled` flag.
+**1.4c** — ~~`utils/haptics.ts`: Remove the `Platform.OS === 'ios'` guard.~~ **Removed from scope.** This is an iOS-first app; the guard is intentional. Android haptic feel is a separate concern if/when Android support is added.
 
 **1.4d** — `context/TorrentContext.tsx`: Change `isRecoveringFromBackground` from a ref to state (like `TransferContext` does). Find where it's exposed in the context value and ensure consumers see updates.
 
 **1.4e** — `components/Confetti.tsx`: The `useRef` calls inside `Array.from` violate Rules of Hooks (hooks cannot be called in loops). Fix by creating the refs array at the top level of the component using a single `useRef` that holds an array, or by using `useMemo` to create the animated values once.
 
-**1.4f** — `app/torrent/manage-trackers.tsx`: Replace `ActionSheetIOS` with a cross-platform solution. Use a `Modal` with action options (similar to the existing option picker pattern), or use the `OptionPicker` component. The current code falls back to only `handleEditTracker` on Android — meaning delete, copy URL, and reannounce are inaccessible on Android.
+**1.4f** — ~~`app/torrent/manage-trackers.tsx`: Replace `ActionSheetIOS` with a cross-platform solution.~~ **Removed from scope.** This is an iOS-first app; `ActionSheetIOS` is acceptable. Additionally, the `showTrackerMenu` function that uses it is **dead code** — defined but never called from the rendered JSX. The tracker rows use explicit buttons for copy/edit/delete. Clean up `showTrackerMenu` and the `ActionSheetIOS` import in Task 3.5 instead.
 
-**1.4g** — `react-native-gesture-handler`: Run `npm install react-native-gesture-handler` to add it to `package.json`. It's currently imported in dead code files (`SwipeableTorrentCard.tsx`, `DraggableTorrentList.tsx`) but NOT in `package.json` — it only works because it's a transitive dependency. Task 2.4 (swipe actions) needs it explicitly installed.
+**1.4g** — `react-native-gesture-handler`: Run `npm install react-native-gesture-handler` to add it to `package.json`. It's currently imported in `SwipeableTorrentCard.tsx` (dead code) but NOT in `package.json` — it only works because it's a transitive dependency. (`DraggableTorrentList.tsx` does NOT import it directly.) Task 2.4 (swipe actions) needs it explicitly installed.
+
+**1.4h** — `package.json`: Move `@react-navigation/bottom-tabs` from `devDependencies` to `dependencies`. It is a runtime navigation package used by the tab layout — placing it in `devDependencies` can cause it to be excluded from production builds.
 
 **Risks for 1.4d:** Components that read `isRecoveringFromBackground` will now trigger re-renders when recovery state changes. This is correct behavior but could cause visual flicker if not handled. Test by reviewing all consumers (grep for `isRecoveringFromBackground`).
 
-**Acceptance:** Each fix compiles. No other files need to change for 1.4a-c, 1.4e, 1.4g. For 1.4d, verify all consumers still work. For 1.4f, verify tracker menu works cross-platform.
+**Acceptance:** Each fix compiles. No other files need to change for 1.4a-b, 1.4e, 1.4g-h. For 1.4d, verify all consumers still work.
 
 ---
 
@@ -205,20 +208,20 @@ plugins: [
 
 **Read first:** `components/InputModal.tsx` (understand its API), then every file using `Alert.prompt`.
 
-**Files to modify (all Alert.prompt callsites in these files — skip TorrentCard.tsx, it's rewritten in Task 2.2):**
-- `app/torrent/[hash].tsx` — `handleSetDownloadLimit`, `handleSetUploadLimit`, `handleSetCategory`, `handleAddTags`, `handleRemoveTags`, `handleSetLocation`, `handleRenameTorrent`
-- `components/TorrentDetails.tsx` — `handleAddCategory`, `handleShareLimit`, `handleSetLocation`, `handleRenameTorrent`, `handleAddPeers`, `handleRenameFile`
+**Files to modify (13 callsites — skip TorrentCard.tsx, it's rewritten in Task 2.2):**
+- `app/torrent/[hash].tsx` — `handleSetDownloadLimit`, `handleSetUploadLimit`, `handleSetCategory`, `handleAddTags`, `handleRemoveTags`, `handleSetLocation`, `handleRenameTorrent` (7 callsites)
+- `components/TorrentDetails.tsx` — `handleAddCategory`, `handleShareLimit`, `handleSetLocation`, `handleRenameTorrent`, `handleAddPeers`, `handleRenameFile` (6 callsites — grep confirms lines 410, 474, 504, 539, 612, 1332)
 
 **Do NOT fix Alert.prompt in `TorrentCard.tsx`** — Task 2.2 will remove all action handlers from TorrentCard entirely. Fixing it here is wasted work that creates merge conflicts.
 
 **Pattern:** Each `Alert.prompt` becomes local state (`[modalVisible, setModalVisible]`, `[modalConfig, setModalConfig]`) plus an `<InputModal>` in the JSX. The modal's `onConfirm` callback runs the same logic that was in Alert.prompt's onPress.
 
 **Risks:**
-- `InputModal` validates non-empty trimmed value. Some prompts accept empty (e.g. "0" for unlimited). Verify that `InputModal` passes the raw value, not just truthy values.
+- `InputModal` validates non-empty trimmed value. Some prompts accept "0" for unlimited. **Before implementing**, verify that `InputModal` passes through zero/empty values. If it blocks empty input, add an `allowEmpty?: boolean` prop to `InputModal` first.
 - `handleSetDownloadLimit` needs `keyboardType="numeric"` on the InputModal.
 - Each file that gains an InputModal needs a new state variable. In `TorrentCard.tsx`, this state lives inside each card instance — OK for now, but note that FlashList migration (later task) will need to lift this out.
 
-**Acceptance:** `grep -r "Alert\.prompt" --include="*.tsx"` returns results ONLY in `components/TorrentCard.tsx` (deferred to Task 2.2) — zero results elsewhere. App compiles.
+**Acceptance:** `grep -r "Alert\.prompt" --include="*.tsx"` returns results ONLY in `components/TorrentCard.tsx` (deferred to Task 2.2) — zero results elsewhere. (14 total calls before this task: 7 in `[hash].tsx`, 6 in `TorrentDetails.tsx`, 1 in `TorrentCard.tsx`.) App compiles.
 
 ---
 
@@ -230,16 +233,16 @@ plugins: [
 - `AVATAR_PALETTE` constant
 
 **Create:** `utils/torrent-state.ts` containing:
-- `getStateColor(state, progress, dlspeed, upspeed, colors): string` — currently duplicated in `TorrentCard.tsx`, `torrent/[hash].tsx`, `ExpandableTorrentCard.tsx`
-- `getStateLabel(state, progress, dlspeed, upspeed): string` — same duplication
+- `getStateColor(state, progress, dlspeed, upspeed, colors): string` — exists in `TorrentCard.tsx`, `torrent/[hash].tsx`, and `ExpandableTorrentCard.tsx`, but implementations have diverged. Reconcile against all three before writing the canonical version.
+- `getStateLabel(state, progress, dlspeed, upspeed): string` — exists in `TorrentCard.tsx` (switch statement) and `torrent/[hash].tsx` (if/else). `ExpandableTorrentCard.tsx` only has inline color logic, no label function.
 
-**Modify:** `services/server-manager.ts` — extract `isNetworkError(error): boolean` helper (currently duplicated 4 times inline).
+**Modify:** `services/server-manager.ts` — extract `isNetworkError(error): boolean` helper (currently duplicated 3 times inline at lines 67, 98, 126).
 
-**Create:** `components/QuickConnectPanel.tsx` — the "not connected" server list UI with connect buttons, avatars, and error states. Currently duplicated (~100 lines of identical JSX) in both `app/(tabs)/index.tsx` and `app/(tabs)/transfer.tsx`. Extract into a shared component that takes `onConnect` and `onAddServer` callbacks.
+**Create:** `components/QuickConnectPanel.tsx` — the "not connected" server list UI with connect buttons, avatars, and error states. Currently duplicated (~100 lines of identical JSX) in both `app/(tabs)/index.tsx` and `app/(tabs)/transfer.tsx`. Extract into a shared component that takes `onConnect` and `onAddServer` callbacks. Use `t()` throughout — `transfer.tsx` has hardcoded English strings; do NOT copy them verbatim.
 
 **Modify:** Remove inline copies from all source files, replace with imports from the new utility files and shared components.
 
-**Risks:** `getStateColor` currently takes `colors` from `useTheme()` which is a hook — the utility must accept colors as a parameter, not call the hook itself. Verify that each inline copy has identical logic before deduplicating — some may have diverged.
+**Risks:** `getStateColor` currently takes `colors` from `useTheme()` which is a hook — the utility must accept colors as a parameter, not call the hook itself. The three implementations have diverged — verify each before deduplicating and test with `tests/utils/torrent-state.test.ts` (Task 1.8).
 
 **Acceptance:** No duplicate `avatarColor`, `serverAddress`, `getStateColor`, `getStateLabel`, or `isNetworkError` functions remain. `grep` confirms each exists in exactly one file.
 
@@ -323,7 +326,7 @@ plugins: [
 **Modify `context/ThemeContext.tsx`:**
 - Update `darkColors` defaults to cleaner values. Keep ALL 11 state color keys. Map multiple states to fewer visual colors in the defaults (e.g. `stateMetadata`, `stateChecking`, `stateQueued` all default to the same orange/gray).
 - Dark mode background: change from `rgb(15, 15, 15)` to `#000000` (true black for OLED).
-- Fix invalid `rgb(0, 0, 0,1)` format → `#000000` or `rgba(0,0,0,1)`.
+- Fix **all** `rgb()` calls that include an alpha parameter — they are invalid CSS and should be `rgba()`. Scope is wider than just `rgb(0, 0, 0,1)`: `ThemeContext.tsx` has at least `error: 'rgb(255, 13, 0,0.5)'`, `success: 'rgb(4, 134, 37,0.5)'`, `text: 'rgb(0, 0, 0,1)'`, and others. Run `grep -r "rgb(" context/ThemeContext.tsx` to get the full list before editing.
 - Update surface colors to `#1C1C1E` / `#2C2C2E` tier system.
 
 **Modify `constants/typography.ts`:**
@@ -364,7 +367,7 @@ Changes:
 - Remove the left border color stripe.
 - Wrap the component in `React.memo` with a custom comparator.
 - Remove all action handlers from TorrentCard — move them to `useTorrentActions` hook.
-- **Keep the context menu, but simplify it.** Replace the custom `Modal` + `measureInWindow` positioning logic (~200 lines) with a simple `Modal` overlay that doesn't do manual position calculation. Use a centered or bottom-anchored action list instead. Do NOT remove the menu entirely — it's the only way users access 9 actions. Native context menus (`react-native-ios-context-menu`) require native modules which break Expo Go — we cannot use them.
+- **Keep the context menu, but simplify it.** Replace the custom `Modal` + `measureInWindow` positioning logic (~200 lines) with a simple `Modal` overlay that doesn't do manual position calculation. Use a centered or bottom-anchored action list instead. Do NOT remove the menu entirely — it's the only way users access 9 actions. A native `react-native-ios-context-menu` could be used (requires explicit approval as a third-party native module), but the `ActionMenu.tsx` approach keeps things simpler.
 
 **The menu replacement approach:** Create a new `components/ActionMenu.tsx` — a reusable bottom-anchored modal with a list of labeled actions. TorrentCard receives an `onLongPress` prop that the parent list uses to open this shared menu (one menu instance at the list level, not per-card). This eliminates the per-card menu state that causes problems with list recycling.
 
@@ -384,6 +387,8 @@ Changes:
 - `TorrentCard` is imported in 5+ files. All must still compile after the props change. New props: `torrent`, `onPress`, `onLongPress` (replaces internal menu).
 - `React.memo` comparator must include all props that affect rendering. Missing a field = stale display.
 - InputModal callsites that were in TorrentCard (Alert.prompt for download limit) move into `useTorrentActions`. These must use InputModal, not Alert.prompt.
+
+**Note on scope:** This task is large. If running parallel agents, consider splitting: **2.2a** (create `useTorrentActions.ts` + `ActionMenu.tsx`) → **2.2b** (visual redesign of `TorrentCard.tsx`) → **2.2c** (update `app/(tabs)/index.tsx`). Each sub-task can then run sequentially with smaller blast radius.
 
 **Acceptance:** Cards render with new layout. Long-press opens the ActionMenu with all 9 actions. No stat grid. No per-card menu state. App compiles.
 
@@ -418,6 +423,8 @@ Replace the "Quick Tools" (4 colored buttons) + "Advanced" (16 rainbow buttons) 
   - Set Location → input row
   - Rename → input row
 - All InputModal usage must use the component (not Alert.prompt — Task 1.5 prerequisite).
+
+**Note:** `TorrentDetails.tsx` is ~2,085 lines — larger than `settings.tsx`. This task redesigns its UI but does not split the file structurally. Extracting `TorrentInfoSection`, `TorrentActionsSection`, etc. into sub-components is a follow-up candidate (similar to how Task 2.7 decomposes settings), but is out of scope here.
 
 **Acceptance:** All 16 actions are still accessible. Zero colored button grids remain. Detail screen uses grouped inset sections.
 
@@ -648,6 +655,8 @@ Git history preserves everything. Dead code doesn't belong in the working tree.
 
 **In `services/api/client.ts`:** Remove unused `csrfToken` storage. Remove unused `apiTimeout` field (or actually use it — pick one).
 
+**In `app/torrent/manage-trackers.tsx`:** Remove the dead `showTrackerMenu` function and the `ActionSheetIOS` import. The function was never called from the rendered JSX — tracker rows already use explicit inline buttons.
+
 **Verification before each delete:** `grep -r "from.*FileName" --include="*.ts" --include="*.tsx"` must return zero results (excluding the file itself and this plan). If a file IS imported somewhere, do NOT delete it — investigate.
 
 **Acceptance:** All listed files deleted. `npx tsc --noEmit` passes. App compiles.
@@ -681,15 +690,15 @@ Not part of the v3 launch, but documented for future planning:
 |------|--------------|-------------|
 | Renaming a color key | Users' saved overrides keyed by old name become orphaned | Never rename keys. Change defaults only. |
 | Renaming a preference key | No migration system. Old value silently ignored. | Never rename. Add new keys. |
-| Adding native modules | Breaks Expo Go workflow. Must switch to dev-client. | Don't add without explicit approval. No `react-native-ios-context-menu`, no `lottie-react-native`, no `expo-symbols`. |
+| Adding native modules | Third-party native modules add maintenance burden and may require a custom dev-client build. | `expo-*` packages are approved (including `expo-symbols`). Third-party native modules (`react-native-ios-context-menu`, `lottie-react-native`) require explicit approval before adding. |
 | Removing the context menu without a replacement | Users lose access to 9 torrent actions (pause, delete, force start, priority, limit, verify, reannounce, magnet copy) | Always provide a working replacement BEFORE removing the existing UI. Task 2.2 uses `ActionMenu.tsx` as the replacement. |
 | Moving `app/` directory | Expo Router requires `app/` at root. | Never move `app/`. Only move shared code. |
 | Changing `RGB(...)` defaults to `#hex` | Removes alpha channel. Badges and borders look more saturated. | Test visually in both themes after changes. |
 | FlashList + card-local state | Recycling causes state bleed between cards. | Lift menu/loading state out of card first (Task 2.2 does this). |
-| `react-native-gesture-handler` | Imported in dead code but not in package.json. | Task 1.4g installs it explicitly. Must be done before Task 2.4. |
+| `react-native-gesture-handler` | Imported in `SwipeableTorrentCard.tsx` (dead code) but not in package.json. | Task 1.4g installs it explicitly. Must be done before Task 2.4. |
 | Two agents editing the same file | Merge conflicts between parallel tasks. | Check task dependencies section. Tasks 2.2 and 2.5 both edit `index.tsx` — they cannot run in parallel. |
 | Settings sub-screens need routing | New files in `app/settings/` may need a `_layout.tsx` for proper navigation. | Test navigation after creating the first sub-screen. Add layout if back button doesn't work. |
 
 ---
 
-*Combined from codebase review, UI redesign, risk register, and AI maintainability audit. 2026-03-14.*
+*Combined from codebase review, UI redesign, risk register, and AI maintainability audit. 2026-03-14. Revised 2026-03-14: iOS-first scope confirmed; expo-* packages approved; all review findings (two independent passes) incorporated and PLAN_REVIEW.md deleted.*
