@@ -11,14 +11,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../../context/ThemeContext';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { ColorPicker } from '../../components/ColorPicker';
-import { colorThemeManager, ColorTheme } from '../../services/color-theme-manager';
-import { useToast } from '../../context/ToastContext';
-import { spacing, borderRadius } from '../../constants/spacing';
-import { shadows } from '../../constants/shadows';
-import { typography } from '../../constants/typography';
+import { useTheme } from '@/context/ThemeContext';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { ColorPicker } from '@/components/ColorPicker';
+import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
+import { useToast } from '@/context/ToastContext';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
+import { typography } from '@/constants/typography';
 
 interface ColorSettingRowProps {
   label: string;
