@@ -8,12 +8,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
-    "format": "prettier --write '**/*.{ts,tsx,js,json}'"
+    "format": "prettier --write '**/*.{ts,tsx,js,json}'",
+    "test": "jest"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
-    "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-navigation/bottom-tabs": "^7.4.0",
     "axios": "^1.13.2",
     "expo": "~54.0.29",
     "expo-clipboard": "~8.0.8",
@@ -43,6 +44,7 @@
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.1.10",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
@@ -51,7 +53,9 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^4.6.2",
+    "jest": "^30.3.0",
     "prettier": "^3.8.1",
+    "ts-jest": "^29.4.6",
     "typescript": "~5.9.2"
   },
   "private": true
