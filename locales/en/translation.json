@@ -328,6 +328,8 @@
     "testConnection": "Test Connection",
     "dangerZone": "DANGER ZONE",
     "deleteServer": "Delete Server",
+    "editServer": "Edit Server",
+    "deleteServerConfirm": "Remove \"{{name}}\" from your server list?",
     "hostAddress": "Host Address",
     "port": "Port",
     "gotIt": "Got it"
@@ -592,6 +594,7 @@
     "failedToLoadServers": "Failed to load servers",
     "checkCredentials": "Please check your credentials.",
     "connectionTestFailed": "Connection test failed. Please check your settings.",
+    "connectionFailedManual": "Connection failed: {{error}}. Please try connecting manually.",
     "fillNameAndHost": "Please fill in server name and host",
     "fillUsernamePassword": "Please fill in username and password, or enable bypass authentication",
     "validPort": "Please enter a valid port number (1-65535)",

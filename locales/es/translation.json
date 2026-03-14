@@ -292,6 +292,8 @@
     "testConnection": "Probar conexión",
     "dangerZone": "ZONA DE RIESGO",
     "deleteServer": "Eliminar servidor",
+    "editServer": "Edit Server",
+    "deleteServerConfirm": "Remove \"{{name}}\" from your server list?",
     "hostAddress": "Dirección del host",
     "port": "Puerto",
     "gotIt": "Entendido"
