@@ -133,7 +133,7 @@ export const colorThemeManager = {
    * Convert rgba/rgb string to hex
    */
   rgbaToHex(rgba: string): string {
-    // Extract numbers from rgba/rgb string
+    if (rgba.startsWith('#') && (rgba.length === 7 || rgba.length === 4)) return rgba;
     const match = rgba.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
     if (!match) return '#000000';
     

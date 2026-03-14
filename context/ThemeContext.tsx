@@ -32,76 +32,76 @@ interface ThemeContextType {
 }
 
 const lightColors = {
-  background: 'rgb(242, 242, 247)',
-  surface: 'rgb(255, 255, 255)',
-  surfaceOutline: 'rgb(229, 229, 234)',
-  text: 'rgb(0, 0, 0,1)',
-  textSecondary: 'rgb(142, 142, 147,1)',
-  primary: 'rgb(0, 123, 255,0.8)',
-  primaryOpac: 'rgba(0, 85, 177, 0.8)',
-  error: 'rgb(255, 13, 0,0.5)',
-  success: 'rgb(4, 134, 37,0.5)', // Better contrast than pure gray
-  warning: 'rgba(255, 153, 0, 0.5)', // Brighter orange
-  stateDownloading: 'rgb(0, 123, 255,0.8)',
-  stateSeeding: 'rgb(4, 134, 37,0.5)',
+  background: '#F2F2F7',
+  surface: '#FFFFFF',
+  surfaceOutline: '#E5E5EA',
+  text: 'rgba(0, 0, 0, 1)',
+  textSecondary: 'rgba(142, 142, 147, 1)',
+  primary: 'rgba(0, 122, 255, 1)',
+  primaryOpac: 'rgba(0, 122, 255, 0.15)',
+  error: 'rgba(255, 59, 48, 1)',
+  success: 'rgba(52, 199, 89, 1)',
+  warning: 'rgba(255, 149, 0, 1)',
+  stateDownloading: 'rgba(0, 122, 255, 1)',
+  stateSeeding: 'rgba(52, 199, 89, 1)',
   stateUploadAndDownload: '#6B7B8C',
-  stateUploadOnly: '#81C784',
-  stateError: 'rgb(255, 13, 0,0.5)',
-  stateStalled: 'rgb(255, 69, 0,0.6)',
-  statePaused: 'rgb(142, 142, 147,0.8)',
-  stateChecking: 'rgba(255, 153, 0, 0.6)',
-  stateMetadata: 'rgba(255, 153, 0, 0.6)',
-  stateQueued: 'rgb(142, 142, 147,0.7)',
-  stateOther: 'rgb(142, 142, 147,0.7)',
+  stateUploadOnly: '#34C759',
+  stateError: 'rgba(255, 59, 48, 1)',
+  stateStalled: 'rgba(255, 149, 0, 1)',
+  statePaused: 'rgba(142, 142, 147, 1)',
+  stateChecking: 'rgba(255, 149, 0, 1)',
+  stateMetadata: 'rgba(255, 149, 0, 1)',
+  stateQueued: 'rgba(142, 142, 147, 1)',
+  stateOther: 'rgba(142, 142, 147, 1)',
 };
 
 const darkColors = {
-  background: 'rgb(15, 15, 15)', // Modern dark gray (Material Design)
-  surface: 'rgb(30, 30, 30)', // Slightly lighter for cards/surfaces
-  surfaceOutline: 'rgb(60, 60, 60)', // Slightly lighter for cards/surfaces
-  text: 'rgb(255, 255, 255,1)',
-  textSecondary: 'rgb(190, 190, 190,1)', // Better contrast than pure gray
-  primary: 'rgb(0, 123, 255,0.8)',
-  primaryOpac: 'rgba(0, 85, 177, 0.8)',
-  error: 'rgb(255, 13, 0,0.8)',
-  success: 'rgb(4, 134, 37,0.8)', // Better contrast than pure gray
-  warning: 'rgba(255, 153, 0, 0.8)', // Brighter orange
-  stateDownloading: 'rgb(0, 123, 255,0.8)',
-  stateSeeding: 'rgb(4, 134, 37,0.8)',
+  background: '#000000',
+  surface: '#1C1C1E',
+  surfaceOutline: '#38383A',
+  text: 'rgba(255, 255, 255, 1)',
+  textSecondary: 'rgba(190, 190, 190, 1)',
+  primary: 'rgba(10, 132, 255, 1)',
+  primaryOpac: 'rgba(10, 132, 255, 0.2)',
+  error: 'rgba(255, 69, 58, 1)',
+  success: 'rgba(52, 199, 89, 1)',
+  warning: 'rgba(255, 149, 0, 1)',
+  stateDownloading: 'rgba(10, 132, 255, 1)',
+  stateSeeding: 'rgba(52, 199, 89, 1)',
   stateUploadAndDownload: '#6B7B8C',
-  stateUploadOnly: '#81C784',
-  stateError: 'rgb(255, 13, 0,0.8)',
-  stateStalled: 'rgb(255, 69, 0,0.8)',
-  statePaused: 'rgb(60, 60, 60)',
-  stateChecking: 'rgba(255, 153, 0, 0.8)',
-  stateMetadata: 'rgba(255, 153, 0, 0.8)',
-  stateQueued: 'rgb(100, 100, 100)',
-  stateOther: 'rgb(100, 100, 100)',
+  stateUploadOnly: '#34C759',
+  stateError: 'rgba(255, 69, 58, 1)',
+  stateStalled: 'rgba(255, 159, 10, 1)',
+  statePaused: '#48484A',
+  stateChecking: 'rgba(255, 149, 0, 1)',
+  stateMetadata: 'rgba(255, 149, 0, 1)',
+  stateQueued: 'rgba(255, 149, 0, 1)',
+  stateOther: '#48484A',
 };
 
-// True black theme for OLED displays
+// True black theme — now matches dark palette (dark IS true black)
 const trueBlackColors = {
-  background: 'rgb(0, 0, 0)', // Pure black for OLED
-  surface: 'rgb(18, 18, 18)', // Slightly elevated
-  surfaceOutline: 'rgb(45, 45, 45)', // Subtle separator
-  text: 'rgb(255, 255, 255)',
-  textSecondary: 'rgb(160, 160, 160)',
-  primary: 'rgb(10, 132, 255)', // Brighter blue for OLED
-  primaryOpac: 'rgba(10, 132, 255, 0.5)',
-  error: 'rgb(255, 69, 58)', // Brighter red
-  success: 'rgb(52, 199, 89)',
-  warning: 'rgb(252, 151, 0)', // Brighter orange
-  stateDownloading: 'rgb(10, 132, 255)',
-  stateSeeding: 'rgb(52, 199, 89)',
+  background: '#000000',
+  surface: '#1C1C1E',
+  surfaceOutline: '#38383A',
+  text: 'rgba(255, 255, 255, 1)',
+  textSecondary: 'rgba(190, 190, 190, 1)',
+  primary: 'rgba(10, 132, 255, 1)',
+  primaryOpac: 'rgba(10, 132, 255, 0.2)',
+  error: 'rgba(255, 69, 58, 1)',
+  success: 'rgba(52, 199, 89, 1)',
+  warning: 'rgba(255, 149, 0, 1)',
+  stateDownloading: 'rgba(10, 132, 255, 1)',
+  stateSeeding: 'rgba(52, 199, 89, 1)',
   stateUploadAndDownload: '#6B7B8C',
-  stateUploadOnly: '#81C784',
-  stateError: 'rgb(255, 69, 58)',
-  stateStalled: 'rgb(255, 159, 67)',
-  statePaused: 'rgb(90, 90, 90)',
-  stateChecking: 'rgb(252, 151, 0)',
-  stateMetadata: 'rgb(252, 151, 0)',
-  stateQueued: 'rgb(110, 110, 110)',
-  stateOther: 'rgb(110, 110, 110)',
+  stateUploadOnly: '#34C759',
+  stateError: 'rgba(255, 69, 58, 1)',
+  stateStalled: 'rgba(255, 159, 10, 1)',
+  statePaused: '#48484A',
+  stateChecking: 'rgba(255, 149, 0, 1)',
+  stateMetadata: 'rgba(255, 149, 0, 1)',
+  stateQueued: 'rgba(255, 149, 0, 1)',
+  stateOther: '#48484A',
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
