@@ -1,19 +1,19 @@
-import '../i18n';
+import '@/i18n';
 import { Stack } from 'expo-router';
 import { Dimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
-import { ServerProvider } from '../context/ServerContext';
-import { TorrentProvider } from '../context/TorrentContext';
-import { TransferProvider } from '../context/TransferContext';
-import { ThemeProvider, useTheme } from '../context/ThemeContext';
-import { ToastProvider } from '../context/ToastContext';
-import { logStorage } from '../services/log-storage';
-import { storageService } from '../services/storage';
-import { apiClient } from '../services/api/client';
-import { setHapticsEnabled } from '../utils/haptics';
-import { setDebugMode as setConnectivityDebugMode } from '../services/connectivity-log';
+import { ServerProvider } from '@/context/ServerContext';
+import { TorrentProvider } from '@/context/TorrentContext';
+import { TransferProvider } from '@/context/TransferContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { ToastProvider } from '@/context/ToastContext';
+import { logStorage } from '@/services/log-storage';
+import { storageService } from '@/services/storage';
+import { apiClient } from '@/services/api/client';
+import { setHapticsEnabled } from '@/utils/haptics';
+import { setDebugMode as setConnectivityDebugMode } from '@/services/connectivity-log';
 
 const { width } = Dimensions.get('window');
 
@@ -65,7 +65,6 @@ export default function RootLayout() {
       setConnectivityDebugMode(prefs.debugMode === true);
       apiClient.updateSettings({
         connectionTimeout: Number(prefs.connectionTimeout) || 10000,
-        apiTimeout: Number(prefs.apiTimeout) || 30000,
         retryAttempts: Number(prefs.retryAttempts) || 3,
       });
     }).catch(() => {
