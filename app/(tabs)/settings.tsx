@@ -18,18 +18,20 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useServer } from '@/context/ServerContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { APP_VERSION } from '@/utils/version';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
 interface NavRowProps {
-  icon: string;
+  icon: IconName;
   label: string;
   onPress: () => void;
-  colors: any;
+  colors: ThemeColors;
   isLast?: boolean;
   iconColor?: string;
 }
@@ -39,7 +41,7 @@ function NavRow({ icon, label, onPress, colors, isLast, iconColor }: NavRowProps
     <>
       <TouchableOpacity style={styles.navRow} onPress={onPress} activeOpacity={0.7}>
         <View style={styles.navLeft}>
-          <Ionicons name={icon as any} size={22} color={iconColor || colors.primary} />
+          <Ionicons name={icon} size={22} color={iconColor || colors.primary} />
           <Text style={[styles.navLabel, { color: colors.text }]}>{label}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -167,7 +169,7 @@ export default function SettingsScreen() {
             />
             <NavRow
               icon="information-circle-outline"
-              label="About"
+              label={t('screens.settings.about')}
               onPress={() => router.push('/settings/about')}
               colors={colors}
               isLast
