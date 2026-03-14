@@ -29,7 +29,7 @@ function StackNavigator() {
             start: width / 2,
           },
           contentStyle: {
-            backgroundColor: 'colors.r',
+            backgroundColor: colors.background,
           },
         }}
       >
