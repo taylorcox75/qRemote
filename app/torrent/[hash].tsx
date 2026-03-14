@@ -25,23 +25,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useServer } from '../../context/ServerContext';
-import { useTheme } from '../../context/ThemeContext';
-import { useToast } from '../../context/ToastContext';
+import { useServer } from '@/context/ServerContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/context/ToastContext';
 import { useTorrents } from '@/context/TorrentContext';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { InputModal } from '../../components/InputModal';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { InputModal } from '@/components/InputModal';
 import { OptionPicker } from '@/components/OptionPicker';
-import { getStateColor, getStateLabel } from '../../utils/torrent-state';
-import { torrentsApi } from '../../services/api/torrents';
-import { syncApi } from '../../services/api/sync';
+import { getStateColor, getStateLabel } from '@/utils/torrent-state';
+import { torrentsApi } from '@/services/api/torrents';
+import { syncApi } from '@/services/api/sync';
 import {
   TorrentProperties,
   Tracker,
   TorrentFile,
   TorrentInfo,
-} from '../../types/api';
-import { formatDate } from '../../utils/format';
+} from '@/types/api';
+import { formatDate } from '@/utils/format';
 
 export default function TorrentDetail() {
   const { hash } = useLocalSearchParams<{ hash: string }>();

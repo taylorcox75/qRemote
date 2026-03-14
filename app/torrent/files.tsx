@@ -19,14 +19,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useServer } from '../../context/ServerContext';
-import { useTheme } from '../../context/ThemeContext';
-import { useToast } from '../../context/ToastContext';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { torrentsApi } from '../../services/api/torrents';
-import { TorrentFile, FilePriority } from '../../types/api';
-import { spacing, borderRadius } from '../../constants/spacing';
-import { shadows } from '../../constants/shadows';
+import { useServer } from '@/context/ServerContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/context/ToastContext';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { torrentsApi } from '@/services/api/torrents';
+import { TorrentFile, FilePriority } from '@/types/api';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
 
 interface FileTreeItem {
   type: 'file' | 'folder';
