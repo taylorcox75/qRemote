@@ -18,6 +18,12 @@ This plan is organized into **three phases** executed in order. Within each phas
 
 **Golden rule:** Every task should be independently testable and independently revertible. Never combine a visual change with a structural change in the same commit. The app must build and run at every commit.
 
+### Naming Conventions
+
+- **`app/(tabs)/`** — The parentheses are an Expo Router framework requirement. `(tabs)` is a "route group" — the parens tell Expo Router this folder is a layout group that won't appear in the URL. The parens **cannot be removed** without breaking routing. The name inside can change (e.g. `(main)`) but the syntax is mandatory.
+- **Test directories** — Use `tests/` at the repo root, not `__tests__/` colocated. Keep tests organized by module: `tests/utils/`, `tests/services/`, etc.
+- **Files** — PascalCase for components (`TorrentCard.tsx`), camelCase for utilities and hooks (`formatSpeed.ts`, `useTorrentActions.ts`), kebab-case for services (`server-manager.ts`). Match whatever convention the file already uses.
+
 ---
 
 ## Phase 1: AI & Developer Infrastructure
@@ -47,7 +53,7 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - No test runner configured yet (adding tests is a separate task)
 
 ## Architecture
-- **Routing:** Expo Router file-based routing in `app/`
+- **Routing:** Expo Router file-based routing in `app/`. The `(tabs)` directory uses parentheses because Expo Router requires this syntax for route groups — it is a framework convention, not a naming choice. The parens cannot be removed.
 - **State:** React Context (ThemeContext, ServerContext, TorrentContext, TransferContext, ToastContext)
 - **Data sync:** Polling-based, 2-3s interval, rid-based incremental sync for torrents
 - **Storage:** AsyncStorage for preferences, SecureStore for passwords
@@ -64,20 +70,12 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 6. The preferences object is `Record<string, any>` — see `types/preferences.ts` for the typed version (create if missing).
 7. Color defaults use mixed formats (rgb, rgba, hex). The color picker only handles 6-digit hex. Changing a default from `rgba(...)` to `#hex` removes the alpha channel and changes visual appearance.
 
-## Dead Code (do NOT modify unless wiring up)
+## Dead Code (scheduled for deletion in Task 3.5 — do NOT modify, do NOT build on)
 - `App.tsx` — unused boilerplate (entry is `index.ts` → `expo-router/entry`)
-- `app/onboarding.tsx` — route exists but nothing navigates to it
+- `app/onboarding.tsx` — route exists but nothing navigates to it (no gate in _layout.tsx)
 - `app/torrent/add.tsx` — standalone screen, superseded by the modal in `app/(tabs)/index.tsx`
 - `hooks/useDynamicColors.ts` — placeholder, always returns null
-- `components/DraggableTorrentList.tsx` — not imported by any screen
-- `components/SwipeableTorrentCard.tsx` — not imported by any screen
-- `components/ExpandableTorrentCard.tsx` — not imported by any screen
-- `components/SharedTransitionCard.tsx` — not imported by any screen
-- `components/AnimatedTorrentCard.tsx` — not imported by any screen
-- `components/ContextualFAB.tsx` — not imported by any screen
-- `components/GradientCard.tsx` — not imported by any screen
-- `components/HealthRing.tsx` — not imported by any screen
-- `components/AnimatedStateIcon.tsx` — not imported by any screen
+- `components/DraggableTorrentList.tsx`, `SwipeableTorrentCard.tsx`, `ExpandableTorrentCard.tsx`, `SharedTransitionCard.tsx`, `AnimatedTorrentCard.tsx`, `ContextualFAB.tsx`, `GradientCard.tsx`, `HealthRing.tsx`, `AnimatedStateIcon.tsx` — none imported by any live screen
 - `apiTimeout` in `services/api/client.ts` — stored but never used
 - `csrfToken` in `services/api/client.ts` — captured but never sent
 
@@ -91,6 +89,13 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - `ActionSheetIOS` in `manage-trackers.tsx` — no Android fallback
 - `isRecoveringFromBackground` in `TorrentContext.tsx` — exposed as ref value, doesn't trigger re-renders (should be state like TransferContext)
 - `react-native-gesture-handler` imported in 2 components but NOT in package.json
+
+## Naming Conventions
+- Components: PascalCase (`TorrentCard.tsx`)
+- Utilities/hooks: camelCase (`formatSpeed.ts`, `useTorrentActions.ts`)
+- Services: kebab-case (`server-manager.ts`, `color-theme-manager.ts`)
+- Tests: `tests/` at repo root, organized by module (`tests/utils/`, `tests/services/`). NOT `__tests__/`.
+- Route groups: `(groupname)` with parentheses is Expo Router syntax, not a naming choice.
 
 ## Cursor Cloud Specific Instructions
 - This is an Expo Go project. Do NOT add native modules that require `expo-dev-client` without explicit approval.
@@ -241,12 +246,12 @@ For dead/unused files, prepend:
 
 **Install:** `npm install --save-dev jest @types/jest ts-jest`
 
-**Create:** `jest.config.js` with ts-jest preset for React Native.
+**Create:** `jest.config.js` with ts-jest preset for React Native. Configure `roots: ['<rootDir>/tests']`.
 
-**Create test files:**
-- `utils/__tests__/format.test.ts` — test `formatSize`, `formatSpeed`, `formatTime`, `formatDate`, `formatRatio`, `formatPercent` with edge cases (0, null, undefined, NaN, negative, very large numbers)
-- `utils/__tests__/torrent-state.test.ts` — test `getStateColor` and `getStateLabel` with a truth table covering all `TorrentState` values (after Task 1.6 extracts them)
-- `services/__tests__/color-theme-manager.test.ts` — test `mergeColors`, `hexToRgba`, `rgbaToHex`
+**Create test files (all under `tests/` at repo root):**
+- `tests/utils/format.test.ts` — test `formatSize`, `formatSpeed`, `formatTime`, `formatDate`, `formatRatio`, `formatPercent` with edge cases (0, null, undefined, NaN, negative, very large numbers)
+- `tests/utils/torrent-state.test.ts` — test `getStateColor` and `getStateLabel` with a truth table covering all `TorrentState` values (after Task 1.6 extracts them)
+- `tests/services/color-theme-manager.test.ts` — test `mergeColors`, `hexToRgba`, `rgbaToHex`
 
 **Acceptance:** `npx jest` runs and all tests pass. Tests cover the highest-risk pure functions.
 
@@ -580,29 +585,29 @@ import { formatSpeed } from '@/utils/format';
 
 ---
 
-### Task 3.5 — Clean Up Dead Code
+### Task 3.5 — Delete Dead Code
 
-**Delete these files:**
-- `App.tsx`
-- `hooks/useDynamicColors.ts`
+Git history preserves everything. Dead code doesn't belong in the working tree.
 
-**Move to `_unused/` directory (preserve in repo for reference):**
-- `app/torrent/add.tsx` (superseded by modal in index.tsx)
-- `components/DraggableTorrentList.tsx`
-- `components/SwipeableTorrentCard.tsx`
-- `components/ExpandableTorrentCard.tsx`
-- `components/SharedTransitionCard.tsx`
-- `components/AnimatedTorrentCard.tsx`
-- `components/ContextualFAB.tsx`
-- `components/GradientCard.tsx`
-- `components/HealthRing.tsx`
-- `components/AnimatedStateIcon.tsx`
+**Delete these files (verify zero live imports before each deletion):**
+- `App.tsx` — unused boilerplate, entry is `expo-router/entry`
+- `hooks/useDynamicColors.ts` — placeholder, always returns null
+- `app/torrent/add.tsx` — superseded by the add-torrent modal in `app/(tabs)/index.tsx`
+- `components/DraggableTorrentList.tsx` — not imported by any screen
+- `components/SwipeableTorrentCard.tsx` — not imported by any screen
+- `components/ExpandableTorrentCard.tsx` — not imported by any screen
+- `components/SharedTransitionCard.tsx` — not imported by any screen
+- `components/AnimatedTorrentCard.tsx` — not imported by any screen
+- `components/ContextualFAB.tsx` — not imported by any screen
+- `components/GradientCard.tsx` — not imported by any screen
+- `components/HealthRing.tsx` — not imported by any screen
+- `components/AnimatedStateIcon.tsx` — not imported by any screen
 
 **In `services/api/client.ts`:** Remove unused `csrfToken` storage. Remove unused `apiTimeout` field (or actually use it — pick one).
 
-**Risks:** Verify each file really isn't imported anywhere before deleting/moving. Run `grep -r "from.*FileName" --include="*.ts" --include="*.tsx"` for each.
+**Verification before each delete:** `grep -r "from.*FileName" --include="*.ts" --include="*.tsx"` must return zero results (excluding the file itself and this plan). If a file IS imported somewhere, do NOT delete it — investigate.
 
-**Acceptance:** Deleted files have zero imports. Moved files are in `_unused/`. App compiles.
+**Acceptance:** All listed files deleted. `npx tsc --noEmit` passes. App compiles.
 
 ---
 
