@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -66,7 +67,11 @@ export function TorrentDetails({
   const [peersModalVisible, setPeersModalVisible] = useState(false);
   const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
   const [peersLoading, setPeersLoading] = useState(false);
-  
+
+  // Reannounce animation
+  const announceSpinAnim = useRef(new Animated.Value(0)).current;
+  const announceSpinRef = useRef<Animated.CompositeAnimation | null>(null);
+
   // Display queue position (1 = top, higher = lower)
   const getQueueDisplay = () => {
     const priority = optimisticPriority;
@@ -211,6 +216,17 @@ export function TorrentDetails({
 
   const handleReannounce = async () => {
     setActiveButton('reannounce');
+    // Start spinning animation
+    announceSpinAnim.setValue(0);
+    const spin = Animated.loop(
+      Animated.timing(announceSpinAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      })
+    );
+    announceSpinRef.current = spin;
+    spin.start();
     try {
       setLoading(true);
       await torrentsApi.reannounceTorrents([torrent.hash]);
@@ -223,6 +239,12 @@ export function TorrentDetails({
     } catch (error: any) {
       showToast(error.message || 'Failed to reannounce torrent', 'error');
     } finally {
+      // Stop animation
+      if (announceSpinRef.current) {
+        announceSpinRef.current.stop();
+        announceSpinRef.current = null;
+      }
+      announceSpinAnim.setValue(0);
       setLoading(false);
       setActiveButton(null);
     }
@@ -839,9 +861,20 @@ export function TorrentDetails({
               onPress={handleReannounce}
               disabled={loading}
             >
-              <Ionicons name="refresh" size={18} color="#FFFFFF" />
+              <Animated.View
+                style={{
+                  transform: [{
+                    rotate: announceSpinAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '360deg'],
+                    }),
+                  }],
+                }}
+              >
+                <Ionicons name="refresh" size={18} color="#FFFFFF" />
+              </Animated.View>
               <View style={styles.actionButtonTextContainer}>
-                <Text style={[styles.actionButtonText]}>Re- Announce</Text>
+                <Text style={[styles.actionButtonText]}>Reannounce</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity
@@ -872,6 +905,11 @@ export function TorrentDetails({
               <Ionicons name="speedometer" size={18} color="#FFFFFF" />
               <View style={styles.actionButtonTextContainer}>
                 <Text style={styles.actionButtonText}>Alt Speed</Text>
+                {transferInfo?.use_alt_speed_limits && (
+                  <Text style={styles.actionButtonSubtext}>
+                    {`DL: ${(transferInfo.dl_rate_limit > 0) ? formatSpeed(transferInfo.dl_rate_limit) : '∞'} • UL: ${(transferInfo.up_rate_limit > 0) ? formatSpeed(transferInfo.up_rate_limit) : '∞'}`}
+                  </Text>
+                )}
               </View>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1117,39 +1155,99 @@ export function TorrentDetails({
           <InfoRow icon="cloud-done" label="Uploaded" value={formatSize(torrent.uploaded)} />
           <InfoRow icon="swap-horizontal" label="Ratio" value={torrent.ratio.toFixed(2)} />
           <InfoRow icon="time" label="Last Seen Complete" value={formatDate(torrent.seen_complete)} />
-          <View style={[styles.categorySection, { borderBottomColor: colors.surfaceOutline }]}>
-            <Text style={[styles.actionButtonTextLong, { color: colors.textSecondary}]}>Category:</Text>
+          <View style={[styles.tagsSection, { borderBottomColor: colors.surfaceOutline }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Category:</Text>
+            <View style={styles.tagsContainer}>
+              {torrent.category ? (
+                <View style={[styles.tag, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.tagText, { color: colors.textSecondary }]}>{torrent.category}</Text>
+                </View>
+              ) : null}
+            </View>
             <TouchableOpacity
-              style={[styles.categoryButton, { backgroundColor: colors.primary }]}
+              style={[styles.addTagButton, { backgroundColor: colors.primary }]}
               onPress={() => {
                 const categoryOptions = ['None', ...Object.keys(categories)];
                 Alert.alert(
                   'Set Category',
                   'Select a category',
-                  categoryOptions.map((cat) => ({
-                    text: cat,
-                    onPress: async () => {
-                      try {
-                        setLoading(true);
-                        await torrentsApi.setTorrentCategory(
-                          [torrent.hash],
-                          cat === 'None' ? '' : cat
+                  [
+                    ...categoryOptions.map((cat) => ({
+                      text: cat,
+                      onPress: async () => {
+                        try {
+                          setLoading(true);
+                          await torrentsApi.setTorrentCategory(
+                            [torrent.hash],
+                            cat === 'None' ? '' : cat
+                          );
+                          onRefresh();
+                        } catch (error: any) {
+                          showToast(error.message || 'Failed to set category', 'error');
+                        } finally {
+                          setLoading(false);
+                        }
+                      },
+                    })),
+                    {
+                      text: 'Add New Category',
+                      onPress: () => {
+                        Alert.prompt(
+                          'Add New Category',
+                          'Enter category name',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Add',
+                              onPress: async (categoryName: string | undefined) => {
+                                if (!categoryName || !categoryName.trim()) {
+                                  showToast('Please enter a valid category name', 'error');
+                                  return;
+                                }
+                                try {
+                                  setLoading(true);
+                                  await categoriesApi.addCategory(categoryName.trim(), '');
+                                  await torrentsApi.setTorrentCategory([torrent.hash], categoryName.trim());
+                                  onRefresh();
+                                } catch (error: any) {
+                                  showToast(error.message || 'Failed to add category', 'error');
+                                } finally {
+                                  setLoading(false);
+                                }
+                              },
+                            },
+                          ],
+                          'plain-text'
                         );
-                        onRefresh();
-                      } catch (error: any) {
-                        showToast(error.message || 'Failed to set category', 'error');
-                      } finally {
-                        setLoading(false);
-                      }
+                      },
                     },
-                  }))
+                    { text: 'Cancel', style: 'cancel' },
+                  ]
                 );
               }}
             >
-              <Text style={styles.categoryButtonText}>
-                {torrent.category || 'None'}
+              <Text style={styles.addTagButtonText}>
+                {torrent.category ? 'Change Category' : '+ Set Category'}
               </Text>
             </TouchableOpacity>
+            {torrent.category ? (
+              <TouchableOpacity
+                style={[styles.removeTagButton, { backgroundColor: colors.error }]}
+                onPress={async () => {
+                  try {
+                    setLoading(true);
+                    await torrentsApi.setTorrentCategory([torrent.hash], '');
+                    onRefresh();
+                  } catch (error: any) {
+                    showToast(error.message || 'Failed to remove category', 'error');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                <Text style={styles.removeTagButtonText}>Remove Category</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
           <View style={[styles.tagsSection, { borderBottomColor: colors.surfaceOutline }]}>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Tags:</Text>
@@ -1758,6 +1856,13 @@ const styles = StyleSheet.create({
     lineHeight: 10,
     includeFontPadding: true,
     },
+  actionButtonSubtext: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 8,
+    fontWeight: '400',
+    textAlign: 'center',
+    marginTop: 2,
+  },
   actionButtonTextLong: {
     fontSize: 9,
     lineHeight: 11,

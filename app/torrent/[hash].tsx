@@ -12,6 +12,7 @@ import {
   Modal,
   AppState,
   AppStateStatus,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
@@ -58,6 +59,10 @@ export default function TorrentDetail() {
   const [peersModalVisible, setPeersModalVisible] = useState(false);
   const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
   const [peersLoading, setPeersLoading] = useState(false);
+
+  // Reannounce animation
+  const announceSpinAnim = useRef(new Animated.Value(0)).current;
+  const announceSpinRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Initial load
   useEffect(() => {
@@ -419,12 +424,29 @@ export default function TorrentDetail() {
   const handleReannounce = async () => {
     try {
       setActionLoading(true);
+      // Start spinning animation
+      announceSpinAnim.setValue(0);
+      const spin = Animated.loop(
+        Animated.timing(announceSpinAnim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        })
+      );
+      announceSpinRef.current = spin;
+      spin.start();
       await torrentsApi.reannounceTorrents([torrent.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
-      setActionLoading(false);
+      showToast('Reannounce sent', 'success');
     } catch (error: any) {
       showToast(error.message || 'Failed to reannounce torrent', 'error');
+    } finally {
+      if (announceSpinRef.current) {
+        announceSpinRef.current.stop();
+        announceSpinRef.current = null;
+      }
+      announceSpinAnim.setValue(0);
       setActionLoading(false);
     }
   };
@@ -831,7 +853,18 @@ export default function TorrentDetail() {
                 onPress={handleReannounce}
                 disabled={actionLoading}
           >
-                <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                <Animated.View
+                  style={{
+                    transform: [{
+                      rotate: announceSpinAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    }],
+                  }}
+                >
+                  <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                </Animated.View>
                 <Text style={styles.quickToolText}>Reannounce</Text>
               </TouchableOpacity>
               <TouchableOpacity

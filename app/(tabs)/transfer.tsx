@@ -818,8 +818,26 @@ export default function TransferScreen() {
 
           {/* Speed Limits */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>SPEED LIMITS</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {isAltSpeedEnabled ? 'ALTERNATIVE SPEED LIMITS' : 'SPEED LIMITS'}
+              </Text>
+              {isAltSpeedEnabled && (
+                <View style={[styles.altBadge, { backgroundColor: colors.warning }]}>
+                  <Ionicons name="speedometer" size={12} color="#FFFFFF" />
+                  <Text style={styles.altBadgeText}>ALT MODE</Text>
+                </View>
+              )}
+            </View>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              {isAltSpeedEnabled && (
+                <View style={[styles.altSpeedBanner, { borderBottomColor: colors.warning }]}>
+                  <Ionicons name="information-circle-outline" size={14} color={colors.warning} />
+                  <Text style={[styles.altSpeedBannerText, { color: colors.warning }]}>
+                    Alternative speed mode is active. Limits shown are the current alt speed limits.
+                  </Text>
+                </View>
+              )}
               {/* Download */}
               <View style={styles.limitSection}>
                 <View style={styles.limitHeader}>
@@ -1173,6 +1191,38 @@ const styles = StyleSheet.create({
     ...typography.label,
     marginBottom: spacing.sm,
     marginLeft: spacing.xs,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+    gap: 8,
+  },
+  altBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 3,
+  },
+  altBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  altSpeedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: spacing.sm,
+    gap: 6,
+    borderBottomWidth: 1,
+  },
+  altSpeedBannerText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
   },
   card: {
     borderRadius: borderRadius.medium,
