@@ -1,9 +1,11 @@
 /**
- * [hash].tsx — Torrent detail screen showing properties, trackers, files, and action buttons.
+ * [hash].tsx — Torrent detail screen with iOS-style grouped inset sections.
+ *
+ * Layout: Hero → Actions → General → Transfer → Network → Content → Advanced → Dates
+ * All 16 former "Advanced" button actions remain accessible as toggle, picker,
+ * input, or navigation rows.
  *
  * Key exports: TorrentDetail (default)
- * Known issues: Alert.prompt used in 7 places (iOS-only, Task 1.5 replaces with InputModal);
- *   Quick Tools + Advanced button grid scheduled for redesign in Task 2.3.
  */
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import {
@@ -14,22 +16,23 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
   Alert,
   Modal,
   AppState,
   AppStateStatus,
+  Switch,
 } from 'react-native';
-import { InputModal } from '../../components/InputModal';
-import { getStateColor, getStateLabel } from '../../utils/torrent-state';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useServer } from '../../context/ServerContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useTorrents } from '@/context/TorrentContext';
 import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { TorrentCard } from '../../components/TorrentCard';
+import { InputModal } from '../../components/InputModal';
+import { OptionPicker } from '@/components/OptionPicker';
+import { getStateColor, getStateLabel } from '../../utils/torrent-state';
 import { torrentsApi } from '../../services/api/torrents';
 import { syncApi } from '../../services/api/sync';
 import {
@@ -40,8 +43,6 @@ import {
 } from '../../types/api';
 import { formatDate } from '../../utils/format';
 
-const { width } = Dimensions.get('window');
-
 export default function TorrentDetail() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const router = useRouter();
@@ -49,13 +50,15 @@ export default function TorrentDetail() {
   const { isConnected, isLoading } = useServer();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
-  
+  const { categories } = useTorrents();
+
   useLayoutEffect(() => {
     navigation.setOptions({
       gestureEnabled: true,
       fullScreenGestureEnabled: true,
     });
   }, [navigation]);
+
   const [torrent, setTorrent] = useState<TorrentInfo | null>(null);
   const [properties, setProperties] = useState<TorrentProperties | null>(null);
   const [trackers, setTrackers] = useState<Tracker[]>([]);
@@ -64,6 +67,7 @@ export default function TorrentDetail() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [optimisticPaused, setOptimisticPaused] = useState<boolean | null>(null);
+
   const [peersModalVisible, setPeersModalVisible] = useState(false);
   const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
   const [peersLoading, setPeersLoading] = useState(false);
@@ -79,7 +83,11 @@ export default function TorrentDetail() {
     onConfirm: (value: string) => void;
   }>({ title: '', onConfirm: () => {} });
 
-  // Initial load
+  const [priorityPickerVisible, setPriorityPickerVisible] = useState(false);
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+
+  // ── Data loading ──────────────────────────────────────────────────────
+
   useEffect(() => {
     if (hash && isConnected) {
       loadTorrentData();
@@ -102,8 +110,6 @@ export default function TorrentDetail() {
       setProperties(props);
       setTrackers(trackersData);
       setFiles(filesData);
-      
-      // Return the new torrent data so polling can check it
       return torrentList.length > 0 ? torrentList[0] : null;
     } catch (error: any) {
       showToast(error.message || 'Failed to load torrent details', 'error');
@@ -128,9 +134,7 @@ export default function TorrentDetail() {
         torrentsApi.getTorrentContents(hash),
       ]);
 
-      if (torrentList.length > 0) {
-        setTorrent(torrentList[0]);
-      }
+      if (torrentList.length > 0) setTorrent(torrentList[0]);
       setProperties(props);
       setTrackers(trackersData);
       setFiles(filesData);
@@ -139,7 +143,8 @@ export default function TorrentDetail() {
     }
   }, [hash]);
 
-  // Auto-refresh polling — keeps the card and detail sections live
+  // ── Polling ───────────────────────────────────────────────────────────
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const appStateRef = useRef(AppState.currentState);
 
@@ -157,7 +162,6 @@ export default function TorrentDetail() {
     }
   }, []);
 
-  // Start/stop polling with connection state
   useEffect(() => {
     if (!hash || !isConnected) {
       stopPolling();
@@ -167,7 +171,6 @@ export default function TorrentDetail() {
     return stopPolling;
   }, [hash, isConnected, startPolling, stopPolling]);
 
-  // Pause polling in background, resume on foreground
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       const prev = appStateRef.current;
@@ -183,144 +186,34 @@ export default function TorrentDetail() {
     return () => sub.remove();
   }, [hash, isConnected, silentRefresh, startPolling, stopPolling]);
 
-  // Show loading spinner while restoring connection (prevents flash on app launch/resume)
-  if (isLoading && !isConnected) {
-    return (
-      <>
-        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </>
-    );
-  }
-
-  // Only show "Not Connected" when truly disconnected (not during initial load)
-  if (!isConnected) {
-    return (
-      <>
-        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Text style={[styles.message, { color: colors.text }]}>Not connected to a server</Text>
-        </View>
-      </>
-    );
-  }
-
-  if (loading && !torrent) {
-    return (
-      <>
-        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </>
-    );
-  }
-
-  if (!torrent) {
-    return (
-      <>
-        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Text style={[styles.message, { color: colors.text }]}>Torrent not found</Text>
-        </View>
-      </>
-    );
-  }
-
-  const formatTime = (seconds: number): string => {
-    if (seconds < 0) return '∞';
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
-  };
-
-  const progress = (torrent.progress || 0) * 100;
-  const dlspeed = torrent.dlspeed ?? 0;
-  const upspeed = torrent.upspeed ?? 0;
-  const actualIsPaused = torrent.state.includes('paused') || torrent.state.includes('stopped');
-  const isPaused = optimisticPaused !== null ? optimisticPaused : actualIsPaused;
-
-  let stateColor = getStateColor(torrent.state, torrent.progress, dlspeed, upspeed, colors);
-  let stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed);
-  
-  if (optimisticPaused !== null) {
-    if (optimisticPaused) {
-      stateColor = colors.statePaused;
-      stateLabel = 'Paused';
-    } else {
-      if (torrent.progress >= 1) {
-        stateColor = colors.stateSeeding;
-        stateLabel = 'Seeding';
-      } else {
-        stateColor = colors.stateDownloading;
-        stateLabel = 'Downloading';
-      }
-    }
-  }
-
-  const formatSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-  };
-
-  const formatSpeed = (bytesPerSecond: number): string => {
-    if (bytesPerSecond === 0) return '0 B/s';
-    return `${formatSize(bytesPerSecond)}/s`;
-  };
+  // ── Handlers ──────────────────────────────────────────────────────────
 
   const handlePauseResume = async () => {
     if (actionLoading) return;
-    
-    // Determine current paused state from actual torrent data
-    const currentlyPaused = torrent.state.includes('paused') || torrent.state.includes('stopped');
-    const expectedNewState = !currentlyPaused; // What we expect after the action
-    
-    // Optimistically update the UI immediately
+    const currentlyPaused = torrent!.state.includes('paused') || torrent!.state.includes('stopped');
+    const expectedNewState = !currentlyPaused;
     setOptimisticPaused(expectedNewState);
     setActionLoading(true);
-    
     try {
       if (currentlyPaused) {
-        await torrentsApi.resumeTorrents([torrent.hash]);
+        await torrentsApi.resumeTorrents([torrent!.hash]);
       } else {
-        await torrentsApi.pauseTorrents([torrent.hash]);
+        await torrentsApi.pauseTorrents([torrent!.hash]);
       }
-      
-      // Poll until state changes or timeout (max 3 seconds)
       let attempts = 0;
-      const maxAttempts = 6; // 6 attempts * 500ms = 3 seconds max
-      
+      const maxAttempts = 6;
       while (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 500));
         const freshTorrent = await loadTorrentData();
-        
-        // Check if the state has actually changed
         if (freshTorrent) {
           const newIsPaused = freshTorrent.state.includes('paused') || freshTorrent.state.includes('stopped');
-          if (newIsPaused === expectedNewState) {
-            // State has changed successfully!
-            break;
-          }
+          if (newIsPaused === expectedNewState) break;
         }
         attempts++;
       }
-      
       setOptimisticPaused(null);
       setActionLoading(false);
     } catch (error: any) {
-      // Revert optimistic update on error
       setOptimisticPaused(null);
       showToast(error.message || 'Failed to update torrent', 'error');
       setActionLoading(false);
@@ -330,14 +223,14 @@ export default function TorrentDetail() {
   const handleDelete = () => {
     Alert.alert(
       'Delete Torrent',
-      `Delete "${torrent.name}"?`,
+      `Delete "${torrent!.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Torrent Only',
           onPress: async () => {
             try {
-              await torrentsApi.deleteTorrents([torrent.hash], false);
+              await torrentsApi.deleteTorrents([torrent!.hash], false);
               showToast('Torrent deleted', 'success');
               router.back();
             } catch (error: any) {
@@ -350,7 +243,7 @@ export default function TorrentDetail() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await torrentsApi.deleteTorrents([torrent.hash], true);
+              await torrentsApi.deleteTorrents([torrent!.hash], true);
               showToast('Torrent deleted', 'success');
               router.back();
             } catch (error: any) {
@@ -365,7 +258,7 @@ export default function TorrentDetail() {
   const handleRecheck = async () => {
     try {
       setActionLoading(true);
-      await torrentsApi.recheckTorrents([torrent.hash]);
+      await torrentsApi.recheckTorrents([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -401,7 +294,7 @@ export default function TorrentDetail() {
   const handleReannounce = async () => {
     try {
       setActionLoading(true);
-      await torrentsApi.reannounceTorrents([torrent.hash]);
+      await torrentsApi.reannounceTorrents([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -415,7 +308,7 @@ export default function TorrentDetail() {
     try {
       setActionLoading(true);
       const isForceStarted = torrent?.force_start || false;
-      await torrentsApi.setForceStart([torrent.hash], !isForceStarted);
+      await torrentsApi.setForceStart([torrent!.hash], !isForceStarted);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -430,7 +323,7 @@ export default function TorrentDetail() {
     try {
       setActionLoading(true);
       const isSuperSeeding = torrent?.super_seeding || false;
-      await torrentsApi.setSuperSeeding([torrent.hash], !isSuperSeeding);
+      await torrentsApi.setSuperSeeding([torrent!.hash], !isSuperSeeding);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -444,7 +337,7 @@ export default function TorrentDetail() {
   const handleSequentialDownload = async () => {
     try {
       setActionLoading(true);
-      await torrentsApi.toggleSequentialDownload([torrent.hash]);
+      await torrentsApi.toggleSequentialDownload([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -458,11 +351,11 @@ export default function TorrentDetail() {
   const handleFirstLastPiecePriority = async () => {
     try {
       setActionLoading(true);
-      await torrentsApi.setFirstLastPiecePriority([torrent.hash]);
+      await torrentsApi.setFirstLastPiecePriority([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
-      showToast('First/Last piece priority set', 'success');
+      showToast('First/Last piece priority toggled', 'success');
     } catch (error: any) {
       showToast(error.message || 'Failed to set priority', 'error');
       setActionLoading(false);
@@ -473,7 +366,7 @@ export default function TorrentDetail() {
     try {
       setActionLoading(true);
       const isAutoManaged = torrent?.auto_tmm || false;
-      await torrentsApi.setAutomaticTorrentManagement([torrent.hash], !isAutoManaged);
+      await torrentsApi.setAutomaticTorrentManagement([torrent!.hash], !isAutoManaged);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -487,7 +380,7 @@ export default function TorrentDetail() {
   const handleIncreasePriority = async () => {
     try {
       setActionLoading(true);
-      await torrentsApi.increasePriority([torrent.hash]);
+      await torrentsApi.increasePriority([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -500,7 +393,7 @@ export default function TorrentDetail() {
   const handleDecreasePriority = async () => {
     try {
       setActionLoading(true);
-      await torrentsApi.decreasePriority([torrent.hash]);
+      await torrentsApi.decreasePriority([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -513,7 +406,7 @@ export default function TorrentDetail() {
   const handleMaxPriority = async () => {
     try {
       setActionLoading(true);
-      await torrentsApi.setMaximalPriority([torrent.hash]);
+      await torrentsApi.setMaximalPriority([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -527,7 +420,7 @@ export default function TorrentDetail() {
   const handleMinPriority = async () => {
     try {
       setActionLoading(true);
-      await torrentsApi.setMinimalPriority([torrent.hash]);
+      await torrentsApi.setMinimalPriority([torrent!.hash]);
       await new Promise(resolve => setTimeout(resolve, 250));
       await loadTorrentData();
       setActionLoading(false);
@@ -550,7 +443,7 @@ export default function TorrentDetail() {
         try {
           setActionLoading(true);
           const limit = parseInt(value) || 0;
-          await torrentsApi.setTorrentDownloadLimit([torrent.hash], limit);
+          await torrentsApi.setTorrentDownloadLimit([torrent!.hash], limit);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
           showToast(`Download limit set to ${limit === 0 ? 'unlimited' : formatSpeed(limit)}`, 'success');
@@ -576,7 +469,7 @@ export default function TorrentDetail() {
         try {
           setActionLoading(true);
           const limit = parseInt(value) || 0;
-          await torrentsApi.setTorrentUploadLimit([torrent.hash], limit);
+          await torrentsApi.setTorrentUploadLimit([torrent!.hash], limit);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
           showToast(`Upload limit set to ${limit === 0 ? 'unlimited' : formatSpeed(limit)}`, 'success');
@@ -590,21 +483,17 @@ export default function TorrentDetail() {
     setInputModalVisible(true);
   };
 
-  const handleEditTrackers = () => {
-    router.push(`/torrent/manage-trackers?hash=${hash}`);
-  };
-
   const handleSetCategory = () => {
     setInputModalConfig({
       title: 'Set Category',
       message: 'Enter category name',
-      defaultValue: torrent.category || '',
+      defaultValue: torrent!.category || '',
       allowEmpty: true,
       onConfirm: async (value: string) => {
         setInputModalVisible(false);
         try {
           setActionLoading(true);
-          await torrentsApi.setTorrentCategory([torrent.hash], value || '');
+          await torrentsApi.setTorrentCategory([torrent!.hash], value || '');
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
           showToast(`Category set to ${value || 'None'}`, 'success');
@@ -628,7 +517,7 @@ export default function TorrentDetail() {
         try {
           setActionLoading(true);
           const tags = value.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag !== '');
-          await torrentsApi.addTorrentTags([torrent.hash], tags);
+          await torrentsApi.addTorrentTags([torrent!.hash], tags);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
           showToast(`Added ${tags.length} tag(s)`, 'success');
@@ -652,7 +541,7 @@ export default function TorrentDetail() {
         try {
           setActionLoading(true);
           const tags = value.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag !== '');
-          await torrentsApi.removeTorrentTags([torrent.hash], tags);
+          await torrentsApi.removeTorrentTags([torrent!.hash], tags);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
           showToast(`Removed ${tags.length} tag(s)`, 'success');
@@ -668,7 +557,7 @@ export default function TorrentDetail() {
 
   const handleSetLocation = () => {
     setInputModalConfig({
-      title: 'Set Location',
+      title: 'Move to…',
       message: 'Enter new save path',
       defaultValue: properties?.save_path || '',
       onConfirm: async (value: string) => {
@@ -676,7 +565,7 @@ export default function TorrentDetail() {
         if (!value) return;
         try {
           setActionLoading(true);
-          await torrentsApi.setTorrentLocation([torrent.hash], value);
+          await torrentsApi.setTorrentLocation([torrent!.hash], value);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
           showToast('Location updated', 'success');
@@ -694,13 +583,13 @@ export default function TorrentDetail() {
     setInputModalConfig({
       title: 'Rename Torrent',
       message: 'Enter new name',
-      defaultValue: torrent.name,
+      defaultValue: torrent!.name,
       onConfirm: async (value: string) => {
         setInputModalVisible(false);
         if (!value) return;
         try {
           setActionLoading(true);
-          await torrentsApi.setTorrentName(torrent.hash, value);
+          await torrentsApi.setTorrentName(torrent!.hash, value);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
           showToast('Torrent renamed', 'success');
@@ -714,18 +603,223 @@ export default function TorrentDetail() {
     setInputModalVisible(true);
   };
 
+  // ── Picker handlers ───────────────────────────────────────────────────
+
+  const handlePrioritySelect = async (value: string) => {
+    setPriorityPickerVisible(false);
+    switch (value) {
+      case 'max': await handleMaxPriority(); break;
+      case 'increase': await handleIncreasePriority(); break;
+      case 'decrease': await handleDecreasePriority(); break;
+      case 'min': await handleMinPriority(); break;
+    }
+  };
+
+  const handleCategorySelect = async (value: string) => {
+    setCategoryPickerVisible(false);
+    if (value === '__add_new__') {
+      handleSetCategory();
+      return;
+    }
+    try {
+      setActionLoading(true);
+      await torrentsApi.setTorrentCategory([torrent!.hash], value);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await loadTorrentData();
+      showToast(`Category set to ${value || 'None'}`, 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to set category', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── Loading & error states ────────────────────────────────────────────
+
+  if (isLoading && !isConnected) {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <Text style={[styles.message, { color: colors.text }]}>Not connected to a server</Text>
+        </View>
+      </>
+    );
+  }
+
+  if (loading && !torrent) {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </>
+    );
+  }
+
+  if (!torrent) {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <Text style={[styles.message, { color: colors.text }]}>Torrent not found</Text>
+        </View>
+      </>
+    );
+  }
+
+  // ── Derived values ────────────────────────────────────────────────────
+
+  const formatTime = (seconds: number): string => {
+    if (seconds < 0) return '∞';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
+    return `${secs}s`;
+  };
+
+  const formatSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  };
+
+  const formatSpeed = (bytesPerSecond: number): string => {
+    if (bytesPerSecond === 0) return '0 B/s';
+    return `${formatSize(bytesPerSecond)}/s`;
+  };
+
+  const progress = (torrent.progress || 0) * 100;
+  const dlspeed = torrent.dlspeed ?? 0;
+  const upspeed = torrent.upspeed ?? 0;
+  const actualIsPaused = torrent.state.includes('paused') || torrent.state.includes('stopped');
+  const isPaused = optimisticPaused !== null ? optimisticPaused : actualIsPaused;
+
+  let stateColor = getStateColor(torrent.state, torrent.progress, dlspeed, upspeed, colors);
+  let stateLabel = getStateLabel(torrent.state, torrent.progress, dlspeed, upspeed);
+
+  if (optimisticPaused !== null) {
+    if (optimisticPaused) {
+      stateColor = colors.statePaused;
+      stateLabel = 'Paused';
+    } else {
+      if (torrent.progress >= 1) {
+        stateColor = colors.stateSeeding;
+        stateLabel = 'Seeding';
+      } else {
+        stateColor = colors.stateDownloading;
+        stateLabel = 'Downloading';
+      }
+    }
+  }
+
+  const priorityDisplay = torrent.priority <= 0 ? 'Not queued' : `#${torrent.priority}`;
+
+  const categoryOptions = [
+    { label: 'None', value: '' },
+    ...Object.keys(categories || {}).map(cat => ({ label: cat, value: cat })),
+    { label: 'Add New…', value: '__add_new__' },
+  ];
+
+  const priorityOptions = [
+    { label: 'Maximum', value: 'max' },
+    { label: 'Increase', value: 'increase' },
+    { label: 'Decrease', value: 'decrease' },
+    { label: 'Minimum', value: 'min' },
+  ];
+
+  // ── Row render helpers ────────────────────────────────────────────────
+
+  const renderRows = (rows: (React.ReactNode | null | false | undefined)[]) => {
+    const filtered = rows.filter(Boolean) as React.ReactNode[];
+    return filtered.map((row, i) => (
+      <React.Fragment key={i}>
+        {row}
+        {i < filtered.length - 1 && (
+          <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+        )}
+      </React.Fragment>
+    ));
+  };
+
+  const staticRow = (label: string, value: string) => (
+    <View style={styles.row}>
+      <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+      <Text style={[styles.rowValue, { color: colors.textSecondary }]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+
+  const tappableRow = (label: string, value: string, onPress: () => void) => (
+    <TouchableOpacity style={styles.row} onPress={onPress} disabled={actionLoading}>
+      <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+      <View style={styles.rowRight}>
+        {value ? (
+          <Text style={[styles.rowValue, { color: colors.textSecondary }]} numberOfLines={1}>
+            {value}
+          </Text>
+        ) : null}
+        <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const toggleRow = (label: string, value: boolean, onToggle: () => void) => (
+    <View style={styles.row}>
+      <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        disabled={actionLoading}
+        trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+      />
+    </View>
+  );
+
+  const navRow = (label: string, value: string, onPress: () => void) => (
+    <TouchableOpacity style={styles.row} onPress={onPress}>
+      <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+      <View style={styles.rowRight}>
+        {value ? (
+          <Text style={[styles.rowValue, { color: colors.textSecondary }]} numberOfLines={1}>
+            {value}
+          </Text>
+        ) : null}
+        <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  // ── Main render ───────────────────────────────────────────────────────
+
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={[styles.topBar, { backgroundColor: colors.surface }]}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="chevron-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+        <View style={[styles.topBar, { borderBottomColor: colors.surfaceOutline }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
         <ScrollView
           style={styles.scrollView}
@@ -734,186 +828,193 @@ export default function TorrentDetail() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
           }
         >
-          {/* Top Card - Using TorrentCard component in expanded view mode */}
-          <TorrentCard 
-            torrent={torrent}
-            onPress={() => {}} 
-          />
-
-          {/* Quick Tools Section - Moved to top */}
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Tools</Text>
-            <View style={styles.quickToolsGrid}>
-          <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handlePauseResume}
-                disabled={actionLoading}
-          >
-            <Ionicons
-                  name={isPaused ? 'play' : 'pause'} 
-              size={20}
-                  color="#FFFFFF" 
-            />
-                <Text style={styles.quickToolText}>
-                  {isPaused ? 'Resume' : 'Pause'}
+          {/* ── Hero ────────────────────────────────────────────── */}
+          <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.heroName, { color: colors.text }]} numberOfLines={3}>
+              {torrent.name}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: '#FF3B30', opacity: 0.75 }]}
-                onPress={handleDelete}
-                disabled={actionLoading}
-          >
-                <Ionicons name="trash" size={20} color="#FFFFFF" />
-                <Text style={styles.quickToolText}>Delete</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleRecheck}
-                disabled={actionLoading}
-              >
-                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                <Text style={styles.quickToolText}>Recheck</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleReannounce}
-                disabled={actionLoading}
-          >
-                <Ionicons name="refresh" size={20} color="#FFFFFF" />
-                <Text style={styles.quickToolText}>Reannounce</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.quickToolButton, { backgroundColor: '#5856D6', opacity: 0.75 }]}
-                onPress={() => router.push(`/torrent/files?hash=${hash}`)}
-                disabled={actionLoading}
-              >
-                <Ionicons name="folder-open" size={20} color="#FFFFFF" />
-                <Text style={styles.quickToolText}>Files</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* General Info Section */}
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>General Info</Text>
-            <View style={styles.infoGrid}>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Size</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)}
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Downloaded</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {formatSize(torrent.downloaded)}
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Uploaded</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {formatSize(torrent.uploaded)}
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Ratio</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'}
-                </Text>
-              </View>
-              {properties && (
-                <>
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Save Path</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]} numberOfLines={1}>
-                      {properties.save_path}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Category</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>
-                      {torrent.category || 'None'}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Tags</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>
-                      {torrent.tags || 'None'}
+            <View style={styles.stateRow}>
+              <View style={[styles.stateDot, { backgroundColor: stateColor }]} />
+              <Text style={[styles.stateText, { color: colors.textSecondary }]}>
+                {stateLabel}
               </Text>
-                  </View>
-                </>
-              )}
+            </View>
+            <View style={[styles.progressBarBg, { backgroundColor: colors.surfaceOutline }]}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${Math.min(progress, 100)}%`, backgroundColor: stateColor },
+                ]}
+              />
+            </View>
+            <View style={styles.heroStatsRow}>
+              <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>
+                {torrent.eta > 0 && torrent.eta < 8640000
+                  ? `${formatTime(torrent.eta)} remaining`
+                  : progress >= 100
+                  ? 'Complete'
+                  : '∞'}
+              </Text>
+              <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>
+                {formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)}
+              </Text>
             </View>
           </View>
 
-          {/* Details Section */}
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Details</Text>
-            <View style={styles.infoGrid}>
-              <View style={[styles.infoRow, styles.infoRowWithButton]}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Seeds</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {torrent.num_seeds || 0} / {torrent.num_complete || 0}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.peersInfoBtn, { backgroundColor: colors.primary }]}
-                  onPress={handleOpenPeerDetails}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="information-circle" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-              <View style={[styles.infoRow, styles.infoRowWithButton]}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Peers</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {torrent.num_leechs || 0} / {torrent.num_incomplete || 0}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.peersInfoBtn, { backgroundColor: colors.primary }]}
-                  onPress={handleOpenPeerDetails}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="information-circle" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Availability</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {torrent.availability ? torrent.availability.toFixed(2) : '0.00'}
-                </Text>
-              </View>
-              {properties && (
-                <>
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Created</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>
-                      {formatDate(properties.creation_date)}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Added</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>
-                      {formatDate(torrent.added_on)}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Completed</Text>
-                    <Text style={[styles.infoValue, { color: colors.text }]}>
-                      {formatDate(torrent.completion_on)}
-                    </Text>
-                  </View>
-                </>
-              )}
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Last Seen Complete</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {formatDate(torrent.seen_complete)}
-                </Text>
-              </View>
+          {/* ── Actions ─────────────────────────────────────────── */}
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { borderColor: colors.primary }]}
+              onPress={handlePauseResume}
+              disabled={actionLoading}
+            >
+              <Ionicons name={isPaused ? 'play' : 'pause'} size={18} color={colors.primary} />
+              <Text style={[styles.actionBtnText, { color: colors.primary }]}>
+                {isPaused ? 'Resume' : 'Pause'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { borderColor: colors.textSecondary }]}
+              onPress={handleRecheck}
+              disabled={actionLoading}
+            >
+              <Ionicons name="checkmark-circle-outline" size={18} color={colors.textSecondary} />
+              <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>Recheck</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { borderColor: colors.error }]}
+              onPress={handleDelete}
+              disabled={actionLoading}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.error} />
+              <Text style={[styles.actionBtnText, { color: colors.error }]}>Delete</Text>
+            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Peer Details Modal */}
+          {/* ── GENERAL ─────────────────────────────────────────── */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>GENERAL</Text>
+          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            {renderRows([
+              staticRow('Size', formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)),
+              staticRow('Downloaded', formatSize(torrent.downloaded)),
+              staticRow('Uploaded', formatSize(torrent.uploaded)),
+              staticRow('Ratio', torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'),
+              properties && staticRow('Save Path', properties.save_path),
+              tappableRow('Category', torrent.category || 'None', () => setCategoryPickerVisible(true)),
+              tappableRow('Tags', torrent.tags || 'None', handleAddTags),
+              tappableRow('Remove Tags', '', handleRemoveTags),
+            ])}
+          </View>
+
+          {/* ── TRANSFER ────────────────────────────────────────── */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>TRANSFER</Text>
+          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            {renderRows([
+              staticRow('DL Speed', formatSpeed(dlspeed)),
+              staticRow('UL Speed', formatSpeed(upspeed)),
+              staticRow('ETA', torrent.eta > 0 && torrent.eta < 8640000 ? formatTime(torrent.eta) : '∞'),
+              tappableRow(
+                'DL Limit',
+                properties && properties.dl_limit > 0 ? formatSpeed(properties.dl_limit) : 'Unlimited',
+                handleSetDownloadLimit,
+              ),
+              tappableRow(
+                'UL Limit',
+                properties && properties.up_limit > 0 ? formatSpeed(properties.up_limit) : 'Unlimited',
+                handleSetUploadLimit,
+              ),
+            ])}
+          </View>
+
+          {/* ── NETWORK ─────────────────────────────────────────── */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>NETWORK</Text>
+          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            {renderRows([
+              tappableRow(
+                'Seeds',
+                `${torrent.num_seeds || 0} / ${torrent.num_complete || 0}`,
+                handleOpenPeerDetails,
+              ),
+              tappableRow(
+                'Peers',
+                `${torrent.num_leechs || 0} / ${torrent.num_incomplete || 0}`,
+                handleOpenPeerDetails,
+              ),
+              staticRow('Availability', torrent.availability ? torrent.availability.toFixed(2) : '0.00'),
+            ])}
+          </View>
+
+          {/* ── CONTENT ─────────────────────────────────────────── */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CONTENT</Text>
+          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            {renderRows([
+              navRow('Files', `${files.length} file${files.length !== 1 ? 's' : ''}`, () =>
+                router.push(`/torrent/files?hash=${hash}`),
+              ),
+              navRow('Trackers', `${trackers.length} tracker${trackers.length !== 1 ? 's' : ''}`, () =>
+                router.push(`/torrent/manage-trackers?hash=${hash}`),
+              ),
+            ])}
+          </View>
+
+          {/* ── ADVANCED ────────────────────────────────────────── */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ADVANCED</Text>
+          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            {renderRows([
+              tappableRow('Priority', priorityDisplay, () => setPriorityPickerVisible(true)),
+              toggleRow('Sequential Download', torrent.seq_dl ?? false, handleSequentialDownload),
+              toggleRow('First/Last Piece Priority', torrent.f_l_piece_prio ?? false, handleFirstLastPiecePriority),
+              toggleRow('Super Seeding', torrent.super_seeding ?? false, handleSuperSeeding),
+              toggleRow('Force Start', torrent.force_start ?? false, handleForceStart),
+              tappableRow('Rename', torrent.name, handleRenameTorrent),
+              tappableRow('Move to…', properties?.save_path || '', handleSetLocation),
+              tappableRow('Reannounce', '', handleReannounce),
+            ])}
+          </View>
+
+          {/* ── DATES ───────────────────────────────────────────── */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DATES</Text>
+          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            {renderRows([
+              staticRow('Added', formatDate(torrent.added_on)),
+              staticRow('Completed', formatDate(torrent.completion_on)),
+              staticRow('Last Activity', formatDate(torrent.last_activity)),
+            ])}
+          </View>
+        </ScrollView>
+
+        {/* ── Modals ──────────────────────────────────────────── */}
+
+        <InputModal
+          visible={inputModalVisible}
+          title={inputModalConfig.title}
+          message={inputModalConfig.message}
+          placeholder={inputModalConfig.placeholder}
+          defaultValue={inputModalConfig.defaultValue}
+          keyboardType={inputModalConfig.keyboardType}
+          allowEmpty={inputModalConfig.allowEmpty}
+          onCancel={() => setInputModalVisible(false)}
+          onConfirm={inputModalConfig.onConfirm}
+        />
+
+        <OptionPicker
+          visible={priorityPickerVisible}
+          title="Set Priority"
+          options={priorityOptions}
+          onSelect={handlePrioritySelect}
+          onClose={() => setPriorityPickerVisible(false)}
+        />
+
+        <OptionPicker
+          visible={categoryPickerVisible}
+          title="Set Category"
+          options={categoryOptions}
+          selectedValue={torrent.category || ''}
+          onSelect={handleCategorySelect}
+          onClose={() => setCategoryPickerVisible(false)}
+        />
+
+        {/* Peers Modal */}
         <Modal
           visible={peersModalVisible}
           transparent={true}
@@ -969,213 +1070,12 @@ export default function TorrentDetail() {
             </View>
           </View>
         </Modal>
-
-          {/* Stats Section */}
-          {properties && (
-            <View style={[styles.section, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Stats</Text>
-              <View style={styles.infoGrid}>
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Total Downloaded</Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {formatSize(properties.total_downloaded)}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Total Uploaded</Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {formatSize(properties.total_uploaded)}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Download Limit</Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {properties.dl_limit > 0 ? formatSpeed(properties.dl_limit) : 'Unlimited'}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Upload Limit</Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {properties.up_limit > 0 ? formatSpeed(properties.up_limit) : 'Unlimited'}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Share Ratio</Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>
-                    {properties.share_ratio ? properties.share_ratio.toFixed(2) : '0.00'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Advanced Section */}
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Advanced</Text>
-            <View style={styles.advancedToolsGrid}>
-              {/* Priority Controls */}
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleForceStart}
-                disabled={actionLoading}
-              >
-                <Ionicons name="flash" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>
-                  {torrent?.force_start ? 'Force Start ON' : 'Force Start'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleSuperSeeding}
-                disabled={actionLoading}
-              >
-                <Ionicons name="rocket" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>
-                  {torrent?.super_seeding ? 'Super Seed ON' : 'Super Seed'}
-            </Text>
-          </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleSequentialDownload}
-                disabled={actionLoading}
-              >
-                <Ionicons name="list" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Sequential DL</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: colors.primary, opacity: 0.75 }]}
-                onPress={handleFirstLastPiecePriority}
-                disabled={actionLoading}
-              >
-                <Ionicons name="star" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>First/Last Priority</Text>
-              </TouchableOpacity>
-        
-
-              {/* Priority */}
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#34C759', opacity: 0.75 }]}
-                onPress={handleIncreasePriority}
-                disabled={actionLoading}
-              >
-                <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>↑ Priority</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#FF9500', opacity: 0.75 }]}
-                onPress={handleDecreasePriority}
-                disabled={actionLoading}
-              >
-                <Ionicons name="arrow-down" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>↓ Priority</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#34C759', opacity: 0.75 }]}
-                onPress={handleMaxPriority}
-                disabled={actionLoading}
-              >
-                <Ionicons name="arrow-up-circle" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Max Priority</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#FF9500', opacity: 0.75 }]}
-                onPress={handleMinPriority}
-                disabled={actionLoading}
-              >
-                <Ionicons name="arrow-down-circle" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Min Priority</Text>
-              </TouchableOpacity>
-
-              {/* Limits */}
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#5856D6', opacity: 0.75 }]}
-                onPress={handleSetDownloadLimit}
-                disabled={actionLoading}
-              >
-                <Ionicons name="download" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>DL Limit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#5856D6', opacity: 0.75 }]}
-                onPress={handleSetUploadLimit}
-                disabled={actionLoading}
-              >
-                <Ionicons name="arrow-up-circle-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>UL Limit</Text>
-              </TouchableOpacity>
-
-              {/* Trackers & Metadata */}
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#AF52DE', opacity: 0.75 }]}
-                onPress={handleEditTrackers}
-                disabled={actionLoading}
-              >
-                <Ionicons name="create" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Edit Trackers</Text>
-              </TouchableOpacity>
-
-              {/* Category & Tags */}
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#5AC8FA', opacity: 0.75 }]}
-                onPress={handleSetCategory}
-                disabled={actionLoading}
-              >
-                <Ionicons name="folder" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Set Category</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#5AC8FA', opacity: 0.75 }]}
-                onPress={handleAddTags}
-                disabled={actionLoading}
-              >
-                <Ionicons name="pricetag" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Add Tags</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#5AC8FA', opacity: 0.75 }]}
-                onPress={handleRemoveTags}
-                disabled={actionLoading}
-              >
-                <Ionicons name="pricetag-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Remove Tags</Text>
-              </TouchableOpacity>
-
-              {/* Location & Rename */}
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#8E8E93', opacity: 0.75 }]}
-                onPress={handleSetLocation}
-                disabled={actionLoading}
-              >
-                <Ionicons name="folder-open" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Set Location</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.advancedToolButton, { backgroundColor: '#8E8E93', opacity: 0.75 }]}
-                onPress={handleRenameTorrent}
-                disabled={actionLoading}
-              >
-                <Ionicons name="create" size={18} color="#FFFFFF" />
-                <Text style={styles.advancedToolText}>Rename</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-
-        <InputModal
-          visible={inputModalVisible}
-          title={inputModalConfig.title}
-          message={inputModalConfig.message}
-          placeholder={inputModalConfig.placeholder}
-          defaultValue={inputModalConfig.defaultValue}
-          keyboardType={inputModalConfig.keyboardType}
-          allowEmpty={inputModalConfig.allowEmpty}
-          onCancel={() => setInputModalVisible(false)}
-          onConfirm={inputModalConfig.onConfirm}
-        />
       </SafeAreaView>
     </>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -1195,7 +1095,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 8,
-    borderBottomWidth: 0.2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backButton: {
     padding: 8,
@@ -1204,125 +1104,126 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 6,
-    paddingBottom: 12,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 40,
   },
-  topCard: {
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+
+  // Hero
+  heroCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  heroName: {
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 28,
     marginBottom: 8,
-    gap: 8,
   },
-  cardTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    lineHeight: 24,
+  stateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
   },
-  stateBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+  stateDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   stateText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 15,
   },
-  progressBarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  progressBar: {
-    flex: 1,
-    height: 8,
-    borderRadius: 16,
+  progressBarBg: {
+    height: 4,
+    borderRadius: 2,
     overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 16,
-  },
-  playPauseButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardStats: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  statItem: {
-    flex: 1,
-    minWidth: '45%',
-  },
-  statLabel: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  statValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  section: {
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
     marginBottom: 8,
   },
-  infoGrid: {
-    gap: 6,
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 2,
   },
-  infoRow: {
+  heroStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  heroStatText: {
+    fontSize: 13,
+  },
+
+  // Actions
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  actionBtn: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    paddingVertical: 10,
     alignItems: 'center',
-    paddingVertical: 2,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
   },
-  infoLabel: {
-    fontSize: 14,
-    flex: 1,
+  actionBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
+
+  // Section
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 16,
+    marginBottom: 6,
+    marginTop: 20,
+  },
+  sectionCard: {
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+
+  // Row
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    minHeight: 44,
+    paddingVertical: 10,
+  },
+  rowLabel: {
+    fontSize: 16,
+  },
+  rowValue: {
+    fontSize: 16,
     textAlign: 'right',
+    flexShrink: 1,
+    maxWidth: '60%',
   },
-  infoRowWithButton: {
-    position: 'relative',
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flex: 1,
+    gap: 4,
   },
-  peersInfoBtn: {
-    marginLeft: 8,
-    padding: 4,
-    borderRadius: 12,
+  chevron: {
+    fontSize: 20,
+    fontWeight: '300',
   },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 16,
+  },
+
+  // Peers modal
   peersModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1385,87 +1286,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  quickToolsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 6,
-  },
-  quickToolButton: {
-    flex: 1,
-    minWidth: '45%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  quickToolText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  advancedToolsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6,
-  },
-  advancedToolButton: {
-    flex: 1,
-    minWidth: '47%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-  },
-  advancedToolText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    // paddingBottom: 100,
-    // marginBottom: 100,
-    maxHeight: '30%',
-
-    // padding: 20,
-    paddingTop: 200,
-  },
-  modalContent: {
-    width: '90%',
-    borderRadius: 16,
-    padding: 12,
-    // paddingBottom: 100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    // marginBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  modalDescription: {
-    fontSize: 14,
-    // marginBottom: 16,
-    // lineHeight: 20,
-  },
 });
-
