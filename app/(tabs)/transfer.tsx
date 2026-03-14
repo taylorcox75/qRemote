@@ -424,6 +424,11 @@ export default function TransferScreen() {
 
   const isAltSpeedEnabled = transferInfo.use_alt_speed_limits ?? false;
 
+  const getEffectiveLimit = (globalLimit: number, altLimit: number | undefined) => {
+    const limit = isAltSpeedEnabled ? (altLimit ?? 0) : globalLimit;
+    return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
+  };
+
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -578,12 +583,7 @@ export default function TransferScreen() {
                     <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
                   )}
                   <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {(() => {
-                      const limit = isAltSpeedEnabled
-                        ? (transferInfo.alt_dl_limit ?? 0)
-                        : transferInfo.dl_rate_limit;
-                      return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
-                    })()}
+                    {getEffectiveLimit(transferInfo.dl_rate_limit, transferInfo.alt_dl_limit)}
                   </Text>
                   <Ionicons
                     name="chevron-forward"
@@ -608,12 +608,7 @@ export default function TransferScreen() {
                     <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
                   )}
                   <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {(() => {
-                      const limit = isAltSpeedEnabled
-                        ? (transferInfo.alt_up_limit ?? 0)
-                        : transferInfo.up_rate_limit;
-                      return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
-                    })()}
+                    {getEffectiveLimit(transferInfo.up_rate_limit, transferInfo.alt_up_limit)}
                   </Text>
                   <Ionicons
                     name="chevron-forward"

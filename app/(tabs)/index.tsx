@@ -142,14 +142,18 @@ export default function TorrentsScreen() {
   // Sync pauseOnAdd from server when connected (best-effort background sync)
   useEffect(() => {
     if (isConnected) {
-      applicationApi.getPreferences().then((serverPrefs) => {
-        const serverVal = !!(serverPrefs as Record<string, unknown>).start_paused_enabled;
-        storageService.getPreferences().then((localPrefs) => {
+      (async () => {
+        try {
+          const serverPrefs = await applicationApi.getPreferences();
+          const serverVal = !!(serverPrefs as Record<string, unknown>).start_paused_enabled;
+          const localPrefs = await storageService.getPreferences();
           if (localPrefs.pauseOnAdd !== serverVal) {
-            storageService.savePreferences({ ...localPrefs, pauseOnAdd: serverVal });
+            await storageService.savePreferences({ ...localPrefs, pauseOnAdd: serverVal });
           }
-        });
-      }).catch(() => {});
+        } catch {
+          // Best-effort sync — ignore errors
+        }
+      })();
     }
   }, [isConnected]);
 
