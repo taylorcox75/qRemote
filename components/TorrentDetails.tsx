@@ -33,6 +33,7 @@ import {
   FilePriority,
 } from '../types/api';
 import { formatDate } from '../utils/format';
+import { InputModal } from './InputModal';
 
 interface TorrentDetailsProps {
   torrent: TorrentInfo;
@@ -66,6 +67,17 @@ export function TorrentDetails({
   const [peersModalVisible, setPeersModalVisible] = useState(false);
   const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
   const [peersLoading, setPeersLoading] = useState(false);
+  const [inputModalVisible, setInputModalVisible] = useState(false);
+  const [inputModalConfig, setInputModalConfig] = useState<{
+    title: string;
+    message?: string;
+    placeholder?: string;
+    defaultValue?: string;
+    keyboardType?: 'default' | 'numeric';
+    multiline?: boolean;
+    allowEmpty?: boolean;
+    onConfirm: (value: string) => void;
+  }>({ title: '', onConfirm: () => {} });
   
   // Display queue position (1 = top, higher = lower)
   const getQueueDisplay = () => {
@@ -407,41 +419,32 @@ export function TorrentDetails({
           text: 'Add New Category',
           onPress: () => {
             setActiveButton(null);
-            Alert.prompt(
-              'Add New Category',
-              'Enter category name',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Add',
-                  onPress: async (categoryName: string | undefined) => {
-                    if (!categoryName || !categoryName.trim()) {
-                      showToast('Please enter a valid category name', 'error');
-                      return;
-                    }
-                    try {
-                      setLoading(true);
-                      setActiveButton('category');
-                      // Create the category first
-                      await categoriesApi.addCategory(categoryName.trim(), '');
-                      // Then set it on the torrent
-                      await torrentsApi.setTorrentCategory([torrent.hash], categoryName.trim());
-                      // Wait 1 second for the server to process the request
-                      await new Promise(resolve => setTimeout(resolve, 1000));
-                      // Refresh the global torrent list and detail view
-                      await sync();
-                      onRefresh();
-                    } catch (error: any) {
-                      showToast(error.message || 'Failed to add category', 'error');
-                    } finally {
-                      setLoading(false);
-                      setActiveButton(null);
-                    }
-                  },
-                },
-              ],
-              'plain-text'
-            );
+            setInputModalConfig({
+              title: 'Add New Category',
+              message: 'Enter category name',
+              onConfirm: async (categoryName: string) => {
+                setInputModalVisible(false);
+                if (!categoryName) {
+                  showToast('Please enter a valid category name', 'error');
+                  return;
+                }
+                try {
+                  setLoading(true);
+                  setActiveButton('category');
+                  await categoriesApi.addCategory(categoryName, '');
+                  await torrentsApi.setTorrentCategory([torrent.hash], categoryName);
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  await sync();
+                  onRefresh();
+                } catch (error: any) {
+                  showToast(error.message || 'Failed to add category', 'error');
+                } finally {
+                  setLoading(false);
+                  setActiveButton(null);
+                }
+              },
+            });
+            setInputModalVisible(true);
           },
         },
         {
@@ -471,102 +474,89 @@ export function TorrentDetails({
 
   const handleSetShareLimits = () => {
     setActiveButton('shareLimit');
-    Alert.prompt(
-      'Set Share Limits',
-      'Enter ratio limit (e.g., 2.0) or leave empty',
-      [
-        { text: 'Cancel', style: 'cancel', onPress: () => setActiveButton(null) },
-        {
-          text: 'Set',
-          onPress: async (ratioValue: string | undefined) => {
-            try {
-              setLoading(true);
-              const ratioLimit = ratioValue && ratioValue.trim() ? parseFloat(ratioValue) : undefined;
-              await torrentsApi.setTorrentShareLimits([torrent.hash], ratioLimit);
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              await sync();
-              onRefresh();
-            } catch (error: any) {
-              showToast(error.message || 'Failed to set share limits', 'error');
-            } finally {
-              setLoading(false);
-              setActiveButton(null);
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
+    setInputModalConfig({
+      title: 'Set Share Limits',
+      message: 'Enter ratio limit (e.g., 2.0) or leave empty',
+      keyboardType: 'numeric',
+      allowEmpty: true,
+      onConfirm: async (ratioValue: string) => {
+        setInputModalVisible(false);
+        try {
+          setLoading(true);
+          const ratioLimit = ratioValue ? parseFloat(ratioValue) : undefined;
+          await torrentsApi.setTorrentShareLimits([torrent.hash], ratioLimit);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await sync();
+          onRefresh();
+        } catch (error: any) {
+          showToast(error.message || 'Failed to set share limits', 'error');
+        } finally {
+          setLoading(false);
+          setActiveButton(null);
+        }
+      },
+    });
+    setInputModalVisible(true);
   };
 
   const handleSetLocation = () => {
     setActiveButton('location');
-    Alert.prompt(
-      'Set Location',
-      'Enter new save path',
-      [
-        { text: 'Cancel', style: 'cancel', onPress: () => setActiveButton(null) },
-        {
-          text: 'Set',
-          onPress: async (location: string | undefined) => {
-            if (!location || !location.trim()) {
-              showToast('Please enter a valid path', 'error');
-              setActiveButton(null);
-              return;
-            }
-            try {
-              setLoading(true);
-              await torrentsApi.setTorrentLocation([torrent.hash], location.trim());
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              await sync();
-              onRefresh();
-            } catch (error: any) {
-              showToast(error.message || 'Failed to set location', 'error');
-            } finally {
-              setLoading(false);
-              setActiveButton(null);
-            }
-          },
-        },
-      ],
-      'plain-text',
-      properties?.save_path || torrent.save_path || ''
-    );
+    setInputModalConfig({
+      title: 'Set Location',
+      message: 'Enter new save path',
+      defaultValue: properties?.save_path || torrent.save_path || '',
+      onConfirm: async (location: string) => {
+        setInputModalVisible(false);
+        if (!location) {
+          showToast('Please enter a valid path', 'error');
+          setActiveButton(null);
+          return;
+        }
+        try {
+          setLoading(true);
+          await torrentsApi.setTorrentLocation([torrent.hash], location);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await sync();
+          onRefresh();
+        } catch (error: any) {
+          showToast(error.message || 'Failed to set location', 'error');
+        } finally {
+          setLoading(false);
+          setActiveButton(null);
+        }
+      },
+    });
+    setInputModalVisible(true);
   };
 
   const handleSetName = () => {
     setActiveButton('rename');
-    Alert.prompt(
-      'Rename Torrent',
-      'Enter new name',
-      [
-        { text: 'Cancel', style: 'cancel', onPress: () => setActiveButton(null) },
-        {
-          text: 'Rename',
-          onPress: async (name: string | undefined) => {
-            if (!name || !name.trim()) {
-              showToast('Please enter a valid name', 'error');
-              setActiveButton(null);
-              return;
-            }
-            try {
-              setLoading(true);
-              await torrentsApi.setTorrentName(torrent.hash, name.trim());
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              await sync();
-              onRefresh();
-            } catch (error: any) {
-              showToast(error.message || 'Failed to rename torrent', 'error');
-            } finally {
-              setLoading(false);
-              setActiveButton(null);
-            }
-          },
-        },
-      ],
-      'plain-text',
-      torrent.name
-    );
+    setInputModalConfig({
+      title: 'Rename Torrent',
+      message: 'Enter new name',
+      defaultValue: torrent.name,
+      onConfirm: async (name: string) => {
+        setInputModalVisible(false);
+        if (!name) {
+          showToast('Please enter a valid name', 'error');
+          setActiveButton(null);
+          return;
+        }
+        try {
+          setLoading(true);
+          await torrentsApi.setTorrentName(torrent.hash, name);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await sync();
+          onRefresh();
+        } catch (error: any) {
+          showToast(error.message || 'Failed to rename torrent', 'error');
+        } finally {
+          setLoading(false);
+          setActiveButton(null);
+        }
+      },
+    });
+    setInputModalVisible(true);
   };
 
   const handleEditTrackers = () => {
@@ -609,33 +599,29 @@ export function TorrentDetails({
   };
 
   const handleAddPeers = () => {
-    Alert.prompt(
-      'Add Peers',
-      'Enter peer addresses (IP:Port, one per line)',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Add',
-          onPress: async (peersText: string | undefined) => {
-            if (!peersText || !peersText.trim()) {
-              showToast('Please enter peer addresses', 'error');
-              return;
-            }
-            try {
-              setLoading(true);
-              const peers = peersText.split('\n').map((p: string) => p.trim()).filter((p: string) => p);
-              await torrentsApi.addPeers([torrent.hash], peers);
-              showToast('Peers added', 'success');
-            } catch (error: any) {
-              showToast(error.message || 'Failed to add peers', 'error');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
+    setInputModalConfig({
+      title: 'Add Peers',
+      message: 'Enter peer addresses (IP:Port, one per line)',
+      multiline: true,
+      onConfirm: async (peersText: string) => {
+        setInputModalVisible(false);
+        if (!peersText) {
+          showToast('Please enter peer addresses', 'error');
+          return;
+        }
+        try {
+          setLoading(true);
+          const peers = peersText.split('\n').map((p: string) => p.trim()).filter((p: string) => p);
+          await torrentsApi.addPeers([torrent.hash], peers);
+          showToast('Peers added', 'success');
+        } catch (error: any) {
+          showToast(error.message || 'Failed to add peers', 'error');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+    setInputModalVisible(true);
   };
 
   const formatSize = (bytes: number): string => {
@@ -719,9 +705,28 @@ export function TorrentDetails({
     torrent.state === 'stoppedDL' || 
     torrent.state === 'stoppedUP';
 
+  const renderInputModal = () => (
+    <InputModal
+      visible={inputModalVisible}
+      title={inputModalConfig.title}
+      message={inputModalConfig.message}
+      placeholder={inputModalConfig.placeholder}
+      defaultValue={inputModalConfig.defaultValue}
+      keyboardType={inputModalConfig.keyboardType}
+      multiline={inputModalConfig.multiline}
+      allowEmpty={inputModalConfig.allowEmpty}
+      onCancel={() => {
+        setInputModalVisible(false);
+        setActiveButton(null);
+      }}
+      onConfirm={inputModalConfig.onConfirm}
+    />
+  );
+
   if (activeTab === 'overview') {
     return (
       <View style={styles.container}>
+        {renderInputModal()}
         {/* Speed Limit Modal */}
         <Modal
           visible={limitModalVisible}
@@ -1274,6 +1279,7 @@ export function TorrentDetails({
   if (activeTab === 'trackers') {
     return (
       <View style={styles.container}>
+        {renderInputModal()}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <View style={styles.sectionHeaderWithButton}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Trackers ({trackers.length})</Text>
@@ -1329,33 +1335,28 @@ export function TorrentDetails({
   };
 
   const handleRenameFile = (file: TorrentFile) => {
-    Alert.prompt(
-      'Rename File',
-      'Enter new name',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Rename',
-          onPress: async (newName: string | undefined) => {
-            if (!newName || !newName.trim()) {
-              showToast('Please enter a valid name', 'error');
-              return;
-            }
-            try {
-              setLoading(true);
-              await torrentsApi.renameFile(torrent.hash, file.name, newName.trim());
-              onRefresh();
-            } catch (error: any) {
-              showToast(error.message || 'Failed to rename file', 'error');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ],
-      'plain-text',
-      file.name.split('/').pop()
-    );
+    setInputModalConfig({
+      title: 'Rename File',
+      message: 'Enter new name',
+      defaultValue: file.name.split('/').pop(),
+      onConfirm: async (newName: string) => {
+        setInputModalVisible(false);
+        if (!newName) {
+          showToast('Please enter a valid name', 'error');
+          return;
+        }
+        try {
+          setLoading(true);
+          await torrentsApi.renameFile(torrent.hash, file.name, newName);
+          onRefresh();
+        } catch (error: any) {
+          showToast(error.message || 'Failed to rename file', 'error');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+    setInputModalVisible(true);
   };
 
   const getPriorityLabel = (priority: FilePriority): string => {
@@ -1384,6 +1385,7 @@ export function TorrentDetails({
   if (activeTab === 'files') {
     return (
       <View style={styles.container}>
+        {renderInputModal()}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Files ({files.length})</Text>
           {files.map((file) => (
