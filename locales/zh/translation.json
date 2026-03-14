@@ -97,9 +97,12 @@
       "sortBy": "排序方式",
       "firstLastPiecePriority": "First/Last Piece Priority",
       "firstLastPiecePriorityHint": "Download first and last pieces first",
-      "viewLogs": "View Connectivity Logs"
+      "viewLogs": "View Connectivity Logs",
+      "detailedCardView": "详细卡片视图"
     },
-    "transfer": { "title": "传输" },
+    "transfer": {
+      "title": "传输"
+    },
     "files": {
       "title": "文件",
       "notConnected": "未连接到服务器",
@@ -121,7 +124,10 @@
       "priorityHigh": "高",
       "priorityMaximum": "最高"
     },
-    "logs": { "title": "日志", "searchLogs": "搜索日志..." }
+    "logs": {
+      "title": "日志",
+      "searchLogs": "搜索日志..."
+    }
   },
   "placeholders": {
     "searchTorrents": "搜索种子...",

@@ -554,76 +554,70 @@ export function TorrentCard({ torrent, viewMode = 'expanded', onPress }: Torrent
           </View>
         )}
 
-        {viewMode === 'expanded' ? (
-          <>
-      <View style={styles.statsGrid}>
-
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>DL Speed:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {formatSpeed(torrent.dlspeed)}
-        </Text>
-        </View>
-          <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>ETA:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {torrent.eta > 0 && torrent.eta < 8640000 ? formatTime(torrent.eta) : '∞'}
-        </Text>  
-        </View>
-        
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Downloaded:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {formatSize(torrent.downloaded)}
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>UL Ratio:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'}
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Availability:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {torrent.availability ? torrent.availability.toFixed(2) : '0.00'}
-          </Text>
-        </View>
-</View>
-      <View style={styles.statsGrid}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>UL Speed:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {formatSpeed(torrent.upspeed)}
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Percent:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {progress.toFixed(1)}%
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Size:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)}
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Seeds:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {torrent.num_seeds || 0} / {torrent.num_complete || 0}
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Peers:</Text>
-          <Text style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
-            {torrent.num_leechs || 0} / {torrent.num_incomplete || 0}
-          </Text>
-        </View>         
-      </View>
-          </>
-        ) : null}
+        {viewMode === 'expanded' && (
+          <View style={styles.expandedStatsGrid}>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>↓ DL Speed</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {formatSpeed(torrent.dlspeed)}
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>↑ UL Speed</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {formatSpeed(torrent.upspeed)}
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Downloaded</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {formatSize(torrent.downloaded)}
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Size</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {formatSize(torrent.total_size > 0 ? torrent.total_size : (torrent.size || 0))}
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>ETA</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {torrent.eta > 0 && torrent.eta < 8640000 ? formatTime(torrent.eta) : '∞'}
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Progress</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {progress.toFixed(1)}%
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Seeds</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {torrent.num_seeds || 0} ({torrent.num_complete || 0})
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Peers</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {torrent.num_leechs || 0} ({torrent.num_incomplete || 0})
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Ratio</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {torrent.ratio != null ? torrent.ratio.toFixed(2) : '0.00'}
+              </Text>
+            </View>
+            <View style={styles.expandedStatItem}>
+              <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Availability</Text>
+              <Text style={[styles.expandedStatValue, { color: colors.text }]} numberOfLines={1}>
+                {torrent.availability != null ? torrent.availability.toFixed(2) : '0.00'}
+              </Text>
+            </View>
+          </View>
+        )}
 
       </TouchableOpacity>
 
@@ -1051,28 +1045,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  statsGrid: {
+  expandedStatsGrid: {
     flexDirection: 'row',
-    marginBottom: 2 ,
+    flexWrap: 'wrap',
+    marginTop: 6,
   },
-  statItem: {
-    flex: 1,
-    // minWidth: '22%',
-    maxWidth: '20%',
+  expandedStatItem: {
+    width: '50%',
+    paddingTop: 4,
+    paddingRight: 8,
   },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statLabel: {
+  expandedStatLabel: {
     fontSize: 10,
-    color: '#8E8E93',
     marginBottom: 1,
   },
-  statValue: {
+  expandedStatValue: {
     fontSize: 12,
-    color: '#000000',
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });
 

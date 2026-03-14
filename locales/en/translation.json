@@ -97,7 +97,8 @@
       "sortBy": "Sort By",
       "firstLastPiecePriority": "First/Last Piece Priority",
       "firstLastPiecePriorityHint": "Download first and last pieces first",
-      "viewLogs": "View Connectivity Logs"
+      "viewLogs": "View Connectivity Logs",
+      "detailedCardView": "Detailed Card View"
     },
     "transfer": {
       "title": "Transfer"

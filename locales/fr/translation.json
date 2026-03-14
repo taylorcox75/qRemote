@@ -97,9 +97,12 @@
       "sortBy": "Trier par",
       "firstLastPiecePriority": "First/Last Piece Priority",
       "firstLastPiecePriorityHint": "Download first and last pieces first",
-      "viewLogs": "View Connectivity Logs"
+      "viewLogs": "View Connectivity Logs",
+      "detailedCardView": "Vue détaillée"
     },
-    "transfer": { "title": "Transfert" },
+    "transfer": {
+      "title": "Transfert"
+    },
     "files": {
       "title": "Fichiers",
       "notConnected": "Non connecté à un serveur",
@@ -121,7 +124,10 @@
       "priorityHigh": "Haute",
       "priorityMaximum": "Maximum"
     },
-    "logs": { "title": "Journaux", "searchLogs": "Rechercher dans les journaux..." }
+    "logs": {
+      "title": "Journaux",
+      "searchLogs": "Rechercher dans les journaux..."
+    }
   },
   "placeholders": {
     "searchTorrents": "Rechercher des torrents...",

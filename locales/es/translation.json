@@ -97,9 +97,12 @@
       "sortBy": "Ordenar por",
       "firstLastPiecePriority": "First/Last Piece Priority",
       "firstLastPiecePriorityHint": "Download first and last pieces first",
-      "viewLogs": "View Connectivity Logs"
+      "viewLogs": "View Connectivity Logs",
+      "detailedCardView": "Vista detallada"
     },
-    "transfer": { "title": "Transferencia" },
+    "transfer": {
+      "title": "Transferencia"
+    },
     "files": {
       "title": "Archivos",
       "notConnected": "No conectado a un servidor",
@@ -121,7 +124,10 @@
       "priorityHigh": "Alta",
       "priorityMaximum": "Máxima"
     },
-    "logs": { "title": "Registros", "searchLogs": "Buscar en registros..." }
+    "logs": {
+      "title": "Registros",
+      "searchLogs": "Buscar en registros..."
+    }
   },
   "placeholders": {
     "searchTorrents": "Buscar torrents...",
