@@ -21,17 +21,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ServerManager } from '../../services/server-manager';
-import { ServerConfig } from '../../types/api';
-import { useTheme } from '../../context/ThemeContext';
-import { useServer } from '../../context/ServerContext';
-import { useToast, ModalToast } from '../../context/ToastContext';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { SuperDebugPanel } from '../../components/SuperDebugPanel';
-import { spacing, borderRadius } from '../../constants/spacing';
-import { shadows } from '../../constants/shadows';
+import { ServerManager } from '@/services/server-manager';
+import { ServerConfig } from '@/types/api';
+import { useTheme } from '@/context/ThemeContext';
+import { useServer } from '@/context/ServerContext';
+import { useToast, ModalToast } from '@/context/ToastContext';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { SuperDebugPanel } from '@/components/SuperDebugPanel';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
-import { APP_VERSION } from '../../utils/version';
+import { APP_VERSION } from '@/utils/version';
 
 export default function AddServerScreen() {
   const router = useRouter();
