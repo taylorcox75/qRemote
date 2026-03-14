@@ -76,7 +76,6 @@
       "autoCategorizeByTracker": "按追踪器自动分类",
       "themeAndColors": "主题与颜色",
       "themeDescription": "自定义主题和颜色",
-      "compactCardView": "紧凑卡片视图",
       "refreshInterval": "刷新间隔",
       "milliseconds": "毫秒",
       "categoryName": "分类名称",
@@ -130,7 +129,8 @@
       "pickAColor": "Pick a Color",
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
-      "presets": "Presets"
+      "presets": "Presets",
+      "detailedCardView": "详细卡片视图"
     },
     "transfer": {
       "title": "传输",

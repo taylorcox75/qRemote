@@ -147,15 +147,15 @@ export default function AppearanceSettingsScreen() {
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons
-                    name={cardViewMode === 'compact' ? 'list-outline' : 'albums-outline'}
+                    name={cardViewMode === 'expanded' ? 'albums-outline' : 'list-outline'}
                     size={22}
                     color={colors.primary}
                   />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.compactCardView')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.detailedCardView')}</Text>
                 </View>
                 <Switch
-                  value={cardViewMode === 'compact'}
-                  onValueChange={(value) => saveCardViewMode(value ? 'compact' : 'expanded')}
+                  value={cardViewMode === 'expanded'}
+                  onValueChange={(value) => saveCardViewMode(value ? 'expanded' : 'compact')}
                   trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                   ios_backgroundColor={colors.surfaceOutline}
                 />

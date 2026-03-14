@@ -96,7 +96,6 @@
       "autoCategorizeByTracker": "Auto-categorize by Tracker",
       "themeAndColors": "Theme & Colors",
       "themeDescription": "Customize theme and color settings",
-      "compactCardView": "Compact Card View",
       "refreshInterval": "Refresh Interval",
       "milliseconds": "Milliseconds",
       "categoryName": "Category name",
@@ -150,7 +149,8 @@
       "pickAColor": "Pick a Color",
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
-      "presets": "Presets"
+      "presets": "Presets",
+      "detailedCardView": "Detailed Card View"
     },
     "transfer": {
       "title": "Transfer",

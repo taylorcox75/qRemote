@@ -76,7 +76,6 @@
       "autoCategorizeByTracker": "Auto-catégoriser par tracker",
       "themeAndColors": "Thème et couleurs",
       "themeDescription": "Personnaliser le thème et les couleurs",
-      "compactCardView": "Vue compacte",
       "refreshInterval": "Intervalle de rafraîchissement",
       "milliseconds": "Millisecondes",
       "categoryName": "Nom de catégorie",
@@ -130,7 +129,8 @@
       "pickAColor": "Pick a Color",
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
-      "presets": "Presets"
+      "presets": "Presets",
+      "detailedCardView": "Vue détaillée"
     },
     "transfer": {
       "title": "Transfert",
@@ -639,7 +639,6 @@
     "failedToToggleAltSpeed": "Failed to toggle alternative speed limits",
     "failedToSetSpeedLimit": "Failed to set {{type}} limit",
     "enterTrackerUrl": "Please enter a tracker URL",
-    "connectionFailedManual": "Connection failed: {{error}}. Please try connecting manually.",
     "failedToResetStateColors": "Failed to reset torrent state colors",
     "failedToResetColors": "Failed to reset colors",
     "failedToSaveColor": "Failed to save color",
