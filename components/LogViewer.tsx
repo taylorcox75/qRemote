@@ -1,3 +1,9 @@
+/**
+ * LogViewer.tsx — Modal viewer for locally stored connectivity/debug logs with export support.
+ *
+ * Key exports: LogViewer
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useEffect } from 'react';
 import {
   View,

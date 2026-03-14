@@ -1,3 +1,10 @@
+/**
+ * manage-trackers.tsx — Tracker management screen for adding, editing, and removing torrent trackers.
+ *
+ * Key exports: ManageTrackersScreen (default)
+ * Known issues: showTrackerMenu function using ActionSheetIOS is dead code (never called from JSX);
+ *   scheduled for cleanup in Task 3.5.
+ */
 import React, { useState, useEffect } from 'react';
 import {
   View,

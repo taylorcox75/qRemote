@@ -1,3 +1,9 @@
+/**
+ * client.ts — Singleton axios-based HTTP client for the qBittorrent WebUI API with cookie auth, retry, and request logging.
+ *
+ * Key exports: apiClient (singleton ApiClient instance)
+ * Known issues: csrfToken is captured but never sent; apiTimeout is stored but never used (both are dead code, Task 3.5).
+ */
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ServerConfig } from '../../types/api';
 import { clogDebug, clogInfo, clogWarn, clogError } from '../connectivity-log';

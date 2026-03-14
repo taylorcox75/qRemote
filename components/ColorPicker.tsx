@@ -1,3 +1,9 @@
+/**
+ * ColorPicker.tsx — Modal color picker with preset swatches and hex input for theme customization.
+ *
+ * Key exports: ColorPicker
+ * Known issues: Only handles 6-digit hex — defaults using rgba() lose their alpha channel when edited.
+ */
 import React, { useState } from 'react';
 import {
   View,

@@ -1,3 +1,10 @@
+/**
+ * TorrentCard.tsx — Torrent list item with state badge, progress bar, context menu, and inline actions.
+ *
+ * Key exports: TorrentCard
+ * Known issues: Alert.prompt used for download-limit input (iOS-only, deferred to Task 2.2);
+ *   per-card menu state will conflict with FlashList recycling (Task 2.2 lifts state out).
+ */
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Dimensions, Platform, Alert } from 'react-native';

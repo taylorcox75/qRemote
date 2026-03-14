@@ -1,3 +1,9 @@
+/**
+ * torrents.ts — API wrapper for all qBittorrent /api/v2/torrents/* endpoints (CRUD, priorities, limits, trackers, files).
+ *
+ * Key exports: torrentsApi
+ * Known issues: None currently tracked.
+ */
 import { apiClient } from './client';
 import {
   TorrentInfo,

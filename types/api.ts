@@ -1,3 +1,11 @@
+/**
+ * api.ts — TypeScript interfaces for the qBittorrent WebUI API v2 data model.
+ *
+ * Key exports: ServerConfig, TorrentInfo, TorrentState, TorrentProperties, GlobalTransferInfo,
+ *   MainData, ServerState, Category, Tracker, TorrentFile, FilePriority, LogEntry, PeerLogEntry
+ * Known issues: ApplicationPreferences is typed as Record<string, any> (Task 3.2 will tighten).
+ */
+
 // Server Configuration
 export interface ServerConfig {
   id: string;

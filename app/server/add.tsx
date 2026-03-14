@@ -1,3 +1,9 @@
+/**
+ * add.tsx — Add-server form with connection testing, debug panel, and URL auto-parsing.
+ *
+ * Key exports: AddServerScreen (default)
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useRef, useMemo } from 'react';
 import {
   View,

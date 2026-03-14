@@ -1,3 +1,9 @@
+/**
+ * OptionPicker.tsx — Reusable bottom-sheet modal for single-select option lists with checkmark indicator.
+ *
+ * Key exports: OptionPicker, OptionPickerItem
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,

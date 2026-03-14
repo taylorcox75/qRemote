@@ -1,3 +1,9 @@
+/**
+ * [id].tsx — Edit-server form with connection testing, debug panel, and delete capability.
+ *
+ * Key exports: EditServerScreen (default)
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,

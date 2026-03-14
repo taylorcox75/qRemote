@@ -1,3 +1,9 @@
+/**
+ * transfer.tsx — Global transfer dashboard showing speed stats, limits, and session info.
+ *
+ * Key exports: TransferScreen (default)
+ * Known issues: Some hardcoded English strings remain (Task 3.3 will add i18n coverage).
+ */
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,

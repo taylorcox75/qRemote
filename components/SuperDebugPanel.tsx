@@ -1,3 +1,9 @@
+/**
+ * SuperDebugPanel.tsx — Step-by-step server connectivity diagnostic tool (reach, login, cookie, API checks).
+ *
+ * Key exports: SuperDebugPanel, SuperDebugPanelProps
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View,

@@ -1,3 +1,9 @@
+/**
+ * files.tsx — Torrent file browser with folder tree, priority controls, and bulk selection.
+ *
+ * Key exports: TorrentFilesScreen (default)
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,

@@ -1,3 +1,9 @@
+/**
+ * logs.tsx — Server log viewer with app-log and peer-log tabs, search, and severity filters.
+ *
+ * Key exports: LogsScreen (default)
+ * Known issues: Hardcoded English strings (Task 3.3).
+ */
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,

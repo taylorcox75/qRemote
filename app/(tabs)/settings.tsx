@@ -1,3 +1,9 @@
+/**
+ * settings.tsx — App settings mega-screen covering servers, appearance, defaults, and advanced options.
+ *
+ * Key exports: SettingsScreen (default)
+ * Known issues: 1957 lines — scheduled for decomposition into sub-screens in Task 2.7.
+ */
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,

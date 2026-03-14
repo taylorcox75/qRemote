@@ -1,3 +1,9 @@
+/**
+ * TorrentContext.tsx — React Context providing torrent list, categories, tags, and server state via rid-based incremental sync.
+ *
+ * Key exports: TorrentProvider, useTorrents
+ * Known issues: isRecoveringFromBackground was a ref that didn't trigger re-renders (fixed to use state in Task 1.4d).
+ */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { TorrentInfo, MainData, ServerState } from '../types/api';

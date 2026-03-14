@@ -1,3 +1,10 @@
+/**
+ * index.tsx — Main torrents list screen (home tab).
+ *
+ * Key exports: TorrentsScreen (default)
+ * Known issues: Alert.prompt used in TorrentCard (iOS-only, deferred to Task 2.2);
+ *   FAB animation code is tightly coupled with header/tab-bar hide logic.
+ */
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,

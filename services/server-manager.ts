@@ -1,3 +1,9 @@
+/**
+ * server-manager.ts — Server CRUD, connection lifecycle, and auto-reconnect logic.
+ *
+ * Key exports: ServerManager, isNetworkError
+ * Known issues: isNetworkError was duplicated inline 3× (deduplicated in Task 1.6).
+ */
 import { ServerConfig } from '../types/api';
 import { storageService } from './storage';
 import { apiClient } from './api/client';

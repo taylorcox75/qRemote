@@ -1,3 +1,10 @@
+/**
+ * TorrentDetails.tsx — Tabbed torrent detail view with overview, trackers, and files sections.
+ *
+ * Key exports: TorrentDetails
+ * Known issues: Alert.prompt used in 6 places (iOS-only, Task 1.5 replaces with InputModal);
+ *   2,085 lines — decomposition into sub-components is a future candidate.
+ */
 import React, { useState, useEffect } from 'react';
 import {
   View,

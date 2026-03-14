@@ -1,3 +1,10 @@
+/**
+ * [hash].tsx — Torrent detail screen showing properties, trackers, files, and action buttons.
+ *
+ * Key exports: TorrentDetail (default)
+ * Known issues: Alert.prompt used in 7 places (iOS-only, Task 1.5 replaces with InputModal);
+ *   Quick Tools + Advanced button grid scheduled for redesign in Task 2.3.
+ */
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import {
   View,
