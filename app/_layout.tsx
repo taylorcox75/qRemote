@@ -2,6 +2,7 @@ import '../i18n';
 import { Stack } from 'expo-router';
 import { Dimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { ServerProvider } from '../context/ServerContext';
 import { TorrentProvider } from '../context/TorrentContext';
@@ -73,19 +74,21 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <ToastProvider>
-          <ServerProvider>
-            <TorrentProvider>
-              <TransferProvider>
-                <StackNavigator />
-              </TransferProvider>
-            </TorrentProvider>
-          </ServerProvider>
-        </ToastProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <ServerProvider>
+              <TorrentProvider>
+                <TransferProvider>
+                  <StackNavigator />
+                </TransferProvider>
+              </TorrentProvider>
+            </ServerProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

@@ -2,8 +2,7 @@
  * index.tsx — Main torrents list screen (home tab).
  *
  * Key exports: TorrentsScreen (default)
- * Known issues: Alert.prompt used in TorrentCard (iOS-only, deferred to Task 2.2);
- *   FAB animation code is tightly coupled with header/tab-bar hide logic.
+ * Known issues: Alert.prompt used in TorrentCard (iOS-only, deferred to Task 2.2).
  */
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
@@ -22,15 +21,16 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTorrents } from '../../context/TorrentContext';
 import { useServer } from '../../context/ServerContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
-import { TorrentInfo, TorrentState, ServerConfig } from '../../types/api';
+import { TorrentInfo, ServerConfig } from '../../types/api';
 import { TorrentCard } from '../../components/TorrentCard';
 import { ActionMenu } from '@/components/ActionMenu';
 import { InputModal } from '@/components/InputModal';
@@ -50,7 +50,6 @@ export default function TorrentsScreen() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const router = useRouter();
-  const navigation = useNavigation();
   const { torrents, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
   const { isConnected, currentServer, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
@@ -81,40 +80,14 @@ export default function TorrentsScreen() {
   } = useTorrentActions(selectedTorrent);
 
   // Scroll animation refs
-  const scrollY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
   const headerTranslateY = useRef(new Animated.Value(0)).current;
   const isHeaderVisible = useRef(true);
-  const scrollThreshold = useRef(0);
-  const fabScale = useRef(new Animated.Value(1)).current;
-  const isFabVisible = useRef(true);
-  const isTabBarVisible = useRef(true);
   const isAnimating = useRef(false);
 
-  // Helper function to get tab bar style
-  const getTabBarStyle = (visible: boolean) => ({
-    backgroundColor: colors.surface,
-    borderTopWidth: 0.18,
-    borderTopColor: colors.surfaceOutline,
-    display: visible ? 'flex' : 'none' as const,
-  });
-
-  // Update tab bar visibility
-  useEffect(() => {
-    navigation.setOptions({
-      tabBarStyle: getTabBarStyle(isTabBarVisible.current),
-    });
-  }, [navigation, colors.surface, colors.surfaceOutline]);
-
-  // Reset tab bar visibility when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      isTabBarVisible.current = true;
-      navigation.setOptions({
-        tabBarStyle: getTabBarStyle(true),
-      });
-    }, [navigation, colors.surface, colors.surfaceOutline])
-  );
+  // Swipeable refs for closing open rows
+  const openSwipeableRef = useRef<Swipeable | null>(null);
+  const swipeHapticFired = useRef(false);
 
   // Track last known default filter so we only sync when user changes it in Settings
   const lastDefaultFilterRef = useRef<string | null>(null);
@@ -379,11 +352,6 @@ export default function TorrentsScreen() {
     }
   }, [connectToServer]);
 
-  // Torrent actions
-  const handleAddTorrent = () => {
-    setShowAddModal(true);
-  };
-
   const handlePickFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -452,18 +420,83 @@ export default function TorrentsScreen() {
     }
   };
 
-  // Scroll handler - memoized to prevent re-creation
+  // Swipe action handlers (call APIs directly, parameterized by torrent)
+  const handleSwipePauseResume = useCallback(async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    haptics.medium();
+    const isPaused =
+      torrent.state === 'pausedDL' || torrent.state === 'pausedUP' ||
+      torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
+    try {
+      if (isPaused) {
+        await torrentsApi.resumeTorrents([torrent.hash]);
+      } else {
+        await torrentsApi.pauseTorrents([torrent.hash]);
+      }
+      refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      showToast(msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
+    }
+    swipeableRef?.close();
+  }, [refresh, showToast, t]);
+
+  const handleSwipeDelete = useCallback((torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    haptics.medium();
+    Alert.alert(
+      t('common.delete'),
+      `Delete "${torrent.name}"?`,
+      [
+        { text: t('common.cancel'), style: 'cancel', onPress: () => swipeableRef?.close() },
+        {
+          text: 'Torrent Only',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], false);
+              refresh();
+              showToast(t('toast.torrentDeleted'), 'success');
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : '';
+              showToast(msg || t('errors.failedToDelete'), 'error');
+            }
+            swipeableRef?.close();
+          },
+        },
+        {
+          text: 'With Files',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], true);
+              refresh();
+              showToast(t('toast.torrentDeleted'), 'success');
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : '';
+              showToast(msg || t('errors.failedToDelete'), 'error');
+            }
+            swipeableRef?.close();
+          },
+        },
+      ],
+    );
+  }, [refresh, showToast, t]);
+
+  const handleSwipeForceStart = useCallback(async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    haptics.medium();
+    try {
+      await torrentsApi.setForceStart([torrent.hash], true);
+      refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      showToast(msg || t('errors.generic'), 'error');
+    }
+    swipeableRef?.close();
+  }, [refresh, showToast, t]);
+
+  // Scroll handler — header show/hide only
   const handleScroll = useCallback((event: any) => {
     const currentScrollY = event.nativeEvent.contentOffset.y;
-    const contentHeight = event.nativeEvent.contentSize.height;
-    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
     const scrollDifference = currentScrollY - lastScrollY.current;
 
-    // Detect if we're at or near the bottom (within 50px of bottom)
-    const distanceFromBottom = contentHeight - layoutHeight - currentScrollY;
-    const isNearBottom = distanceFromBottom < 50;
-
-    // Always show header, FAB, and tab bar when at the top
     if (currentScrollY <= 10) {
       if (!isHeaderVisible.current) {
         isHeaderVisible.current = true;
@@ -473,114 +506,41 @@ export default function TorrentsScreen() {
           useNativeDriver: true,
         }).start();
       }
-      if (!isFabVisible.current) {
-        isFabVisible.current = true;
-        Animated.timing(fabScale, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
-      if (!isTabBarVisible.current) {
-        isTabBarVisible.current = true;
-        navigation.setOptions({
-          tabBarStyle: getTabBarStyle(true),
-        });
-      }
       lastScrollY.current = currentScrollY;
       return;
     }
 
-    // When near bottom, hide FAB but keep header visible
-    if (isNearBottom) {
-      if (!isHeaderVisible.current) {
-        isHeaderVisible.current = true;
-        Animated.timing(headerTranslateY, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
-      // Hide FAB when at bottom
-      if (isFabVisible.current) {
-        isFabVisible.current = false;
-        Animated.timing(fabScale, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
-      if (!isTabBarVisible.current) {
-        isTabBarVisible.current = true;
-        navigation.setOptions({
-          tabBarStyle: getTabBarStyle(true),
-        });
-      }
-      lastScrollY.current = currentScrollY;
-      return;
-    }
-
-    const minMovement = 15; // Increased threshold to prevent jitter
-
-    // Only update if there's significant movement to prevent rapid toggling
+    const minMovement = 15;
     if (Math.abs(scrollDifference) < minMovement) {
       lastScrollY.current = currentScrollY;
       return;
     }
 
-    // Prevent rapid toggling if animation is in progress
     if (isAnimating.current) {
       lastScrollY.current = currentScrollY;
       return;
     }
 
-    // Prioritize showing header when scrolling up - respond immediately
     if (scrollDifference < -minMovement && !isHeaderVisible.current) {
-      // Scrolling up - show header, FAB, and tab bar immediately
       isAnimating.current = true;
       isHeaderVisible.current = true;
-      isFabVisible.current = true;
-      isTabBarVisible.current = true;
       Animated.timing(headerTranslateY, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
-      }).start(() => {
-        isAnimating.current = false;
-      });
-      Animated.timing(fabScale, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-      navigation.setOptions({
-        tabBarStyle: getTabBarStyle(true),
-      });
-    } else if (scrollDifference > minMovement && isHeaderVisible.current && !isNearBottom) {
-      // Scrolling down - hide header, FAB, and tab bar (but not when bouncing at bottom)
+      }).start(() => { isAnimating.current = false; });
+    } else if (scrollDifference > minMovement && isHeaderVisible.current) {
       isAnimating.current = true;
       isHeaderVisible.current = false;
-      isFabVisible.current = false;
-      isTabBarVisible.current = false;
       Animated.timing(headerTranslateY, {
         toValue: -200,
         duration: 200,
         useNativeDriver: true,
-      }).start(() => {
-        isAnimating.current = false;
-      });
-      Animated.timing(fabScale, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-      navigation.setOptions({
-        tabBarStyle: getTabBarStyle(false),
-      });
+      }).start(() => { isAnimating.current = false; });
     }
 
     lastScrollY.current = currentScrollY;
-  }, [navigation, colors.surface, colors.surfaceOutline]);
+  }, []);
 
   // Filter options
   const filterOptions = [
@@ -724,6 +684,20 @@ export default function TorrentsScreen() {
                     size={18} 
                     color={showSortMenu ? colors.primary : colors.text} 
                   />
+                </TouchableOpacity>
+              )}
+
+              {/* Add torrent button */}
+              {!selectMode && (
+                <TouchableOpacity
+                  style={[
+                    styles.headerAddButton,
+                    { backgroundColor: colors.primary },
+                  ]}
+                  onPress={() => setShowAddModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
             </View>
@@ -935,39 +909,145 @@ export default function TorrentsScreen() {
             data={filteredTorrents}
             keyExtractor={(item) => item.hash}
             style={{ backgroundColor: colors.background }}
-            renderItem={({ item, index }) => (
-              <View style={styles.torrentItemContainer}>
-                {selectMode && (
-                  <TouchableOpacity
-                    style={styles.checkbox}
-                    onPress={() => toggleSelection(item.hash)}
+            renderItem={({ item }) => {
+              const itemIsPaused =
+                item.state === 'pausedDL' || item.state === 'pausedUP' ||
+                item.state === 'stoppedDL' || item.state === 'stoppedUP';
+
+              let swipeRef: Swipeable | null = null;
+
+              const renderRightActions = (
+                _progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>,
+              ) => {
+                const pauseScale = dragX.interpolate({
+                  inputRange: [-120, -60, 0],
+                  outputRange: [0.6, 1, 0],
+                  extrapolate: 'clamp',
+                });
+                const deleteScale = dragX.interpolate({
+                  inputRange: [-240, -160, -120],
+                  outputRange: [1, 0.8, 0],
+                  extrapolate: 'clamp',
+                });
+
+                return (
+                  <View style={styles.swipeActionsRight}>
+                    <RectButton
+                      style={[
+                        styles.swipeAction,
+                        { backgroundColor: itemIsPaused ? colors.success : '#FF9500' },
+                      ]}
+                      onPress={() => handleSwipePauseResume(item, swipeRef)}
+                    >
+                      <Animated.View style={[styles.swipeActionContent, { transform: [{ scale: pauseScale }] }]}>
+                        <Ionicons name={itemIsPaused ? 'play' : 'pause'} size={22} color="#FFFFFF" />
+                        <Text style={styles.swipeActionText}>
+                          {itemIsPaused ? t('actions.resume') : t('actions.pause')}
+                        </Text>
+                      </Animated.View>
+                    </RectButton>
+                    <RectButton
+                      style={[styles.swipeAction, { backgroundColor: '#FF3B30' }]}
+                      onPress={() => handleSwipeDelete(item, swipeRef)}
+                    >
+                      <Animated.View style={[styles.swipeActionContent, { transform: [{ scale: deleteScale }] }]}>
+                        <Ionicons name="trash" size={22} color="#FFFFFF" />
+                        <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
+                      </Animated.View>
+                    </RectButton>
+                  </View>
+                );
+              };
+
+              const renderLeftActions = (
+                _progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>,
+              ) => {
+                const scale = dragX.interpolate({
+                  inputRange: [0, 60, 120],
+                  outputRange: [0, 1, 1],
+                  extrapolate: 'clamp',
+                });
+
+                return (
+                  <RectButton
+                    style={[styles.swipeActionLeft, { backgroundColor: '#007AFF' }]}
+                    onPress={() => handleSwipeForceStart(item, swipeRef)}
                   >
-                    <Ionicons
-                      name={selectedHashes.has(item.hash) ? 'checkbox' : 'square-outline'}
-                      size={24}
-                      color={selectedHashes.has(item.hash) ? colors.primary : colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                )}
-                <View style={{ flex: 1 }}>
-                  <TorrentCard
-                    torrent={item}
-                    onPress={() => {
-                      if (selectMode) {
-                        toggleSelection(item.hash);
-                      } else {
-                        router.push(`/torrent/${item.hash}`);
-                      }
-                    }}
-                    onLongPress={() => {
+                    <Animated.View style={[styles.swipeActionContent, { transform: [{ scale }] }]}>
+                      <Ionicons name="flash" size={22} color="#FFFFFF" />
+                      <Text style={styles.swipeActionText}>{t('actions.forceStart')}</Text>
+                    </Animated.View>
+                  </RectButton>
+                );
+              };
+
+              return (
+                <Swipeable
+                  ref={(ref) => { swipeRef = ref; }}
+                  friction={2}
+                  rightThreshold={60}
+                  leftThreshold={60}
+                  overshootRight={false}
+                  overshootLeft={false}
+                  renderRightActions={renderRightActions}
+                  renderLeftActions={renderLeftActions}
+                  onSwipeableWillOpen={() => {
+                    if (openSwipeableRef.current && openSwipeableRef.current !== swipeRef) {
+                      openSwipeableRef.current.close();
+                    }
+                    openSwipeableRef.current = swipeRef;
+                    if (!swipeHapticFired.current) {
                       haptics.medium();
-                      setSelectedTorrent(item);
-                      setMenuVisible(true);
-                    }}
-                  />
-                </View>
-              </View>
-            )}
+                      swipeHapticFired.current = true;
+                    }
+                  }}
+                  onSwipeableClose={() => {
+                    if (openSwipeableRef.current === swipeRef) {
+                      openSwipeableRef.current = null;
+                    }
+                    swipeHapticFired.current = false;
+                  }}
+                  onSwipeableOpenStartDrag={() => {
+                    swipeHapticFired.current = false;
+                  }}
+                  enabled={!selectMode}
+                >
+                  <View style={styles.torrentItemContainer}>
+                    {selectMode && (
+                      <TouchableOpacity
+                        style={styles.checkbox}
+                        onPress={() => toggleSelection(item.hash)}
+                      >
+                        <Ionicons
+                          name={selectedHashes.has(item.hash) ? 'checkbox' : 'square-outline'}
+                          size={24}
+                          color={selectedHashes.has(item.hash) ? colors.primary : colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <TorrentCard
+                        torrent={item}
+                        onPress={() => {
+                          if (selectMode) {
+                            toggleSelection(item.hash);
+                          } else {
+                            router.push(`/torrent/${item.hash}`);
+                          }
+                        }}
+                        onLongPress={() => {
+                          haptics.medium();
+                          setSelectedTorrent(item);
+                          setMenuVisible(true);
+                        }}
+                      />
+                    </View>
+                  </View>
+                </Swipeable>
+              );
+            }}
             refreshControl={
               <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={colors.primary} />
             }
@@ -979,26 +1059,6 @@ export default function TorrentsScreen() {
             maxToRenderPerBatch={5}
             windowSize={10}
           />
-        )}
-
-        {!selectMode && (
-          <Animated.View
-            style={[
-              styles.fab,
-              {
-                backgroundColor: colors.primary,
-                transform: [{ scale: fabScale }],
-              },
-            ]}
-          >
-            <TouchableOpacity
-              onPress={handleAddTorrent}
-              style={styles.fabTouchable}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
-          </Animated.View>
         )}
 
         {selectMode && selectedHashes.size > 0 && (
@@ -1581,18 +1641,36 @@ const styles = StyleSheet.create({
   modalButtonText: {
     ...buttonText.primary,
   },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.xxl,
-    right: spacing.xxl,
-    ...buttonStyles.fab,
+  headerAddButton: {
+    width: 42,
+    height: 42,
+    borderRadius: borderRadius.medium,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  fabTouchable: {
-    width: '100%',
-    height: '100%',
+  swipeActionsRight: {
+    flexDirection: 'row',
+    width: 160,
+  },
+  swipeAction: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swipeActionLeft: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swipeActionContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 28,
+  },
+  swipeActionText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 3,
   },
   searchSortButton: {
     ...buttonStyles.icon,
