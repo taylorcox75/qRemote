@@ -20,7 +20,9 @@
     "remove": "Remove",
     "skip": "Skip",
     "normal": "Normal",
-    "max": "Max"
+    "max": "Max",
+    "on": "ON",
+    "off": "OFF"
   },
   "screens": {
     "torrents": {
@@ -114,7 +116,21 @@
       "about": "About",
       "debug": "DEBUG",
       "apiVersion": "API Version",
-      "architecture": "Architecture"
+      "architecture": "Architecture",
+      "logsTitle": "Logs",
+      "clearLogs": "Clear",
+      "noLogsAvailable": "No logs available",
+      "logsAutoClear": "Logs are automatically cleared after 5 minutes or on app launch",
+      "darkMode": "Dark Mode",
+      "darkModeHint": "Switch between light and dark theme",
+      "torrentStateColors": "TORRENT STATE COLORS",
+      "advancedColors": "ADVANCED COLORS",
+      "resetColors": "Reset Colors",
+      "resetStateColors": "Reset State Colors",
+      "pickAColor": "Pick a Color",
+      "currentColor": "Current Color",
+      "hexColor": "Hex Color",
+      "presets": "Presets"
     },
     "transfer": {
       "title": "Transfert",
@@ -292,6 +308,8 @@
     "testConnection": "Tester la connexion",
     "dangerZone": "ZONE DE DANGER",
     "deleteServer": "Supprimer serveur",
+    "editServer": "Edit Server",
+    "deleteServerConfirm": "Remove \"{{name}}\" from your server list?",
     "hostAddress": "Adresse de l'hôte",
     "port": "Port",
     "gotIt": "Compris"
@@ -556,6 +574,7 @@
     "failedToLoadServers": "Échec du chargement des serveurs",
     "checkCredentials": "Vérifiez vos identifiants.",
     "connectionTestFailed": "Test de connexion échoué. Vérifiez vos paramètres.",
+    "connectionFailedManual": "Connection failed: {{error}}. Please try connecting manually.",
     "fillNameAndHost": "Remplissez le nom et l'hôte du serveur",
     "fillUsernamePassword": "Remplissez le nom d'utilisateur et le mot de passe, ou activez le contournement d'authentification",
     "validPort": "Entrez un numéro de port valide (1-65535)",
@@ -618,7 +637,14 @@
     "failedToPauseUploads": "Failed to pause uploads",
     "failedToToggleAltSpeed": "Failed to toggle alternative speed limits",
     "failedToSetSpeedLimit": "Failed to set {{type}} limit",
-    "enterTrackerUrl": "Please enter a tracker URL"
+    "enterTrackerUrl": "Please enter a tracker URL",
+    "connectionFailedManual": "Connection failed: {{error}}. Please try connecting manually.",
+    "failedToResetStateColors": "Failed to reset torrent state colors",
+    "failedToResetColors": "Failed to reset colors",
+    "failedToSaveColor": "Failed to save color",
+    "failedToSaveServer": "Failed to save server",
+    "failedToCopyDebug": "Failed to copy debug info",
+    "failedToLoadServer": "Failed to load server"
   },
   "states": {
     "dlAndUl": "DL + UL",
