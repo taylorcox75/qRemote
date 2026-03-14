@@ -5,6 +5,27 @@
 
 -----
 
+## ✅ Status — All 6 Issues Implemented
+
+All issues below have been implemented and verified via `npx tsc --noEmit` (compiles clean) and `npx jest` (120/120 tests pass). Testing on-device against a live qBittorrent server is still needed — see [Testing Checklist](#testing-checklist) at the bottom.
+
+| Issue | Status | Files Changed |
+|-------|--------|---------------|
+| Issue 1 — Alt Speed Limits | ✅ Done | `types/api.ts`, `context/TransferContext.tsx`, `app/(tabs)/transfer.tsx` |
+| Issue 2 — Pause/Resume Button | ✅ Done | `components/TorrentCard.tsx`, `app/(tabs)/index.tsx` |
+| Issue 3 — Progress Bar Fill | ✅ Done | `components/TorrentCard.tsx` |
+| Issue 4 — Pause-on-Add Desync | ✅ Done | `app/settings/torrent-defaults.tsx`, `app/(tabs)/index.tsx` |
+| Issue 5 — Expanded Card View | ✅ Done | `components/TorrentCard.tsx`, `app/(tabs)/index.tsx` |
+| Issue 6 — Search Bar Layout | ✅ Done | `app/(tabs)/index.tsx` |
+
+### Remaining work for next agent
+
+- **On-device testing** — All items in the [Testing Checklist](#testing-checklist) below need manual verification on a device connected to a live qBittorrent server. The cloud environment cannot run Expo Go.
+- **i18n gap** — The `ALT` badge text in `app/(tabs)/transfer.tsx` (lines ~583, ~608) is hardcoded English. Should use `t('common.alt')` or similar key. Minor — it's a technical abbreviation, but other labels are i18n'd.
+- **`DetailRow` labels hardcoded** — In `components/TorrentCard.tsx`, the expanded card `DetailRow` labels (Seeds, Peers, Ratio, Uploaded, Category, Tags, Tracker, Added, Active, Path) are hardcoded English. They should use `t()` keys for consistency with the rest of the app.
+
+-----
+
 ## Issue 1 — Alt Speed: Show Active Limits in Transfer Screen
 
 ### Root cause
@@ -759,19 +780,32 @@ In `selectMode` (Sort and Add hidden), `searchInputContainer` with `flex: 1` exp
 
 ## Testing Checklist
 
+> **Status:** Code implemented and compiles. All items below require **on-device testing** against a live qBittorrent server (cannot be verified in CI/cloud).
+
+**Issue 4 — Pause-on-Add Sync:**
 - [ ] On Settings screen open while connected: `pauseOnAdd` toggle reflects the server's actual `start_paused_enabled` value, not stale local cache
 - [ ] Toggling "Pause on Add" writes to `app/setPreferences` on the server (`start_paused_enabled`); verify via qBittorrent Web UI
 - [ ] Toggle off (server confirmed) → add torrent → starts active
 - [ ] Toggle on (server confirmed) → add torrent → starts paused
 - [ ] Server write failure rolls back the UI toggle
+
+**Issue 1 — Alt Speed Limits:**
 - [ ] Alt speed **on**: Download and Upload rows show alt values; `ALT` badge visible; rows non-tappable
 - [ ] Alt speed **off**: rows show global limits; `ALT` badge absent; rows tappable
+
+**Issue 3 — Progress Bar:**
 - [ ] Progress bar spans full card width at all progress values including 100%
 - [ ] Percent and ETA appear correctly in status line; no orphaned `progressText` rendered
+
+**Issue 2 — Pause/Resume Button:**
 - [ ] Pause button visible on far right of status row; correct icon per torrent state
 - [ ] Tapping pause button does not trigger card `onPress` navigation
+
+**Issue 6 — Search Bar Layout:**
 - [ ] Search bar: Sort is leftmost, search is centered/flex, Add is rightmost
 - [ ] Loading spinner appears inside search box right edge; no standalone sync indicator block visible
 - [ ] `selectMode`: Sort and Add hidden; search bar expands to fill full row
+
+**Issue 5 — Expanded Card View:**
 - [ ] Compact card (`cardViewMode: 'compact'`): layout unchanged from pre-fix
 - [ ] Detailed card (`cardViewMode: 'expanded'`): all 10 rows render; `category`/`tags`/`tracker`/`save_path` absent when empty string; `tracker` and `save_path` truncate with `ellipsizeMode="middle"`
