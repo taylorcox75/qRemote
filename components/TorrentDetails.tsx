@@ -22,24 +22,24 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { torrentsApi } from '../services/api/torrents';
-import { syncApi } from '../services/api/sync';
-import { categoriesApi } from '../services/api/categories';
-import { tagsApi } from '../services/api/tags';
-import { useTorrents } from '../context/TorrentContext';
-import { useServer } from '../context/ServerContext';
-import { useTheme } from '../context/ThemeContext';
-import { useToast } from '../context/ToastContext';
-import { useTransfer } from '../context/TransferContext';
-import { apiClient } from '../services/api/client';
+import { torrentsApi } from '@/services/api/torrents';
+import { syncApi } from '@/services/api/sync';
+import { categoriesApi } from '@/services/api/categories';
+import { tagsApi } from '@/services/api/tags';
+import { useTorrents } from '@/context/TorrentContext';
+import { useServer } from '@/context/ServerContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/context/ToastContext';
+import { useTransfer } from '@/context/TransferContext';
+import { apiClient } from '@/services/api/client';
 import {
   TorrentInfo,
   TorrentProperties,
   Tracker,
   TorrentFile,
   FilePriority,
-} from '../types/api';
-import { formatDate } from '../utils/format';
+} from '@/types/api';
+import { formatDate } from '@/utils/format';
 import { InputModal } from './InputModal';
 
 interface TorrentDetailsProps {

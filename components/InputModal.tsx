@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
-import { spacing, borderRadius } from '../constants/spacing';
-import { shadows } from '../constants/shadows';
+import { useTheme } from '@/context/ThemeContext';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
 
 interface InputModalProps {
   visible: boolean;

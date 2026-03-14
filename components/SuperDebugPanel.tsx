@@ -20,12 +20,12 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { useTheme } from '../context/ThemeContext';
-import { spacing, borderRadius } from '../constants/spacing';
-import { APP_VERSION } from '../utils/version';
-import { getConnectivityLog, formatConnectivityLog } from '../services/connectivity-log';
-import { logsApi } from '../services/api/logs';
-import { apiClient } from '../services/api/client';
+import { useTheme } from '@/context/ThemeContext';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { APP_VERSION } from '@/utils/version';
+import { getConnectivityLog, formatConnectivityLog } from '@/services/connectivity-log';
+import { logsApi } from '@/services/api/logs';
+import { apiClient } from '@/services/api/client';
 
 // ---------------------------------------------------------------------------
 // Types

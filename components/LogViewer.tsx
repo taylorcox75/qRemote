@@ -16,11 +16,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { logStorage, StoredLogEntry } from '../services/log-storage';
-import { spacing, borderRadius } from '../constants/spacing';
-import { shadows } from '../constants/shadows';
-import { typography } from '../constants/typography';
+import { useTheme } from '@/context/ThemeContext';
+import { logStorage, StoredLogEntry } from '@/services/log-storage';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
+import { typography } from '@/constants/typography';
 
 interface LogViewerProps {
   visible: boolean;

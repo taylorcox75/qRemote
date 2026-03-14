@@ -2,9 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal, StatusBar } from 'react-native';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { shadows } from '../constants/shadows';
-import { spacing, borderRadius } from '../constants/spacing';
+import { useTheme } from '@/context/ThemeContext';
+import { shadows } from '@/constants/shadows';
+import { spacing, borderRadius } from '@/constants/spacing';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 

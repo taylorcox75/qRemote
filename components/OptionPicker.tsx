@@ -15,11 +15,11 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, borderRadius } from '../constants/spacing';
-import { shadows } from '../constants/shadows';
-import { typography } from '../constants/typography';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
+import { typography } from '@/constants/typography';
 
 export interface OptionPickerItem {
   label: string;

@@ -16,11 +16,11 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
-import { spacing, borderRadius } from '../constants/spacing';
-import { shadows } from '../constants/shadows';
-import { typography } from '../constants/typography';
-import { colorThemeManager } from '../services/color-theme-manager';
+import { useTheme } from '@/context/ThemeContext';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
+import { typography } from '@/constants/typography';
+import { colorThemeManager } from '@/services/color-theme-manager';
 
 interface ColorPickerProps {
   visible: boolean;
