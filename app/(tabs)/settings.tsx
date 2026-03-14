@@ -282,12 +282,10 @@ export default function SettingsScreen() {
     );
   };
 
-  // Helper functions for saving preferences
-  const savePreference = async (key: string, value: any) => {
+  const savePreference = async (key: keyof AppPreferences, value: any) => {
     try {
       const prefs = await storageService.getPreferences();
-      prefs[key] = value;
-      await storageService.savePreferences(prefs);
+      await storageService.savePreferences({ ...prefs, [key]: value });
     } catch (error) {
       // Ignore save errors
     }

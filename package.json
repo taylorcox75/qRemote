@@ -6,7 +6,9 @@
     "start": "expo start --go",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write '**/*.{ts,tsx,js,json}'"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -41,7 +43,14 @@
   "devDependencies": {
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@types/react": "~19.1.10",
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
+    "@typescript-eslint/parser": "^8.57.0",
     "babel-plugin-module-resolver": "^5.0.2",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   },
   "private": true

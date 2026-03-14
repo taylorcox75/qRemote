@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { ServerConfig } from '../types/api';
+import { AppPreferences } from '../types/preferences';
 
 const STORAGE_KEYS = {
   SERVERS: 'servers',
@@ -132,17 +133,17 @@ export const storageService = {
   /**
    * Save preferences
    */
-  async savePreferences(preferences: Record<string, any>): Promise<void> {
+  async savePreferences(preferences: Partial<AppPreferences>): Promise<void> {
     await AsyncStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(preferences));
   },
 
   /**
    * Get preferences
    */
-  async getPreferences(): Promise<Record<string, any>> {
+  async getPreferences(): Promise<Partial<AppPreferences>> {
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.PREFERENCES);
-      return data ? JSON.parse(data) : {};
+      return data ? (JSON.parse(data) as Partial<AppPreferences>) : {};
     } catch (error) {
       return {};
     }

@@ -21,6 +21,7 @@ interface InputModalProps {
   onConfirm: (value: string) => void;
   keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
   multiline?: boolean;
+  allowEmpty?: boolean;
 }
 
 export function InputModal({
@@ -33,6 +34,7 @@ export function InputModal({
   onConfirm,
   keyboardType = 'default',
   multiline = false,
+  allowEmpty = false,
 }: InputModalProps) {
   const { colors } = useTheme();
   const [value, setValue] = useState(defaultValue || '');
@@ -45,7 +47,7 @@ export function InputModal({
   }, [visible, defaultValue]);
 
   const handleConfirm = () => {
-    if (value.trim()) {
+    if (allowEmpty || value.trim()) {
       onConfirm(value.trim());
     }
     setValue('');

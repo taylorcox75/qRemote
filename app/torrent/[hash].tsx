@@ -13,6 +13,7 @@ import {
   AppState,
   AppStateStatus,
 } from 'react-native';
+import { InputModal } from '../../components/InputModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,6 +59,17 @@ export default function TorrentDetail() {
   const [peersModalVisible, setPeersModalVisible] = useState(false);
   const [peersData, setPeersData] = useState<Array<{ ip: string; progress: number; client?: string }>>([]);
   const [peersLoading, setPeersLoading] = useState(false);
+
+  const [inputModalVisible, setInputModalVisible] = useState(false);
+  const [inputModalConfig, setInputModalConfig] = useState<{
+    title: string;
+    message?: string;
+    placeholder?: string;
+    defaultValue?: string;
+    keyboardType?: 'default' | 'numeric';
+    allowEmpty?: boolean;
+    onConfirm: (value: string) => void;
+  }>({ title: '', onConfirm: () => {} });
 
   // Initial load
   useEffect(() => {

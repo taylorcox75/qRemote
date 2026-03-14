@@ -1,14 +1,23 @@
 import { ColorTheme } from '../services/color-theme-manager';
 
+export type SortField =
+  | 'name'
+  | 'size'
+  | 'progress'
+  | 'dlspeed'
+  | 'upspeed'
+  | 'ratio'
+  | 'added_on';
+
 export interface AppPreferences {
-  /** 'dark' | 'light'; legacy values may be boolean */
-  theme: string;
+  /** 'dark' | 'light'; legacy values stored as boolean are also accepted */
+  theme: string | boolean;
 
   /** Per-theme color overrides, keyed by 'dark' | 'light' */
   customColors: Record<string, ColorTheme>;
 
-  /** Field to sort the torrent list by (e.g. 'added_on', 'name', 'size') */
-  defaultSortBy: string;
+  /** Field to sort the torrent list by */
+  defaultSortBy: SortField;
 
   /** Sort direction for the torrent list */
   defaultSortDirection: 'asc' | 'desc';
