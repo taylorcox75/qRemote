@@ -429,6 +429,16 @@ export default function TransferScreen() {
     return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
   };
 
+  const formatAltLimitLabel = () => {
+    const dl = transferInfo.alt_dl_limit != null && transferInfo.alt_dl_limit > 0
+      ? formatSpeed(transferInfo.alt_dl_limit)
+      : t('common.unlimited');
+    const ul = transferInfo.alt_up_limit != null && transferInfo.alt_up_limit > 0
+      ? formatSpeed(transferInfo.alt_up_limit)
+      : t('common.unlimited');
+    return `DL: ${dl}  ·  UL: ${ul}`;
+  };
+
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -620,10 +630,17 @@ export default function TransferScreen() {
 
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
 
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.alternativeSpeeds')}
-                </Text>
+              <View style={[styles.row, { alignItems: 'flex-start', paddingVertical: spacing.sm + 2 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.rowLabel, { color: colors.text }]}>
+                    {t('screens.transfer.alternativeSpeeds')}
+                  </Text>
+                  {(transferInfo.alt_dl_limit != null || transferInfo.alt_up_limit != null) && (
+                    <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
+                      {formatAltLimitLabel()}
+                    </Text>
+                  )}
+                </View>
                 <Switch
                   value={isAltSpeedEnabled}
                   onValueChange={handleToggleAltSpeed}
@@ -950,6 +967,10 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     ...typography.body,
+  },
+  rowSub: {
+    ...typography.caption,
+    marginTop: 2,
   },
   rowValue: {
     ...typography.body,

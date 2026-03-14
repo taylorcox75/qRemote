@@ -472,6 +472,7 @@
     "addTag": "Add Tag",
     "selectTagToAdd": "Select a tag to add",
     "addTagButton": "+ Add Tag",
+    "manageTags": "Gérer les étiquettes",
     "removeTag": "Remove Tag",
     "selectTagToRemove": "Select a tag to remove",
     "renameFile": "Rename File",
