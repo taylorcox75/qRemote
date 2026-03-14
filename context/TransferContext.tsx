@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { GlobalTransferInfo } from '@/types/api';
 import { transferApi } from '@/services/api/transfer';
 import { useServer } from './ServerContext';
@@ -18,112 +19,55 @@ interface TransferContextType {
 
 const TransferContext = createContext<TransferContextType | undefined>(undefined);
 
-// Consecutive failures before showing error to the user — suppresses brief blips
-const FAILURE_THRESHOLD = 3;
+async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
+  const [info, altSpeedLimitsState] = await Promise.all([
+    transferApi.getGlobalTransferInfo(),
+    transferApi.getAlternativeSpeedLimitsState().catch(() => false),
+  ]);
+  return {
+    ...info,
+    use_alt_speed_limits: altSpeedLimitsState,
+  };
+}
 
 export function TransferProvider({ children }: { children: ReactNode }) {
   const { isConnected, checkAndReconnect } = useServer();
-  const [transferInfo, setTransferInfo] = useState<GlobalTransferInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const lastActiveTime = useRef(Date.now());
-  const isRecovering = useRef(false);
-  const consecutiveFailures = useRef(0);
-
-  // State-backed version so consumers re-render when recovery starts/ends
   const [isRecoveringState, setIsRecoveringState] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const setRecovering = useCallback((val: boolean) => {
-    isRecovering.current = val;
-    setIsRecoveringState(val);
-  }, []);
+  const {
+    data: transferData,
+    isLoading: queryIsLoading,
+    error: queryError,
+    dataUpdatedAt,
+  } = useQuery<GlobalTransferInfo>({
+    queryKey: ['transfer'],
+    queryFn: fetchTransferInfo,
+    refetchInterval: 3000,
+    enabled: isConnected,
+  });
 
-  const refresh = useCallback(async () => {
-    if (!isConnected) {
-      setTransferInfo(null);
-      setError(null);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const [info, altSpeedLimitsState] = await Promise.all([
-        transferApi.getGlobalTransferInfo(),
-        transferApi.getAlternativeSpeedLimitsState().catch(() => false),
-      ]);
-      setTransferInfo({
-        ...info,
-        use_alt_speed_limits: altSpeedLimitsState,
-      });
-      // Clear error and reset counters on success
-      setError(null);
-      consecutiveFailures.current = 0;
-      setRecovering(false);
-    } catch (err: unknown) {
-      if (isConnected && !isRecovering.current) {
-        consecutiveFailures.current += 1;
-        if (consecutiveFailures.current >= FAILURE_THRESHOLD) {
-          setError(getErrorMessage(err));
-        }
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isConnected]);
-
-  const toggleAlternativeSpeedLimits = useCallback(async () => {
-    if (!isConnected) return;
-    try {
-      await transferApi.toggleAlternativeSpeedLimits();
-      await refresh();
-    } catch (err: unknown) {
-      setError(getErrorMessage(err));
-    }
-  }, [isConnected, refresh]);
-
-  const setDownloadLimit = useCallback(async (limit: number) => {
-    if (!isConnected) return;
-    try {
-      await transferApi.setGlobalDownloadLimit(limit);
-      await refresh();
-    } catch (err: unknown) {
-      setError(getErrorMessage(err));
-    }
-  }, [isConnected, refresh]);
-
-  const setUploadLimit = useCallback(async (limit: number) => {
-    if (!isConnected) return;
-    try {
-      await transferApi.setGlobalUploadLimit(limit);
-      await refresh();
-    } catch (err: unknown) {
-      setError(getErrorMessage(err));
-    }
-  }, [isConnected, refresh]);
-
-  // Main polling — uses intervalRef so the AppState handler can stop/start it independently
+  // Clear mutation errors and recovery state after each successful fetch
   useEffect(() => {
-    if (isConnected) {
-      consecutiveFailures.current = 0;
-      refresh();
-      intervalRef.current = setInterval(refresh, 3000);
-      return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      };
-    } else {
-      setTransferInfo(null);
-      setError(null);
-      consecutiveFailures.current = 0;
+    if (dataUpdatedAt > 0) {
+      setMutationError(null);
+      setIsRecoveringState(false);
     }
-  }, [isConnected]); // intentionally excludes refresh — interval captures latest via closure
+  }, [dataUpdatedAt]);
 
-  // AppState handler: mirrors TorrentContext's background/foreground recovery
+  // Remove cached data when disconnected
+  useEffect(() => {
+    if (!isConnected) {
+      queryClient.removeQueries({ queryKey: ['transfer'] });
+      setMutationError(null);
+    }
+  }, [isConnected, queryClient]);
+
+  // AppState handler: pause awareness in background, recover on foreground
   useEffect(() => {
     const handleAppStateChange = async (nextState: AppStateStatus) => {
       const prevState = appStateRef.current;
@@ -134,44 +78,69 @@ export function TransferProvider({ children }: { children: ReactNode }) {
         lastActiveTime.current = Date.now();
 
         if (isConnected) {
-          // Suppress errors while recovering; clear stale error immediately
-          setRecovering(true);
-          consecutiveFailures.current = 0;
-          setError(null);
+          setIsRecoveringState(true);
+          setMutationError(null);
 
           if (timeInBackground > 30000) {
-            // Connection may be stale — attempt silent reconnect before resuming
             await checkAndReconnect();
           }
 
-          // Restart polling interval
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          intervalRef.current = setInterval(refresh, 3000);
-
-          // Immediate refresh; recovery flag cleared on first success inside refresh()
-          await refresh();
-          // Ensure flag is cleared even if refresh didn't succeed
-          setRecovering(false);
+          await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+          setIsRecoveringState(false);
         }
       } else if (nextState === 'background') {
         lastActiveTime.current = Date.now();
-        // Pause polling in background to avoid accumulating failures
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [isConnected, checkAndReconnect, refresh]);
+  }, [isConnected, checkAndReconnect, queryClient]);
+
+  const refresh = useCallback(async () => {
+    if (!isConnected) return;
+    await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+  }, [isConnected, queryClient]);
+
+  const toggleAlternativeSpeedLimits = useCallback(async () => {
+    if (!isConnected) return;
+    try {
+      await transferApi.toggleAlternativeSpeedLimits();
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+    } catch (err: unknown) {
+      setMutationError(getErrorMessage(err));
+    }
+  }, [isConnected, queryClient]);
+
+  const setDownloadLimit = useCallback(async (limit: number) => {
+    if (!isConnected) return;
+    try {
+      await transferApi.setGlobalDownloadLimit(limit);
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+    } catch (err: unknown) {
+      setMutationError(getErrorMessage(err));
+    }
+  }, [isConnected, queryClient]);
+
+  const setUploadLimit = useCallback(async (limit: number) => {
+    if (!isConnected) return;
+    try {
+      await transferApi.setGlobalUploadLimit(limit);
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+    } catch (err: unknown) {
+      setMutationError(getErrorMessage(err));
+    }
+  }, [isConnected, queryClient]);
+
+  const transferInfo = isConnected ? (transferData ?? null) : null;
+  const error = mutationError
+    ?? (isRecoveringState ? null : queryError ? getErrorMessage(queryError) : null);
 
   return (
     <TransferContext.Provider
       value={{
         transferInfo,
-        isLoading,
+        isLoading: queryIsLoading,
         error,
         isRecoveringFromBackground: isRecoveringState,
         refresh,
@@ -192,4 +161,3 @@ export function useTransfer() {
   }
   return context;
 }
-
