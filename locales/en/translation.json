@@ -187,7 +187,13 @@
       "noDlTorrents": "No downloading torrents to pause",
       "noUlTorrents": "No uploading torrents to pause",
       "pausedDl": "Paused {{count}} downloading torrent(s)",
-      "pausedUl": "Paused {{count}} uploading torrent(s)"
+      "pausedUl": "Paused {{count}} uploading torrent(s)",
+      "altDownloadLimit": "Alt Download",
+      "altUploadLimit": "Alt Upload",
+      "altDownloadLimitSet": "Alt download limit set to {{value}} KB/s",
+      "altUploadLimitSet": "Alt upload limit set to {{value}} KB/s",
+      "altDownloadLimitRemoved": "Alt download limit removed",
+      "altUploadLimitRemoved": "Alt upload limit removed"
     },
     "files": {
       "title": "Files",

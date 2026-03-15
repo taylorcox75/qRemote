@@ -75,6 +75,8 @@ export default function TransferScreen() {
     toggleAlternativeSpeedLimits,
     setDownloadLimit,
     setUploadLimit,
+    setAltDownloadLimit,
+    setAltUploadLimit,
   } = useTransfer();
   const { isConnected, currentServer, isLoading: serverIsLoading, connectToServer } = useServer();
   const {
@@ -139,7 +141,7 @@ export default function TransferScreen() {
 
   // Custom limit modal state
   const [limitModalVisible, setLimitModalVisible] = useState(false);
-  const [limitType, setLimitType] = useState<'download' | 'upload' | null>(null);
+  const [limitType, setLimitType] = useState<'download' | 'upload' | 'altDownload' | 'altUpload' | null>(null);
   const [limitInput, setLimitInput] = useState('');
 
   // Speed tracking
@@ -321,11 +323,30 @@ export default function TransferScreen() {
     try {
       setSettingLimit(true);
       setLimitModalVisible(false);
-      const limitInBytes = kbToBytes(limit);
-      if (limitType === 'download') {
-        await setDownloadLimit(limitInBytes);
+      if (limitType === 'altDownload') {
+        // Alt limits are passed directly in KB/s (preferences API accepts KiB/s)
+        await setAltDownloadLimit(Math.round(limit));
+        showToast(
+          limit === 0
+            ? t('screens.transfer.altDownloadLimitRemoved')
+            : t('screens.transfer.altDownloadLimitSet', { value: Math.round(limit) }),
+          'success',
+        );
+      } else if (limitType === 'altUpload') {
+        await setAltUploadLimit(Math.round(limit));
+        showToast(
+          limit === 0
+            ? t('screens.transfer.altUploadLimitRemoved')
+            : t('screens.transfer.altUploadLimitSet', { value: Math.round(limit) }),
+          'success',
+        );
       } else {
-        await setUploadLimit(limitInBytes);
+        const limitInBytes = kbToBytes(limit);
+        if (limitType === 'download') {
+          await setDownloadLimit(limitInBytes);
+        } else {
+          await setUploadLimit(limitInBytes);
+        }
       }
       setLimitInput('');
       setLimitType(null);
@@ -425,18 +446,28 @@ export default function TransferScreen() {
   const isAltSpeedEnabled = transferInfo.use_alt_speed_limits ?? false;
 
   const getDisplayLimit = (regularLimit: number, altLimit: number | undefined) => {
-    // When alt speed is active, show the configured alt limit; otherwise show the regular limit.
-    const limit = isAltSpeedEnabled ? (altLimit ?? 0) : regularLimit;
+    // When alt speed is active, show the configured alt limit; fall back to the active
+    // rate limit (which equals the alt limit when alt mode is on, so the display is always
+    // correct even when the preferences fetch fails).
+    const limit = isAltSpeedEnabled ? (altLimit ?? regularLimit) : regularLimit;
     return limit > 0 ? formatSpeed(limit) : t('common.unlimited');
   };
 
-  const formatAltLimitLabel = () => {
-    // Always show the configured alt speed limits from preferences.
-    const dlLimit = transferInfo.alt_dl_limit ?? 0;
-    const ulLimit = transferInfo.alt_up_limit ?? 0;
-    const dl = dlLimit > 0 ? formatSpeed(dlLimit) : t('common.unlimited');
-    const ul = ulLimit > 0 ? formatSpeed(ulLimit) : t('common.unlimited');
-    return `DL: ${dl}  ·  UL: ${ul}`;
+  const getLimitModalTitle = () => {
+    switch (limitType) {
+      case 'download': return t('screens.transfer.downloadLimit');
+      case 'upload': return t('screens.transfer.uploadLimit');
+      case 'altDownload': return t('screens.transfer.altDownloadLimit');
+      case 'altUpload': return t('screens.transfer.altUploadLimit');
+      default: return '';
+    }
+  };
+
+  const openAltLimitModal = (type: 'altDownload' | 'altUpload') => {
+    const currentBytes = type === 'altDownload' ? transferInfo.alt_dl_limit : transferInfo.alt_up_limit;
+    setLimitType(type);
+    setLimitInput(currentBytes != null && currentBytes > 0 ? String(Math.round(bytesToKb(currentBytes))) : '');
+    setLimitModalVisible(true);
   };
 
   return (
@@ -453,9 +484,7 @@ export default function TransferScreen() {
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                {t('screens.transfer.limitModalTitle', {
-                  type: limitType === 'download' ? t('actions.downloaded') : t('actions.uploaded'),
-                })}
+                {getLimitModalTitle()}
               </Text>
               <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
                 {t('screens.transfer.limitModalSubtitle')}
@@ -630,17 +659,52 @@ export default function TransferScreen() {
 
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
 
-              <View style={[styles.row, { alignItems: 'flex-start', paddingVertical: spacing.sm + 2 }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.alternativeSpeeds')}
+              {/* Alt Download Limit — always editable */}
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => openAltLimitModal('altDownload')}
+                disabled={settingLimit}
+              >
+                <Text style={[styles.rowLabel, { color: colors.text }]}>
+                  {t('screens.transfer.altDownloadLimit')}
+                </Text>
+                <View style={styles.rowTrailing}>
+                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                    {transferInfo.alt_dl_limit != null && transferInfo.alt_dl_limit > 0
+                      ? formatSpeed(transferInfo.alt_dl_limit)
+                      : t('common.unlimited')}
                   </Text>
-                  {(transferInfo.alt_dl_limit != null || transferInfo.alt_up_limit != null) && (
-                    <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
-                      {formatAltLimitLabel()}
-                    </Text>
-                  )}
+                  <Ionicons name="pencil" size={14} color={colors.textSecondary} />
                 </View>
+              </TouchableOpacity>
+
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+              {/* Alt Upload Limit — always editable */}
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => openAltLimitModal('altUpload')}
+                disabled={settingLimit}
+              >
+                <Text style={[styles.rowLabel, { color: colors.text }]}>
+                  {t('screens.transfer.altUploadLimit')}
+                </Text>
+                <View style={styles.rowTrailing}>
+                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                    {transferInfo.alt_up_limit != null && transferInfo.alt_up_limit > 0
+                      ? formatSpeed(transferInfo.alt_up_limit)
+                      : t('common.unlimited')}
+                  </Text>
+                  <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+              <View style={styles.row}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>
+                  {t('screens.transfer.alternativeSpeeds')}
+                </Text>
                 <Switch
                   value={isAltSpeedEnabled}
                   onValueChange={handleToggleAltSpeed}
