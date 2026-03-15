@@ -34,7 +34,7 @@ async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
     use_alt_speed_limits: altSpeedLimitsState,
     // Preferences returns kB/s; multiply by 1024 to normalize to bytes/s like dl_rate_limit
     alt_dl_limit: serverPrefs?.alt_dl_limit != null ? (serverPrefs.alt_dl_limit as number) * 1024 : undefined,
-    alt_up_limit: serverPrefs?.alt_up_limit != null ? (serverPrefs.alt_up_limit as number) * 1024 : undefined,
+    alt_up_limit: serverPrefs?.alt_ul_limit != null ? (serverPrefs.alt_ul_limit as number) * 1024 : undefined,
   };
 }
 
