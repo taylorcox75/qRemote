@@ -732,7 +732,18 @@ export default function TorrentsScreen() {
               {!selectMode && (
                 <TouchableOpacity
                   style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
-                  onPress={() => setShowAddModal(true)}
+                  onPress={async () => {
+                    try {
+                      const prefs = await storageService.getPreferences();
+                      if (prefs.useFullAddTorrentDialogue) {
+                        router.push('/torrents/add');
+                        return;
+                      }
+                    } catch {
+                      // fall back to legacy modal
+                    }
+                    setShowAddModal(true);
+                  }}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />

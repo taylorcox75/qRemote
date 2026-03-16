@@ -9,6 +9,24 @@ export type SortField =
   | 'ratio'
   | 'added_on';
 
+export type AddTorrentDialogField =
+  | 'source'
+  | 'savePath'
+  | 'category'
+  | 'tags'
+  | 'rename'
+  | 'stopped'
+  | 'skipChecking'
+  | 'rootFolder'
+  | 'upLimit'
+  | 'dlLimit'
+  | 'ratioLimit'
+  | 'seedingTimeLimit'
+  | 'sequentialDownload'
+  | 'firstLastPiecePrio'
+  | 'autoTMM'
+  | 'cookie';
+
 export interface AppPreferences {
   /** 'dark' | 'light'; legacy values stored as boolean are also accepted */
   theme: string | boolean;
@@ -70,6 +88,12 @@ export interface AppPreferences {
 
   /** Auto-categorize torrents by tracker hostname */
   autoCategorizeByTracker: boolean;
+
+  /** When enabled, the add-torrent button opens the full add-torrent screen */
+  useFullAddTorrentDialogue: boolean;
+
+  /** Per-field visibility for the full add-torrent screen */
+  addTorrentDialogueFields: Record<AddTorrentDialogField, boolean>;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -92,4 +116,23 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   autoRefreshInterval: 1000,
   hasCompletedOnboarding: false,
   autoCategorizeByTracker: false,
+  useFullAddTorrentDialogue: false,
+  addTorrentDialogueFields: {
+    source: true,
+    savePath: true,
+    category: true,
+    tags: true,
+    rename: true,
+    stopped: true,
+    skipChecking: true,
+    rootFolder: true,
+    upLimit: true,
+    dlLimit: true,
+    ratioLimit: true,
+    seedingTimeLimit: true,
+    sequentialDownload: true,
+    firstLastPiecePrio: true,
+    autoTMM: true,
+    cookie: true,
+  },
 };
