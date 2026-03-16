@@ -144,6 +144,23 @@ export default function AppearanceSettingsScreen() {
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => router.push('/settings/add-torrent-dialogue')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                  <View>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.addTorrentDialogue')}</Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {t('screens.settings.addTorrentDialogueDescription')}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons
