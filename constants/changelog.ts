@@ -12,6 +12,16 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.0.0',
+    date: '2026-03-28',
+    changes: [
+      'Full UI overhaul: redesigned navigation, typography, and layout for a more polished, consistent experience across all screens',
+      'Refactored core connection layer for improved reliability, faster reconnects, and cleaner error surfacing',
+      'Torrent list performance improvements — large libraries scroll noticeably smoother with reduced re-render overhead',
+      'Consolidated settings architecture: preferences, server config, and theme controls unified under a single, restructured settings flow',
+    ],
+  },
+  {
     version: '2.2.0',
     date: '2026-03-11',
     changes: [
