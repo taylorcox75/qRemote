@@ -1,18 +1,27 @@
 /**
- * iOS-style shadow constants for consistent elevation across the app
+ * iOS-style shadow constants.
+ *
+ * Note: shadows are invisible on dark backgrounds (#000000, #1C1C1E).
+ * Do not rely on shadows for visual hierarchy in dark mode — use
+ * surfaceOutline borders or subtle background tints instead.
+ *
+ * Only `card` and `medium` are active presets. Others are zeroed out for
+ * backward compatibility but should not be used in new code.
  */
 
-export const shadows = {
-  // Small shadow for subtle elevation (chips, badges)
-  small: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
-  },
+const none = {
+  shadowColor: 'transparent',
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0,
+  shadowRadius: 0,
+  elevation: 0,
+};
 
-  // Card shadow for standard elevation
+export const shadows = {
+  // Zeroed out — kept for backward compatibility
+  small: { ...none },
+
+  // Card shadow for standard elevation (light mode only)
   card: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -21,14 +30,8 @@ export const shadows = {
     elevation: 2,
   },
 
-  // Pressed state (reduced elevation)
-  cardPressed: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
+  // Zeroed out — kept for backward compatibility
+  cardPressed: { ...none },
 
   // Medium shadow for elevated elements (modals, popovers)
   medium: {
@@ -39,22 +42,15 @@ export const shadows = {
     elevation: 3,
   },
 
-  // Large shadow for prominent elements
-  large: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 4,
-  },
+  // Zeroed out — kept for backward compatibility
+  large: { ...none },
 
-  // Active filter chip shadow
+  // Active filter chip glow — color should come from theme primary
   filterActive: {
-    shadowColor: '#007AFF',
+    shadowColor: '#007AFF', // TODO: replace with colors.primary from theme
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
 };
-

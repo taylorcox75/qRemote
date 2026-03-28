@@ -1,3 +1,9 @@
+/**
+ * [id].tsx — Edit-server form with connection testing, debug panel, and delete capability.
+ *
+ * Key exports: EditServerScreen (default)
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
@@ -16,17 +22,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ServerManager } from '../../services/server-manager';
-import { ServerConfig } from '../../types/api';
-import { useTheme } from '../../context/ThemeContext';
-import { useServer } from '../../context/ServerContext';
-import { useToast, ModalToast } from '../../context/ToastContext';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { SuperDebugPanel } from '../../components/SuperDebugPanel';
-import { spacing, borderRadius } from '../../constants/spacing';
-import { shadows } from '../../constants/shadows';
+import { ServerManager } from '@/services/server-manager';
+import { ServerConfig } from '@/types/api';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/context/ThemeContext';
+import { useServer } from '@/context/ServerContext';
+import { useToast, ModalToast } from '@/context/ToastContext';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { SuperDebugPanel } from '@/components/SuperDebugPanel';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
-import { APP_VERSION } from '../../utils/version';
+import { APP_VERSION } from '@/utils/version';
+import { getErrorMessage } from '@/utils/error';
 
 export default function EditServerScreen() {
   const router = useRouter();
@@ -34,6 +42,7 @@ export default function EditServerScreen() {
   const { colors, isDark } = useTheme();
   const { currentServer, disconnect, connectToServer } = useServer();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('');
@@ -152,9 +161,9 @@ App Version: ${APP_VERSION}`;
 
     try {
       await Clipboard.setStringAsync(debugText);
-      showToast('Debug info copied to clipboard', 'success');
+      showToast(t('toast.debugCopied'), 'success');
     } catch (error) {
-      showToast('Failed to copy debug info', 'error');
+      showToast(t('errors.failedToCopyDebug'), 'error');
     }
   };
 
@@ -186,11 +195,11 @@ App Version: ${APP_VERSION}`;
         // Preserve existing basePath for backward compatibility
         setPreservedBasePath(server.basePath || '/');
       } else {
-        showToast('Server not found', 'error');
+        showToast(t('toast.serverNotFound'), 'error');
         router.back();
       }
     } catch (error) {
-      showToast('Failed to load server', 'error');
+      showToast(t('errors.failedToLoadServer'), 'error');
       router.back();
     } finally {
       setLoading(false);
@@ -199,18 +208,18 @@ App Version: ${APP_VERSION}`;
 
   const handleSave = async () => {
     if (!name.trim() || !host.trim()) {
-      showToast('Please fill in server name and host', 'error');
+      showToast(t('errors.fillNameAndHost'), 'error');
       return;
     }
 
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      showToast('Please fill in username and password, or enable bypass authentication', 'error');
+      showToast(t('errors.fillUsernamePassword'), 'error');
       return;
     }
 
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
-      showToast('Please enter a valid port number (1-65535)', 'error');
+      showToast(t('errors.validPort'), 'error');
       return;
     }
 
@@ -235,10 +244,10 @@ App Version: ${APP_VERSION}`;
       };
 
       await ServerManager.saveServer(server);
-      showToast('Server saved successfully', 'success');
+      showToast(t('toast.serverSaved'), 'success');
       router.back();
     } catch (error) {
-      showToast('Failed to save server', 'error');
+      showToast(t('errors.failedToSaveServer'), 'error');
     } finally {
       setSaving(false);
     }
@@ -246,20 +255,20 @@ App Version: ${APP_VERSION}`;
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Server',
-      `Remove "${name}" from your server list?`,
+      t('server.deleteServer'),
+      t('server.deleteServerConfirm', { name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await ServerManager.deleteServer(id!);
-              showToast(`Server "${name}" deleted`, 'success');
+              showToast(t('toast.serverDeleted', { name }), 'success');
               router.back();
             } catch (error) {
-              showToast('Failed to delete server', 'error');
+              showToast(t('errors.failedToDeleteServer'), 'error');
             }
           },
         },
@@ -269,18 +278,18 @@ App Version: ${APP_VERSION}`;
 
   const handleTest = async () => {
     if (!name.trim() || !host.trim()) {
-      showToast('Please fill in server name and host', 'error');
+      showToast(t('errors.fillNameAndHost'), 'error');
       return;
     }
 
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      showToast('Please fill in username and password, or enable bypass authentication', 'error');
+      showToast(t('errors.fillUsernamePassword'), 'error');
       return;
     }
 
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
-      showToast('Please enter a valid port number (1-65535)', 'error');
+      showToast(t('errors.validPort'), 'error');
       return;
     }
 
@@ -302,17 +311,15 @@ App Version: ${APP_VERSION}`;
       const result = await ServerManager.testConnection(server, testAbortController.current.signal);
       
       if (result.success) {
-        showToast('Connection test successful!', 'success');
+        showToast(t('toast.connectionTestSuccess'), 'success');
       } else {
-        showToast(result.error || 'Connection test failed. Please check your settings.', 'error');
+        showToast(result.error || t('errors.connectionTestFailed'), 'error');
       }
-    } catch (error: any) {
-      // Only show error if not cancelled
-      if (error.name !== 'AbortError' && 
-          error.name !== 'CanceledError' && 
-          error.code !== 'ERR_CANCELED' &&
-          !error.message?.includes('cancel')) {
-        showToast(error.message || 'Connection test failed. Please check your settings.', 'error');
+    } catch (error: unknown) {
+      const isCancelled = (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) ||
+        getErrorMessage(error).includes('cancel');
+      if (!isCancelled) {
+        showToast(getErrorMessage(error), 'error');
       }
     } finally {
       testAbortController.current = null;
@@ -344,7 +351,7 @@ App Version: ${APP_VERSION}`;
               numberOfLines={1}
               adjustsFontSizeToFit
             >
-              Cancel
+              {t('common.cancel')}
             </Text>
           </TouchableOpacity>
           <Text 
@@ -352,7 +359,7 @@ App Version: ${APP_VERSION}`;
             numberOfLines={1}
             adjustsFontSizeToFit
           >
-            Edit Server
+            {t('server.editServer')}
           </Text>
           <TouchableOpacity 
             onPress={handleSave} 
@@ -367,7 +374,7 @@ App Version: ${APP_VERSION}`;
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
-                Save
+                {t('common.save')}
               </Text>
             )}
           </TouchableOpacity>
@@ -380,7 +387,7 @@ App Version: ${APP_VERSION}`;
         >
           {/* Server Info Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>SERVER INFO</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.serverInfo')}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.inputRow}>
                 <Ionicons name="server-outline" size={20} color={colors.primary} style={styles.inputIcon} />
@@ -388,7 +395,7 @@ App Version: ${APP_VERSION}`;
                   style={[styles.input, { color: colors.text }]}
                   value={name}
                   onChangeText={setName}
-                  placeholder="Server Name"
+                  placeholder={t('placeholders.serverName')}
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                 />
@@ -400,7 +407,7 @@ App Version: ${APP_VERSION}`;
                   style={[styles.input, { color: colors.text }]}
                   value={host}
                   onChangeText={setHost}
-                  placeholder="IP  / Domain"
+                  placeholder={t('placeholders.ipDomain')}
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -417,7 +424,7 @@ App Version: ${APP_VERSION}`;
                   style={[styles.input, { color: colors.text }]}
                   value={port}
                   onChangeText={setPort}
-                  placeholder="Port (optional)"
+                  placeholder={t('placeholders.portOptional')}
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="numeric"
                 />
@@ -431,7 +438,7 @@ App Version: ${APP_VERSION}`;
           {/* Authentication Section */}
           {!bypassAuth && (
             <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>AUTHENTICATION</Text>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.authentication')}</Text>
               <View style={[styles.card, { backgroundColor: colors.surface }]}>
                 <View style={styles.inputRow}>
                   <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
@@ -439,7 +446,7 @@ App Version: ${APP_VERSION}`;
                   style={[styles.input, { color: colors.text }]}
                   value={username}
                   onChangeText={setUsername}
-                  placeholder="Username"
+                  placeholder={t('placeholders.username')}
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -454,7 +461,7 @@ App Version: ${APP_VERSION}`;
                   style={[styles.input, { color: colors.text }]}
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="Password"
+                  placeholder={t('placeholders.password')}
                   placeholderTextColor={colors.textSecondary}
                   secureTextEntry
                   autoCapitalize="none"
@@ -470,12 +477,12 @@ App Version: ${APP_VERSION}`;
 
           {/* Security Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>SECURITY</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.security')}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Use HTTPS</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('server.useHttps')}</Text>
                 </View>
                 <Switch
                   value={useHttps}
@@ -489,8 +496,8 @@ App Version: ${APP_VERSION}`;
                 <View style={styles.settingLeft}>
                   <Ionicons name="lock-open-outline" size={20} color={colors.primary} style={styles.inputIcon} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>Bypass Authentication</Text>
-                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Skip login when local network auth is off</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('server.bypassAuth')}</Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('server.bypassAuthHint')}</Text>
                   </View>
                 </View>
                 <Switch
@@ -505,19 +512,19 @@ App Version: ${APP_VERSION}`;
 
           {/* Test Connection */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>CONNECTION TEST</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.connectionTest')}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               {testing ? (
                 <View style={styles.testingContainer}>
                   <View style={styles.testingContent}>
                     <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.testingText, { color: colors.text }]}>Testing connection...</Text>
+                    <Text style={[styles.testingText, { color: colors.text }]}>{t('server.testingConnection')}</Text>
                   </View>
                   <TouchableOpacity
                     style={[styles.cancelButton, { backgroundColor: colors.error }]}
                     onPress={handleCancelTest}
                   >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                    <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -527,7 +534,7 @@ App Version: ${APP_VERSION}`;
                   disabled={saving}
                 >
                   <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.testButtonText}>Test Connection</Text>
+                  <Text style={styles.testButtonText}>{t('server.testConnection')}</Text>
                 </TouchableOpacity>
               )}
               
@@ -536,7 +543,7 @@ App Version: ${APP_VERSION}`;
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="bug-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>Debug Mode</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.debugMode')}</Text>
                 </View>
                 <Switch
                   value={showDebugInfo}
@@ -654,12 +661,12 @@ App Version: ${APP_VERSION}`;
 
           {/* Danger Zone */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.error }]}>DANGER ZONE</Text>
+            <Text style={[styles.sectionHeader, { color: colors.error }]}>{t('server.dangerZone')}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity style={styles.dangerRow} onPress={handleDelete}>
                 <View style={styles.dangerLeft}>
                   <Ionicons name="trash-outline" size={20} color={colors.error} style={styles.inputIcon} />
-                  <Text style={[styles.dangerLabel, { color: colors.error }]}>Delete Server</Text>
+                  <Text style={[styles.dangerLabel, { color: colors.error }]}>{t('server.deleteServer')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -685,7 +692,7 @@ App Version: ${APP_VERSION}`;
           <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.tooltipHeader}>
               <Ionicons name="globe-outline" size={24} color={colors.primary} />
-              <Text style={[styles.tooltipTitle, { color: colors.text }]}>Host Address</Text>
+              <Text style={[styles.tooltipTitle, { color: colors.text }]}>{t('server.hostAddress')}</Text>
             </View>
             <Text style={[styles.tooltipText, { color: colors.text }]}>
               Enter your server's address without http:// or https://
@@ -702,7 +709,7 @@ App Version: ${APP_VERSION}`;
               style={[styles.tooltipButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowHostTooltip(false)}
             >
-              <Text style={styles.tooltipButtonText}>Got it</Text>
+              <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -723,7 +730,7 @@ App Version: ${APP_VERSION}`;
           <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.tooltipHeader}>
               <Ionicons name="link-outline" size={24} color={colors.primary} />
-              <Text style={[styles.tooltipTitle, { color: colors.text }]}>Port</Text>
+              <Text style={[styles.tooltipTitle, { color: colors.text }]}>{t('server.port')}</Text>
             </View>
             <Text style={[styles.tooltipText, { color: colors.text }]}>
               Specify the port number if your server uses a custom port.
@@ -742,7 +749,7 @@ App Version: ${APP_VERSION}`;
               style={[styles.tooltipButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowPortTooltip(false)}
             >
-              <Text style={styles.tooltipButtonText}>Got it</Text>
+              <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

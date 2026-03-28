@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Polyline, Line, Defs, LinearGradient, Stop, Path } from 'react-native-svg';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
 
 interface SpeedGraphProps {
   data: number[];

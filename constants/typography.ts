@@ -4,6 +4,20 @@
  */
 
 export const typography = {
+  // iOS large title (navigation bars, hero sections)
+  largeTitle: {
+    fontSize: 34,
+    fontWeight: '700' as const,
+    lineHeight: 41,
+  },
+
+  // Headline (torrent names, list item titles — 17pt Semibold)
+  headline: {
+    fontSize: 17,
+    fontWeight: '600' as const,
+    lineHeight: 22,
+  },
+
   // Headers
   h1: {
     fontSize: 28,
@@ -98,7 +112,7 @@ export const typography = {
     fontWeight: '600' as const,
     lineHeight: 16,
     includeFontPadding: false,
-    textAlignVertical: 'center' as any,
+    textAlignVertical: 'center' as const,
   },
 
   // Labels (uppercase, small)

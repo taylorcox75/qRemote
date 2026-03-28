@@ -7,9 +7,10 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
-import { spacing, borderRadius } from '../constants/spacing';
-import { shadows } from '../constants/shadows';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/context/ThemeContext';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
 
 interface InputModalProps {
   visible: boolean;
@@ -21,6 +22,7 @@ interface InputModalProps {
   onConfirm: (value: string) => void;
   keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
   multiline?: boolean;
+  allowEmpty?: boolean;
 }
 
 export function InputModal({
@@ -33,8 +35,10 @@ export function InputModal({
   onConfirm,
   keyboardType = 'default',
   multiline = false,
+  allowEmpty = false,
 }: InputModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [value, setValue] = useState(defaultValue || '');
 
   // Update value when defaultValue changes (e.g., when modal opens)
@@ -45,7 +49,7 @@ export function InputModal({
   }, [visible, defaultValue]);
 
   const handleConfirm = () => {
-    if (value.trim()) {
+    if (allowEmpty || value.trim()) {
       onConfirm(value.trim());
     }
     setValue('');
@@ -90,13 +94,13 @@ export function InputModal({
               style={[styles.button, { backgroundColor: colors.surfaceOutline }]}
               onPress={handleCancel}
             >
-              <Text style={[styles.buttonText, { color: colors.text }]}>Cancel</Text>
+              <Text style={[styles.buttonText, { color: colors.text }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, { backgroundColor: colors.primary }]}
               onPress={handleConfirm}
             >
-              <Text style={[styles.buttonText, { color: colors.surface }]}>Confirm</Text>
+              <Text style={[styles.buttonText, { color: colors.surface }]}>{t('common.confirm')}</Text>
             </TouchableOpacity>
           </View>
         </View>

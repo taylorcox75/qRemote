@@ -1,3 +1,9 @@
+/**
+ * index.tsx — Main torrents list screen (home tab).
+ *
+ * Key exports: TorrentsScreen (default)
+ * Known issues: Alert.prompt used in TorrentCard (iOS-only, deferred to Task 2.2).
+ */
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
@@ -15,49 +21,37 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { useTorrents } from '../../context/TorrentContext';
-import { useServer } from '../../context/ServerContext';
-import { useTheme } from '../../context/ThemeContext';
-import { useToast } from '../../context/ToastContext';
-import { TorrentInfo, TorrentState, ServerConfig } from '../../types/api';
-import { TorrentCard } from '../../components/TorrentCard';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { torrentsApi } from '../../services/api/torrents';
-import { storageService } from '../../services/storage';
-import { ServerManager } from '../../services/server-manager';
-import { haptics } from '../../utils/haptics';
-import { shadows } from '../../constants/shadows';
-import { spacing, borderRadius } from '../../constants/spacing';
-import { buttonStyles, buttonText } from '../../constants/buttons';
-import { typography } from '../../constants/typography';
-
-// ─── Server quick-connect helpers ────────────────────────────────────────────
-
-const AVATAR_PALETTE = [
-  '#0A84FF', '#30D158', '#FF9F0A', '#FF453A',
-  '#BF5AF2', '#FF375F', '#5AC8FA', '#FFD60A',
-];
-
-function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
-}
-
-function serverAddress(server: ServerConfig): string {
-  const port = server.port && server.port > 0 ? `:${server.port}` : '';
-  return `${server.host}${port}`;
-}
+import { useTorrents } from '@/context/TorrentContext';
+import { useServer } from '@/context/ServerContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/context/ToastContext';
+import { TorrentInfo, ServerConfig } from '@/types/api';
+import { TorrentCard } from '@/components/TorrentCard';
+import { ActionMenu } from '@/components/ActionMenu';
+import { InputModal } from '@/components/InputModal';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { torrentsApi } from '@/services/api/torrents';
+import { applicationApi } from '@/services/api/application';
+import { storageService } from '@/services/storage';
+import { ServerManager } from '@/services/server-manager';
+import { haptics } from '@/utils/haptics';
+import { shadows } from '@/constants/shadows';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { buttonStyles, buttonText } from '@/constants/buttons';
+import { typography } from '@/constants/typography';
+import { QuickConnectPanel } from '@/components/QuickConnectPanel';
+import { useTorrentActions } from '@/hooks/useTorrentActions';
+import { getErrorMessage } from '@/utils/error';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const router = useRouter();
-  const navigation = useNavigation();
   const { torrents, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
   const { isConnected, currentServer, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
@@ -75,67 +69,45 @@ export default function TorrentsScreen() {
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'>('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
-  
-  // Card view mode state
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
 
+  // Action menu state
+  const [selectedTorrent, setSelectedTorrent] = useState<TorrentInfo | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const {
+    actionMenuItems,
+    dlLimitModalVisible,
+    setDlLimitModalVisible,
+    handleSetDownloadLimit,
+    dlLimitDefaultValue,
+  } = useTorrentActions(selectedTorrent);
+
   // Scroll animation refs
-  const scrollY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
   const headerTranslateY = useRef(new Animated.Value(0)).current;
   const isHeaderVisible = useRef(true);
-  const scrollThreshold = useRef(0);
-  const fabScale = useRef(new Animated.Value(1)).current;
-  const isFabVisible = useRef(true);
-  const isTabBarVisible = useRef(true);
   const isAnimating = useRef(false);
 
-  // Helper function to get tab bar style
-  const getTabBarStyle = (visible: boolean) => ({
-    backgroundColor: colors.surface,
-    borderTopWidth: 0.18,
-    borderTopColor: colors.surfaceOutline,
-    display: visible ? 'flex' : 'none' as const,
-  });
-
-  // Update tab bar visibility
-  useEffect(() => {
-    navigation.setOptions({
-      tabBarStyle: getTabBarStyle(isTabBarVisible.current),
-    });
-  }, [navigation, colors.surface, colors.surfaceOutline]);
-
-  // Reset tab bar visibility when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      isTabBarVisible.current = true;
-      navigation.setOptions({
-        tabBarStyle: getTabBarStyle(true),
-      });
-    }, [navigation, colors.surface, colors.surfaceOutline])
-  );
+  // Swipeable refs for closing open rows
+  const openSwipeableRef = useRef<Swipeable | null>(null);
+  const swipeHapticFired = useRef(false);
 
   // Track last known default filter so we only sync when user changes it in Settings
   const lastDefaultFilterRef = useRef<string | null>(null);
 
-  // Load card view mode and check for filter preference changes on screen focus
+  // Check for filter preference changes on screen focus
   useFocusEffect(
     useCallback(() => {
       const loadPreferences = async () => {
         try {
           const prefs = await storageService.getPreferences();
-          const viewMode = prefs.cardViewMode || 'compact';
-          setCardViewMode(viewMode);
-          
-          // Only update filter when the default filter preference has changed in Settings
-          // (not when the user selects a different filter on this screen)
           const newDefault = prefs.defaultFilter || 'all';
           if (lastDefaultFilterRef.current !== null && lastDefaultFilterRef.current !== newDefault) {
             setFilter(newDefault);
           }
           lastDefaultFilterRef.current = newDefault;
-        } catch (error) {
-          setCardViewMode('compact');
+        } catch {
+          // ignore
         }
       };
       loadPreferences();
@@ -157,6 +129,7 @@ export default function TorrentsScreen() {
         if (prefs.defaultFilter) {
           setFilter(prefs.defaultFilter);
         }
+        setCardViewMode(prefs.cardViewMode ?? 'compact');
       } catch (error) {
         // Use defaults if loading fails
       }
@@ -165,6 +138,24 @@ export default function TorrentsScreen() {
     // Only run once on mount (app launch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync pauseOnAdd from server when connected (best-effort background sync)
+  useEffect(() => {
+    if (isConnected) {
+      (async () => {
+        try {
+          const serverPrefs = await applicationApi.getPreferences();
+          const serverVal = !!(serverPrefs as Record<string, unknown>).start_paused_enabled;
+          const localPrefs = await storageService.getPreferences();
+          if (localPrefs.pauseOnAdd !== serverVal) {
+            await storageService.savePreferences({ ...localPrefs, pauseOnAdd: serverVal });
+          }
+        } catch {
+          // Best-effort sync — ignore errors
+        }
+      })();
+    }
+  }, [isConnected]);
 
   // Filter, sort, and search logic
   const filteredTorrents = useMemo(() => {
@@ -281,9 +272,9 @@ export default function TorrentsScreen() {
       refresh();
       setSelectedHashes(new Set());
       setSelectMode(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       haptics.error();
-      showToast(error.message || t('errors.failedToPause'), 'error');
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -299,9 +290,9 @@ export default function TorrentsScreen() {
       refresh();
       setSelectedHashes(new Set());
       setSelectMode(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       haptics.error();
-      showToast(error.message || t('errors.failedToResume'), 'error');
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -316,7 +307,7 @@ export default function TorrentsScreen() {
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Torrent Only',
+          text: t('torrentDetail.torrentOnly'),
           onPress: async () => {
             setBulkLoading(true);
             try {
@@ -325,15 +316,15 @@ export default function TorrentsScreen() {
               setSelectedHashes(new Set());
               setSelectMode(false);
               showToast(t('toast.torrentsDeleted_other', { count }), 'success');
-            } catch (error: any) {
-              showToast(error.message || t('errors.failedToDelete'), 'error');
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
             } finally {
               setBulkLoading(false);
             }
           },
         },
         {
-          text: 'With Files',
+          text: t('torrentDetail.withFiles'),
           style: 'destructive',
           onPress: async () => {
             setBulkLoading(true);
@@ -343,8 +334,8 @@ export default function TorrentsScreen() {
               setSelectedHashes(new Set());
               setSelectMode(false);
               showToast(t('toast.torrentsDeleted_other', { count }), 'success');
-            } catch (error: any) {
-              showToast(error.message || t('errors.failedToDelete'), 'error');
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
             } finally {
               setBulkLoading(false);
             }
@@ -375,18 +366,13 @@ export default function TorrentsScreen() {
     setConnectErrors((prev) => { const next = { ...prev }; delete next[server.id]; return next; });
     try {
       await connectToServer(server);
-    } catch (err: any) {
-      setConnectErrors((prev) => ({ ...prev, [server.id]: err.message || 'Connection failed' }));
+    } catch (err: unknown) {
+      setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
       haptics.error();
     } finally {
       setConnectingId(null);
     }
   }, [connectToServer]);
-
-  // Torrent actions
-  const handleAddTorrent = () => {
-    setShowAddModal(true);
-  };
 
   const handlePickFile = async () => {
     try {
@@ -409,10 +395,10 @@ export default function TorrentsScreen() {
           name: file.name,
         });
         setTorrentUrl(''); // Clear URL input when file is selected
-        showToast(`File selected: ${file.name}`, 'success');
+        showToast(t('screens.torrents.fileSelected', { name: file.name }), 'success');
       }
-    } catch (error: any) {
-      showToast(error.message || t('errors.failedToPickFile'), 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     }
   };
 
@@ -448,26 +434,109 @@ export default function TorrentsScreen() {
       setShowAddModal(false);
       refresh();
       showToast(t('toast.torrentAdded'), 'success');
-    } catch (error: any) {
+    } catch (error: unknown) {
       haptics.error();
-      showToast(error.message || t('errors.failedToAdd'), 'error');
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setAddingTorrent(false);
     }
   };
 
-  // Scroll handler - memoized to prevent re-creation
-  const handleScroll = useCallback((event: any) => {
+  // Swipe action handlers (call APIs directly, parameterized by torrent)
+  const handleSwipePauseResume = useCallback(async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    haptics.medium();
+    const isPaused =
+      torrent.state === 'pausedDL' || torrent.state === 'pausedUP' ||
+      torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
+    try {
+      if (isPaused) {
+        await torrentsApi.resumeTorrents([torrent.hash]);
+      } else {
+        await torrentsApi.pauseTorrents([torrent.hash]);
+      }
+      refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      showToast(msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
+    }
+    swipeableRef?.close();
+  }, [refresh, showToast, t]);
+
+  const handleCardPauseResume = useCallback(async (torrent: TorrentInfo) => {
+    haptics.medium();
+    const isPaused =
+      torrent.state === 'pausedDL' || torrent.state === 'pausedUP' ||
+      torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
+    try {
+      if (isPaused) {
+        await torrentsApi.resumeTorrents([torrent.hash]);
+      } else {
+        await torrentsApi.pauseTorrents([torrent.hash]);
+      }
+      refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      showToast(msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
+    }
+  }, [refresh, showToast, t]);
+
+  const handleSwipeDelete = useCallback((torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    haptics.medium();
+    Alert.alert(
+      t('common.delete'),
+      t('torrentDetail.deleteConfirm', { name: torrent.name }),
+      [
+        { text: t('common.cancel'), style: 'cancel', onPress: () => swipeableRef?.close() },
+        {
+          text: t('torrentDetail.torrentOnly'),
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], false);
+              refresh();
+              showToast(t('toast.torrentDeleted'), 'success');
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : '';
+              showToast(msg || t('errors.failedToDelete'), 'error');
+            }
+            swipeableRef?.close();
+          },
+        },
+        {
+          text: t('torrentDetail.withFiles'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await torrentsApi.deleteTorrents([torrent.hash], true);
+              refresh();
+              showToast(t('toast.torrentDeleted'), 'success');
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : '';
+              showToast(msg || t('errors.failedToDelete'), 'error');
+            }
+            swipeableRef?.close();
+          },
+        },
+      ],
+    );
+  }, [refresh, showToast, t]);
+
+  const handleSwipeForceStart = useCallback(async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    haptics.medium();
+    try {
+      await torrentsApi.setForceStart([torrent.hash], true);
+      refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      showToast(msg || t('errors.generic'), 'error');
+    }
+    swipeableRef?.close();
+  }, [refresh, showToast, t]);
+
+  // Scroll handler — header show/hide only
+  const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
     const currentScrollY = event.nativeEvent.contentOffset.y;
-    const contentHeight = event.nativeEvent.contentSize.height;
-    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
     const scrollDifference = currentScrollY - lastScrollY.current;
 
-    // Detect if we're at or near the bottom (within 50px of bottom)
-    const distanceFromBottom = contentHeight - layoutHeight - currentScrollY;
-    const isNearBottom = distanceFromBottom < 50;
-
-    // Always show header, FAB, and tab bar when at the top
     if (currentScrollY <= 10) {
       if (!isHeaderVisible.current) {
         isHeaderVisible.current = true;
@@ -477,257 +546,75 @@ export default function TorrentsScreen() {
           useNativeDriver: true,
         }).start();
       }
-      if (!isFabVisible.current) {
-        isFabVisible.current = true;
-        Animated.timing(fabScale, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
-      if (!isTabBarVisible.current) {
-        isTabBarVisible.current = true;
-        navigation.setOptions({
-          tabBarStyle: getTabBarStyle(true),
-        });
-      }
       lastScrollY.current = currentScrollY;
       return;
     }
 
-    // When near bottom, hide FAB but keep header visible
-    if (isNearBottom) {
-      if (!isHeaderVisible.current) {
-        isHeaderVisible.current = true;
-        Animated.timing(headerTranslateY, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
-      // Hide FAB when at bottom
-      if (isFabVisible.current) {
-        isFabVisible.current = false;
-        Animated.timing(fabScale, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
-      if (!isTabBarVisible.current) {
-        isTabBarVisible.current = true;
-        navigation.setOptions({
-          tabBarStyle: getTabBarStyle(true),
-        });
-      }
-      lastScrollY.current = currentScrollY;
-      return;
-    }
-
-    const minMovement = 15; // Increased threshold to prevent jitter
-
-    // Only update if there's significant movement to prevent rapid toggling
+    const minMovement = 15;
     if (Math.abs(scrollDifference) < minMovement) {
       lastScrollY.current = currentScrollY;
       return;
     }
 
-    // Prevent rapid toggling if animation is in progress
     if (isAnimating.current) {
       lastScrollY.current = currentScrollY;
       return;
     }
 
-    // Prioritize showing header when scrolling up - respond immediately
     if (scrollDifference < -minMovement && !isHeaderVisible.current) {
-      // Scrolling up - show header, FAB, and tab bar immediately
       isAnimating.current = true;
       isHeaderVisible.current = true;
-      isFabVisible.current = true;
-      isTabBarVisible.current = true;
       Animated.timing(headerTranslateY, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
-      }).start(() => {
-        isAnimating.current = false;
-      });
-      Animated.timing(fabScale, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-      navigation.setOptions({
-        tabBarStyle: getTabBarStyle(true),
-      });
-    } else if (scrollDifference > minMovement && isHeaderVisible.current && !isNearBottom) {
-      // Scrolling down - hide header, FAB, and tab bar (but not when bouncing at bottom)
+      }).start(() => { isAnimating.current = false; });
+    } else if (scrollDifference > minMovement && isHeaderVisible.current) {
       isAnimating.current = true;
       isHeaderVisible.current = false;
-      isFabVisible.current = false;
-      isTabBarVisible.current = false;
       Animated.timing(headerTranslateY, {
         toValue: -200,
         duration: 200,
         useNativeDriver: true,
-      }).start(() => {
-        isAnimating.current = false;
-      });
-      Animated.timing(fabScale, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-      navigation.setOptions({
-        tabBarStyle: getTabBarStyle(false),
-      });
+      }).start(() => { isAnimating.current = false; });
     }
 
     lastScrollY.current = currentScrollY;
-  }, [navigation, colors.surface, colors.surfaceOutline]);
+  }, []);
 
   // Filter options
   const filterOptions = [
-    { key: 'all', labelKey: 'filters.all', icon: 'grid-outline' },
-    { key: 'active', labelKey: 'filters.active', icon: 'pulse' },
-    { key: 'completed', labelKey: 'filters.completed', icon: 'checkmark-circle' },
-    { key: 'paused', labelKey: 'filters.paused', icon: 'pause-circle' },
-    { key: 'stuck', labelKey: 'filters.stuck', icon: 'warning' },
-    { key: 'downloading', labelKey: 'filters.downloading', icon: 'arrow-down' },
-    { key: 'uploading', labelKey: 'filters.uploading', icon: 'arrow-up' },
+    { key: 'all', labelKey: 'filters.all', icon: 'grid-outline' as const },
+    { key: 'active', labelKey: 'filters.active', icon: 'pulse' as const },
+    { key: 'completed', labelKey: 'filters.completed', icon: 'checkmark-circle' as const },
+    { key: 'paused', labelKey: 'filters.paused', icon: 'pause-circle' as const },
+    { key: 'stuck', labelKey: 'filters.stuck', icon: 'warning' as const },
+    { key: 'downloading', labelKey: 'filters.downloading', icon: 'arrow-down' as const },
+    { key: 'uploading', labelKey: 'filters.uploading', icon: 'arrow-up' as const },
   ];
 
   const sortOptions = [
-    { key: 'added_on' as const, labelKey: 'sort.dateAdded', icon: 'time-outline' },
-    { key: 'name' as const, labelKey: 'sort.name', icon: 'text-outline' },
-    { key: 'size' as const, labelKey: 'sort.size', icon: 'albums-outline' },
-    { key: 'progress' as const, labelKey: 'sort.progress', icon: 'stats-chart-outline' },
-    { key: 'ratio' as const, labelKey: 'sort.ulRatio', icon: 'swap-horizontal-outline' },
-    { key: 'dlspeed' as const, labelKey: 'sort.dlSpeed', icon: 'arrow-down-outline' },
-    { key: 'upspeed' as const, labelKey: 'sort.ulSpeed', icon: 'arrow-up-outline' },
+    { key: 'added_on' as const, labelKey: 'sort.dateAdded', icon: 'time-outline' as const },
+    { key: 'name' as const, labelKey: 'sort.name', icon: 'text-outline' as const },
+    { key: 'size' as const, labelKey: 'sort.size', icon: 'albums-outline' as const },
+    { key: 'progress' as const, labelKey: 'sort.progress', icon: 'stats-chart-outline' as const },
+    { key: 'ratio' as const, labelKey: 'sort.ulRatio', icon: 'swap-horizontal-outline' as const },
+    { key: 'dlspeed' as const, labelKey: 'sort.dlSpeed', icon: 'arrow-down-outline' as const },
+    { key: 'upspeed' as const, labelKey: 'sort.ulSpeed', icon: 'arrow-up-outline' as const },
   ];
 
   // Early returns
   // Only show "Not Connected" screen if no server is configured (check this FIRST)
   if (!isConnected && !currentServer && !serverIsLoading) {
-    // No servers saved yet — simple centred prompt (also shown while loading to avoid flash)
-    if (!serversLoaded || savedServers.length === 0) {
-      return (
-        <>
-          <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-          <View style={[styles.center, { backgroundColor: colors.background }]}>
-            <Ionicons name="navigate-outline" size={64} color={colors.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {t('screens.torrents.notConnected')}
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500' }]}>
-              {t('screens.torrents.notConnectedSubtitle')}
-            </Text>
-            <TouchableOpacity
-              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/server/add')}
-            >
-              <Text style={styles.emptyButtonText}>{t('screens.settings.addServer')}</Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      );
-    }
-
-    // Servers exist — scrollable quick-connect layout
     return (
-      <>
-        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <ScrollView
-          style={{ flex: 1, backgroundColor: colors.background }}
-          contentContainerStyle={styles.notConnectedScroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Hero */}
-          <View style={styles.notConnectedHero}>
-            <View style={[styles.notConnectedIconRing, { borderColor: colors.surfaceOutline }]}>
-              <Ionicons name="navigate-outline" size={36} color={colors.textSecondary} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text, marginTop: spacing.lg, fontSize: 20 }]}>
-              {t('screens.torrents.notConnected')}
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary, fontSize: 18, fontWeight: '500' }]}>
-              {t('screens.torrents.notConnectedSubtitle')}
-            </Text>
-          </View>
-
-          {/* Server cards */}
-          <View style={styles.notConnectedServers}>
-            <Text style={[styles.notConnectedSectionLabel, { color: colors.textSecondary }]}>
-              YOUR SERVERS
-            </Text>
-            <View style={[styles.notConnectedCard, { backgroundColor: colors.surface }]}>
-              {savedServers.map((server, index) => {
-                const color = avatarColor(server.name);
-                const addr = serverAddress(server);
-                const isConnectingThis = connectingId === server.id;
-                const errMsg = connectErrors[server.id];
-                const isLast = index === savedServers.length - 1;
-                return (
-                  <View key={server.id}>
-                    <TouchableOpacity
-                      style={styles.notConnectedServerRow}
-                      onPress={() => handleQuickConnect(server)}
-                      activeOpacity={0.7}
-                      disabled={connectingId !== null}
-                    >
-                      <View style={[styles.serverAvatar, { backgroundColor: color + '22', borderColor: color + '44' }]}>
-                        <Text style={[styles.serverAvatarLetter, { color }]}>
-                          {server.name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={styles.serverInfo}>
-                        <Text style={[styles.serverName, { color: colors.text }]} numberOfLines={1}>
-                          {server.name}
-                        </Text>
-                        <View style={styles.serverAddressRow}>
-                          {server.useHttps && (
-                            <Ionicons name="lock-closed" size={10} color={colors.success} style={{ marginRight: 3 }} />
-                          )}
-                          <Text style={[styles.serverAddress, { color: colors.textSecondary }]} numberOfLines={1}>
-                            {addr}
-                          </Text>
-                        </View>
-                        {errMsg && (
-                          <Text style={[styles.serverErrorText, { color: colors.error }]} numberOfLines={1}>
-                            {errMsg}
-                          </Text>
-                        )}
-                      </View>
-                      <View style={[styles.connectPill, { backgroundColor: errMsg ? colors.error + '18' : color + '18', borderColor: errMsg ? colors.error + '40' : color + '40' }]}>
-                        {isConnectingThis
-                          ? <ActivityIndicator size="small" color={color} />
-                          : <Text style={[styles.connectPillText, { color: errMsg ? colors.error : color }]}>{errMsg ? 'Retry' : 'Connect'}</Text>
-                        }
-                      </View>
-                    </TouchableOpacity>
-                    {!isLast && <View style={[styles.notConnectedDivider, { backgroundColor: colors.surfaceOutline }]} />}
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Add another server */}
-          <TouchableOpacity
-            style={[styles.addServerRow, { borderColor: colors.surfaceOutline }]}
-            onPress={() => router.push('/server/add')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.addServerIcon, { backgroundColor: colors.surface, borderColor: colors.surfaceOutline }]}>
-              <Ionicons name="add" size={20} color={colors.primary} />
-            </View>
-            <Text style={[styles.addServerText, { color: colors.primary }]}>
-              Connect
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </>
+      <QuickConnectPanel
+        savedServers={savedServers}
+        serversLoaded={serversLoaded}
+        connectingId={connectingId}
+        connectErrors={connectErrors}
+        onConnect={handleQuickConnect}
+        onAddServer={() => router.push('/server/add')}
+      />
     );
   }
 
@@ -786,14 +673,36 @@ export default function TorrentsScreen() {
           <View style={[styles.searchCard, { backgroundColor: "transparent" }]}>
             {/* Search bar with Sort button */}
             <View style={styles.searchRow}>
-              {/* Search input */}
+
+              {/* LEFT: Sort button — fixed 42×42 */}
+              {!selectMode && (
+                <TouchableOpacity
+                  style={[
+                    styles.searchSortButton,
+                    {
+                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
+                      borderColor: colors.surfaceOutline,
+                    },
+                  ]}
+                  onPress={() => setShowSortMenu(!showSortMenu)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="swap-vertical"
+                    size={18}
+                    color={showSortMenu ? colors.primary : colors.text}
+                  />
+                </TouchableOpacity>
+              )}
+
+              {/* CENTER: Search input — flex:1, loading indicator inside */}
               <View
                 style={[
                   styles.searchInputContainer,
                   {
                     backgroundColor: colors.surface,
                     borderWidth: 0.1,
-                    borderColor: colors.surfaceOutline
+                    borderColor: colors.surfaceOutline,
                   },
                 ]}
               >
@@ -810,35 +719,37 @@ export default function TorrentsScreen() {
                   onChangeText={setSearchQuery}
                   placeholderTextColor={colors.textSecondary}
                 />
+                {isLoading && (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.primary}
+                    style={{ marginLeft: spacing.xs }}
+                  />
+                )}
               </View>
-              
-              {/* Loading indicator when syncing */}
-              {isLoading && (
-                <View style={[styles.syncIndicator, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                </View>
-              )}
-              
-              {/* Sort button */}
+
+              {/* RIGHT: Add torrent button — fixed 42×42 */}
               {!selectMode && (
                 <TouchableOpacity
-                  style={[
-                    styles.searchSortButton,
-                    {
-                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
-                      borderColor: colors.surfaceOutline,
-                    },
-                  ]}
-                  onPress={() => setShowSortMenu(!showSortMenu)}
+                  style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
+                  onPress={async () => {
+                    try {
+                      const prefs = await storageService.getPreferences();
+                      if (prefs.useFullAddTorrentDialogue) {
+                        router.push('/torrents/add');
+                        return;
+                      }
+                    } catch {
+                      // fall back to legacy modal
+                    }
+                    setShowAddModal(true);
+                  }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons 
-                    name="swap-vertical" 
-                    size={18} 
-                    color={showSortMenu ? colors.primary : colors.text} 
-                  />
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
+
             </View>
 
             {/* Filter row */}
@@ -908,7 +819,7 @@ export default function TorrentsScreen() {
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name={item.icon as any}
+                      name={item.icon}
                       size={14}
                       color={filter === item.key ? '#FFFFFF' : colors.text}
                     />
@@ -980,7 +891,7 @@ export default function TorrentsScreen() {
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name={option.icon as any}
+                      name={option.icon}
                       size={18}
                       color={sortBy === option.key ? (isDark ? colors.primary : '#FFFFFF') : (isDark ? colors.textSecondary : colors.text)}
                     />
@@ -1048,35 +959,147 @@ export default function TorrentsScreen() {
             data={filteredTorrents}
             keyExtractor={(item) => item.hash}
             style={{ backgroundColor: colors.background }}
-            renderItem={({ item, index }) => (
-              <View style={styles.torrentItemContainer}>
-                {selectMode && (
-                  <TouchableOpacity
-                    style={styles.checkbox}
-                    onPress={() => toggleSelection(item.hash)}
+            renderItem={({ item }) => {
+              const itemIsPaused =
+                item.state === 'pausedDL' || item.state === 'pausedUP' ||
+                item.state === 'stoppedDL' || item.state === 'stoppedUP';
+
+              let swipeRef: Swipeable | null = null;
+
+              const renderRightActions = (
+                _progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>,
+              ) => {
+                const pauseScale = dragX.interpolate({
+                  inputRange: [-120, -60, 0],
+                  outputRange: [0.6, 1, 0],
+                  extrapolate: 'clamp',
+                });
+                const deleteScale = dragX.interpolate({
+                  inputRange: [-240, -160, -120],
+                  outputRange: [1, 0.8, 0],
+                  extrapolate: 'clamp',
+                });
+
+                return (
+                  <View style={styles.swipeActionsRight}>
+                    <RectButton
+                      style={[
+                        styles.swipeAction,
+                        { backgroundColor: itemIsPaused ? colors.success : '#FF9500' },
+                      ]}
+                      onPress={() => handleSwipePauseResume(item, swipeRef)}
+                    >
+                      <Animated.View style={[styles.swipeActionContent, { transform: [{ scale: pauseScale }] }]}>
+                        <Ionicons name={itemIsPaused ? 'play' : 'pause'} size={22} color="#FFFFFF" />
+                        <Text style={styles.swipeActionText}>
+                          {itemIsPaused ? t('actions.resume') : t('actions.pause')}
+                        </Text>
+                      </Animated.View>
+                    </RectButton>
+                    <RectButton
+                      style={[styles.swipeAction, { backgroundColor: '#FF3B30' }]}
+                      onPress={() => handleSwipeDelete(item, swipeRef)}
+                    >
+                      <Animated.View style={[styles.swipeActionContent, { transform: [{ scale: deleteScale }] }]}>
+                        <Ionicons name="trash" size={22} color="#FFFFFF" />
+                        <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
+                      </Animated.View>
+                    </RectButton>
+                  </View>
+                );
+              };
+
+              const renderLeftActions = (
+                _progress: Animated.AnimatedInterpolation<number>,
+                dragX: Animated.AnimatedInterpolation<number>,
+              ) => {
+                const scale = dragX.interpolate({
+                  inputRange: [0, 60, 120],
+                  outputRange: [0, 1, 1],
+                  extrapolate: 'clamp',
+                });
+
+                return (
+                  <RectButton
+                    style={[styles.swipeActionLeft, { backgroundColor: '#007AFF' }]}
+                    onPress={() => handleSwipeForceStart(item, swipeRef)}
                   >
-                    <Ionicons
-                      name={selectedHashes.has(item.hash) ? 'checkbox' : 'square-outline'}
-                      size={24}
-                      color={selectedHashes.has(item.hash) ? colors.primary : colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                )}
-                <View style={{ flex: 1 }}>
-                  <TorrentCard
-                    torrent={item}
-                    viewMode={cardViewMode}
-                    onPress={() => {
-                      if (selectMode) {
-                        toggleSelection(item.hash);
-                      } else {
-                        router.push(`/torrent/${item.hash}`);
-                      }
-                    }}
-                  />
-                </View>
-              </View>
-            )}
+                    <Animated.View style={[styles.swipeActionContent, { transform: [{ scale }] }]}>
+                      <Ionicons name="flash" size={22} color="#FFFFFF" />
+                      <Text style={styles.swipeActionText}>{t('actions.forceStart')}</Text>
+                    </Animated.View>
+                  </RectButton>
+                );
+              };
+
+              return (
+                <Swipeable
+                  ref={(ref) => { swipeRef = ref; }}
+                  friction={2}
+                  rightThreshold={60}
+                  leftThreshold={60}
+                  overshootRight={false}
+                  overshootLeft={false}
+                  renderRightActions={renderRightActions}
+                  renderLeftActions={renderLeftActions}
+                  onSwipeableWillOpen={() => {
+                    if (openSwipeableRef.current && openSwipeableRef.current !== swipeRef) {
+                      openSwipeableRef.current.close();
+                    }
+                    openSwipeableRef.current = swipeRef;
+                    if (!swipeHapticFired.current) {
+                      haptics.medium();
+                      swipeHapticFired.current = true;
+                    }
+                  }}
+                  onSwipeableClose={() => {
+                    if (openSwipeableRef.current === swipeRef) {
+                      openSwipeableRef.current = null;
+                    }
+                    swipeHapticFired.current = false;
+                  }}
+                  onSwipeableOpenStartDrag={() => {
+                    swipeHapticFired.current = false;
+                  }}
+                  enabled={!selectMode}
+                >
+                  <View style={styles.torrentItemContainer}>
+                    {selectMode && (
+                      <TouchableOpacity
+                        style={styles.checkbox}
+                        onPress={() => toggleSelection(item.hash)}
+                      >
+                        <Ionicons
+                          name={selectedHashes.has(item.hash) ? 'checkbox' : 'square-outline'}
+                          size={24}
+                          color={selectedHashes.has(item.hash) ? colors.primary : colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <TorrentCard
+                        torrent={item}
+                        onPress={() => {
+                          if (selectMode) {
+                            toggleSelection(item.hash);
+                          } else {
+                            router.push(`/torrent/${item.hash}`);
+                          }
+                        }}
+                        onLongPress={() => {
+                          haptics.medium();
+                          setSelectedTorrent(item);
+                          setMenuVisible(true);
+                        }}
+                        onPauseResume={() => handleCardPauseResume(item)}
+                        compact={cardViewMode === 'compact'}
+                      />
+                    </View>
+                  </View>
+                </Swipeable>
+              );
+            }}
             refreshControl={
               <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={colors.primary} />
             }
@@ -1088,26 +1111,6 @@ export default function TorrentsScreen() {
             maxToRenderPerBatch={5}
             windowSize={10}
           />
-        )}
-
-        {!selectMode && (
-          <Animated.View
-            style={[
-              styles.fab,
-              {
-                backgroundColor: colors.primary,
-                transform: [{ scale: fabScale }],
-              },
-            ]}
-          >
-            <TouchableOpacity
-              onPress={handleAddTorrent}
-              style={styles.fabTouchable}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
-          </Animated.View>
         )}
 
         {selectMode && selectedHashes.size > 0 && (
@@ -1172,7 +1175,7 @@ export default function TorrentsScreen() {
                 </View>
 
                 <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
-                  Torrent URL or Magnet Link
+                  {t('screens.torrents.urlOrMagnet')}
                 </Text>
                 <TextInput
                   style={[
@@ -1201,7 +1204,7 @@ export default function TorrentsScreen() {
 
                 <View style={styles.divider}>
                   <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
-                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>{t('common.or')}</Text>
                   <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
                 </View>
 
@@ -1228,7 +1231,7 @@ export default function TorrentsScreen() {
                       fontWeight: selectedFile ? '600' : '400',
                     }
                   ]}>
-                    {selectedFile ? selectedFile.name : 'Select .torrent file'}
+                    {selectedFile ? selectedFile.name : t('screens.torrents.selectTorrentFile')}
                   </Text>
                   {selectedFile && (
                     <TouchableOpacity
@@ -1268,7 +1271,7 @@ export default function TorrentsScreen() {
                     {addingTorrent ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>Add</Text>
+                      <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>{t('common.add')}</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1277,6 +1280,27 @@ export default function TorrentsScreen() {
             </KeyboardAvoidingView>
           </View>
         </Modal>
+
+        <ActionMenu
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          items={actionMenuItems}
+        />
+
+        <InputModal
+          visible={dlLimitModalVisible}
+          title={t('torrentDetail.setDownloadLimit')}
+          message={t('screens.torrents.enterLimitKbs')}
+          placeholder="0"
+          defaultValue={dlLimitDefaultValue}
+          keyboardType="numeric"
+          allowEmpty
+          onCancel={() => setDlLimitModalVisible(false)}
+          onConfirm={(value) => {
+            setDlLimitModalVisible(false);
+            handleSetDownloadLimit(value);
+          }}
+        />
       </View>
     </>
   );
@@ -1534,7 +1558,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 100,
     borderRadius: borderRadius.large,
-    // paddingBottom: 50, // Space for FAB and last card interaction
   },
   selectionHeader: {
     flexDirection: 'row',
@@ -1669,23 +1692,38 @@ const styles = StyleSheet.create({
   modalButtonText: {
     ...buttonText.primary,
   },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.xxl,
-    right: spacing.xxl,
-    ...buttonStyles.fab,
+  headerAddButton: {
+    width: 42,
+    height: 42,
+    borderRadius: borderRadius.medium,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  fabTouchable: {
-    width: '100%',
-    height: '100%',
+  swipeActionsRight: {
+    flexDirection: 'row',
+    width: 160,
+  },
+  swipeAction: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swipeActionLeft: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swipeActionContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 28,
+  },
+  swipeActionText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 3,
   },
   searchSortButton: {
-    ...buttonStyles.icon,
-  },
-  syncIndicator: {
     width: 42,
     height: 42,
     borderRadius: borderRadius.medium,

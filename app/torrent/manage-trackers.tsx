@@ -1,3 +1,9 @@
+/**
+ * manage-trackers.tsx — Tracker management screen for adding, editing, and removing torrent trackers.
+ *
+ * Key exports: ManageTrackersScreen (default)
+ * Known issues: None.
+ */
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -7,28 +13,29 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  ActionSheetIOS,
-  Platform,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../context/ThemeContext';
-import { useToast } from '../../context/ToastContext';
-import { FocusAwareStatusBar } from '../../components/FocusAwareStatusBar';
-import { torrentsApi } from '../../services/api/torrents';
-import { Tracker } from '../../types/api';
-import { spacing, borderRadius } from '../../constants/spacing';
-import { shadows } from '../../constants/shadows';
-import { buttonStyles, buttonText } from '../../constants/buttons';
-import { typography } from '../../constants/typography';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/context/ToastContext';
+import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { torrentsApi } from '@/services/api/torrents';
+import { Tracker } from '@/types/api';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
+import { buttonStyles, buttonText } from '@/constants/buttons';
+import { typography } from '@/constants/typography';
+import { getErrorMessage } from '@/utils/error';
 
 export default function ManageTrackersScreen() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,8 +61,8 @@ export default function ManageTrackersScreen() {
              !t.url.includes('PEX') && !t.url.includes('LSD')
       );
       setTrackers(realTrackers);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to fetch trackers', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setLoading(false);
     }
@@ -65,15 +72,15 @@ export default function ManageTrackersScreen() {
     try {
       await torrentsApi.removeTrackers(hash!, [tracker.url]);
       fetchTrackers();
-      showToast('Tracker removed', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to remove tracker', 'error');
+      showToast(t('screens.trackers.trackerRemoved'), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     }
   };
 
   const handleAddTracker = async () => {
     if (!newTrackerUrl.trim()) {
-      showToast('Please enter a tracker URL', 'error');
+      showToast(t('screens.trackers.enterTrackerUrl'), 'error');
       return;
     }
 
@@ -83,9 +90,9 @@ export default function ManageTrackersScreen() {
       setNewTrackerUrl('');
       setShowAddInput(false);
       fetchTrackers();
-      showToast('Tracker added', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to add tracker', 'error');
+      showToast(t('screens.trackers.trackerAdded'), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setAddingTracker(false);
     }
@@ -93,10 +100,10 @@ export default function ManageTrackersScreen() {
 
   const getStatusText = (status: number) => {
     switch (status) {
-      case 2: return 'Working';
-      case 3: return 'Updating';
-      case 0: return 'Disabled';
-      default: return 'Not contacted';
+      case 2: return t('screens.trackers.working');
+      case 3: return t('screens.trackers.updating');
+      case 0: return t('screens.trackers.disabled');
+      default: return t('screens.trackers.notContacted');
     }
   };
 
@@ -111,7 +118,7 @@ export default function ManageTrackersScreen() {
 
   const handleCopyTracker = async (tracker: Tracker) => {
     await Clipboard.setStringAsync(tracker.url);
-    showToast('Tracker URL copied to clipboard', 'success');
+    showToast(t('screens.trackers.urlCopied'), 'success');
   };
 
   const handleEditTracker = (tracker: Tracker) => {
@@ -121,7 +128,7 @@ export default function ManageTrackersScreen() {
 
   const handleSaveEditedTracker = async () => {
     if (!editTrackerUrl.trim() || !editingTracker) {
-      showToast('Please enter a tracker URL', 'error');
+      showToast(t('screens.trackers.enterTrackerUrl'), 'error');
       return;
     }
 
@@ -134,36 +141,11 @@ export default function ManageTrackersScreen() {
       setEditingTracker(null);
       setEditTrackerUrl('');
       fetchTrackers();
-      showToast('Tracker updated', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to update tracker', 'error');
+      showToast(t('screens.trackers.trackerUpdated'), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setAddingTracker(false);
-    }
-  };
-
-  const showTrackerMenu = (tracker: Tracker) => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Copy URL', 'Edit', 'Delete'],
-          destructiveButtonIndex: 3,
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) {
-            handleCopyTracker(tracker);
-          } else if (buttonIndex === 2) {
-            handleEditTracker(tracker);
-          } else if (buttonIndex === 3) {
-            handleRemoveTracker(tracker);
-          }
-        }
-      );
-    } else {
-      // On Android, show menu options inline or use a different approach
-      // For now, just handle actions directly without confirmation dialog
-      handleEditTracker(tracker);
     }
   };
 
@@ -172,10 +154,10 @@ export default function ManageTrackersScreen() {
     try {
       setReannouncing(true);
       await torrentsApi.reannounceTorrents([hash]);
-      showToast('Tracker reannounce sent', 'success');
+      showToast(t('screens.trackers.reannounced'), 'success');
       fetchTrackers();
-    } catch (error: any) {
-      showToast(error.message || 'Failed to reannounce', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setReannouncing(false);
     }

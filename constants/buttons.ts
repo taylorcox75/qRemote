@@ -91,7 +91,7 @@ export const buttonText = {
   chip: {
     fontSize: 12,
     fontWeight: '600' as const,
-    textAlignVertical: 'center' as any,
+    textAlignVertical: 'center' as const,
     includeFontPadding: false,
   },
 };

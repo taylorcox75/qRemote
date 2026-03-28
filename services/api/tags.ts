@@ -9,7 +9,7 @@ export const tagsApi = {
   async getAllTags(): Promise<string[]> {
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/tags`);
     if (Array.isArray(response)) {
-      return response;
+      return response as string[];
     }
     return [];
   },

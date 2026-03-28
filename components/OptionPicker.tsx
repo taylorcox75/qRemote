@@ -1,3 +1,9 @@
+/**
+ * OptionPicker.tsx — Reusable bottom-sheet modal for single-select option lists with checkmark indicator.
+ *
+ * Key exports: OptionPicker, OptionPickerItem
+ * Known issues: None currently tracked.
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -9,16 +15,16 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, borderRadius } from '../constants/spacing';
-import { shadows } from '../constants/shadows';
-import { typography } from '../constants/typography';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
+import { typography } from '@/constants/typography';
 
 export interface OptionPickerItem {
   label: string;
   value: string;
-  icon?: string;
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
 }
 
 interface OptionPickerProps {
@@ -154,7 +160,7 @@ export function OptionPicker({
               >
                 {option.icon && (
                   <Ionicons
-                    name={option.icon as any}
+                    name={option.icon!}
                     size={20}
                     color={colors.primary}
                     style={styles.menuIcon}

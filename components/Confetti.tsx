@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, Animated, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -14,14 +14,16 @@ interface ConfettiProps {
  * Triggered when a download completes
  */
 export function Confetti({ active, duration = 2000 }: ConfettiProps) {
-  const confettiPieces = useRef(
-    Array.from({ length: CONFETTI_COUNT }, () => ({
-      x: useRef(new Animated.Value(Math.random() * width)).current,
-      y: useRef(new Animated.Value(-20)).current,
-      rotation: useRef(new Animated.Value(0)).current,
-      color: getRandomColor(),
-    }))
-  ).current;
+  const confettiPieces = useMemo(
+    () =>
+      Array.from({ length: CONFETTI_COUNT }, () => ({
+        x: new Animated.Value(Math.random() * width),
+        y: new Animated.Value(-20),
+        rotation: new Animated.Value(0),
+        color: getRandomColor(),
+      })),
+    []
+  );
 
   useEffect(() => {
     if (active) {

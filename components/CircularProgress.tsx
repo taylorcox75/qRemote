@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { useTheme } from '../context/ThemeContext';
-import { formatSpeed } from '../utils/format';
+import { useTheme } from '@/context/ThemeContext';
+import { formatSpeed } from '@/utils/format';
 
 interface CircularProgressProps {
   current: number;
