@@ -37,6 +37,7 @@ export default function AppearanceSettingsScreen() {
     { label: '中文', value: 'zh', icon: 'language-outline' },
     { label: 'Français', value: 'fr', icon: 'language-outline' },
     { label: 'Deutsch', value: 'de', icon: 'language-outline' },
+    { label: 'Русский', value: 'ru', icon: 'language-outline' },
   ];
 
   useFocusEffect(
