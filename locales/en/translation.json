@@ -206,7 +206,29 @@
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
       "presets": "Presets",
-      "detailedCardView": "Detailed Card View"
+      "detailedCardView": "Detailed Card View",
+      "detailedCardFields": "Detailed Card Fields",
+      "detailedCardFieldsDescription": "Choose which fields appear in detailed card view",
+      "expandedCardFields": "CARD FIELDS",
+      "expandedCardFieldsHint": "Fields shown when Detailed Card View is enabled",
+      "expandedCardFieldsList": {
+        "dlSpeed": "Download Speed",
+        "ulSpeed": "Upload Speed",
+        "eta": "ETA",
+        "status": "Status",
+        "seeds": "Seeds",
+        "peers": "Peers",
+        "ratio": "Ratio",
+        "uploaded": "Uploaded",
+        "availability": "Availability",
+        "savePath": "Save Path",
+        "tracker": "Tracker",
+        "addedOn": "Added On",
+        "seedingTime": "Seeding Time",
+        "tags": "Tags",
+        "category": "Category",
+        "progress": "Progress %"
+      }
     },
     "transfer": {
       "title": "Transfer",

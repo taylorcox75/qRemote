@@ -186,7 +186,29 @@
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
       "presets": "Presets",
-      "detailedCardView": "Vista detallada"
+      "detailedCardView": "Vista detallada",
+      "detailedCardFields": "Campos de tarjeta detallada",
+      "detailedCardFieldsDescription": "Elige qué campos aparecen en la vista de tarjeta detallada",
+      "expandedCardFields": "CAMPOS DE TARJETA",
+      "expandedCardFieldsHint": "Campos mostrados cuando la vista detallada está activada",
+      "expandedCardFieldsList": {
+        "dlSpeed": "Velocidad de descarga",
+        "ulSpeed": "Velocidad de subida",
+        "eta": "ETA",
+        "status": "Estado",
+        "seeds": "Semillas",
+        "peers": "Peers",
+        "ratio": "Ratio",
+        "uploaded": "Subido",
+        "availability": "Disponibilidad",
+        "savePath": "Ruta de guardado",
+        "tracker": "Tracker",
+        "addedOn": "Añadido el",
+        "seedingTime": "Tiempo de seeding",
+        "tags": "Etiquetas",
+        "category": "Categoría",
+        "progress": "Progreso %"
+      }
     },
     "transfer": {
       "title": "Transferencia",

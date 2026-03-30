@@ -186,7 +186,29 @@
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
       "presets": "Presets",
-      "detailedCardView": "详细卡片视图"
+      "detailedCardView": "详细卡片视图",
+      "detailedCardFields": "详细卡片字段",
+      "detailedCardFieldsDescription": "选择在详细卡片视图中显示的字段",
+      "expandedCardFields": "卡片字段",
+      "expandedCardFieldsHint": "启用详细卡片视图时显示的字段",
+      "expandedCardFieldsList": {
+        "dlSpeed": "下载速度",
+        "ulSpeed": "上传速度",
+        "eta": "剩余时间",
+        "status": "状态",
+        "seeds": "种子",
+        "peers": "节点",
+        "ratio": "分享率",
+        "uploaded": "已上传",
+        "availability": "可用性",
+        "savePath": "保存路径",
+        "tracker": "Tracker",
+        "addedOn": "添加时间",
+        "seedingTime": "做种时间",
+        "tags": "标签",
+        "category": "分类",
+        "progress": "进度 %"
+      }
     },
     "transfer": {
       "title": "传输",

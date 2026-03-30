@@ -9,6 +9,24 @@ export type SortField =
   | 'ratio'
   | 'added_on';
 
+export type ExpandedCardField =
+  | 'dlSpeed'
+  | 'ulSpeed'
+  | 'eta'
+  | 'status'
+  | 'seeds'
+  | 'peers'
+  | 'ratio'
+  | 'uploaded'
+  | 'availability'
+  | 'savePath'
+  | 'tracker'
+  | 'addedOn'
+  | 'seedingTime'
+  | 'tags'
+  | 'category'
+  | 'progress';
+
 export type AddTorrentDialogField =
   | 'source'
   | 'savePath'
@@ -94,6 +112,9 @@ export interface AppPreferences {
 
   /** Per-field visibility for the full add-torrent screen */
   addTorrentDialogueFields: Record<AddTorrentDialogField, boolean>;
+
+  /** Per-field visibility for the expanded (detailed) torrent card */
+  expandedCardFields: Record<ExpandedCardField, boolean>;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -134,5 +155,23 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
     firstLastPiecePrio: true,
     autoTMM: true,
     cookie: true,
+  },
+  expandedCardFields: {
+    dlSpeed: true,
+    ulSpeed: true,
+    eta: true,
+    status: true,
+    seeds: true,
+    peers: true,
+    ratio: true,
+    uploaded: true,
+    availability: true,
+    savePath: false,
+    tracker: false,
+    addedOn: true,
+    seedingTime: false,
+    tags: true,
+    category: true,
+    progress: false,
   },
 };
