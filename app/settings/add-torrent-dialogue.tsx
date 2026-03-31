@@ -98,7 +98,7 @@ export default function AddTorrentDialogueSettingsScreen() {
       upLimit: { icon: 'arrow-up-outline', labelKey: 'screens.settings.addTorrentDialogueFields.upLimit' },
       ratioLimit: { icon: 'swap-horizontal-outline', labelKey: 'screens.settings.addTorrentDialogueFields.ratioLimit' },
       seedingTimeLimit: { icon: 'time-outline', labelKey: 'screens.settings.addTorrentDialogueFields.seedingTimeLimit' },
-      cookie: { icon: 'cookie-outline', labelKey: 'screens.settings.addTorrentDialogueFields.cookie' },
+      cookie: { icon: 'document-text-outline', labelKey: 'screens.settings.addTorrentDialogueFields.cookie' },
     };
     return map;
   }, []);

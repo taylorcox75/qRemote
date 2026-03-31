@@ -186,7 +186,29 @@
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
       "presets": "Presets",
-      "detailedCardView": "Detailansicht"
+      "detailedCardView": "Detailansicht",
+      "detailedCardFields": "Detailkartenfelder",
+      "detailedCardFieldsDescription": "Wähle Felder für die Detailkartenansicht",
+      "expandedCardFields": "KARTENFELDER",
+      "expandedCardFieldsHint": "Felder, die bei aktivierter Detailansicht angezeigt werden",
+      "expandedCardFieldsList": {
+        "dlSpeed": "Download-Geschwindigkeit",
+        "ulSpeed": "Upload-Geschwindigkeit",
+        "eta": "ETA",
+        "status": "Status",
+        "seeds": "Seeds",
+        "peers": "Peers",
+        "ratio": "Verhältnis",
+        "uploaded": "Hochgeladen",
+        "availability": "Verfügbarkeit",
+        "savePath": "Speicherpfad",
+        "tracker": "Tracker",
+        "addedOn": "Hinzugefügt am",
+        "seedingTime": "Seeding-Zeit",
+        "tags": "Tags",
+        "category": "Kategorie",
+        "progress": "Fortschritt %"
+      }
     },
     "transfer": {
       "title": "Übertragung",

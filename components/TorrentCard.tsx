@@ -9,6 +9,7 @@ import { formatSpeed, formatSize, formatTime } from '@/utils/format';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
+import { ExpandedCardField, DEFAULT_PREFERENCES } from '@/types/preferences';
 
 interface TorrentCardProps {
   torrent: TorrentInfo;
@@ -16,6 +17,7 @@ interface TorrentCardProps {
   onLongPress?: () => void;
   onPauseResume?: () => void;
   compact?: boolean;
+  expandedCardFields?: Record<ExpandedCardField, boolean>;
 }
 
 function DetailRow({
@@ -63,9 +65,23 @@ const detailRowStyles = StyleSheet.create({
   },
 });
 
-function TorrentCardInner({ torrent, onPress, onLongPress, onPauseResume, compact = true }: TorrentCardProps) {
+function TorrentCardInner({
+  torrent,
+  onPress,
+  onLongPress,
+  onPauseResume,
+  compact = true,
+  expandedCardFields,
+}: TorrentCardProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+
+  const fields: Record<ExpandedCardField, boolean> = {
+    ...DEFAULT_PREFERENCES.expandedCardFields,
+    ...expandedCardFields,
+  };
+
+  const show = (field: ExpandedCardField) => !compact && fields[field];
 
   const progress = (torrent.progress || 0) * 100;
   const dlspeed = torrent.dlspeed ?? 0;
@@ -95,6 +111,26 @@ function TorrentCardInner({ torrent, onPress, onLongPress, onPauseResume, compac
     `${progress.toFixed(0)}%`,
     hasEta ? formatTime(torrent.eta) : null,
   ].filter(Boolean).join('  ·  ');
+
+  // Determine whether any detail rows will be rendered
+  const hasAnyDetail =
+    !compact &&
+    (fields.dlSpeed ||
+      fields.ulSpeed ||
+      fields.eta ||
+      fields.status ||
+      fields.seeds ||
+      fields.peers ||
+      fields.ratio ||
+      fields.uploaded ||
+      fields.availability ||
+      fields.seedingTime ||
+      fields.addedOn ||
+      fields.tags ||
+      fields.category ||
+      fields.tracker ||
+      fields.savePath ||
+      fields.progress);
 
   return (
     <TouchableOpacity
@@ -144,49 +180,99 @@ function TorrentCardInner({ torrent, onPress, onLongPress, onPauseResume, compac
       </Text>
 
       {/* Expanded detail section */}
-      {!compact && (
+      {hasAnyDetail && (
         <View style={[styles.detailGrid, { borderTopColor: colors.surfaceOutline }]}>
-          <DetailRow label="Seeds" value={`${torrent.num_seeds} / ${torrent.num_complete}`} />
-          <DetailRow label="Peers" value={`${torrent.num_leechs} / ${torrent.num_incomplete}`} />
-          <DetailRow label="Ratio" value={torrent.ratio != null ? torrent.ratio.toFixed(2) : '—'} />
-          <DetailRow label="Uploaded" value={formatSize(torrent.uploaded)} />
-          {torrent.uploaded_session > 0 && (
-            <DetailRow label="Uploaded (Session)" value={formatSize(torrent.uploaded_session)} />
+          {show('status') && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.status')}
+              value={stateLabel}
+            />
           )}
-          {torrent.downloaded_session > 0 && (
-            <DetailRow label="Downloaded (Session)" value={formatSize(torrent.downloaded_session)} />
+          {show('progress') && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.progress')}
+              value={`${progress.toFixed(1)}%`}
+            />
           )}
-          {torrent.amount_left > 0 && (
-            <DetailRow label="Remaining" value={formatSize(torrent.amount_left)} />
+          {show('dlSpeed') && dlspeed > 0 && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.dlSpeed')}
+              value={`${formatSpeed(dlspeed)}`}
+            />
           )}
-          {torrent.availability > 0 && torrent.availability < 1 && (
-            <DetailRow label="Availability" value={`${(torrent.availability * 100).toFixed(1)}%`} />
+          {show('ulSpeed') && upspeed > 0 && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.ulSpeed')}
+              value={`${formatSpeed(upspeed)}`}
+            />
           )}
-          {torrent.seeding_time > 0 && (
-            <DetailRow label="Seeding Time" value={formatTime(torrent.seeding_time)} />
+          {show('eta') && hasEta && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.eta')}
+              value={formatTime(torrent.eta)}
+            />
           )}
-          {torrent.dl_limit > 0 && (
-            <DetailRow label="DL Limit" value={formatSpeed(torrent.dl_limit)} />
+          {show('seeds') && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.seeds')}
+              value={`${torrent.num_seeds} / ${torrent.num_complete}`}
+            />
           )}
-          {torrent.up_limit > 0 && (
-            <DetailRow label="UL Limit" value={formatSpeed(torrent.up_limit)} />
+          {show('peers') && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.peers')}
+              value={`${torrent.num_leechs} / ${torrent.num_incomplete}`}
+            />
           )}
-          {!!torrent.category && (
-            <DetailRow label="Category" value={torrent.category} />
+          {show('ratio') && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.ratio')}
+              value={torrent.ratio != null ? torrent.ratio.toFixed(2) : '—'}
+            />
           )}
-          {!!torrent.tags && (
-            <DetailRow label="Tags" value={torrent.tags} />
+          {show('uploaded') && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.uploaded')}
+              value={formatSize(torrent.uploaded)}
+            />
           )}
-          {!!torrent.tracker && (
-            <DetailRow label="Tracker" value={torrent.tracker} truncate />
+          {show('availability') && torrent.availability > 0 && torrent.availability < 1 && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.availability')}
+              value={`${(torrent.availability * 100).toFixed(1)}%`}
+            />
           )}
-          <DetailRow
-            label="Added"
-            value={new Date(torrent.added_on * 1000).toLocaleDateString()}
-          />
-          <DetailRow label="Active" value={formatTime(torrent.time_active)} />
-          {!!torrent.save_path && (
-            <DetailRow label="Path" value={torrent.save_path} truncate />
+          {show('seedingTime') && torrent.seeding_time > 0 && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.seedingTime')}
+              value={formatTime(torrent.seeding_time)}
+            />
+          )}
+          {show('addedOn') && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.addedOn')}
+              value={new Date(torrent.added_on * 1000).toLocaleDateString()}
+            />
+          )}
+          {show('tags') && !!torrent.tags && (
+            <DetailRow label={t('screens.settings.expandedCardFieldsList.tags')} value={torrent.tags} />
+          )}
+          {show('category') && !!torrent.category && (
+            <DetailRow label={t('screens.settings.expandedCardFieldsList.category')} value={torrent.category} />
+          )}
+          {show('tracker') && !!torrent.tracker && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.tracker')}
+              value={torrent.tracker}
+              truncate
+            />
+          )}
+          {show('savePath') && !!torrent.save_path && (
+            <DetailRow
+              label={t('screens.settings.expandedCardFieldsList.savePath')}
+              value={torrent.save_path}
+              truncate
+            />
           )}
         </View>
       )}
@@ -216,7 +302,8 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.onPress === next.onPress &&
     prev.onLongPress === next.onLongPress &&
     prev.onPauseResume === next.onPauseResume &&
-    prev.compact === next.compact
+    prev.compact === next.compact &&
+    prev.expandedCardFields === next.expandedCardFields
   );
 });
 

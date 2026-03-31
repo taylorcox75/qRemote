@@ -38,6 +38,7 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { torrentsApi } from '@/services/api/torrents';
 import { applicationApi } from '@/services/api/application';
 import { storageService } from '@/services/storage';
+import { ExpandedCardField, DEFAULT_PREFERENCES } from '@/types/preferences';
 import { ServerManager } from '@/services/server-manager';
 import { haptics } from '@/utils/haptics';
 import { shadows } from '@/constants/shadows';
@@ -70,6 +71,9 @@ export default function TorrentsScreen() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
+  const [expandedCardFields, setExpandedCardFields] = useState<Record<ExpandedCardField, boolean>>(
+    DEFAULT_PREFERENCES.expandedCardFields
+  );
 
   // Action menu state
   const [selectedTorrent, setSelectedTorrent] = useState<TorrentInfo | null>(null);
@@ -95,7 +99,7 @@ export default function TorrentsScreen() {
   // Track last known default filter so we only sync when user changes it in Settings
   const lastDefaultFilterRef = useRef<string | null>(null);
 
-  // Check for filter preference changes on screen focus
+  // Check for filter + card view mode preference changes on screen focus
   useFocusEffect(
     useCallback(() => {
       const loadPreferences = async () => {
@@ -106,6 +110,13 @@ export default function TorrentsScreen() {
             setFilter(newDefault);
           }
           lastDefaultFilterRef.current = newDefault;
+          setCardViewMode(prefs.cardViewMode ?? 'compact');
+          if (prefs.expandedCardFields) {
+            setExpandedCardFields({
+              ...DEFAULT_PREFERENCES.expandedCardFields,
+              ...prefs.expandedCardFields,
+            });
+          }
         } catch {
           // ignore
         }
@@ -130,6 +141,12 @@ export default function TorrentsScreen() {
           setFilter(prefs.defaultFilter);
         }
         setCardViewMode(prefs.cardViewMode ?? 'compact');
+        if (prefs.expandedCardFields) {
+          setExpandedCardFields({
+            ...DEFAULT_PREFERENCES.expandedCardFields,
+            ...prefs.expandedCardFields,
+          });
+        }
       } catch (error) {
         // Use defaults if loading fails
       }
@@ -1094,6 +1111,7 @@ export default function TorrentsScreen() {
                         }}
                         onPauseResume={() => handleCardPauseResume(item)}
                         compact={cardViewMode === 'compact'}
+                        expandedCardFields={expandedCardFields}
                       />
                     </View>
                   </View>
