@@ -12,6 +12,14 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.0.1',
+    date: '2026-03-31',
+    changes: [
+      'Added Russian (ru) translation',
+      'Fixed card view layout inconsistencies in the torrent list',
+    ],
+  },
+  {
     version: '3.0.0',
     date: '2026-03-28',
     changes: [
