@@ -24,6 +24,7 @@ import { APP_VERSION } from '@/utils/version';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
+import { colorThemeManager } from '@/services/color-theme-manager';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -56,6 +57,10 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { currentServer, isConnected, disconnect } = useServer();
   const { isDark, colors } = useTheme();
+  const disconnectBadgeBackground = colorThemeManager.hexToRgba(
+    colorThemeManager.rgbaToHex(colors.error),
+    0.18
+  );
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -111,8 +116,16 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
                 {isConnected && (
-                  <View style={[styles.disconnectBadge, { backgroundColor: colors.error + '20' }]}>
-                    <Text style={[styles.disconnectText, { color: colors.error }]}>
+                  <View
+                    style={[
+                      styles.disconnectBadge,
+                      {
+                        backgroundColor: disconnectBadgeBackground,
+                        borderColor: colors.error,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.disconnectText, { color: colors.text }]}>
                       {t('screens.settings.disconnect')}
                     </Text>
                   </View>
@@ -238,6 +251,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: borderRadius.small,
+    borderWidth: 1,
   },
   disconnectText: {
     fontSize: 14,
