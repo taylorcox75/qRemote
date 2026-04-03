@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   Switch,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -32,6 +32,7 @@ import { DEFAULT_PREFERENCES, AddTorrentDialogField } from '@/types/preferences'
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
+import { extractMagnetLink } from '@/utils/magnet';
 
 type AddTorrentOptions = Parameters<typeof torrentsApi.addTorrent>[1];
 type AddTorrentFileOptions = Parameters<typeof torrentsApi.addTorrentFile>[1];
@@ -44,6 +45,8 @@ export default function AddTorrentFullScreen() {
   const { showToast } = useToast();
   const { isConnected } = useServer();
   const { categories, tags } = useTorrents();
+  const params = useLocalSearchParams<{ magnet?: string | string[] }>();
+  const lastAppliedMagnetRef = useRef<string | null>(null);
 
   const [fieldVisibility, setFieldVisibility] = useState<Record<AddTorrentDialogField, boolean>>(
     DEFAULT_PREFERENCES.addTorrentDialogueFields
@@ -223,6 +226,17 @@ export default function AddTorrentFullScreen() {
   }, [t, tagValues]);
 
   const showField = (field: AddTorrentDialogField) => fieldVisibility[field] === true;
+
+  useEffect(() => {
+    const rawMagnet = Array.isArray(params.magnet) ? params.magnet[0] : params.magnet;
+    const magnetLink = extractMagnetLink(rawMagnet);
+    if (!magnetLink) return;
+    if (lastAppliedMagnetRef.current === magnetLink) return;
+
+    lastAppliedMagnetRef.current = magnetLink;
+    setTorrentUrl(magnetLink);
+    setSelectedFile(null);
+  }, [params.magnet]);
 
   return (
     <>
@@ -837,4 +851,3 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });
-
