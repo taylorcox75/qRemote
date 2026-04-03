@@ -23,6 +23,12 @@ module.exports = {
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: true,
         },
+        CFBundleURLTypes: [
+          {
+            CFBundleURLName: 'com.qRemote.app.magnet',
+            CFBundleURLSchemes: ['magnet'],
+          },
+        ],
       },
     },
     android: {
@@ -33,7 +39,19 @@ module.exports = {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: 'com.qRemote.app',
-	  usesCleartextTraffic: true,
+      usesCleartextTraffic: true,
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: false,
+          data: [
+            {
+              scheme: 'magnet',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     web: {
       favicon: './assets/favicon.png',
@@ -48,4 +66,3 @@ module.exports = {
     owner: 'taylorcox75',
   },
 };
-
