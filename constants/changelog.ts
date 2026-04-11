@@ -12,6 +12,16 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.1.0',
+    date: '2026-04-11',
+    changes: [
+      'Replaced all Alert.prompt dialogs with InputModal for consistent cross-platform text input',
+      'Resolved Rules of Hooks violation in Confetti component — confetti animations are now reliable',
+      'Fixed pause button missing onPress handler in torrent cards',
+      'Corrected background color reference in root layout and trimmed trailing space from app name',
+    ],
+  },
+  {
     version: '3.0.1',
     date: '2026-03-31',
     changes: [
