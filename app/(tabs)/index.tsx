@@ -23,7 +23,7 @@ import {
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTorrents } from '@/context/TorrentContext';
@@ -48,6 +48,8 @@ import { typography } from '@/constants/typography';
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { useTorrentActions } from '@/hooks/useTorrentActions';
 import { getErrorMessage } from '@/utils/error';
+import { extractMagnetLink } from '@/utils/magnet';
+import { getAddTorrentDialogueVariant } from '@/utils/add-torrent-dialogue';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -56,6 +58,7 @@ export default function TorrentsScreen() {
   const { torrents, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
   const { isConnected, currentServer, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
+  const params = useLocalSearchParams<{ magnet?: string | string[] }>();
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,6 +77,7 @@ export default function TorrentsScreen() {
   const [expandedCardFields, setExpandedCardFields] = useState<Record<ExpandedCardField, boolean>>(
     DEFAULT_PREFERENCES.expandedCardFields
   );
+  const lastAppliedMagnetRef = useRef<{ value: string; at: number } | null>(null);
 
   // Action menu state
   const [selectedTorrent, setSelectedTorrent] = useState<TorrentInfo | null>(null);
@@ -173,6 +177,61 @@ export default function TorrentsScreen() {
       })();
     }
   }, [isConnected]);
+
+  const handleOpenAddTorrent = useCallback(async () => {
+    try {
+      const prefs = await storageService.getPreferences();
+      if (prefs.useFullAddTorrentDialogue) {
+        router.push('/torrents/add');
+        return;
+      }
+    } catch {
+      // Fall back to compact modal.
+    }
+    setShowAddModal(true);
+  }, [router]);
+
+  useEffect(() => {
+    const rawMagnet = Array.isArray(params.magnet) ? params.magnet[0] : params.magnet;
+    const magnetLink = extractMagnetLink(rawMagnet);
+    if (!magnetLink) return;
+
+    const now = Date.now();
+    if (
+      lastAppliedMagnetRef.current &&
+      lastAppliedMagnetRef.current.value === magnetLink &&
+      now - lastAppliedMagnetRef.current.at < 1500
+    ) {
+      return;
+    }
+    lastAppliedMagnetRef.current = { value: magnetLink, at: now };
+
+    const handleIncomingMagnet = async () => {
+      let variant: 'compact' | 'full' = 'compact';
+      try {
+        const prefs = await storageService.getPreferences();
+        variant = getAddTorrentDialogueVariant(prefs);
+      } catch {
+        // Keep compact fallback.
+      }
+
+      if (variant === 'full') {
+        router.push({
+          pathname: '/torrents/add',
+          params: { magnet: magnetLink },
+        });
+        router.replace('/');
+        return;
+      }
+
+      setTorrentUrl(magnetLink);
+      setSelectedFile(null);
+      setShowAddModal(true);
+      router.replace('/');
+    };
+
+    void handleIncomingMagnet();
+  }, [params.magnet, router]);
 
   // Filter, sort, and search logic
   const filteredTorrents = useMemo(() => {
@@ -749,17 +808,8 @@ export default function TorrentsScreen() {
               {!selectMode && (
                 <TouchableOpacity
                   style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
-                  onPress={async () => {
-                    try {
-                      const prefs = await storageService.getPreferences();
-                      if (prefs.useFullAddTorrentDialogue) {
-                        router.push('/torrents/add');
-                        return;
-                      }
-                    } catch {
-                      // fall back to legacy modal
-                    }
-                    setShowAddModal(true);
+                  onPress={() => {
+                    void handleOpenAddTorrent();
                   }}
                   activeOpacity={0.7}
                 >
@@ -955,7 +1005,9 @@ export default function TorrentsScreen() {
             {filter === 'all' ? (
               <TouchableOpacity
                 style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-                onPress={() => setShowAddModal(true)}
+                onPress={() => {
+                  void handleOpenAddTorrent();
+                }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Ionicons name="add" size={20} color="#FFFFFF" />
