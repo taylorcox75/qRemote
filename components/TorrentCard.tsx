@@ -108,7 +108,7 @@ function TorrentCardInner({
   const statusLine = [
     stateLabel,
     speedText,
-    `${progress.toFixed(0)}%`,
+    `${Math.floor(progress)}%`,
     hasEta ? formatTime(torrent.eta) : null,
   ].filter(Boolean).join('  ·  ');
 
@@ -191,7 +191,7 @@ function TorrentCardInner({
           {show('progress') && (
             <DetailRow
               label={t('screens.settings.expandedCardFieldsList.progress')}
-              value={`${progress.toFixed(1)}%`}
+              value={`${(Math.floor(progress * 10) / 10).toFixed(1)}%`}
             />
           )}
           {show('dlSpeed') && dlspeed > 0 && (
@@ -236,10 +236,10 @@ function TorrentCardInner({
               value={formatSize(torrent.uploaded)}
             />
           )}
-          {show('availability') && torrent.availability > 0 && torrent.availability < 1 && (
+          {show('availability') && torrent.availability > 0 && (
             <DetailRow
               label={t('screens.settings.expandedCardFieldsList.availability')}
-              value={`${(torrent.availability * 100).toFixed(1)}%`}
+              value={(Math.floor(torrent.availability * 1000) / 1000).toFixed(3)}
             />
           )}
           {show('seedingTime') && torrent.seeding_time > 0 && (

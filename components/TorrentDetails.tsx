@@ -1124,7 +1124,7 @@ export function TorrentDetails({
                       style={[styles.peerRow, { borderBottomColor: colors.surfaceOutline }]}
                     >
                       <Text style={[styles.peerProgress, { color: colors.text }]}>
-                        {(p.progress * 100).toFixed(1)}%
+                        {(Math.floor(p.progress * 1000) / 10).toFixed(1)}%
                       </Text>
                       <View style={styles.peerInfo}>
                         <Text style={[styles.peerIp, { color: colors.text }]} numberOfLines={1}>
@@ -1151,7 +1151,7 @@ export function TorrentDetails({
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('torrentDetail.generalInformation')}</Text>
           </View>
           <InfoRow icon="stats-chart" label={t('torrentDetail.state')} value={torrent.state} />
-          <InfoRow icon="pie-chart" label={t('torrentDetail.progress')} value={`${(torrent.progress * 100).toFixed(1)}%`} />
+          <InfoRow icon="pie-chart" label={t('torrentDetail.progress')} value={`${(Math.floor(torrent.progress * 1000) / 10).toFixed(1)}%`} />
           <InfoRow icon="disc" label={t('torrentDetail.size')} value={formatSize(torrent.total_size)} />
           <InfoRow icon="download" label={t('torrentDetail.downloaded')} value={formatSize(torrent.completed)} />
           <InfoRow icon="cloud-done" label={t('torrentDetail.uploaded')} value={formatSize(torrent.uploaded)} />
@@ -1402,7 +1402,7 @@ export function TorrentDetails({
               <View style={styles.fileInfo}>
                 <Text style={[styles.fileSize, { color: colors.textSecondary }]}>{formatSize(file.size)}</Text>
                 <Text style={[styles.fileProgress, { color: colors.primary }]}>
-                  {(file.progress * 100).toFixed(1)}%
+                  {(Math.floor(file.progress * 1000) / 10).toFixed(1)}%
                 </Text>
               </View>
               <View style={[styles.fileActions, { borderTopColor: colors.surfaceOutline }]}>
