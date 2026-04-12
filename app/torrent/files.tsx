@@ -525,7 +525,7 @@ export default function TorrentFilesScreen() {
                             </Text>
                             <Text style={styles.fileSeparator}>•</Text>
                             <Text style={[styles.fileProgress, { color: colors.textSecondary }]}>
-                              {(file.progress * 100).toFixed(1)}%
+                              {(Math.floor(file.progress * 1000) / 10).toFixed(1)}%
                             </Text>
                           </View>
                         </View>
