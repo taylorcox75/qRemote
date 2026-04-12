@@ -36,7 +36,6 @@ module.exports = {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#0A0A0A',
       },
-      edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: 'com.qRemote.app',
       usesCleartextTraffic: true,
@@ -56,7 +55,7 @@ module.exports = {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-router', 'expo-localization'],
+    plugins: ['expo-router', 'expo-localization', 'expo-secure-store', 'expo-sharing', 'expo-font'],
     extra: {
       router: {},
       eas: {
