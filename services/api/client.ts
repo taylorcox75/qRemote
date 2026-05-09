@@ -225,7 +225,7 @@ class ApiClient {
 
     // Let the interceptor handle headers (it already sets Content-Type) and baseURL
     const response = await this.client.post(url, body, { signal });
-    return response.data;
+    return [response.data, response.status];
   }
 
   private isRetriableError(error: unknown): boolean {

@@ -45,11 +45,11 @@ export const torrentsApi = {
     if (hashes && hashes.length > 0) params.hashes = hashes.join('|');
 
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/info`, params);
-    
+
     if (Array.isArray(response)) {
       return response as TorrentInfo[];
     }
-    
+
     return [];
   },
 
@@ -108,7 +108,7 @@ export const torrentsApi = {
   async pauseTorrents(hashes: string[]): Promise<void> {
     const hashString = hashes.join('|');
     try {
-      const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/stop`, {
+      const [response, responseStatus] = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/stop`, {
         hashes: hashString,
       });
       // console.log('Pause response:', response);
@@ -131,7 +131,7 @@ export const torrentsApi = {
   async resumeTorrents(hashes: string[]): Promise<void> {
     const hashString = hashes.join('|');
     try {
-      const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/start`, {
+      const [response, responseStatus] = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/start`, {
         hashes: hashString,
       });
     } catch (error: unknown) {
@@ -199,7 +199,7 @@ export const torrentsApi = {
     }
   ): Promise<void> {
     const formData = new FormData();
-    
+
     if (Array.isArray(urls)) {
       urls.forEach((url) => {
         formData.append('urls', url);
@@ -274,7 +274,7 @@ export const torrentsApi = {
     }
   ): Promise<void> {
     const formData = new FormData();
-    
+
     // Add the torrent file
     // @ts-expect-error React Native FormData accepts { uri, type, name } objects for file uploads
     formData.append('torrents', {

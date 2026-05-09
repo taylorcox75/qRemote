@@ -236,6 +236,7 @@ export function SuperDebugPanel({
     idRef.current = 0;
 
     const baseUrl = buildUrl();
+    const portNum = port.trim() ? parseInt(port, 10) : undefined;
     const controller = new AbortController();
     abortRef.current = controller;
     setRunning(true);
@@ -312,7 +313,7 @@ export function SuperDebugPanel({
           const loginBody = await loginResp.text();
           const bodyTrimmed = loginBody.trim();
 
-          if (bodyTrimmed === 'Ok.' || bodyTrimmed === 'Ok') {
+          if (bodyTrimmed === 'Ok.' || bodyTrimmed === 'Ok' || loginResp.status === 204) {
             addEntry('LOGIN', `Login successful — "${bodyTrimmed}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'success');
           } else if (bodyTrimmed === 'Fails.' || bodyTrimmed === 'Fails') {
             addEntry('LOGIN', `Login REJECTED — "${bodyTrimmed}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'error');
@@ -349,9 +350,11 @@ export function SuperDebugPanel({
             loginResp.headers.get('SET-COOKIE');
 
           if (setCookieHeader) {
-            const sidMatch = setCookieHeader.match(/SID=([^;]+)/i);
+            // regex handles SID with and without the port info
+            const re = new RegExp(`SID?(?:_${portNum})=([^;]+)`, 'i');
+            const sidMatch = setCookieHeader.match(re);
             if (sidMatch) {
-              sidCookie = `SID=${sidMatch[1]}`;
+              sidCookie = `QBT_SID_${portNum}=${sidMatch[1]}`;
               const truncated = sidMatch[1].length > 12
                 ? sidMatch[1].substring(0, 12) + '...'
                 : sidMatch[1];

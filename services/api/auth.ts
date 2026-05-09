@@ -15,26 +15,25 @@ export const authApi = {
       // Clear any existing cookies before login
       apiClient.clearCookies();
       clogInfo('AUTH', `Login attempt for user "${username}"`);
-      
-      const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/auth/login`, {
+      const [response, responseStatus] = await apiClient.postUrlEncoded(`/api/${API_VERSION}/auth/login`, {
         username,
         password,
       }, signal);
-      
+
       // Check if cookies were set after login
       const cookies = apiClient.getCookies();
-      
       const responsePreview = typeof response === 'string' ? response.substring(0, 50) : 'non-string response';
       console.log('[Auth] Login response:', responsePreview);
+      console.log('[Auth] Login response status:', responseStatus);
       console.log('[Auth] Cookies received:', cookies ? 'Yes (' + cookies.length + ' chars)' : 'No');
 
-      clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`);
-      
+      clogDebug('AUTH', `Response [${responseStatus}]: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`);
+
       // qBittorrent returns 'Ok.' on success, 'Fails.' on failure
+      // on  newer API versions the response data is empty and success is indicated with a 204 status code
       // Handle both string and trimmed string responses
       const responseStr = typeof response === 'string' ? response.trim() : String(response).trim();
-      
-      if (responseStr === 'Ok.' || responseStr === 'Ok') {
+      if (responseStr === 'Ok.' || responseStr === 'Ok' || responseStatus === 204) {
         // Successful login - verify we have session cookies
         if (!cookies || cookies.length === 0) {
           console.warn('[Auth] Warning: Login succeeded but no cookies received. This may cause issues with qBittorrent 5.x');
@@ -43,7 +42,7 @@ export const authApi = {
         clogInfo('AUTH', 'Login successful');
         return { status: 'Ok' };
       }
-      
+
       console.warn('[Auth] Login failed with response:', responseStr);
       clogWarn('AUTH', `Login failed — server responded: "${responseStr}"`);
       return { status: 'Fails' };
@@ -60,15 +59,15 @@ export const authApi = {
       const statusHint = axiosErr?.response?.status ? ` (HTTP ${axiosErr.response.status})` : '';
       console.warn('[Auth] Login error:', message, statusHint);
       clogError('AUTH', `Login error: ${message}${statusHint}`);
-      
+
       if (message.includes('timeout') || message.includes('Connection') || message.includes('Network')) {
         throw error;
       }
-      
+
       if (axiosErr?.response?.status === 403) {
         throw new Error('Authentication failed. Please check your username and password.');
       }
-      
+
       return { status: 'Fails' };
     }
   },
