@@ -272,7 +272,11 @@
       "prioritySkip": "跳过",
       "priorityNormal": "普通",
       "priorityHigh": "高",
-      "priorityMaximum": "最高"
+      "priorityMaximum": "最高",
+      "fileActions": "文件操作",
+      "renameFile": "重命名文件",
+      "renameFolder": "重命名文件夹",
+      "enterNewName": "输入新名称"
     },
     "logs": {
       "title": "日志",
@@ -647,7 +651,9 @@
     "stateColorsReset": "Torrent state colors reset to defaults",
     "colorsReset": "Colors reset to defaults",
     "serverNotFound": "Server not found",
-    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually."
+    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually.",
+    "fileRenamed": "文件已重命名",
+    "folderRenamed": "文件夹已重命名"
   },
   "errors": {
     "generic": "发生错误",

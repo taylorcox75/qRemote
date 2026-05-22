@@ -272,7 +272,11 @@
       "prioritySkip": "Omitir",
       "priorityNormal": "Normal",
       "priorityHigh": "Alta",
-      "priorityMaximum": "Máxima"
+      "priorityMaximum": "Máxima",
+      "fileActions": "Acciones de archivo",
+      "renameFile": "Renombrar archivo",
+      "renameFolder": "Renombrar carpeta",
+      "enterNewName": "Introduce un nuevo nombre"
     },
     "logs": {
       "title": "Registros",
@@ -647,7 +651,9 @@
     "stateColorsReset": "Torrent state colors reset to defaults",
     "colorsReset": "Colors reset to defaults",
     "serverNotFound": "Server not found",
-    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually."
+    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually.",
+    "fileRenamed": "Archivo renombrado",
+    "folderRenamed": "Carpeta renombrada"
   },
   "errors": {
     "generic": "Ocurrió un error",

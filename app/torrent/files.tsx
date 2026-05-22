@@ -23,6 +23,7 @@ import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { InputModal } from '@/components/InputModal';
 import { torrentsApi } from '@/services/api/torrents';
 import { TorrentFile, FilePriority } from '@/types/api';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -58,6 +59,13 @@ export default function TorrentFilesScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuFile, setMenuFile] = useState<TorrentFile | null>(null);
   const [bulkPriorityMenuVisible, setBulkPriorityMenuVisible] = useState(false);
+  const [inputModalVisible, setInputModalVisible] = useState(false);
+  const [inputModalConfig, setInputModalConfig] = useState<{
+    title: string;
+    message?: string;
+    defaultValue?: string;
+    onConfirm: (value: string) => void;
+  }>({ title: '', onConfirm: () => {} });
 
   useEffect(() => {
     if (hash && isConnected) {
@@ -222,6 +230,73 @@ export default function TorrentFilesScreen() {
       setUpdating(false);
       setMenuFile(null);
     }
+  };
+
+  const promptRenameFile = (file: TorrentFile) => {
+    setMenuVisible(false);
+    const parts = file.name.split('/');
+    const currentName = parts[parts.length - 1];
+    const parentPath = parts.slice(0, -1).join('/');
+    setInputModalConfig({
+      title: t('screens.files.renameFile'),
+      message: t('screens.files.enterNewName'),
+      defaultValue: currentName,
+      onConfirm: async (newName: string) => {
+        setInputModalVisible(false);
+        const trimmed = newName.trim();
+        if (!trimmed) {
+          showToast(t('errors.validName'), 'error');
+          return;
+        }
+        if (trimmed === currentName) return;
+        const newPath = parentPath ? `${parentPath}/${trimmed}` : trimmed;
+        try {
+          setUpdating(true);
+          await torrentsApi.renameFile(hash, file.name, newPath);
+          await loadFiles();
+          showToast(t('toast.fileRenamed'), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
+        } finally {
+          setUpdating(false);
+          setMenuFile(null);
+        }
+      },
+    });
+    setInputModalVisible(true);
+  };
+
+  const promptRenameFolder = (folderPath: string) => {
+    if (updating) return;
+    const parts = folderPath.split('/');
+    const currentName = parts[parts.length - 1];
+    const parentPath = parts.slice(0, -1).join('/');
+    setInputModalConfig({
+      title: t('screens.files.renameFolder'),
+      message: t('screens.files.enterNewName'),
+      defaultValue: currentName,
+      onConfirm: async (newName: string) => {
+        setInputModalVisible(false);
+        const trimmed = newName.trim();
+        if (!trimmed) {
+          showToast(t('errors.validName'), 'error');
+          return;
+        }
+        if (trimmed === currentName) return;
+        const newPath = parentPath ? `${parentPath}/${trimmed}` : trimmed;
+        try {
+          setUpdating(true);
+          await torrentsApi.renameFolder(hash, folderPath, newPath);
+          await loadFiles();
+          showToast(t('toast.folderRenamed'), 'success');
+        } catch (error: unknown) {
+          showToast(getErrorMessage(error), 'error');
+        } finally {
+          setUpdating(false);
+        }
+      },
+    });
+    setInputModalVisible(true);
   };
 
   const selectedIndices = useMemo(
@@ -463,6 +538,8 @@ export default function TorrentFilesScreen() {
                       <TouchableOpacity
                         style={styles.folderContent}
                         onPress={() => handleFolderExpand(item.path)}
+                        onLongPress={() => promptRenameFolder(item.path)}
+                        delayLongPress={350}
                       >
                         <Ionicons 
                           name={isCollapsed ? 'chevron-forward' : 'chevron-down'} 
@@ -478,6 +555,16 @@ export default function TorrentFilesScreen() {
                             {t('screens.files.filesCount', { count: item.fileCount })} • {formatSize(item.size || 0)}
                           </Text>
                         </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.folderRenameButton}
+                        onPress={() => promptRenameFolder(item.path)}
+                        disabled={updating}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityLabel={t('screens.files.renameFolder')}
+                      >
+                        <Ionicons name="pencil-outline" size={18} color={colors.textSecondary} />
                       </TouchableOpacity>
                     </View>
                   );
@@ -502,6 +589,11 @@ export default function TorrentFilesScreen() {
                     <TouchableOpacity
                       style={[styles.fileCard, { backgroundColor: colors.surface }]}
                       onPress={() => showPriorityMenu(file)}
+                      onLongPress={() => {
+                        setMenuFile(file);
+                        promptRenameFile(file);
+                      }}
+                      delayLongPress={350}
                       disabled={updating}
                     >
                       <View style={styles.fileHeader}>
@@ -584,11 +676,19 @@ export default function TorrentFilesScreen() {
                 },
               ]}
             >
-              <Text style={[styles.menuTitle, { color: colors.text }]}>{t('screens.files.setPriority')}</Text>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>{t('screens.files.fileActions')}</Text>
               <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
                 {menuFile?.name.split('/').pop()}
               </Text>
-              
+
+              <TouchableOpacity
+                style={[styles.menuOption, { borderBottomColor: colors.surfaceOutline }]}
+                onPress={() => menuFile && promptRenameFile(menuFile)}
+              >
+                <Ionicons name="pencil-outline" size={20} color={colors.primary} />
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.renameFile')}</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={[styles.menuOption, { borderBottomColor: colors.surfaceOutline }]}
                 onPress={() => handleSetPriority(0)}
@@ -684,6 +784,16 @@ export default function TorrentFilesScreen() {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Rename Input Modal */}
+        <InputModal
+          visible={inputModalVisible}
+          title={inputModalConfig.title}
+          message={inputModalConfig.message}
+          defaultValue={inputModalConfig.defaultValue}
+          onCancel={() => setInputModalVisible(false)}
+          onConfirm={inputModalConfig.onConfirm}
+        />
       </SafeAreaView>
     </>
   );
@@ -775,6 +885,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.sm,
+  },
+  folderRenameButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   folderInfo: {
     flex: 1,

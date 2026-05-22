@@ -270,7 +270,11 @@
       "prioritySkip": "Пропуск",
       "priorityNormal": "Обычный",
       "priorityHigh": "Высокий",
-      "priorityMaximum": "Максимум"
+      "priorityMaximum": "Максимум",
+      "fileActions": "Действия с файлом",
+      "renameFile": "Переименовать файл",
+      "renameFolder": "Переименовать папку",
+      "enterNewName": "Введите новое имя"
     },
     "logs": {
       "title": "Журнал",
@@ -645,7 +649,9 @@
     "prioritySet": "Приоритет: {{label}}",
     "prioritySetForCount": "Приоритет {{label}} для {{count}} файл(ов)",
     "fileSelected": "Выбран файл: {{name}}",
-    "dlLimitSetKb": "Лимит загрузки: {{value}} КБ/с"
+    "dlLimitSetKb": "Лимит загрузки: {{value}} КБ/с",
+    "fileRenamed": "Файл переименован",
+    "folderRenamed": "Папка переименована"
   },
   "errors": {
     "generic": "Произошла ошибка",

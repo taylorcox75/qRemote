@@ -292,7 +292,11 @@
       "prioritySkip": "Skip",
       "priorityNormal": "Normal",
       "priorityHigh": "High",
-      "priorityMaximum": "Maximum"
+      "priorityMaximum": "Maximum",
+      "fileActions": "File Actions",
+      "renameFile": "Rename File",
+      "renameFolder": "Rename Folder",
+      "enterNewName": "Enter a new name"
     },
     "logs": {
       "title": "Logs",
@@ -667,7 +671,9 @@
     "prioritySet": "Priority set to {{label}}",
     "prioritySetForCount": "Priority set to {{label}} for {{count}} file(s)",
     "fileSelected": "File selected: {{name}}",
-    "dlLimitSetKb": "Download limit set to {{value}} KB/s"
+    "dlLimitSetKb": "Download limit set to {{value}} KB/s",
+    "fileRenamed": "File renamed",
+    "folderRenamed": "Folder renamed"
   },
   "errors": {
     "generic": "An error occurred",

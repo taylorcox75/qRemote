@@ -272,7 +272,11 @@
       "prioritySkip": "Überspringen",
       "priorityNormal": "Normal",
       "priorityHigh": "Hoch",
-      "priorityMaximum": "Maximum"
+      "priorityMaximum": "Maximum",
+      "fileActions": "Dateiaktionen",
+      "renameFile": "Datei umbenennen",
+      "renameFolder": "Ordner umbenennen",
+      "enterNewName": "Neuen Namen eingeben"
     },
     "logs": {
       "title": "Protokolle",
@@ -647,7 +651,9 @@
     "stateColorsReset": "Torrent state colors reset to defaults",
     "colorsReset": "Colors reset to defaults",
     "serverNotFound": "Server not found",
-    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually."
+    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually.",
+    "fileRenamed": "Datei umbenannt",
+    "folderRenamed": "Ordner umbenannt"
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten",
