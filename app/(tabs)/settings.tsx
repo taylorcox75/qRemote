@@ -163,6 +163,12 @@ export default function SettingsScreen() {
               colors={colors}
             />
             <NavRow
+              icon="extension-puzzle-outline"
+              label={t('screens.search.pluginsTitle')}
+              onPress={() => router.push('/search/plugins')}
+              colors={colors}
+            />
+            <NavRow
               icon="construct-outline"
               label={t('screens.settings.advanced')}
               onPress={() => router.push('/settings/advanced')}

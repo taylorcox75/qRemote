@@ -115,6 +115,15 @@ export interface AppPreferences {
 
   /** Per-field visibility for the expanded (detailed) torrent card */
   expandedCardFields: Record<ExpandedCardField, boolean>;
+
+  /** Last entered search query (used to repopulate the search screen on return) */
+  lastSearchQuery?: string;
+
+  /** Last selected search plugin ("all", "enabled", or a plugin name) */
+  lastSearchPlugin?: string;
+
+  /** Last selected search category ("all" or a plugin-supported category id) */
+  lastSearchCategory?: string;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -174,4 +183,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
     category: true,
     progress: false,
   },
+  lastSearchQuery: '',
+  lastSearchPlugin: 'enabled',
+  lastSearchCategory: 'all',
 };

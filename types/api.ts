@@ -270,3 +270,47 @@ export interface ApiResponse<T = unknown> {
   error?: string;
   status: number;
 }
+
+// Search (qBittorrent /api/v2/search/*)
+// Available from qBittorrent v4.1.4 / WebAPI v2.1.1.
+export interface SearchJob {
+  id: number;
+}
+
+export type SearchStatusValue = 'Running' | 'Stopped';
+
+export interface SearchJobStatus {
+  id: number;
+  status: SearchStatusValue;
+  total: number;
+}
+
+export interface SearchResult {
+  fileName: string;
+  fileSize: number;
+  fileUrl: string;
+  nbLeechers: number;
+  nbSeeders: number;
+  siteUrl: string;
+  descrLink: string;
+}
+
+export interface SearchResultsResponse {
+  status: SearchStatusValue;
+  results: SearchResult[];
+  total: number;
+}
+
+export interface SearchPluginCategory {
+  id: string;
+  name: string;
+}
+
+export interface SearchPlugin {
+  enabled: boolean;
+  fullName: string;
+  name: string;
+  supportedCategories: SearchPluginCategory[];
+  url: string;
+  version: string;
+}

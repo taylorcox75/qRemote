@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   const { colors, isDark } = useTheme();
 
   return (
@@ -43,6 +45,15 @@ export default function TabsLayout() {
             title: 'Transfer',
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'speedometer' : 'speedometer-outline'} size={24} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="search"
+          options={{
+            title: t('screens.search.tabTitle'),
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
             ),
           }}
         />
