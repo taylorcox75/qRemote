@@ -272,7 +272,11 @@
       "prioritySkip": "Ignorer",
       "priorityNormal": "Normal",
       "priorityHigh": "Haute",
-      "priorityMaximum": "Maximum"
+      "priorityMaximum": "Maximum",
+      "fileActions": "Actions du fichier",
+      "renameFile": "Renommer le fichier",
+      "renameFolder": "Renommer le dossier",
+      "enterNewName": "Entrez un nouveau nom"
     },
     "logs": {
       "title": "Journaux",
@@ -647,7 +651,9 @@
     "stateColorsReset": "Torrent state colors reset to defaults",
     "colorsReset": "Colors reset to defaults",
     "serverNotFound": "Server not found",
-    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually."
+    "connectionFailedCheck": "Connection failed. Please check your settings and try connecting manually.",
+    "fileRenamed": "Fichier renommé",
+    "folderRenamed": "Dossier renommé"
   },
   "errors": {
     "generic": "Une erreur s'est produite",
