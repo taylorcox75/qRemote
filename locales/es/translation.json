@@ -40,7 +40,7 @@
       "selectTorrentFile": "Seleccionar archivo .torrent",
       "yourServers": "TUS SERVIDORES",
       "fileSelected": "Archivo seleccionado: {{name}}",
-      "enterLimitKbs": "Introduce el límite en KB/s (0 para ilimitado)"
+      "enterLimitKbs": "Introduce el límite en KiB/s (0 para ilimitado)"
     },
     "addTorrent": {
       "none": "Ninguno",
@@ -233,23 +233,23 @@
       "custom": "Custom",
       "noTransferInfo": "No transfer info",
       "limitModalTitle": "{{type}} Limit",
-      "limitModalSubtitle": "Enter limit in KB/s (0 for unlimited)",
+      "limitModalSubtitle": "Enter limit in KiB/s (0 for unlimited)",
       "set": "Set",
       "allPaused": "All torrents paused",
       "allResumed": "All torrents resumed",
       "forceStartEnabled": "Force start enabled for all torrents",
       "downloadLimitRemoved": "Download limit removed",
       "uploadLimitRemoved": "Upload limit removed",
-      "downloadLimitSet": "Download limit set to {{value}} KB/s",
-      "uploadLimitSet": "Upload limit set to {{value}} KB/s",
+      "downloadLimitSet": "Download limit set to {{value}} KiB/s",
+      "uploadLimitSet": "Upload limit set to {{value}} KiB/s",
       "noDlTorrents": "No downloading torrents to pause",
       "noUlTorrents": "No uploading torrents to pause",
       "pausedDl": "Paused {{count}} downloading torrent(s)",
       "pausedUl": "Paused {{count}} uploading torrent(s)",
       "altDownloadLimit": "Descarga Alt",
       "altUploadLimit": "Subida Alt",
-      "altDownloadLimitSet": "Límite de descarga alternativa establecido en {{value}} KB/s",
-      "altUploadLimitSet": "Límite de subida alternativa establecido en {{value}} KB/s",
+      "altDownloadLimitSet": "Límite de descarga alternativa establecido en {{value}} KiB/s",
+      "altUploadLimitSet": "Límite de subida alternativa establecido en {{value}} KiB/s",
       "altDownloadLimitRemoved": "Límite de descarga alternativa eliminado",
       "altUploadLimitRemoved": "Límite de subida alternativa eliminado"
     },
@@ -326,7 +326,7 @@
     "username": "Usuario",
     "password": "Contraseña",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "Introducir KB/s"
+    "enterKbs": "Introducir KiB/s"
   },
   "actions": {
     "resume": "Reanudar",
@@ -647,7 +647,7 @@
     "prioritySet": "Prioridad establecida en {{label}}",
     "prioritySetForCount": "Prioridad establecida en {{label}} para {{count}} archivo(s)",
     "fileSelected": "File selected: {{name}}",
-    "dlLimitSetKb": "Download limit set to {{value}} KB/s",
+    "dlLimitSetKb": "Download limit set to {{value}} KiB/s",
     "stateColorsReset": "Torrent state colors reset to defaults",
     "colorsReset": "Colors reset to defaults",
     "serverNotFound": "Server not found",

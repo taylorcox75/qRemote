@@ -40,7 +40,7 @@
       "selectTorrentFile": "Torrent-Datei auswählen",
       "yourServers": "DEINE SERVER",
       "fileSelected": "Datei ausgewählt: {{name}}",
-      "enterLimitKbs": "Grenzwert in KB/s eingeben (0 für unbegrenzt)"
+      "enterLimitKbs": "Grenzwert in KiB/s eingeben (0 für unbegrenzt)"
     },
     "addTorrent": {
       "none": "Keiner",
@@ -233,23 +233,23 @@
       "custom": "Custom",
       "noTransferInfo": "No transfer info",
       "limitModalTitle": "{{type}} Limit",
-      "limitModalSubtitle": "Enter limit in KB/s (0 for unlimited)",
+      "limitModalSubtitle": "Enter limit in KiB/s (0 for unlimited)",
       "set": "Set",
       "allPaused": "All torrents paused",
       "allResumed": "All torrents resumed",
       "forceStartEnabled": "Force start enabled for all torrents",
       "downloadLimitRemoved": "Download limit removed",
       "uploadLimitRemoved": "Upload limit removed",
-      "downloadLimitSet": "Download limit set to {{value}} KB/s",
-      "uploadLimitSet": "Upload limit set to {{value}} KB/s",
+      "downloadLimitSet": "Download limit set to {{value}} KiB/s",
+      "uploadLimitSet": "Upload limit set to {{value}} KiB/s",
       "noDlTorrents": "No downloading torrents to pause",
       "noUlTorrents": "No uploading torrents to pause",
       "pausedDl": "Paused {{count}} downloading torrent(s)",
       "pausedUl": "Paused {{count}} uploading torrent(s)",
       "altDownloadLimit": "Alt Download",
       "altUploadLimit": "Alt Upload",
-      "altDownloadLimitSet": "Alternatives Download-Limit auf {{value}} KB/s gesetzt",
-      "altUploadLimitSet": "Alternatives Upload-Limit auf {{value}} KB/s gesetzt",
+      "altDownloadLimitSet": "Alternatives Download-Limit auf {{value}} KiB/s gesetzt",
+      "altUploadLimitSet": "Alternatives Upload-Limit auf {{value}} KiB/s gesetzt",
       "altDownloadLimitRemoved": "Alternatives Download-Limit entfernt",
       "altUploadLimitRemoved": "Alternatives Upload-Limit entfernt"
     },
@@ -326,7 +326,7 @@
     "username": "Benutzername",
     "password": "Passwort",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "KB/s eingeben"
+    "enterKbs": "KiB/s eingeben"
   },
   "actions": {
     "resume": "Fortsetzen",
@@ -647,7 +647,7 @@
     "prioritySet": "Priorität auf {{label}} gesetzt",
     "prioritySetForCount": "Priorität für {{count}} Datei(en) auf {{label}} gesetzt",
     "fileSelected": "File selected: {{name}}",
-    "dlLimitSetKb": "Download limit set to {{value}} KB/s",
+    "dlLimitSetKb": "Download limit set to {{value}} KiB/s",
     "stateColorsReset": "Torrent state colors reset to defaults",
     "colorsReset": "Colors reset to defaults",
     "serverNotFound": "Server not found",

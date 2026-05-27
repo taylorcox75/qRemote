@@ -32,27 +32,27 @@ describe('formatSize', () => {
     expect(formatSize(500)).toBe('500.00 B');
   });
 
-  it('formats KB correctly', () => {
-    expect(formatSize(1024)).toBe('1.00 KB');
-    expect(formatSize(1536)).toBe('1.50 KB');
+  it('formats KiB correctly', () => {
+    expect(formatSize(1024)).toBe('1.00 KiB');
+    expect(formatSize(1536)).toBe('1.50 KiB');
   });
 
-  it('formats MB correctly', () => {
-    expect(formatSize(1048576)).toBe('1.00 MB');
-    expect(formatSize(5 * 1024 * 1024)).toBe('5.00 MB');
+  it('formats MiB correctly', () => {
+    expect(formatSize(1048576)).toBe('1.00 MiB');
+    expect(formatSize(5 * 1024 * 1024)).toBe('5.00 MiB');
   });
 
-  it('formats GB correctly', () => {
-    expect(formatSize(1073741824)).toBe('1.00 GB');
+  it('formats GiB correctly', () => {
+    expect(formatSize(1073741824)).toBe('1.00 GiB');
   });
 
-  it('formats TB correctly', () => {
-    expect(formatSize(1099511627776)).toBe('1.00 TB');
+  it('formats TiB correctly', () => {
+    expect(formatSize(1099511627776)).toBe('1.00 TiB');
   });
 
   it('handles very large numbers', () => {
     const result = formatSize(5 * 1099511627776);
-    expect(result).toBe('5.00 TB');
+    expect(result).toBe('5.00 TiB');
   });
 });
 
@@ -81,22 +81,22 @@ describe('formatSpeed', () => {
     expect(formatSpeed(500)).toBe('500.0 B/s');
   });
 
-  it('formats KB/s correctly', () => {
-    expect(formatSpeed(1024)).toBe('1.0 KB/s');
-    expect(formatSpeed(8700)).toBe('8.5 KB/s');
+  it('formats KiB/s correctly', () => {
+    expect(formatSpeed(1024)).toBe('1.0 KiB/s');
+    expect(formatSpeed(8700)).toBe('8.5 KiB/s');
   });
 
-  it('formats MB/s correctly', () => {
-    expect(formatSpeed(1048576)).toBe('1.0 MB/s');
+  it('formats MiB/s correctly', () => {
+    expect(formatSpeed(1048576)).toBe('1.0 MiB/s');
   });
 
-  it('formats GB/s correctly', () => {
-    expect(formatSpeed(1073741824)).toBe('1.0 GB/s');
+  it('formats GiB/s correctly', () => {
+    expect(formatSpeed(1073741824)).toBe('1.0 GiB/s');
   });
 
   it('handles very large numbers', () => {
     const result = formatSpeed(10 * 1073741824);
-    expect(result).toBe('10.0 GB/s');
+    expect(result).toBe('10.0 GiB/s');
   });
 });
 

@@ -60,7 +60,7 @@
       "selectTorrentFile": "Select .torrent file",
       "yourServers": "YOUR SERVERS",
       "fileSelected": "File selected: {{name}}",
-      "enterLimitKbs": "Enter limit in KB/s (0 for unlimited)"
+      "enterLimitKbs": "Enter limit in KiB/s (0 for unlimited)"
     },
     "addTorrent": {
       "none": "None",
@@ -253,23 +253,23 @@
       "custom": "Custom",
       "noTransferInfo": "No transfer info",
       "limitModalTitle": "{{type}} Limit",
-      "limitModalSubtitle": "Enter limit in KB/s (0 for unlimited)",
+      "limitModalSubtitle": "Enter limit in KiB/s (0 for unlimited)",
       "set": "Set",
       "allPaused": "All torrents paused",
       "allResumed": "All torrents resumed",
       "forceStartEnabled": "Force start enabled for all torrents",
       "downloadLimitRemoved": "Download limit removed",
       "uploadLimitRemoved": "Upload limit removed",
-      "downloadLimitSet": "Download limit set to {{value}} KB/s",
-      "uploadLimitSet": "Upload limit set to {{value}} KB/s",
+      "downloadLimitSet": "Download limit set to {{value}} KiB/s",
+      "uploadLimitSet": "Upload limit set to {{value}} KiB/s",
       "noDlTorrents": "No downloading torrents to pause",
       "noUlTorrents": "No uploading torrents to pause",
       "pausedDl": "Paused {{count}} downloading torrent(s)",
       "pausedUl": "Paused {{count}} uploading torrent(s)",
       "altDownloadLimit": "Alt Download",
       "altUploadLimit": "Alt Upload",
-      "altDownloadLimitSet": "Alt download limit set to {{value}} KB/s",
-      "altUploadLimitSet": "Alt upload limit set to {{value}} KB/s",
+      "altDownloadLimitSet": "Alt download limit set to {{value}} KiB/s",
+      "altUploadLimitSet": "Alt upload limit set to {{value}} KiB/s",
       "altDownloadLimitRemoved": "Alt download limit removed",
       "altUploadLimitRemoved": "Alt upload limit removed"
     },
@@ -346,7 +346,7 @@
     "username": "Username",
     "password": "Password",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "Enter KB/s"
+    "enterKbs": "Enter KiB/s"
   },
   "actions": {
     "resume": "Resume",
@@ -671,7 +671,7 @@
     "prioritySet": "Priority set to {{label}}",
     "prioritySetForCount": "Priority set to {{label}} for {{count}} file(s)",
     "fileSelected": "File selected: {{name}}",
-    "dlLimitSetKb": "Download limit set to {{value}} KB/s",
+    "dlLimitSetKb": "Download limit set to {{value}} KiB/s",
     "fileRenamed": "File renamed",
     "folderRenamed": "Folder renamed"
   },

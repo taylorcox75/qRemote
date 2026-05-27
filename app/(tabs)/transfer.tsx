@@ -324,8 +324,9 @@ export default function TransferScreen() {
       setSettingLimit(true);
       setLimitModalVisible(false);
       if (limitType === 'altDownload') {
-        // Alt limits are passed directly in KB/s (preferences API accepts KiB/s)
-        await setAltDownloadLimit(Math.round(limit));
+        // Alt limits accept bytes/s on the qBT preferences endpoint, so convert
+        // the KiB/s user input the same way regular limits do.
+        await setAltDownloadLimit(kbToBytes(Math.round(limit)));
         showToast(
           limit === 0
             ? t('screens.transfer.altDownloadLimitRemoved')
@@ -333,7 +334,7 @@ export default function TransferScreen() {
           'success',
         );
       } else if (limitType === 'altUpload') {
-        await setAltUploadLimit(Math.round(limit));
+        await setAltUploadLimit(kbToBytes(Math.round(limit)));
         showToast(
           limit === 0
             ? t('screens.transfer.altUploadLimitRemoved')

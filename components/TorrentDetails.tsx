@@ -644,7 +644,7 @@ export function TorrentDetails({
   const formatSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const sizes = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
@@ -652,7 +652,7 @@ export function TorrentDetails({
   const formatSpeed = (bytes: number): string => {
     if (bytes === 0) return '0 B/s';
     const k = 1024;
-    const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+    const sizes = ['B/s', 'KiB/s', 'MiB/s', 'GiB/s'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
   };
@@ -669,9 +669,9 @@ export function TorrentDetails({
 
   const getMBPerSecond = (kbPerSecond: string): string => {
     const num = parseFloat(kbPerSecond);
-    if (isNaN(num) || num === 0) return '0 MB/s';
+    if (isNaN(num) || num === 0) return '0 MiB/s';
     const mbPerSecond = num / 1024;
-    return `${mbPerSecond.toFixed(2)} MB/s`;
+    return `${mbPerSecond.toFixed(2)} MiB/s`;
   };
 
   const handleLimitSubmit = async () => {
@@ -686,7 +686,7 @@ export function TorrentDetails({
     try {
       setLoading(true);
       setLimitModalVisible(false);
-      const limitInBytes = limit * 1024; // Convert KB/s to bytes/s
+      const limitInBytes = limit * 1024; // Convert KiB/s to bytes/s
       
       if (limitType === 'download') {
         await torrentsApi.setTorrentDownloadLimit([torrent.hash], limitInBytes);
