@@ -19,13 +19,12 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '3.2.0',
     date: '2026-05-29',
-    changes: ['Release version update'],
+    changes: ['Search plugin support'],
   },
   {
     version: '3.1.2',
     date: '2026-05-29',
     changes: [
-      'Added qBittorrent search plugin support',
       'Fixed alternative speed limit units, key handling, and IEC labels',
       'Added ability to rename files and folders from the file browser',
     ],
