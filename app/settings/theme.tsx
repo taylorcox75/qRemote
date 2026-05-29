@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,7 +42,7 @@ function ColorSettingRow({ label, color, onPress, colors }: ColorSettingRowProps
 
 export default function ThemeSettingsScreen() {
   const router = useRouter();
-  const { isDark, toggleTheme, colors, reloadCustomColors } = useTheme();
+  const { isDark, themeMode, setThemeMode, colors, reloadCustomColors } = useTheme();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
@@ -89,12 +88,26 @@ export default function ThemeSettingsScreen() {
                   </Text>
                 </View>
               </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                ios_backgroundColor={colors.surfaceOutline}
-              />
+              <View style={[styles.themeModeContainer, { borderColor: colors.surfaceOutline }]}>
+                {(['auto', 'light', 'dark'] as const).map((mode) => {
+                  const selected = themeMode === mode;
+                  return (
+                    <TouchableOpacity
+                      key={mode}
+                      style={[
+                        styles.themeModeButton,
+                        selected && { backgroundColor: colors.primary },
+                      ]}
+                      onPress={() => setThemeMode(mode)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.themeModeText, { color: selected ? '#FFFFFF' : colors.textSecondary }]}>
+                        {t(`screens.settings.themeMode${mode.charAt(0).toUpperCase()}${mode.slice(1)}`)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           </View>
         </View>
@@ -387,6 +400,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  themeModeContainer: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: borderRadius.small,
+    overflow: 'hidden',
+  },
+  themeModeButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  themeModeText: {
+    ...typography.caption,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
   separator: {
     height: 1,
     marginHorizontal: spacing.md,
@@ -408,4 +436,3 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
 });
-

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useColorScheme } from 'react-native';
 import { storageService } from '@/services/storage';
 import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
 
@@ -28,7 +29,9 @@ export interface ThemeColors {
 
 interface ThemeContextType {
   isDark: boolean;
-  toggleTheme: () => void;
+  themeMode: 'auto' | 'light' | 'dark';
+  setThemeMode: (mode: 'auto' | 'light' | 'dark') => Promise<void>;
+  toggleTheme: () => Promise<void>;
   reloadCustomColors: () => Promise<void>;
   colors: ThemeColors;
 }
@@ -109,9 +112,11 @@ const trueBlackColors = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [isDark, setIsDark] = useState(true); // Default to dark theme
+  const systemColorScheme = useColorScheme();
+  const [themeMode, setThemeModeState] = useState<'auto' | 'light' | 'dark'>('dark');
   const [isLoading, setIsLoading] = useState(true);
   const [customColors, setCustomColors] = useState<ColorTheme | null>(null);
+  const isDark = themeMode === 'auto' ? systemColorScheme !== 'light' : themeMode === 'dark';
 
   useEffect(() => {
     loadThemePreference();
@@ -128,7 +133,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const preferences = await storageService.getPreferences();
       const savedTheme = preferences.theme;
       if (savedTheme !== undefined) {
-        setIsDark(savedTheme === true || savedTheme === 'dark');
+        if (savedTheme === 'auto' || savedTheme === 'light' || savedTheme === 'dark') {
+          setThemeModeState(savedTheme);
+        } else {
+          setThemeModeState(savedTheme === true ? 'dark' : 'light');
+        }
       }
       // If no saved preference, default to dark (already set)
     } catch (error) {
@@ -147,21 +156,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const toggleTheme = async () => {
-    const newTheme = !isDark;
-    setIsDark(newTheme);
+  const setThemeMode = async (mode: 'auto' | 'light' | 'dark') => {
+    setThemeModeState(mode);
     try {
       const preferences = await storageService.getPreferences();
       await storageService.savePreferences({
         ...preferences,
-        theme: newTheme ? 'dark' : 'light',
+        theme: mode,
       });
-      // Reload custom colors for new theme
-      const custom = await colorThemeManager.getCustomColors(newTheme);
+      const nextIsDark = mode === 'auto' ? systemColorScheme !== 'light' : mode === 'dark';
+      const custom = await colorThemeManager.getCustomColors(nextIsDark);
       setCustomColors(custom);
     } catch (error) {
       // Ignore theme saving errors
     }
+  };
+
+  const toggleTheme = async () => {
+    const newMode = isDark ? 'light' : 'dark';
+    await setThemeMode(newMode);
   };
 
   const baseColors = isDark ? darkColors : lightColors;
@@ -172,6 +185,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return (
       <ThemeContext.Provider
         value={{
+          themeMode: 'dark',
+          setThemeMode,
           isDark: true,
           toggleTheme,
           reloadCustomColors: loadCustomColors,
@@ -186,6 +201,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
       <ThemeContext.Provider
         value={{
+          themeMode,
+          setThemeMode,
           isDark,
           toggleTheme,
           reloadCustomColors: loadCustomColors,
@@ -207,4 +224,3 @@ export function useTheme(): ThemeContextType {
 
 // Export for testing/debugging
 export { darkColors, lightColors, trueBlackColors };
-

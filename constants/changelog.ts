@@ -12,6 +12,14 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.2.2',
+    date: '2026-05-29',
+    changes: [
+      'Added an Auto theme mode option that follows the iOS system light/dark appearance',
+      'Theme settings now include Auto, Light, and Dark mode choices',
+    ],
+  },
+  {
     version: '3.1.0',
     date: '2026-04-11',
     changes: [

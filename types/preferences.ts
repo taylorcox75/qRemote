@@ -46,7 +46,7 @@ export type AddTorrentDialogField =
   | 'cookie';
 
 export interface AppPreferences {
-  /** 'dark' | 'light'; legacy values stored as boolean are also accepted */
+  /** 'auto' | 'dark' | 'light'; legacy values stored as boolean are also accepted */
   theme: string | boolean;
 
   /** Per-theme color overrides, keyed by 'dark' | 'light' */
