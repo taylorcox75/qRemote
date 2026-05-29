@@ -12,6 +12,30 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.2.1',
+    date: '2026-05-29',
+    changes: ['Updated release notes'],
+  },
+  {
+    version: '3.2.0',
+    date: '2026-05-29',
+    changes: ['Release version update'],
+  },
+  {
+    version: '3.1.2',
+    date: '2026-05-29',
+    changes: [
+      'Added qBittorrent search plugin support',
+      'Fixed alternative speed limit units, key handling, and IEC labels',
+      'Added ability to rename files and folders from the file browser',
+    ],
+  },
+  {
+    version: '3.1.1',
+    date: '2026-05-26',
+    changes: ['Improved authentication to support qBittorrent 5.x 204 + Set-Cookie login responses'],
+  },
+  {
     version: '3.1.0',
     date: '2026-04-11',
     changes: [
