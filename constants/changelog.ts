@@ -14,7 +14,7 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '3.2.1',
     date: '2026-05-29',
-    changes: ['Updated release notes'],
+    changes: ['Minor bugfixes'],
   },
   {
     version: '3.2.0',
