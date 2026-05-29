@@ -60,7 +60,7 @@
       "selectTorrentFile": "Выбрать .torrent-файл",
       "yourServers": "ВАШИ СЕРВЕРЫ",
       "fileSelected": "Выбран файл: {{name}}",
-      "enterLimitKbs": "Лимит в КБ/с (0 — без ограничений)"
+      "enterLimitKbs": "Лимит в КиБ/с (0 — без ограничений)"
     },
     "addTorrent": {
       "none": "Нет",
@@ -231,23 +231,23 @@
       "custom": "Свой",
       "noTransferInfo": "Нет данных о передаче",
       "limitModalTitle": "Лимит: {{type}}",
-      "limitModalSubtitle": "Лимит в КБ/с (0 — без ограничений)",
+      "limitModalSubtitle": "Лимит в КиБ/с (0 — без ограничений)",
       "set": "Задать",
       "allPaused": "Все торренты на паузе",
       "allResumed": "Все торренты запущены",
       "forceStartEnabled": "Принудительный старт для всех торрентов",
       "downloadLimitRemoved": "Лимит загрузки снят",
       "uploadLimitRemoved": "Лимит отдачи снят",
-      "downloadLimitSet": "Лимит загрузки: {{value}} КБ/с",
-      "uploadLimitSet": "Лимит отдачи: {{value}} КБ/с",
+      "downloadLimitSet": "Лимит загрузки: {{value}} КиБ/с",
+      "uploadLimitSet": "Лимит отдачи: {{value}} КиБ/с",
       "noDlTorrents": "Нет загружающихся торрентов для паузы",
       "noUlTorrents": "Нет раздающихся торрентов для паузы",
       "pausedDl": "Пауза для {{count}} загрузок",
       "pausedUl": "Пауза для {{count}} раздач",
       "altDownloadLimit": "Альт. загрузка",
       "altUploadLimit": "Альт. отдача",
-      "altDownloadLimitSet": "Альт. лимит загрузки: {{value}} КБ/с",
-      "altUploadLimitSet": "Альт. лимит отдачи: {{value}} КБ/с",
+      "altDownloadLimitSet": "Альт. лимит загрузки: {{value}} КиБ/с",
+      "altUploadLimitSet": "Альт. лимит отдачи: {{value}} КиБ/с",
       "altDownloadLimitRemoved": "Альт. лимит загрузки снят",
       "altUploadLimitRemoved": "Альт. лимит отдачи снят"
     },
@@ -324,7 +324,7 @@
     "username": "Имя пользователя",
     "password": "Пароль",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "КБ/с"
+    "enterKbs": "КиБ/с"
   },
   "actions": {
     "resume": "Запустить",
@@ -649,7 +649,7 @@
     "prioritySet": "Приоритет: {{label}}",
     "prioritySetForCount": "Приоритет {{label}} для {{count}} файл(ов)",
     "fileSelected": "Выбран файл: {{name}}",
-    "dlLimitSetKb": "Лимит загрузки: {{value}} КБ/с",
+    "dlLimitSetKb": "Лимит загрузки: {{value}} КиБ/с",
     "fileRenamed": "Файл переименован",
     "folderRenamed": "Папка переименована"
   },

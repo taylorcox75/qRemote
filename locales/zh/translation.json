@@ -40,7 +40,7 @@
       "selectTorrentFile": "选择 .torrent 文件",
       "yourServers": "你的服务器",
       "fileSelected": "已选择文件：{{name}}",
-      "enterLimitKbs": "输入限制（KB/s，0 为无限制）"
+      "enterLimitKbs": "输入限制（KiB/s，0 为无限制）"
     },
     "addTorrent": {
       "none": "无",
@@ -233,23 +233,23 @@
       "custom": "Custom",
       "noTransferInfo": "No transfer info",
       "limitModalTitle": "{{type}} Limit",
-      "limitModalSubtitle": "Enter limit in KB/s (0 for unlimited)",
+      "limitModalSubtitle": "Enter limit in KiB/s (0 for unlimited)",
       "set": "Set",
       "allPaused": "All torrents paused",
       "allResumed": "All torrents resumed",
       "forceStartEnabled": "Force start enabled for all torrents",
       "downloadLimitRemoved": "Download limit removed",
       "uploadLimitRemoved": "Upload limit removed",
-      "downloadLimitSet": "Download limit set to {{value}} KB/s",
-      "uploadLimitSet": "Upload limit set to {{value}} KB/s",
+      "downloadLimitSet": "Download limit set to {{value}} KiB/s",
+      "uploadLimitSet": "Upload limit set to {{value}} KiB/s",
       "noDlTorrents": "No downloading torrents to pause",
       "noUlTorrents": "No uploading torrents to pause",
       "pausedDl": "Paused {{count}} downloading torrent(s)",
       "pausedUl": "Paused {{count}} uploading torrent(s)",
       "altDownloadLimit": "备用下载",
       "altUploadLimit": "备用上传",
-      "altDownloadLimitSet": "备用下载限速已设置为 {{value}} KB/s",
-      "altUploadLimitSet": "备用上传限速已设置为 {{value}} KB/s",
+      "altDownloadLimitSet": "备用下载限速已设置为 {{value}} KiB/s",
+      "altUploadLimitSet": "备用上传限速已设置为 {{value}} KiB/s",
       "altDownloadLimitRemoved": "备用下载限速已移除",
       "altUploadLimitRemoved": "备用上传限速已移除"
     },
@@ -326,7 +326,7 @@
     "username": "用户名",
     "password": "密码",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "输入 KB/s"
+    "enterKbs": "输入 KiB/s"
   },
   "actions": {
     "resume": "恢复",
@@ -647,7 +647,7 @@
     "prioritySet": "优先级已设为 {{label}}",
     "prioritySetForCount": "已为 {{count}} 个文件设置优先级为 {{label}}",
     "fileSelected": "File selected: {{name}}",
-    "dlLimitSetKb": "Download limit set to {{value}} KB/s",
+    "dlLimitSetKb": "Download limit set to {{value}} KiB/s",
     "stateColorsReset": "Torrent state colors reset to defaults",
     "colorsReset": "Colors reset to defaults",
     "serverNotFound": "Server not found",

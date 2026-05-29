@@ -19,12 +19,12 @@ export function useSpeedHistory() {
     if (transferInfo) {
       // Add new reading and remove oldest
       setDownloadHistory((prev) => {
-        const newHistory = [...prev.slice(1), transferInfo.dl_info_speed / 1024 / 1024]; // Convert to MB/s
+        const newHistory = [...prev.slice(1), transferInfo.dl_info_speed / 1024 / 1024]; // Convert to MiB/s
         return newHistory;
       });
 
       setUploadHistory((prev) => {
-        const newHistory = [...prev.slice(1), transferInfo.up_info_speed / 1024 / 1024]; // Convert to MB/s
+        const newHistory = [...prev.slice(1), transferInfo.up_info_speed / 1024 / 1024]; // Convert to MiB/s
         return newHistory;
       });
     }
