@@ -20,6 +20,29 @@ export const CHANGELOG: ChangelogRelease[] = [
     ],
   },
   {
+    version: '3.2.1',
+    date: '2026-05-29',
+    changes: ['Minor bugfixes'],
+  },
+  {
+    version: '3.2.0',
+    date: '2026-05-29',
+    changes: ['Search plugin support'],
+  },
+  {
+    version: '3.1.2',
+    date: '2026-05-29',
+    changes: [
+      'Fixed alternative speed limit units, key handling, and IEC labels',
+      'Added ability to rename files and folders from the file browser',
+    ],
+  },
+  {
+    version: '3.1.1',
+    date: '2026-05-26',
+    changes: ['Improved authentication to support qBittorrent 5.x 204 + Set-Cookie login responses'],
+  },
+  {
     version: '3.1.0',
     date: '2026-04-11',
     changes: [
