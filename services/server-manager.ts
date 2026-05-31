@@ -5,12 +5,29 @@
  * Known issues: isNetworkError was duplicated inline 3× (deduplicated in Task 1.6).
  */
 import { AxiosError } from 'axios';
-import { ServerConfig } from '@/types/api';
+import { ServerConfig, ServerEndpointKind } from '@/types/api';
+import { hasFallback, resolveServerEndpoint } from '@/utils/server';
 import { storageService } from './storage';
 import { apiClient } from './api/client';
 import { authApi } from './api/auth';
 import { applicationApi } from './api/application';
 import { clogInfo, clogWarn, clogError } from './connectivity-log';
+
+/**
+ * Per-endpoint outcome from a connection test. Used to surface granular
+ * primary/fallback feedback in the UI without forcing every caller to handle
+ * a richer shape — the simple primary-only servers still see a single result.
+ */
+export interface EndpointTestResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface ConnectionTestResult extends EndpointTestResult {
+  /** When fallback was attempted, the per-endpoint outcomes. */
+  primary?: EndpointTestResult;
+  fallback?: EndpointTestResult;
+}
 
 export function isNetworkError(error: unknown): boolean {
   if (error instanceof AxiosError) {
@@ -70,26 +87,71 @@ export class ServerManager {
   }
 
   /**
-   * Connect to a server (set as current and authenticate)
+   * Connect to a server (set as current and authenticate). When the server
+   * has a fallback endpoint configured, the primary endpoint is attempted
+   * first; if it fails with a network error, the fallback endpoint is tried.
+   * Authentication errors are not retried against the fallback because they
+   * share credentials with the primary endpoint.
    */
   static async connectToServer(server: ServerConfig): Promise<boolean> {
-    try {
-      clogInfo('CONN', `Connecting to ${server.host}:${server.port || 'default'} (bypassAuth=${server.bypassAuth})`);
-      // Set server in API client
-      apiClient.setServer(server);
+    const primaryResolved = resolveServerEndpoint(server, 'primary');
 
-      // Skip authentication if bypassAuth is enabled
-      if (server.bypassAuth) {
-        // For bypass auth, still verify the connection works by making a test API call
+    try {
+      const success = await this.connectToEndpoint(server, primaryResolved, 'primary');
+      if (success) return true;
+      // Login returned Fails (auth) — don't try fallback with the same creds.
+      return false;
+    } catch (primaryError: unknown) {
+      if (!hasFallback(server) || !isNetworkError(primaryError)) {
+        // Not eligible for fallback — surface the original error.
+        throw primaryError;
+      }
+
+      const fallbackResolved = resolveServerEndpoint(server, 'fallback');
+      const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
+      clogWarn('CONN', `Primary endpoint failed (${primaryMessage}); trying fallback ${fallbackResolved.host}:${fallbackResolved.port || 'default'}`);
+
+      try {
+        const success = await this.connectToEndpoint(server, fallbackResolved, 'fallback');
+        if (success) {
+          clogInfo('CONN', 'Connected via fallback endpoint');
+          return true;
+        }
+        return false;
+      } catch (fallbackError: unknown) {
+        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        clogError('CONN', `Fallback endpoint also failed: ${fallbackMessage}`);
+        // Surface the fallback error since both routes failed; it's the
+        // most recent and usually the most informative.
+        throw fallbackError;
+      }
+    }
+  }
+
+  /**
+   * Internal: attempt a connection against a single resolved endpoint. The
+   * resolved config carries the chosen host/port/useHttps while keeping the
+   * shared id/credentials so cookies and stored IDs remain consistent.
+   */
+  private static async connectToEndpoint(
+    server: ServerConfig,
+    resolved: ServerConfig,
+    endpoint: ServerEndpointKind
+  ): Promise<boolean> {
+    clogInfo('CONN', `Connecting to ${resolved.host}:${resolved.port || 'default'} via ${endpoint} (bypassAuth=${resolved.bypassAuth})`);
+    apiClient.setServer(resolved);
+
+    try {
+      if (resolved.bypassAuth) {
         try {
           await applicationApi.getVersion();
           await storageService.setCurrentServerId(server.id);
-          clogInfo('CONN', 'Connected successfully (bypass auth)');
+          clogInfo('CONN', `Connected successfully via ${endpoint} (bypass auth)`);
           return true;
         } catch (error: unknown) {
           apiClient.setServer(null);
           const message = error instanceof Error ? error.message : String(error);
-          clogError('CONN', `Bypass-auth connect failed: ${message}`);
+          clogError('CONN', `Bypass-auth connect failed (${endpoint}): ${message}`);
           if (isNetworkError(error)) {
             throw error;
           }
@@ -97,21 +159,19 @@ export class ServerManager {
         }
       }
 
-      // Attempt login
-      const loginResult = await authApi.login(server.username, server.password);
-      
+      const loginResult = await authApi.login(resolved.username, resolved.password);
+
       if (loginResult.status === 'Ok') {
-        // Verify connection by making a test API call
         try {
           await applicationApi.getVersion();
           await storageService.setCurrentServerId(server.id);
-          clogInfo('CONN', 'Connected successfully (authenticated)');
+          clogInfo('CONN', `Connected successfully via ${endpoint} (authenticated)`);
           return true;
         } catch (error: unknown) {
           apiClient.setServer(null);
           const message = error instanceof Error ? error.message : String(error);
           const axiosErr = error instanceof AxiosError ? error : undefined;
-          clogError('CONN', `Post-login API check failed: ${message}`);
+          clogError('CONN', `Post-login API check failed (${endpoint}): ${message}`);
           if (isNetworkError(error)) {
             throw error;
           }
@@ -121,22 +181,15 @@ export class ServerManager {
           throw new Error('Failed to connect to server. Please check your settings.');
         }
       }
-      
-      // Login failed, clear server
-      clogWarn('CONN', 'Login returned Fails — clearing server');
+
+      clogWarn('CONN', `Login returned Fails (${endpoint}) — clearing server`);
       apiClient.setServer(null);
       return false;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      clogError('CONN', `connectToServer error: ${message}`);
+      clogError('CONN', `connectToEndpoint(${endpoint}) error: ${message}`);
       apiClient.setServer(null);
-      if (isNetworkError(error)) {
-        throw error;
-      }
-      if (message.includes('Failed to connect') || message.includes('Authentication failed')) {
-        throw error;
-      }
-      return false;
+      throw error;
     }
   }
 
@@ -172,36 +225,62 @@ export class ServerManager {
   }
 
   /**
-   * Test connection to a server without saving it
-   * Returns a result object with success status and error message if failed
+   * Test connection to a server without saving it. When the server has a
+   * fallback endpoint configured, both endpoints are tested and per-endpoint
+   * results are returned alongside the top-level success flag, which is true
+   * when *either* endpoint succeeds.
    */
-  static async testConnection(server: ServerConfig, signal?: AbortSignal): Promise<{ success: boolean; error?: string }> {
+  static async testConnection(server: ServerConfig, signal?: AbortSignal): Promise<ConnectionTestResult> {
+    if (!hasFallback(server)) {
+      // Simple primary-only path — preserves the original shape for callers
+      // that don't need per-endpoint detail.
+      const result = await this.testEndpoint(resolveServerEndpoint(server, 'primary'), signal);
+      return result;
+    }
+
+    const primary = await this.testEndpoint(resolveServerEndpoint(server, 'primary'), signal);
+    if (signal?.aborted) {
+      throw new Error('Test cancelled');
+    }
+    const fallback = await this.testEndpoint(resolveServerEndpoint(server, 'fallback'), signal);
+
+    const success = primary.success || fallback.success;
+    return {
+      success,
+      error: success ? undefined : (fallback.error || primary.error),
+      primary,
+      fallback,
+    };
+  }
+
+  /**
+   * Internal: test a single resolved endpoint and translate errors into the
+   * EndpointTestResult shape. Cancellation propagates so the caller can stop
+   * the whole test sequence in flight.
+   */
+  private static async testEndpoint(resolved: ServerConfig, signal?: AbortSignal): Promise<EndpointTestResult> {
     const previousServer = apiClient.getServer();
-    clogInfo('CONN', `testConnection to ${server.host}:${server.port || 'default'}`);
-    
+    clogInfo('CONN', `testEndpoint to ${resolved.host}:${resolved.port || 'default'}`);
+
     try {
-      // Set server temporarily for testing
-      apiClient.setServer(server);
+      apiClient.setServer(resolved);
 
       try {
-        if (!server.bypassAuth) {
-          // Attempt login with abort signal
-          const loginResult = await authApi.login(server.username, server.password, signal);
+        if (!resolved.bypassAuth) {
+          const loginResult = await authApi.login(resolved.username, resolved.password, signal);
           if (loginResult.status !== 'Ok') {
-            clogWarn('CONN', 'testConnection: auth failed');
+            clogWarn('CONN', 'testEndpoint: auth failed');
             return { success: false, error: 'Authentication failed. Please check your username and password.' };
           }
         }
 
-        // Check if aborted
         if (signal?.aborted) {
           throw new Error('Test cancelled');
         }
 
-        // Verify connection by making a test API call with abort signal
         await applicationApi.getVersion(signal);
-        
-        clogInfo('CONN', 'testConnection succeeded');
+
+        clogInfo('CONN', 'testEndpoint succeeded');
         return { success: true };
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
@@ -213,19 +292,18 @@ export class ServerManager {
         if (axiosErr?.code === 'ERR_CANCELED' || message === 'Test cancelled' || message.includes('cancel')) {
           throw error;
         }
-        
+
         if (axiosErr?.response?.status === 403 || axiosErr?.response?.status === 401 || message.includes('Authentication')) {
-          clogWarn('CONN', `testConnection failed: auth error (${axiosErr?.response?.status || message})`);
+          clogWarn('CONN', `testEndpoint failed: auth error (${axiosErr?.response?.status || message})`);
           return { success: false, error: 'Authentication failed. Please check your credentials.' };
         } else if (isNetworkError(error)) {
-          clogError('CONN', `testConnection failed: network error (${axiosErr?.code || message})`);
+          clogError('CONN', `testEndpoint failed: network error (${axiosErr?.code || message})`);
           return { success: false, error: 'Connection failed. Please check your server address and network connection.' };
         } else {
-          clogError('CONN', `testConnection failed: ${message}`);
+          clogError('CONN', `testEndpoint failed: ${message}`);
           return { success: false, error: message || 'Connection test failed. Please check your settings.' };
         }
       } finally {
-        // Restore previous server state
         apiClient.setServer(previousServer);
       }
     } catch (error: unknown) {

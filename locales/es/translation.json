@@ -368,7 +368,8 @@
     "username": "Usuario",
     "password": "Contraseña",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "Introducir KiB/s"
+    "enterKbs": "Introducir KiB/s",
+    "fallbackHost": "Host o IP de respaldo"
   },
   "actions": {
     "resume": "Reanudar",
@@ -442,7 +443,17 @@
     "deleteServerConfirm": "Remove \"{{name}}\" from your server list?",
     "hostAddress": "Dirección del host",
     "port": "Puerto",
-    "gotIt": "Entendido"
+    "gotIt": "Entendido",
+    "fallbackUrl": "URL DE RESPALDO",
+    "useFallback": "Usar URL de respaldo",
+    "useFallbackHint": "Probar esta URL si la principal falla",
+    "fallbackUseHttps": "HTTPS de respaldo",
+    "endpointPrimary": "Principal",
+    "endpointFallback": "Respaldo",
+    "testEndpointOk": "{{endpoint}}: OK",
+    "testEndpointFail": "{{endpoint}}: error",
+    "connectedViaPrimary": "Conectado por principal",
+    "connectedViaFallback": "Conectado por respaldo"
   },
   "torrentDetail": {
     "notFound": "Torrent no encontrado",
@@ -711,6 +722,7 @@
     "fillNameAndHost": "Rellena el nombre y host del servidor",
     "fillUsernamePassword": "Rellena usuario y contraseña, o activa bypass de autenticación",
     "validPort": "Introduce un número de puerto válido (1-65535)",
+    "fillFallbackHost": "Introduce un host de respaldo",
     "selectTorrentFile": "Selecciona un archivo .torrent",
     "enterUrlOrMagnet": "Introduce una URL/enlace magnético o selecciona un .torrent",
     "enterCategoryName": "Introduce un nombre de categoría",

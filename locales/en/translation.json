@@ -388,7 +388,8 @@
     "username": "Username",
     "password": "Password",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "Enter KiB/s"
+    "enterKbs": "Enter KiB/s",
+    "fallbackHost": "Fallback host or IP"
   },
   "actions": {
     "resume": "Resume",
@@ -462,7 +463,17 @@
     "deleteServerConfirm": "Remove \"{{name}}\" from your server list?",
     "hostAddress": "Host Address",
     "port": "Port",
-    "gotIt": "Got it"
+    "gotIt": "Got it",
+    "fallbackUrl": "FALLBACK URL",
+    "useFallback": "Use fallback URL",
+    "useFallbackHint": "Try this URL if the primary fails",
+    "fallbackUseHttps": "Fallback HTTPS",
+    "endpointPrimary": "Primary",
+    "endpointFallback": "Fallback",
+    "testEndpointOk": "{{endpoint}}: OK",
+    "testEndpointFail": "{{endpoint}}: failed",
+    "connectedViaPrimary": "Connected via primary",
+    "connectedViaFallback": "Connected via fallback"
   },
   "torrentDetail": {
     "notFound": "Torrent not found",
@@ -731,6 +742,7 @@
     "fillNameAndHost": "Please fill in server name and host",
     "fillUsernamePassword": "Please fill in username and password, or enable bypass authentication",
     "validPort": "Please enter a valid port number (1-65535)",
+    "fillFallbackHost": "Please enter a fallback host",
     "selectTorrentFile": "Please select a .torrent file",
     "enterUrlOrMagnet": "Please enter a URL/magnet link or select a .torrent file",
     "enterCategoryName": "Please enter a category name",
