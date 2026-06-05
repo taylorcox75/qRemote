@@ -15,9 +15,9 @@ export const CHANGELOG: ChangelogRelease[] = [
     version: '3.3.0',
     date: '2026-06-05',
     changes: [
-      'Improved app stability and performance across key screens',
-      'Polished UI and interaction details for a smoother experience',
-      'General bug fixes and reliability improvements',
+      'Theme now follows your system light/dark appearance automatically',
+      'Added server fallback URL support with automatic failover',
+      'Fixed top safe-area background color in tabs so the status bar matches',
     ],
   },
   {
