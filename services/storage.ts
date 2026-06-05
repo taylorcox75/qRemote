@@ -41,6 +41,13 @@ export const storageService = {
         password: '', // Don't store password in AsyncStorage
         useHttps: s.useHttps || false,
         bypassAuth: s.bypassAuth || false,
+        // Fallback endpoint (optional). Only persisted when a fallback host
+        // is configured; absent fields naturally mean fallback is disabled.
+        useFallback: s.useFallback || false,
+        fallbackHost: stripProtocol(s.fallbackHost || ''),
+        fallbackPort: (s.fallbackPort && s.fallbackPort > 0) ? s.fallbackPort : undefined,
+        fallbackUseHttps: s.fallbackUseHttps || false,
+        fallbackBasePath: s.fallbackBasePath || undefined,
       }));
       
       await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(serversWithoutPasswords));
@@ -66,7 +73,12 @@ export const storageService = {
       const serversWithPasswords = await Promise.all(
         servers.map(async (server) => {
           const password = await SecureStore.getItemAsync(`server_password_${server.id}`) || '';
-          return { ...server, password, host: stripProtocol(server.host || '') };
+          return {
+            ...server,
+            password,
+            host: stripProtocol(server.host || ''),
+            fallbackHost: server.fallbackHost ? stripProtocol(server.fallbackHost) : server.fallbackHost,
+          };
         })
       );
 

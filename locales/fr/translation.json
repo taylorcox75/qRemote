@@ -368,7 +368,8 @@
     "username": "Nom d'utilisateur",
     "password": "Mot de passe",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "Entrer KiB/s"
+    "enterKbs": "Entrer KiB/s",
+    "fallbackHost": "Hôte ou IP de secours"
   },
   "actions": {
     "resume": "Reprendre",
@@ -442,7 +443,17 @@
     "deleteServerConfirm": "Remove \"{{name}}\" from your server list?",
     "hostAddress": "Adresse de l'hôte",
     "port": "Port",
-    "gotIt": "Compris"
+    "gotIt": "Compris",
+    "fallbackUrl": "URL DE SECOURS",
+    "useFallback": "Utiliser une URL de secours",
+    "useFallbackHint": "Essayer cette URL si la principale échoue",
+    "fallbackUseHttps": "HTTPS de secours",
+    "endpointPrimary": "Principal",
+    "endpointFallback": "Secours",
+    "testEndpointOk": "{{endpoint}} : OK",
+    "testEndpointFail": "{{endpoint}} : échec",
+    "connectedViaPrimary": "Connecté via le principal",
+    "connectedViaFallback": "Connecté via le secours"
   },
   "torrentDetail": {
     "notFound": "Torrent introuvable",
@@ -711,6 +722,7 @@
     "fillNameAndHost": "Remplissez le nom et l'hôte du serveur",
     "fillUsernamePassword": "Remplissez le nom d'utilisateur et le mot de passe, ou activez le contournement d'authentification",
     "validPort": "Entrez un numéro de port valide (1-65535)",
+    "fillFallbackHost": "Saisissez un hôte de secours",
     "selectTorrentFile": "Sélectionnez un fichier .torrent",
     "enterUrlOrMagnet": "Entrez une URL/lien magnétique ou sélectionnez un fichier .torrent",
     "enterCategoryName": "Entrez un nom de catégorie",

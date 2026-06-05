@@ -368,7 +368,8 @@
     "username": "用户名",
     "password": "密码",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "输入 KiB/s"
+    "enterKbs": "输入 KiB/s",
+    "fallbackHost": "备用主机或 IP"
   },
   "actions": {
     "resume": "恢复",
@@ -442,7 +443,17 @@
     "deleteServerConfirm": "Remove \"{{name}}\" from your server list?",
     "hostAddress": "主机地址",
     "port": "端口",
-    "gotIt": "知道了"
+    "gotIt": "知道了",
+    "fallbackUrl": "备用 URL",
+    "useFallback": "使用备用 URL",
+    "useFallbackHint": "主 URL 失败时尝试备用 URL",
+    "fallbackUseHttps": "备用 HTTPS",
+    "endpointPrimary": "主",
+    "endpointFallback": "备用",
+    "testEndpointOk": "{{endpoint}}：成功",
+    "testEndpointFail": "{{endpoint}}：失败",
+    "connectedViaPrimary": "通过主 URL 连接",
+    "connectedViaFallback": "通过备用 URL 连接"
   },
   "torrentDetail": {
     "notFound": "未找到种子",
@@ -711,6 +722,7 @@
     "fillNameAndHost": "请填写服务器名称和主机",
     "fillUsernamePassword": "请填写用户名和密码，或启用绕过认证",
     "validPort": "请输入有效端口号 (1-65535)",
+    "fillFallbackHost": "请输入备用主机",
     "selectTorrentFile": "请选择 .torrent 文件",
     "enterUrlOrMagnet": "请输入 URL/磁力链接或选择 .torrent 文件",
     "enterCategoryName": "请输入分类名称",

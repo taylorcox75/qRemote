@@ -17,7 +17,25 @@ export interface ServerConfig {
   password: string;
   useHttps?: boolean;
   bypassAuth?: boolean; // Skip authentication when local network auth is disabled
+
+  /**
+   * When true, the connection flow will attempt the fallback endpoint after the
+   * primary endpoint fails with a network error. Authentication is shared with
+   * the primary endpoint since fallback represents an alternate route to the
+   * same qBittorrent instance (e.g. LAN vs WAN, DDNS vs static IP).
+   */
+  useFallback?: boolean;
+  /** Fallback host (IP or domain). Required when useFallback is true. */
+  fallbackHost?: string;
+  /** Fallback port. Same 1–65535 validation as the primary port. */
+  fallbackPort?: number;
+  /** Whether the fallback endpoint should be reached over HTTPS. */
+  fallbackUseHttps?: boolean;
+  /** Reserved for future fallback base path UI; not surfaced in settings yet. */
+  fallbackBasePath?: string;
 }
+
+export type ServerEndpointKind = 'primary' | 'fallback';
 
 // Authentication
 export interface LoginResponse {

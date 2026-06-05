@@ -50,6 +50,11 @@ export default function EditServerScreen() {
   const [password, setPassword] = useState('');
   const [useHttps, setUseHttps] = useState(false);
   const [bypassAuth, setBypassAuth] = useState(false);
+  const [useFallback, setUseFallback] = useState(false);
+  const [fallbackHost, setFallbackHost] = useState('');
+  const [fallbackPort, setFallbackPort] = useState('');
+  const [fallbackUseHttps, setFallbackUseHttps] = useState(false);
+  const [preservedFallbackBasePath, setPreservedFallbackBasePath] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -194,6 +199,13 @@ App Version: ${APP_VERSION}`;
         setBypassAuth(server.bypassAuth || false);
         // Preserve existing basePath for backward compatibility
         setPreservedBasePath(server.basePath || '/');
+        // Round-trip fallback fields
+        setUseFallback(server.useFallback === true);
+        setFallbackHost(server.fallbackHost || '');
+        const hasFallbackPort = server.fallbackPort != null && server.fallbackPort > 0;
+        setFallbackPort(hasFallbackPort ? server.fallbackPort!.toString() : '');
+        setFallbackUseHttps(server.fallbackUseHttps || false);
+        setPreservedFallbackBasePath(server.fallbackBasePath);
       } else {
         showToast(t('toast.serverNotFound'), 'error');
         router.back();
@@ -223,6 +235,18 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
+    const fallbackPortNum = fallbackPort.trim() ? parseInt(fallbackPort, 10) : undefined;
+    if (useFallback) {
+      if (!fallbackHost.trim()) {
+        showToast(t('errors.fillFallbackHost'), 'error');
+        return;
+      }
+      if (fallbackPortNum !== undefined && (isNaN(fallbackPortNum) || fallbackPortNum < 1 || fallbackPortNum > 65535)) {
+        showToast(t('errors.validPort'), 'error');
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       
@@ -241,6 +265,11 @@ App Version: ${APP_VERSION}`;
         password: bypassAuth ? '' : password.trim(),
         useHttps,
         bypassAuth,
+        useFallback,
+        fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
+        fallbackPort: useFallback ? fallbackPortNum : undefined,
+        fallbackUseHttps: useFallback ? fallbackUseHttps : false,
+        fallbackBasePath: preservedFallbackBasePath, // Preserve existing fallback base path
       };
 
       await ServerManager.saveServer(server);
@@ -293,6 +322,18 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
+    const fallbackPortNum = fallbackPort.trim() ? parseInt(fallbackPort, 10) : undefined;
+    if (useFallback) {
+      if (!fallbackHost.trim()) {
+        showToast(t('errors.fillFallbackHost'), 'error');
+        return;
+      }
+      if (fallbackPortNum !== undefined && (isNaN(fallbackPortNum) || fallbackPortNum < 1 || fallbackPortNum > 65535)) {
+        showToast(t('errors.validPort'), 'error');
+        return;
+      }
+    }
+
     try {
       setTesting(true);
       testAbortController.current = new AbortController();
@@ -306,11 +347,24 @@ App Version: ${APP_VERSION}`;
         password: bypassAuth ? '' : password.trim(),
         useHttps,
         bypassAuth,
+        useFallback,
+        fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
+        fallbackPort: useFallback ? fallbackPortNum : undefined,
+        fallbackUseHttps: useFallback ? fallbackUseHttps : false,
       };
 
       const result = await ServerManager.testConnection(server, testAbortController.current.signal);
-      
-      if (result.success) {
+
+      if (result.primary || result.fallback) {
+        const primaryOk = result.primary?.success;
+        const fallbackOk = result.fallback?.success;
+        const ok = (label: string) => t('server.testEndpointOk', { endpoint: label });
+        const fail = (label: string) => t('server.testEndpointFail', { endpoint: label });
+        const primaryLabel = t('server.endpointPrimary');
+        const fallbackLabel = t('server.endpointFallback');
+        const summary = `${primaryOk ? ok(primaryLabel) : fail(primaryLabel)} · ${fallbackOk ? ok(fallbackLabel) : fail(fallbackLabel)}`;
+        showToast(summary, result.success ? 'success' : 'error');
+      } else if (result.success) {
         showToast(t('toast.connectionTestSuccess'), 'success');
       } else {
         showToast(result.error || t('errors.connectionTestFailed'), 'error');
@@ -432,6 +486,71 @@ App Version: ${APP_VERSION}`;
                   <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+
+          {/* Fallback URL Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.fallbackUrl')}</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="swap-horizontal-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                  <View>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('server.useFallback')}</Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('server.useFallbackHint')}</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={useFallback}
+                  onValueChange={setUseFallback}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              {useFallback && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons name="globe-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={fallbackHost}
+                      onChangeText={setFallbackHost}
+                      placeholder={t('placeholders.fallbackHost')}
+                      placeholderTextColor={colors.textSecondary}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="default"
+                    />
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons name="link-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={fallbackPort}
+                      onChangeText={setFallbackPort}
+                      placeholder={t('placeholders.portOptional')}
+                      placeholderTextColor={colors.textSecondary}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingLeft}>
+                      <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                      <Text style={[styles.settingLabel, { color: colors.text }]}>{t('server.fallbackUseHttps')}</Text>
+                    </View>
+                    <Switch
+                      value={fallbackUseHttps}
+                      onValueChange={setFallbackUseHttps}
+                      trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+                </>
+              )}
             </View>
           </View>
 

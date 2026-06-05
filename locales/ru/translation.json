@@ -366,7 +366,8 @@
     "username": "Имя пользователя",
     "password": "Пароль",
     "trackerUrl": "https://tracker.example.com/announce",
-    "enterKbs": "КиБ/с"
+    "enterKbs": "КиБ/с",
+    "fallbackHost": "Резервный хост или IP"
   },
   "actions": {
     "resume": "Запустить",
@@ -440,7 +441,17 @@
     "deleteServerConfirm": "Удалить «{{name}}» из списка?",
     "hostAddress": "Адрес хоста",
     "port": "Порт",
-    "gotIt": "Понятно"
+    "gotIt": "Понятно",
+    "fallbackUrl": "РЕЗЕРВНЫЙ URL",
+    "useFallback": "Использовать резервный URL",
+    "useFallbackHint": "Пробовать его, если основной недоступен",
+    "fallbackUseHttps": "Резервный HTTPS",
+    "endpointPrimary": "Основной",
+    "endpointFallback": "Резервный",
+    "testEndpointOk": "{{endpoint}}: OK",
+    "testEndpointFail": "{{endpoint}}: ошибка",
+    "connectedViaPrimary": "Подключено через основной",
+    "connectedViaFallback": "Подключено через резервный"
   },
   "torrentDetail": {
     "notFound": "Торрент не найден",
@@ -709,6 +720,7 @@
     "fillNameAndHost": "Укажите имя сервера и хост",
     "fillUsernamePassword": "Укажите имя пользователя и пароль или включите обход авторизации",
     "validPort": "Укажите порт от 1 до 65535",
+    "fillFallbackHost": "Введите резервный хост",
     "selectTorrentFile": "Выберите .torrent-файл",
     "enterUrlOrMagnet": "Введите URL или magnet либо выберите .torrent-файл",
     "enterCategoryName": "Введите имя категории",
