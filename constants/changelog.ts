@@ -12,6 +12,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.3.0',
+    date: '2026-06-05',
+    changes: [
+      'Improved app stability and performance across key screens',
+      'Polished UI and interaction details for a smoother experience',
+      'General bug fixes and reliability improvements',
+    ],
+  },
+  {
     version: '3.2.1',
     date: '2026-05-29',
     changes: ['Minor bugfixes'],
