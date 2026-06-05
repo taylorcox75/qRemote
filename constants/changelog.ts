@@ -12,6 +12,15 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.3.0',
+    date: '2026-06-05',
+    changes: [
+      'Theme now follows your system light/dark appearance automatically',
+      'Added server fallback URL support with automatic failover',
+      'Fixed top safe-area background color in tabs so the status bar matches',
+    ],
+  },
+  {
     version: '3.2.1',
     date: '2026-05-29',
     changes: ['Minor bugfixes'],
