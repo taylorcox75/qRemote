@@ -45,9 +45,21 @@ export type AddTorrentDialogField =
   | 'autoTMM'
   | 'cookie';
 
+export type ThemeMode = 'system' | 'light' | 'dark';
+
 export interface AppPreferences {
-  /** 'dark' | 'light'; legacy values stored as boolean are also accepted */
+  /**
+   * @deprecated Use `themeMode` instead. Kept for backward compatibility:
+   * existing users have this set to 'dark' | 'light' (or boolean) and the
+   * ThemeContext still reads it as a fallback when `themeMode` is absent.
+   */
   theme: string | boolean;
+
+  /**
+   * Theme selection. 'system' follows the OS appearance and reactively updates
+   * when the user toggles light/dark in their device settings.
+   */
+  themeMode: ThemeMode;
 
   /** Per-theme color overrides, keyed by 'dark' | 'light' */
   customColors: Record<string, ColorTheme>;
@@ -128,6 +140,7 @@ export interface AppPreferences {
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
   theme: 'dark',
+  themeMode: 'system',
   customColors: {},
   defaultSortBy: 'added_on',
   defaultSortDirection: 'desc',
