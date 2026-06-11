@@ -879,7 +879,7 @@ export default function TorrentDetail() {
               <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>
                 {torrent.eta > 0 && torrent.eta < 8640000
                   ? t('torrentDetail.remaining', { time: formatTime(torrent.eta) })
-                  : progress >= 100
+                  : torrent.progress >= 1
                   ? t('torrentDetail.complete')
                   : '∞'}
               </Text>
@@ -967,7 +967,7 @@ export default function TorrentDetail() {
                 `${torrent.num_leechs || 0} / ${torrent.num_incomplete || 0}`,
                 handleOpenPeerDetails,
               ),
-              staticRow(t('torrentDetail.availability'), torrent.availability ? torrent.availability.toFixed(2) : '0.00'),
+              staticRow(t('torrentDetail.availability'), torrent.availability ? (Math.floor(torrent.availability * 1000) / 1000).toFixed(3) : '0.000'),
             ])}
           </View>
 
@@ -1121,7 +1121,7 @@ export default function TorrentDetail() {
                       style={[styles.peerRow, { borderBottomColor: colors.surfaceOutline }]}
                     >
                       <Text style={[styles.peerProgress, { color: colors.text }]}>
-                        {(p.progress * 100).toFixed(1)}%
+                        {(Math.floor(p.progress * 1000) / 10).toFixed(1)}%
                       </Text>
                       <View style={styles.peerInfo}>
                         <Text style={[styles.peerIp, { color: colors.text }]} numberOfLines={1}>
