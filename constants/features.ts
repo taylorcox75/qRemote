@@ -9,5 +9,5 @@ export const FEATURES = {
    * Disabled by default — App Store builds must not expose arbitrary-indexer
    * search/download. Set to `true` for sideloaded / non-App-Store builds.
    */
-  search: false,
+  search: true,
 };

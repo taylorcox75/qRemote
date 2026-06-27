@@ -12,7 +12,12 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.4.1',
+    version: '3.5.0',
+    date: '2026-06-27',
+    changes: ['Enabled search feature flag'],
+  },
+  {
+    version: '3.4.2',
     date: '2026-06-27',
     changes: [
       'Expanded torrent card now shows details in a two-column grid, cutting card height roughly in half',
