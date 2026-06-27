@@ -1,4 +1,4 @@
-import { getStateColor, getStateLabel } from '@/utils/torrent-state';
+import { getStateColor, getStateLabel, hasEta } from '@/utils/torrent-state';
 
 const mockColors = {
   stateUploadAndDownload: '#upload-and-download',
@@ -231,5 +231,23 @@ describe('getStateLabel', () => {
     it('unknown state returns the raw state string', () => {
       expect(getStateLabel('somethingNew', 0, 0, 0)).toBe('somethingNew');
     });
+  });
+});
+
+describe('hasEta', () => {
+  it('returns true while downloading with a finite eta', () => {
+    expect(hasEta(3600, 0.5)).toBe(true);
+  });
+
+  it('returns false when complete (progress === 1)', () => {
+    expect(hasEta(3600, 1)).toBe(false);
+  });
+
+  it('returns false for the infinite-eta sentinel (8640000)', () => {
+    expect(hasEta(8640000, 0.5)).toBe(false);
+  });
+
+  it('returns false when eta is 0', () => {
+    expect(hasEta(0, 0.5)).toBe(false);
   });
 });
