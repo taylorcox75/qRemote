@@ -88,6 +88,9 @@ export default function AdvancedSettingsScreen() {
           username: s.username,
           useHttps: s.useHttps,
           bypassAuth: s.bypassAuth,
+          useBasicAuth: s.useBasicAuth,
+          basicAuthUsername: s.basicAuthUsername,
+          // basicAuthPassword intentionally excluded — re-enter after import
         })),
         exportDate: new Date().toISOString(),
         appVersion: APP_VERSION,

@@ -391,7 +391,9 @@
     "password": "Пароль",
     "trackerUrl": "https://tracker.example.com/announce",
     "enterKbs": "КиБ/с",
-    "fallbackHost": "Резервный хост или IP"
+    "fallbackHost": "Резервный хост или IP",
+    "proxyUsername": "Имя пользователя прокси",
+    "proxyPassword": "Пароль прокси"
   },
   "actions": {
     "resume": "Запустить",
@@ -477,7 +479,10 @@
     "testEndpointOk": "{{endpoint}}: OK",
     "testEndpointFail": "{{endpoint}}: ошибка",
     "connectedViaPrimary": "Подключено через основной",
-    "connectedViaFallback": "Подключено через резервный"
+    "connectedViaFallback": "Подключено через резервный",
+    "proxyAuthentication": "АУТЕНТИФИКАЦИЯ ПРОКСИ",
+    "useBasicAuth": "Basic Auth (Прокси)",
+    "useBasicAuthHint": "Требуется если сервер защищён обратным прокси"
   },
   "torrentDetail": {
     "notFound": "Торрент не найден",
@@ -760,6 +765,7 @@
     "connectionFailedManual": "Ошибка подключения: {{error}}. Попробуйте подключиться вручную.",
     "fillNameAndHost": "Укажите имя сервера и хост",
     "fillUsernamePassword": "Укажите имя пользователя и пароль или включите обход авторизации",
+    "fillBasicAuthUsername": "Укажите имя пользователя прокси для Basic Auth",
     "validPort": "Укажите порт от 1 до 65535",
     "fillFallbackHost": "Введите резервный хост",
     "selectTorrentFile": "Выберите .torrent-файл",

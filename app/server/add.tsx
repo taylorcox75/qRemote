@@ -48,6 +48,9 @@ export default function AddServerScreen() {
   const [password, setPassword] = useState('');
   const [useHttps, setUseHttps] = useState(false);
   const [bypassAuth, setBypassAuth] = useState(false);
+  const [useBasicAuth, setUseBasicAuth] = useState(false);
+  const [basicAuthUsername, setBasicAuthUsername] = useState('');
+  const [basicAuthPassword, setBasicAuthPassword] = useState('');
   const [useFallback, setUseFallback] = useState(false);
   const [fallbackHost, setFallbackHost] = useState('');
   const [fallbackPort, setFallbackPort] = useState('');
@@ -185,6 +188,11 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
+    if (useBasicAuth && !basicAuthUsername.trim()) {
+      showToast(t('errors.fillBasicAuthUsername'), 'error');
+      return;
+    }
+
     const portNum = (port.trim() ? parseInt(port, 10) : undefined);
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       showToast(t('errors.validPort'), 'error');
@@ -220,6 +228,9 @@ App Version: ${APP_VERSION}`;
         password: bypassAuth ? '' : password.trim(),
         useHttps,
         bypassAuth,
+        useBasicAuth,
+        basicAuthUsername: useBasicAuth ? basicAuthUsername.trim() : '',
+        basicAuthPassword: useBasicAuth ? basicAuthPassword : '',
         useFallback,
         fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
         fallbackPort: useFallback ? fallbackPortNum : undefined,
@@ -260,6 +271,11 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
+    if (useBasicAuth && !basicAuthUsername.trim()) {
+      showToast(t('errors.fillBasicAuthUsername'), 'error');
+      return;
+    }
+
     const portNum = (port.trim() ? parseInt(port, 10) : undefined);
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       showToast(t('errors.validPort'), 'error');
@@ -291,6 +307,9 @@ App Version: ${APP_VERSION}`;
         password: bypassAuth ? '' : password.trim(),
         useHttps,
         bypassAuth,
+        useBasicAuth,
+        basicAuthUsername: useBasicAuth ? basicAuthUsername.trim() : '',
+        basicAuthPassword: useBasicAuth ? basicAuthPassword : '',
         useFallback,
         fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
         fallbackPort: useFallback ? fallbackPortNum : undefined,
@@ -483,6 +502,64 @@ App Version: ${APP_VERSION}`;
                       onValueChange={setFallbackUseHttps}
                       trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                       thumbColor="#FFFFFF"
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+
+          {/* Proxy Authentication Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.proxyAuthentication')}</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="globe-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                  <View>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('server.useBasicAuth')}</Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('server.useBasicAuthHint')}</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={useBasicAuth}
+                  onValueChange={setUseBasicAuth}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              {useBasicAuth && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={basicAuthUsername}
+                      onChangeText={setBasicAuthUsername}
+                      placeholder={t('placeholders.proxyUsername')}
+                      placeholderTextColor={colors.textSecondary}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="none"
+                      autoComplete="off"
+                    />
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={basicAuthPassword}
+                      onChangeText={setBasicAuthPassword}
+                      placeholder={t('placeholders.proxyPassword')}
+                      placeholderTextColor={colors.textSecondary}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="password"
+                      autoComplete="off"
+                      passwordRules=""
                     />
                   </View>
                 </>
@@ -710,6 +787,9 @@ App Version: ${APP_VERSION}`;
                 username={username}
                 password={password}
                 bypassAuth={bypassAuth}
+                useBasicAuth={useBasicAuth}
+                basicAuthUsername={basicAuthUsername}
+                basicAuthPassword={basicAuthPassword}
               />
             </View>
           )}

@@ -7,6 +7,7 @@ import axios, { AxiosInstance, AxiosError, AxiosHeaders } from 'axios';
 import { ServerConfig } from '@/types/api';
 import { clogDebug, clogInfo, clogWarn, clogError } from '@/services/connectivity-log';
 import { ApiFeatures, getApiFeatures } from '@/utils/apiVersion';
+import { basicAuthHeader } from '@/utils/basicAuth';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -58,6 +59,14 @@ class ApiClient {
         
         clogDebug('HTTP', `${config.method?.toUpperCase() || 'REQ'} ${config.baseURL}${config.url || ''}`);
         
+        // Add proxy Basic Auth header when configured
+        if (this.currentServer.useBasicAuth && this.currentServer.basicAuthUsername) {
+          config.headers.Authorization = basicAuthHeader(
+            this.currentServer.basicAuthUsername,
+            this.currentServer.basicAuthPassword ?? ''
+          );
+        }
+
         // Add cookies if available
         if (this.cookies) {
           config.headers.Cookie = this.cookies;

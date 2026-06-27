@@ -48,12 +48,17 @@ export const storageService = {
         fallbackPort: (s.fallbackPort && s.fallbackPort > 0) ? s.fallbackPort : undefined,
         fallbackUseHttps: s.fallbackUseHttps || false,
         fallbackBasePath: s.fallbackBasePath || undefined,
+        // Proxy Basic Auth (password stored separately in SecureStore)
+        useBasicAuth: s.useBasicAuth || false,
+        basicAuthUsername: s.basicAuthUsername || '',
+        basicAuthPassword: '', // Don't store password in AsyncStorage
       }));
       
       await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(serversWithoutPasswords));
       
-      // Store password securely
+      // Store passwords securely
       await SecureStore.setItemAsync(`server_password_${server.id}`, server.password);
+      await SecureStore.setItemAsync(`server_basic_auth_password_${server.id}`, server.basicAuthPassword ?? '');
     } catch (error) {
       throw error;
     }
@@ -73,9 +78,11 @@ export const storageService = {
       const serversWithPasswords = await Promise.all(
         servers.map(async (server) => {
           const password = await SecureStore.getItemAsync(`server_password_${server.id}`) || '';
+          const basicAuthPassword = await SecureStore.getItemAsync(`server_basic_auth_password_${server.id}`) || '';
           return {
             ...server,
             password,
+            basicAuthPassword,
             host: stripProtocol(server.host || ''),
             fallbackHost: server.fallbackHost ? stripProtocol(server.fallbackHost) : server.fallbackHost,
           };
@@ -105,8 +112,9 @@ export const storageService = {
     
     await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(filtered.map(s => ({ ...s, password: '' }))));
     
-    // Remove password from SecureStore
+    // Remove passwords from SecureStore
     await SecureStore.deleteItemAsync(`server_password_${id}`);
+    await SecureStore.deleteItemAsync(`server_basic_auth_password_${id}`);
     
     // If this was the current server, clear it
     const currentId = await this.getCurrentServerId();

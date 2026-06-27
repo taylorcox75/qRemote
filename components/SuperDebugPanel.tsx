@@ -39,6 +39,10 @@ export interface SuperDebugPanelProps {
   username: string;
   password: string;
   bypassAuth: boolean;
+  /** Optional proxy Basic Auth fields — when absent, no Authorization header is sent. */
+  useBasicAuth?: boolean;
+  basicAuthUsername?: string;
+  basicAuthPassword?: string;
 }
 
 type DiagnosticStep = 'REACH' | 'LOGIN' | 'COOKIE' | 'API' | 'INFO' | 'WARN' | 'ERROR';
@@ -64,6 +68,9 @@ export function SuperDebugPanel({
   username,
   password,
   bypassAuth,
+  useBasicAuth = false,
+  basicAuthUsername = '',
+  basicAuthPassword = '',
 }: SuperDebugPanelProps) {
   const { colors } = useTheme();
   const [log, setLog] = useState<DiagnosticEntry[]>([]);
@@ -87,6 +94,29 @@ export function SuperDebugPanel({
     const portPart = portNum && portNum > 0 && !isNaN(portNum) ? `:${portNum}` : '';
     return `${protocol}://${clean}${portPart}`;
   }, [host, port, useHttps]);
+
+  /** Build the Authorization header value when proxy Basic Auth is enabled. */
+  const buildBasicAuthHeader = useCallback((): string | null => {
+    if (!useBasicAuth || !basicAuthUsername.trim()) return null;
+    const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const input = `${basicAuthUsername.trim()}:${basicAuthPassword}`;
+    const bytes: number[] = [];
+    for (let i = 0; i < input.length; i++) {
+      const code = input.charCodeAt(i);
+      if (code < 0x80) { bytes.push(code); }
+      else if (code < 0x800) { bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f)); }
+      else { bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f)); }
+    }
+    let b64 = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+      const b0 = bytes[i], b1 = bytes[i + 1] ?? 0, b2 = bytes[i + 2] ?? 0;
+      b64 += BASE64[b0 >> 2];
+      b64 += BASE64[((b0 & 3) << 4) | (b1 >> 4)];
+      b64 += i + 1 < bytes.length ? BASE64[((b1 & 15) << 2) | (b2 >> 6)] : '=';
+      b64 += i + 2 < bytes.length ? BASE64[b2 & 63] : '=';
+    }
+    return 'Basic ' + b64;
+  }, [useBasicAuth, basicAuthUsername, basicAuthPassword]);
 
   const addEntry = useCallback(
     (step: DiagnosticStep, message: string, status: DiagnosticStatus, detail?: string) => {
@@ -129,10 +159,14 @@ export function SuperDebugPanel({
     const start = Date.now();
 
     try {
+      const basicAuth = buildBasicAuthHeader();
+      const reachHeaders: Record<string, string> = {};
+      if (basicAuth) reachHeaders['Authorization'] = basicAuth;
       let response: Response;
       try {
         response = await fetch(url, {
           method: 'HEAD',
+          headers: reachHeaders,
           signal: controller.signal,
         });
       } catch {
@@ -140,6 +174,7 @@ export function SuperDebugPanel({
         if (controller.signal.aborted) throw new Error('Timed out after 15s');
         response = await fetch(url, {
           method: 'GET',
+          headers: reachHeaders,
           signal: controller.signal,
         });
       }
@@ -148,7 +183,11 @@ export function SuperDebugPanel({
       if (response.status < 400) {
         addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms`, 'success');
       } else if (response.status === 401 || response.status === 403) {
-        addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms (auth required, this is normal)`, 'success');
+        if (useBasicAuth && response.status === 401) {
+          addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms (proxy credentials rejected or not accepted)`, 'warning');
+        } else {
+          addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms (auth required, this is normal)`, 'success');
+        }
       } else {
         addEntry('REACH', `Host responded with HTTP ${response.status} in ${latency}ms`, 'warning');
       }
@@ -247,7 +286,7 @@ export function SuperDebugPanel({
     addEntry('INFO', `Target: ${baseUrl}`, 'info');
     addEntry('INFO', `Platform: ${Platform.OS} ${Platform.Version}`, 'info');
     addEntry('INFO', `App: ${APP_VERSION}`, 'info');
-    addEntry('INFO', `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`, 'info');
+    addEntry('INFO', `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'} | Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`, 'info');
 
     let passed = 0;
     const totalSteps = bypassAuth ? 2 : 4;
@@ -261,18 +300,27 @@ export function SuperDebugPanel({
         if (!controller.signal.aborted) controller.abort();
       }, 15000);
 
+      const basicAuth = buildBasicAuthHeader();
+      const diagHeaders: Record<string, string> = {};
+      if (basicAuth) diagHeaders['Authorization'] = basicAuth;
+
       try {
         let reachResp: Response;
         try {
-          reachResp = await fetch(baseUrl, { method: 'HEAD', signal: controller.signal });
+          reachResp = await fetch(baseUrl, { method: 'HEAD', headers: diagHeaders, signal: controller.signal });
         } catch {
           if (controller.signal.aborted) throw new Error('Timed out after 15s');
-          reachResp = await fetch(baseUrl, { method: 'GET', signal: controller.signal });
+          reachResp = await fetch(baseUrl, { method: 'GET', headers: diagHeaders, signal: controller.signal });
         }
         clearTimeout(reachTimeout);
         const reachLatency = Date.now() - reachStart;
-        addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms`, 'success');
-        passed++;
+        if (reachResp.status === 401 && useBasicAuth) {
+          addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms (proxy credentials rejected — check Basic Auth username/password)`, 'warning');
+          passed++;
+        } else {
+          addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms`, 'success');
+          passed++;
+        }
       } catch (err: unknown) {
         clearTimeout(reachTimeout);
         if (controller.signal.aborted && !getErrorMessage(err).includes('Timed out')) throw err;
@@ -303,7 +351,10 @@ export function SuperDebugPanel({
         try {
           const loginResp = await fetch(loginUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              ...(basicAuth ? { 'Authorization': basicAuth } : {}),
+            },
             body: `username=${encodeURIComponent(username.trim())}&password=${encodeURIComponent(password.trim())}`,
             signal: controller.signal,
             credentials: 'omit',
@@ -384,6 +435,9 @@ export function SuperDebugPanel({
         const headers: Record<string, string> = {};
         if (sidCookie) {
           headers['Cookie'] = sidCookie;
+        }
+        if (basicAuth) {
+          headers['Authorization'] = basicAuth;
         }
         const apiResp = await fetch(versionUrl, {
           method: 'GET',
@@ -466,6 +520,7 @@ export function SuperDebugPanel({
       `Port: ${portNum || 'default (80/443)'}`,
       `HTTPS: ${useHttps ? 'Yes' : 'No'}`,
       `Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`,
+      `Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
       '',
       '--- Diagnostic Log ---',
       ...log.map((e) => `${formatTime(e.timestamp)} [${e.step}] ${e.message}`),
@@ -530,6 +585,7 @@ export function SuperDebugPanel({
         `Port: ${portNum || 'default (80/443)'}`,
         `HTTPS: ${useHttps ? 'Yes' : 'No'}`,
         `Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`,
+        `Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
         `Username: ${username ? '(set)' : '(empty)'}`,
         '',
       ];

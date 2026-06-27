@@ -395,7 +395,9 @@
     "password": "密码",
     "trackerUrl": "https://tracker.example.com/announce",
     "enterKbs": "输入 KiB/s",
-    "fallbackHost": "备用主机或 IP"
+    "fallbackHost": "备用主机或 IP",
+    "proxyUsername": "代理用户名",
+    "proxyPassword": "代理密码"
   },
   "actions": {
     "resume": "恢复",
@@ -481,7 +483,10 @@
     "testEndpointOk": "{{endpoint}}：成功",
     "testEndpointFail": "{{endpoint}}：失败",
     "connectedViaPrimary": "通过主 URL 连接",
-    "connectedViaFallback": "通过备用 URL 连接"
+    "connectedViaFallback": "通过备用 URL 连接",
+    "proxyAuthentication": "代理身份验证",
+    "useBasicAuth": "Basic 认证（代理）",
+    "useBasicAuthHint": "当反向代理保护服务器时需要启用"
   },
   "torrentDetail": {
     "notFound": "未找到种子",
@@ -764,6 +769,7 @@
     "connectionFailedManual": "Connection failed: {{error}}. Please try connecting manually.",
     "fillNameAndHost": "请填写服务器名称和主机",
     "fillUsernamePassword": "请填写用户名和密码，或启用绕过认证",
+    "fillBasicAuthUsername": "请填写 Basic 认证的代理用户名",
     "validPort": "请输入有效端口号 (1-65535)",
     "fillFallbackHost": "请输入备用主机",
     "selectTorrentFile": "请选择 .torrent 文件",
