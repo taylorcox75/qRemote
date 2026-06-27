@@ -21,6 +21,10 @@ export const CHANGELOG: ChangelogRelease[] = [
       'Creating a new category from the torrent detail screen is now fixed — categories are properly saved to the server before being assigned',
       'Tags displayed in the torrent detail screen now appear as individual chips matching the Category badge style',
       'Improved qBittorrent v4.x compatibility',
+      'Added category and tag filters to the torrents tab — tap the Category or Tags chip in the filter row to narrow the list',
+      'Tag filters use OR semantics: a torrent matches if it has any of the selected tags',
+      'Filter selections are remembered across sessions',
+      'Search plugin support (feature flag - disabled for App Store builds)',
     ],
   },
   {
@@ -40,7 +44,7 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '3.2.0',
     date: '2026-05-29',
-    changes: ['Search plugin support (feature flag - disabled for App Store builds)'],
+    changes: ['Search plugin support'],
   },
   {
     version: '3.1.2',

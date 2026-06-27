@@ -37,6 +37,9 @@
       "addTorrent": "添加种子",
       "noFilterResults": "未找到 {{filter}} 种子",
       "noStuckResults": "未找到卡住的种子",
+      "noCategoryResults": "此分类下没有种子",
+      "noTagResults": "没有带所选标签的种子",
+      "clearAllFilters": "清除所有筛选",
       "urlOrMagnet": "种子 URL 或磁力链接",
       "selectTorrentFile": "选择 .torrent 文件",
       "yourServers": "你的服务器",
@@ -668,7 +671,12 @@
     "paused": "已暂停",
     "stuck": "卡住",
     "downloading": "下载",
-    "uploading": "上传"
+    "uploading": "上传",
+    "category": "分类",
+    "allCategories": "所有分类",
+    "uncategorized": "未分类",
+    "tags": "标签",
+    "tagsCount": "标签 ({{count}})"
   },
   "sort": {
     "dateAdded": "添加日期",

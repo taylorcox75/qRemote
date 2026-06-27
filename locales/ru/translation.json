@@ -57,6 +57,9 @@
       "addTorrent": "Добавить торрент",
       "noFilterResults": "Торрентов «{{filter}}» не найдено",
       "noStuckResults": "Простаивающих торрентов не найдено",
+      "noCategoryResults": "В этой категории нет торрентов",
+      "noTagResults": "Нет торрентов с выбранными тегами",
+      "clearAllFilters": "Сбросить все фильтры",
       "urlOrMagnet": "URL торрента или magnet-ссылка",
       "selectTorrentFile": "Выбрать .torrent-файл",
       "yourServers": "ВАШИ СЕРВЕРЫ",
@@ -664,7 +667,12 @@
     "paused": "Пауза",
     "stuck": "Простаивает",
     "downloading": "Загр.",
-    "uploading": "Отд."
+    "uploading": "Отд.",
+    "category": "Категория",
+    "allCategories": "Все категории",
+    "uncategorized": "Без категории",
+    "tags": "Теги",
+    "tagsCount": "Теги ({{count}})"
   },
   "sort": {
     "dateAdded": "Дата добавления",
