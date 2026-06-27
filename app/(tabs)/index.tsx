@@ -50,12 +50,15 @@ import { useTorrentActions } from '@/hooks/useTorrentActions';
 import { getErrorMessage } from '@/utils/error';
 import { extractMagnetLink } from '@/utils/magnet';
 import { getAddTorrentDialogueVariant } from '@/utils/add-torrent-dialogue';
+import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
+import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSelectPicker';
+import { torrentHasAnyTag } from '@/utils/tags';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const router = useRouter();
-  const { torrents, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
+  const { torrents, categories, tags, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
   const { isConnected, currentServer, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
   const params = useLocalSearchParams<{ magnet?: string | string[] }>();
@@ -77,6 +80,12 @@ export default function TorrentsScreen() {
   const [expandedCardFields, setExpandedCardFields] = useState<Record<ExpandedCardField, boolean>>(
     DEFAULT_PREFERENCES.expandedCardFields
   );
+  // Category/tag filter state (null = all categories, '' = uncategorized)
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showTagPicker, setShowTagPicker] = useState(false);
+
   const lastAppliedMagnetRef = useRef<{ value: string; at: number } | null>(null);
 
   // Action menu state
@@ -143,6 +152,12 @@ export default function TorrentsScreen() {
         }
         if (prefs.defaultFilter) {
           setFilter(prefs.defaultFilter);
+        }
+        if (prefs.lastCategoryFilter !== undefined) {
+          setCategoryFilter(prefs.lastCategoryFilter);
+        }
+        if (prefs.lastTagFilters && prefs.lastTagFilters.length > 0) {
+          setTagFilters(prefs.lastTagFilters);
         }
         setCardViewMode(prefs.cardViewMode ?? 'compact');
         if (prefs.expandedCardFields) {
@@ -262,6 +277,18 @@ export default function TorrentsScreen() {
       });
     }
 
+    // Category filter: null = all, '' = uncategorized (no category set)
+    if (categoryFilter !== null) {
+      filtered = filtered.filter((torrent) =>
+        categoryFilter === '' ? !torrent.category : torrent.category === categoryFilter
+      );
+    }
+
+    // Tag filter: OR semantics — torrent matches if it has any selected tag
+    if (tagFilters.length > 0) {
+      filtered = filtered.filter((torrent) => torrentHasAnyTag(torrent.tags, tagFilters));
+    }
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -306,7 +333,7 @@ export default function TorrentsScreen() {
     });
 
     return filtered;
-  }, [torrents, filter, searchQuery, sortBy, sortDirection]);
+  }, [torrents, filter, categoryFilter, tagFilters, searchQuery, sortBy, sortDirection]);
 
   // Selection handlers
   const toggleSelectMode = () => {
@@ -658,6 +685,61 @@ export default function TorrentsScreen() {
     lastScrollY.current = currentScrollY;
   }, []);
 
+  // Whether any secondary (category/tag) filter is active
+  const hasSecondaryFilter = categoryFilter !== null || tagFilters.length > 0;
+
+  const clearAllFilters = useCallback(async () => {
+    setFilter('all');
+    setCategoryFilter(null);
+    setTagFilters([]);
+    try {
+      const prefs = await storageService.getPreferences();
+      await storageService.savePreferences({ ...prefs, lastCategoryFilter: null, lastTagFilters: [] });
+    } catch {
+      // best-effort
+    }
+  }, []);
+
+  // Category picker options: All + Uncategorized + sorted server categories
+  const categoryPickerOptions = useMemo<OptionPickerItem[]>(() => {
+    const sorted = Object.keys(categories).sort((a, b) => a.localeCompare(b));
+    return [
+      { label: t('filters.allCategories'), value: '__all__', icon: 'grid-outline' as const },
+      { label: t('filters.uncategorized'), value: '', icon: 'remove-circle-outline' as const },
+      ...sorted.map((name) => ({ label: name, value: name, icon: 'folder-outline' as const })),
+    ];
+  }, [categories, t]);
+
+  // Tag multi-select options: sorted server tags
+  const tagPickerOptions = useMemo<MultiSelectPickerItem[]>(() => {
+    return [...tags]
+      .sort((a, b) => a.localeCompare(b))
+      .map((tag) => ({ label: tag, value: tag, icon: 'pricetag-outline' as const }));
+  }, [tags]);
+
+  const handleCategorySelect = useCallback(async (value: string) => {
+    const newFilter = value === '__all__' ? null : value;
+    setCategoryFilter(newFilter);
+    setShowCategoryPicker(false);
+    haptics.light();
+    try {
+      const prefs = await storageService.getPreferences();
+      await storageService.savePreferences({ ...prefs, lastCategoryFilter: newFilter });
+    } catch {
+      // best-effort
+    }
+  }, []);
+
+  const handleTagsChange = useCallback(async (values: string[]) => {
+    setTagFilters(values);
+    try {
+      const prefs = await storageService.getPreferences();
+      await storageService.savePreferences({ ...prefs, lastTagFilters: values });
+    } catch {
+      // best-effort
+    }
+  }, []);
+
   // Filter options
   const filterOptions = [
     { key: 'all', labelKey: 'filters.all', icon: 'grid-outline' as const },
@@ -903,6 +985,81 @@ export default function TorrentsScreen() {
                   </TouchableOpacity>
                 ))}
                 
+              {!selectMode && (
+                <>
+                  {/* Visual separator */}
+                  <View style={[styles.filterChipSeparator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  {/* Category filter chip */}
+                  <TouchableOpacity
+                    style={[
+                      styles.filterChipCompact,
+                      categoryFilter !== null && styles.filterChipElevated,
+                      {
+                        backgroundColor: categoryFilter !== null ? colors.primary : colors.surface,
+                        borderColor: categoryFilter !== null ? colors.primary : colors.surfaceOutline,
+                        borderWidth: categoryFilter !== null ? 0 : 0.2,
+                      },
+                    ]}
+                    onPress={() => { haptics.light(); setShowCategoryPicker(true); }}
+                    activeOpacity={0.7}
+                    accessibilityLabel={t('filters.category')}
+                    accessibilityState={{ selected: categoryFilter !== null }}
+                  >
+                    <Ionicons
+                      name="folder-outline"
+                      size={14}
+                      color={categoryFilter !== null ? '#FFFFFF' : colors.text}
+                    />
+                    <Text
+                      style={[
+                        styles.filterChipTextCompact,
+                        { color: categoryFilter !== null ? '#FFFFFF' : colors.text },
+                      ]}
+                    >
+                      {categoryFilter === null
+                        ? t('filters.category')
+                        : categoryFilter === ''
+                          ? t('filters.uncategorized')
+                          : categoryFilter}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Tags filter chip */}
+                  <TouchableOpacity
+                    style={[
+                      styles.filterChipCompact,
+                      tagFilters.length > 0 && styles.filterChipElevated,
+                      {
+                        backgroundColor: tagFilters.length > 0 ? colors.primary : colors.surface,
+                        borderColor: tagFilters.length > 0 ? colors.primary : colors.surfaceOutline,
+                        borderWidth: tagFilters.length > 0 ? 0 : 0.2,
+                      },
+                    ]}
+                    onPress={() => { haptics.light(); setShowTagPicker(true); }}
+                    activeOpacity={0.7}
+                    accessibilityLabel={t('filters.tags')}
+                    accessibilityState={{ selected: tagFilters.length > 0 }}
+                  >
+                    <Ionicons
+                      name="pricetag-outline"
+                      size={14}
+                      color={tagFilters.length > 0 ? '#FFFFFF' : colors.text}
+                    />
+                    <Text
+                      style={[
+                        styles.filterChipTextCompact,
+                        { color: tagFilters.length > 0 ? '#FFFFFF' : colors.text },
+                      ]}
+                    >
+                      {tagFilters.length > 0
+                        ? t('filters.tagsCount', { count: tagFilters.length })
+                        : t('filters.tags')}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
               {selectMode && (
                 <TouchableOpacity
                   onPress={toggleSelectMode}
@@ -987,22 +1144,48 @@ export default function TorrentsScreen() {
           </View>
         </Animated.View>
 
+        {/* Category filter picker */}
+        <OptionPicker
+          visible={showCategoryPicker}
+          title={t('filters.category')}
+          options={categoryPickerOptions}
+          selectedValue={categoryFilter === null ? '__all__' : categoryFilter}
+          onSelect={(value) => void handleCategorySelect(value)}
+          onClose={() => setShowCategoryPicker(false)}
+        />
+
+        {/* Tags filter picker */}
+        <MultiSelectPicker
+          visible={showTagPicker}
+          title={t('filters.tags')}
+          options={tagPickerOptions}
+          selectedValues={tagFilters}
+          onChange={(values) => void handleTagsChange(values)}
+          onClose={() => setShowTagPicker(false)}
+        />
+
         {filteredTorrents.length === 0 ? (
           <View style={[styles.center, { backgroundColor: colors.background }]}>
             <Ionicons 
-              name={filter === 'all' ? 'cloud-download-outline' : 'funnel-outline'} 
+              name={(filter === 'all' && !hasSecondaryFilter) ? 'cloud-download-outline' : 'funnel-outline'} 
               size={64} 
               color={colors.textSecondary} 
             />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {filter === 'all' ? t('screens.torrents.noTorrents') : t('screens.torrents.noResults')}
+              {(filter === 'all' && !hasSecondaryFilter) ? t('screens.torrents.noTorrents') : t('screens.torrents.noResults')}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              {filter === 'all' 
-                ? t('screens.torrents.addMagnetSubtitle') 
-                : filter === 'stuck' ? t('screens.torrents.noStuckResults') : t('screens.torrents.noFilterResults', { filter })}
+              {(filter === 'all' && !hasSecondaryFilter)
+                ? t('screens.torrents.addMagnetSubtitle')
+                : categoryFilter !== null && tagFilters.length === 0 && filter === 'all'
+                  ? t('screens.torrents.noCategoryResults')
+                  : tagFilters.length > 0 && categoryFilter === null && filter === 'all'
+                    ? t('screens.torrents.noTagResults')
+                    : filter === 'stuck'
+                      ? t('screens.torrents.noStuckResults')
+                      : t('screens.torrents.noFilterResults', { filter })}
             </Text>
-            {filter === 'all' ? (
+            {(filter === 'all' && !hasSecondaryFilter) ? (
               <TouchableOpacity
                 style={[styles.emptyButton, { backgroundColor: colors.primary }]}
                 onPress={() => {
@@ -1017,9 +1200,9 @@ export default function TorrentsScreen() {
             ) : (
               <TouchableOpacity
                 style={[styles.emptyButton, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceOutline }]}
-                onPress={() => setFilter('all')}
+                onPress={() => void clearAllFilters()}
               >
-                <Text style={[styles.emptyButtonText, { color: colors.text }]}>{t('screens.torrents.clearFilter')}</Text>
+                <Text style={[styles.emptyButtonText, { color: colors.text }]}>{t('screens.torrents.clearAllFilters')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1624,6 +1807,13 @@ const styles = StyleSheet.create({
   },
   filterChipTextCompact: {
     ...buttonText.chip,
+  },
+  filterChipSeparator: {
+    width: 1,
+    height: 18,
+    marginHorizontal: spacing.xs,
+    alignSelf: 'center',
+    opacity: 0.5,
   },
   listContent: {
     paddingTop: 100,

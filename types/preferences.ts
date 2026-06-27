@@ -138,6 +138,15 @@ export interface AppPreferences {
 
   /** Last selected search category ("all" or a plugin-supported category id) */
   lastSearchCategory?: string;
+
+  /**
+   * Last active category filter on the torrents tab.
+   * null = All categories; '' = Uncategorized (torrents with no category set).
+   */
+  lastCategoryFilter?: string | null;
+
+  /** Last active tag filters on the torrents tab (OR semantics). */
+  lastTagFilters?: string[];
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -203,4 +212,6 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   lastSearchQuery: '',
   lastSearchPlugin: 'enabled',
   lastSearchCategory: 'all',
+  lastCategoryFilter: null,
+  lastTagFilters: [],
 };

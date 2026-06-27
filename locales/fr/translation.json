@@ -37,6 +37,9 @@
       "addTorrent": "Ajouter un torrent",
       "noFilterResults": "Aucun torrent {{filter}} trouvé",
       "noStuckResults": "Aucun torrent bloqué trouvé",
+      "noCategoryResults": "Aucun torrent dans cette catégorie",
+      "noTagResults": "Aucun torrent avec les étiquettes sélectionnées",
+      "clearAllFilters": "Effacer tous les filtres",
       "urlOrMagnet": "URL de torrent ou lien magnétique",
       "selectTorrentFile": "Sélectionner un fichier .torrent",
       "yourServers": "VOS SERVEURS",
@@ -653,7 +656,12 @@
     "paused": "En pause",
     "stuck": "Bloqués",
     "downloading": "DL",
-    "uploading": "UL"
+    "uploading": "UL",
+    "category": "Catégorie",
+    "allCategories": "Toutes les catégories",
+    "uncategorized": "Non catégorisé",
+    "tags": "Étiquettes",
+    "tagsCount": "Étiquettes ({{count}})"
   },
   "sort": {
     "dateAdded": "Date",
