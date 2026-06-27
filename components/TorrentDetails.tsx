@@ -45,7 +45,7 @@ import {
 import { formatDate } from '@/utils/format';
 import { InputModal } from './InputModal';
 import { TagsModal } from './TagsModal';
-import { OptionPicker } from './OptionPicker';
+import { CategoryModal } from './CategoryModal';
 import { getErrorMessage } from '@/utils/error';
 
 interface TorrentDetailsProps {
@@ -431,39 +431,27 @@ export function TorrentDetails({
 
   const handleCategorySelect = async (value: string) => {
     setCategoryPickerVisible(false);
-    if (value === '__new__') {
-      setActiveButton(null);
-      setInputModalConfig({
-        title: t('torrentDetail.addNewCategory'),
-        message: t('torrentDetail.enterCategoryName'),
-        onConfirm: async (categoryName: string) => {
-          setInputModalVisible(false);
-          if (!categoryName) {
-            showToast(t('errors.validCategoryName'), 'error');
-            return;
-          }
-          try {
-            setLoading(true);
-            setActiveButton('category');
-            await categoriesApi.addCategory(categoryName, '');
-            await torrentsApi.setTorrentCategory([torrent.hash], categoryName);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await sync();
-            onRefresh();
-          } catch (error: unknown) {
-            showToast(getErrorMessage(error), 'error');
-          } finally {
-            setLoading(false);
-            setActiveButton(null);
-          }
-        },
-      });
-      setInputModalVisible(true);
-      return;
-    }
     try {
       setLoading(true);
       await torrentsApi.setTorrentCategory([torrent.hash], value);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sync();
+      onRefresh();
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
+    } finally {
+      setLoading(false);
+      setActiveButton(null);
+    }
+  };
+
+  const handleCategoryCreateAndSelect = async (categoryName: string) => {
+    setCategoryPickerVisible(false);
+    try {
+      setLoading(true);
+      setActiveButton('category');
+      await categoriesApi.addCategory(categoryName, '');
+      await torrentsApi.setTorrentCategory([torrent.hash], categoryName);
       await new Promise(resolve => setTimeout(resolve, 1000));
       await sync();
       onRefresh();
@@ -744,17 +732,14 @@ export function TorrentDetails({
     return (
       <View style={styles.container}>
         {renderInputModal()}
-        {/* Category Picker */}
-        <OptionPicker
+        {/* Category Modal */}
+        <CategoryModal
           visible={categoryPickerVisible}
-          title={t('torrentDetail.setCategory')}
-          options={[
-            { label: t('common.none'), value: '' },
-            ...Object.keys(categories).map((cat) => ({ label: cat, value: cat })),
-            { label: `${t('torrentDetail.addNewCategory')}…`, value: '__new__', icon: 'add-circle-outline' as const },
-          ]}
-          selectedValue={torrent.category || ''}
+          currentCategory={torrent.category || ''}
+          allCategories={Object.keys(categories)}
+          loading={loading}
           onSelect={handleCategorySelect}
+          onCreateAndSelect={handleCategoryCreateAndSelect}
           onClose={() => {
             setCategoryPickerVisible(false);
             setActiveButton(null);

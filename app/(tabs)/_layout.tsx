@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { FEATURES } from '@/constants/features';
 
 export default function TabsLayout() {
   const { t } = useTranslation();
@@ -52,6 +53,7 @@ export default function TabsLayout() {
           name="search"
           options={{
             title: t('screens.search.tabTitle'),
+            href: FEATURES.search ? undefined : null,
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
             ),
