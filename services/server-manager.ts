@@ -144,9 +144,10 @@ export class ServerManager {
     try {
       if (resolved.bypassAuth) {
         try {
-          await applicationApi.getVersion();
+          const versionInfo = await applicationApi.getVersion();
           await storageService.setCurrentServerId(server.id);
-          clogInfo('CONN', `Connected successfully via ${endpoint} (bypass auth)`);
+          apiClient.setApiVersion(versionInfo.apiVersion);
+          clogInfo('CONN', `Connected successfully via ${endpoint} (bypass auth, API ${versionInfo.apiVersion})`);
           return true;
         } catch (error: unknown) {
           apiClient.setServer(null);
@@ -163,9 +164,10 @@ export class ServerManager {
 
       if (loginResult.status === 'Ok') {
         try {
-          await applicationApi.getVersion();
+          const versionInfo = await applicationApi.getVersion();
           await storageService.setCurrentServerId(server.id);
-          clogInfo('CONN', `Connected successfully via ${endpoint} (authenticated)`);
+          apiClient.setApiVersion(versionInfo.apiVersion);
+          clogInfo('CONN', `Connected successfully via ${endpoint} (authenticated, API ${versionInfo.apiVersion})`);
           return true;
         } catch (error: unknown) {
           apiClient.setServer(null);

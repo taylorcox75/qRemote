@@ -9,6 +9,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TorrentInfo, MainData, ServerState, Category } from '@/types/api';
 import { syncApi } from '@/services/api/sync';
+import { apiClient } from '@/services/api/client';
 import { useServer } from './ServerContext';
 import { getErrorMessage } from '@/utils/error';
 
@@ -177,6 +178,26 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       queryClient.removeQueries({ queryKey: ['torrents'] });
     }
   }, [isConnected, queryClient]);
+
+  // Auto-reconnect when the sync fails due to auth or missing session state.
+  // Covers: qBittorrent server restart (session invalidated), and dev Fast
+  // Refresh re-evaluating apiClient (singleton loses cookies/currentServer).
+  const reconnectingRef = useRef(false);
+  useEffect(() => {
+    if (!queryError || !isConnected || reconnectingRef.current) return;
+    const message = getErrorMessage(queryError);
+    if (
+      message.includes('Authentication failed') ||
+      message.includes('No server configured')
+    ) {
+      if (!apiClient.getApiVersion() || !apiClient.getCookies()) {
+        reconnectingRef.current = true;
+        checkAndReconnect().finally(() => {
+          reconnectingRef.current = false;
+        });
+      }
+    }
+  }, [queryError, isConnected, checkAndReconnect]);
 
   // AppState handler: background/foreground recovery
   useEffect(() => {
