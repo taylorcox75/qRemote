@@ -35,7 +35,7 @@ import { InputModal } from '@/components/InputModal';
 import { OptionPicker } from '@/components/OptionPicker';
 import { TagsModal } from '@/components/TagsModal';
 import { CategoryModal } from '@/components/CategoryModal';
-import { getStateColor, getStateLabel } from '@/utils/torrent-state';
+import { getStateColor, getStateLabel, hasEta } from '@/utils/torrent-state';
 import { torrentsApi } from '@/services/api/torrents';
 import { syncApi } from '@/services/api/sync';
 import { tagsApi } from '@/services/api/tags';
@@ -903,7 +903,7 @@ export default function TorrentDetail() {
             </View>
             <View style={styles.heroStatsRow}>
               <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>
-                {torrent.eta > 0 && torrent.eta < 8640000
+                {hasEta(torrent.eta, torrent.progress)
                   ? t('torrentDetail.remaining', { time: formatTime(torrent.eta) })
                   : progress >= 100
                   ? t('torrentDetail.complete')
@@ -968,7 +968,7 @@ export default function TorrentDetail() {
             {renderRows([
               staticRow(t('torrentDetail.dlSpeed'), formatSpeed(dlspeed)),
               staticRow(t('torrentDetail.ulSpeed'), formatSpeed(upspeed)),
-              staticRow(t('torrentDetail.eta'), torrent.eta > 0 && torrent.eta < 8640000 ? formatTime(torrent.eta) : '∞'),
+              hasEta(torrent.eta, torrent.progress) && staticRow(t('torrentDetail.eta'), formatTime(torrent.eta)),
               tappableRow(
                 t('torrentDetail.dlLimit'),
                 properties && properties.dl_limit > 0 ? formatSpeed(properties.dl_limit) : t('common.unlimited'),

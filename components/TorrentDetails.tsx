@@ -47,6 +47,7 @@ import { InputModal } from './InputModal';
 import { TagsModal } from './TagsModal';
 import { CategoryModal } from './CategoryModal';
 import { getErrorMessage } from '@/utils/error';
+import { hasEta } from '@/utils/torrent-state';
 
 interface TorrentDetailsProps {
   torrent: TorrentInfo;
@@ -1239,7 +1240,7 @@ export function TorrentDetails({
             <Ionicons name="swap-horizontal" size={20} color={colors.primary} />
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('torrentDetail.transferStatistics')}</Text>
           </View>
-          {torrent.eta > 0 && torrent.eta < 8640000 && (
+          {hasEta(torrent.eta, torrent.progress) && (
             <InfoRow icon="time" label={t('torrentDetail.eta')} value={formatTime(torrent.eta)} />
           )}
           <InfoRow icon="time-outline" label={t('torrentDetail.timeActive')} value={formatTime(torrent.time_active)} />

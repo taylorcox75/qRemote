@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { TorrentInfo } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
-import { getStateColor, getStateLabel } from '@/utils/torrent-state';
+import { getStateColor, getStateLabel, hasEta } from '@/utils/torrent-state';
 import { formatSpeed, formatSize, formatTime } from '@/utils/format';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -139,7 +139,7 @@ function TorrentCardInner({
 
   const totalSize = torrent.total_size > 0 ? torrent.total_size : torrent.size || 0;
   const downloaded = torrent.completed || 0;
-  const hasEta = torrent.eta > 0 && torrent.eta < 8640000;
+  const etaVisible = hasEta(torrent.eta, torrent.progress ?? 0);
 
   const speedParts: string[] = [];
   if (dlspeed > 0) speedParts.push(`${formatSpeed(dlspeed)} ↓`);
@@ -151,7 +151,7 @@ function TorrentCardInner({
     stateLabel,
     speedText,
     `${progress.toFixed(0)}%`,
-    hasEta ? formatTime(torrent.eta) : null,
+    etaVisible ? formatTime(torrent.eta) : null,
   ].filter(Boolean).join('  ·  ');
 
   // Build two-column detail items: short fields get 50% width, long ones span full width.
@@ -185,7 +185,7 @@ function TorrentCardInner({
     if (show('progress')) addItem('progress', t('screens.settings.expandedCardFieldsList.progress'), `${progress.toFixed(1)}%`);
     if (show('dlSpeed')) addItem('dlSpeed', t('screens.settings.expandedCardFieldsList.dlSpeed'), dlspeed > 0 ? formatSpeed(dlspeed) : '—');
     if (show('ulSpeed')) addItem('ulSpeed', t('screens.settings.expandedCardFieldsList.ulSpeed'), upspeed > 0 ? formatSpeed(upspeed) : '—');
-    if (show('eta')) addItem('eta', t('screens.settings.expandedCardFieldsList.eta'), hasEta ? formatTime(torrent.eta) : '—');
+    if (show('eta') && etaVisible) addItem('eta', t('screens.settings.expandedCardFieldsList.eta'), formatTime(torrent.eta));
     if (show('seeds')) addItem('seeds', t('screens.settings.expandedCardFieldsList.seeds'), `${torrent.num_seeds} / ${torrent.num_complete}`);
     if (show('peers')) addItem('peers', t('screens.settings.expandedCardFieldsList.peers'), `${torrent.num_leechs} / ${torrent.num_incomplete}`);
     if (show('ratio')) addItem('ratio', t('screens.settings.expandedCardFieldsList.ratio'), torrent.ratio != null ? torrent.ratio.toFixed(2) : '—');
