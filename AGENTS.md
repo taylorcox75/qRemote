@@ -8,7 +8,12 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - `npm start` — Start Expo dev server (Expo Go)
 - `npm run ios` — iOS simulator
 - `npm run android` — Android emulator
-- No test runner configured yet (adding tests is a separate task)
+
+### Verification (run before considering a change done)
+- `npx tsc --noEmit` — typecheck (currently clean)
+- `npm test` — Jest (ts-jest). Tests live in `tests/`, currently 150 passing across 7 suites
+- `npm run lint` — ESLint
+- `npm run format` — Prettier
 
 ## Architecture
 - **Routing:** Expo Router file-based routing in `app/`. The `(tabs)` directory uses parentheses because Expo Router requires this syntax for route groups — it is a framework convention, not a naming choice. The parens cannot be removed.
@@ -25,22 +30,20 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 3. NEVER rename keys in the `colors` object (ThemeContext) — users store color overrides keyed by these names in AsyncStorage. Renaming silently breaks their customizations.
 4. NEVER rename preference keys — there is no migration system. Old keys become orphaned.
 5. All user-facing strings must use i18n: `const { t } = useTranslation()` then `t('key')`.
-6. The preferences object is `Record<string, any>` — see `types/preferences.ts` for the typed version (create if missing).
+6. The preferences object is `Record<string, any>` — see `types/preferences.ts` for the typed version.
 7. Color defaults use mixed formats (rgb, rgba, hex). The color picker only handles 6-digit hex. Changing a default from `rgba(...)` to `#hex` removes the alpha channel and changes visual appearance.
+8. **Changelog discipline (user-facing changes only).** The in-app "What's New" panel reads `constants/changelog.ts` (`CHANGELOG`, newest first). When your change is **user-facing** (feature, bug fix, visible UI/behavior change):
+   1. Compare `package.json` `version` to the top entry `CHANGELOG[0].version`.
+   2. **If they are equal** → the latest entry is already released. Add a **new** entry at the top with a **patch bump** (`x.y.(z+1)`), today's date (`YYYY-MM-DD`), and your change in `changes[]`. **Do NOT touch `package.json`** — the release process owns the app version.
+   3. **If they differ** (changelog is ahead of package.json) → a previous agent already opened the unreleased entry. **Append** your change to that top entry's `changes[]`. Do not create another entry.
+
+   This keeps a single unreleased entry accumulating until a human cuts a release by bumping `package.json` to match. Internal-only work (docs, config, refactors, tests, tooling) gets **no** changelog entry.
 
 ## Dead Code
 All dead code files and unused client fields have been removed (Task 3.5 complete).
 
 ## Known Bugs
-- `app/_layout.tsx:32` — `backgroundColor: 'colors.r'` is a string literal, should be `colors.background`
-- `components/Confetti.tsx` — `useRef` called inside `Array.from` loop (Rules of Hooks violation)
-- `components/ExpandableTorrentCard.tsx:173-178` — Pause button has no `onPress` handler
-- `app.config.js` — `usesCleartextTraffic: 'true'` should be boolean `true`
-- `app.config.js` — App name has trailing space: `'qRemote '`
-- `Alert.prompt` used in 14 places (iOS-only — acceptable for iOS-first, but Task 1.5 replaces with InputModal for consistency): `TorrentCard.tsx` (1), `torrent/[hash].tsx` (7), `TorrentDetails.tsx` (6)
-
-- `isRecoveringFromBackground` in `TorrentContext.tsx` — exposed as ref value, doesn't trigger re-renders (should be state like TransferContext)
-- `react-native-gesture-handler` installed explicitly in package.json (Task 1.4g)
+None currently tracked. Do not trust a static bug list — run `npx tsc --noEmit` and `npm test`, and read the actual code before assuming a defect exists. (All previously documented bugs were fixed in v3.1.0; see `constants/changelog.ts`.)
 
 ## Naming Conventions
 - Components: PascalCase (`TorrentCard.tsx`)
@@ -51,7 +54,7 @@ All dead code files and unused client fields have been removed (Task 3.5 complet
 - Dynamic routes: `[param].tsx` with square brackets is Expo Router syntax for URL parameters (like `/torrent/:hash`). The brackets cannot be removed. The name inside becomes the param key in `useLocalSearchParams()`.
 - Layout files: `_layout.tsx` with the underscore prefix is Expo Router syntax for layout routes. Cannot be renamed.
 
-## Cursor Cloud Specific Instructions
+## Verification / Environment
 - This is an iOS-first app. iOS-only APIs (`ActionSheetIOS`, `Alert.prompt`, etc.) are acceptable. Android parity is a future concern.
 - `expo-*` packages are approved for use even if they require `expo-dev-client` (e.g. `expo-symbols`). Third-party native modules (`react-native-ios-context-menu`, `lottie-react-native`) still require explicit approval before adding.
-- The app cannot be run in this cloud environment (requires Expo Go / dev client on a device/simulator). Verify changes compile with `npx tsc --noEmit`.
+- The app cannot be launched in a headless/cloud agent environment (requires Expo Go / dev client on a device or simulator). When you can't run the app, verify with `npx tsc --noEmit` and `npm test`.
