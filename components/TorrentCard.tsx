@@ -24,20 +24,38 @@ function DetailRow({
   label,
   value,
   truncate = false,
+  column = 'left',
+  fullWidth = false,
 }: {
   label: string;
   value: string;
   truncate?: boolean;
+  column?: 'left' | 'right';
+  fullWidth?: boolean;
 }) {
   const { colors } = useTheme();
+
+  if (fullWidth) {
+    return (
+      <View style={detailRowStyles.fullRow}>
+        <Text style={[detailRowStyles.fullLabel, { color: colors.textSecondary }]}>{label}</Text>
+        <Text
+          style={[detailRowStyles.fullValue, { color: colors.text }]}
+          numberOfLines={truncate ? 1 : undefined}
+          ellipsizeMode="middle"
+        >
+          {value}
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={detailRowStyles.row}>
-      <Text style={[detailRowStyles.label, { color: colors.textSecondary }]}>{label}</Text>
-      <Text
-        style={[detailRowStyles.value, { color: colors.text }]}
-        numberOfLines={truncate ? 1 : undefined}
-        ellipsizeMode="middle"
-      >
+    <View style={[detailRowStyles.cell, column === 'right' && detailRowStyles.cellRight]}>
+      <Text style={[detailRowStyles.cellLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[detailRowStyles.cellValue, { color: colors.text }]} numberOfLines={1}>
         {value}
       </Text>
     </View>
@@ -45,23 +63,47 @@ function DetailRow({
 }
 
 const detailRowStyles = StyleSheet.create({
-  row: {
+  fullRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 2,
+    width: '100%',
   },
-  label: {
+  fullLabel: {
     fontSize: 12,
     fontWeight: '500',
     minWidth: 64,
     marginRight: 8,
   },
-  value: {
+  fullValue: {
     fontSize: 12,
     fontWeight: '400',
     flex: 1,
     textAlign: 'right',
+  },
+  cell: {
+    width: '50%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 2,
+    paddingRight: 6,
+  },
+  cellRight: {
+    paddingRight: 0,
+    paddingLeft: 6,
+    justifyContent: 'flex-end',
+  },
+  cellLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginRight: 4,
+    flexShrink: 0,
+  },
+  cellValue: {
+    fontSize: 12,
+    fontWeight: '400',
+    flexShrink: 1,
   },
 });
 
@@ -112,25 +154,52 @@ function TorrentCardInner({
     hasEta ? formatTime(torrent.eta) : null,
   ].filter(Boolean).join('  ·  ');
 
-  // Determine whether any detail rows will be rendered
-  const hasAnyDetail =
-    !compact &&
-    (fields.dlSpeed ||
-      fields.ulSpeed ||
-      fields.eta ||
-      fields.status ||
-      fields.seeds ||
-      fields.peers ||
-      fields.ratio ||
-      fields.uploaded ||
-      fields.availability ||
-      fields.seedingTime ||
-      fields.addedOn ||
-      fields.tags ||
-      fields.category ||
-      fields.tracker ||
-      fields.savePath ||
-      fields.progress);
+  // Build two-column detail items: short fields get 50% width, long ones span full width.
+  // Column parity is tracked only across short items so full-width rows don't disrupt pairing.
+  const detailItems: Array<{
+    key: string;
+    label: string;
+    value: string;
+    fullWidth?: boolean;
+    truncate?: boolean;
+    column?: 'left' | 'right';
+  }> = [];
+
+  if (!compact) {
+    let shortCount = 0;
+    const addItem = (
+      key: string,
+      label: string,
+      value: string,
+      fullWidth = false,
+      truncate = false,
+    ) => {
+      if (fullWidth) {
+        detailItems.push({ key, label, value, fullWidth, truncate });
+      } else {
+        detailItems.push({ key, label, value, column: shortCount++ % 2 === 0 ? 'left' : 'right' });
+      }
+    };
+
+    if (show('status')) addItem('status', t('screens.settings.expandedCardFieldsList.status'), stateLabel);
+    if (show('progress')) addItem('progress', t('screens.settings.expandedCardFieldsList.progress'), `${progress.toFixed(1)}%`);
+    if (show('dlSpeed')) addItem('dlSpeed', t('screens.settings.expandedCardFieldsList.dlSpeed'), dlspeed > 0 ? formatSpeed(dlspeed) : '—');
+    if (show('ulSpeed')) addItem('ulSpeed', t('screens.settings.expandedCardFieldsList.ulSpeed'), upspeed > 0 ? formatSpeed(upspeed) : '—');
+    if (show('eta')) addItem('eta', t('screens.settings.expandedCardFieldsList.eta'), hasEta ? formatTime(torrent.eta) : '—');
+    if (show('seeds')) addItem('seeds', t('screens.settings.expandedCardFieldsList.seeds'), `${torrent.num_seeds} / ${torrent.num_complete}`);
+    if (show('peers')) addItem('peers', t('screens.settings.expandedCardFieldsList.peers'), `${torrent.num_leechs} / ${torrent.num_incomplete}`);
+    if (show('ratio')) addItem('ratio', t('screens.settings.expandedCardFieldsList.ratio'), torrent.ratio != null ? torrent.ratio.toFixed(2) : '—');
+    if (show('ratioLimit')) addItem('ratioLimit', t('screens.settings.expandedCardFieldsList.ratioLimit'), torrent.ratio_limit != null && torrent.ratio_limit >= 0 ? torrent.ratio_limit.toFixed(2) : '∞');
+    if (show('maxRatio')) addItem('maxRatio', t('screens.settings.expandedCardFieldsList.maxRatio'), torrent.max_ratio != null && torrent.max_ratio >= 0 ? torrent.max_ratio.toFixed(2) : '∞');
+    if (show('uploaded')) addItem('uploaded', t('screens.settings.expandedCardFieldsList.uploaded'), formatSize(torrent.uploaded));
+    if (show('availability')) addItem('availability', t('screens.settings.expandedCardFieldsList.availability'), torrent.availability > 0 && torrent.availability < 1 ? `${(torrent.availability * 100).toFixed(1)}%` : '—');
+    if (show('seedingTime')) addItem('seedingTime', t('screens.settings.expandedCardFieldsList.seedingTime'), torrent.seeding_time > 0 ? formatTime(torrent.seeding_time) : '—');
+    if (show('addedOn')) addItem('addedOn', t('screens.settings.expandedCardFieldsList.addedOn'), new Date(torrent.added_on * 1000).toLocaleDateString());
+    if (show('tags') && !!torrent.tags) addItem('tags', t('screens.settings.expandedCardFieldsList.tags'), torrent.tags, true);
+    if (show('category') && !!torrent.category) addItem('category', t('screens.settings.expandedCardFieldsList.category'), torrent.category);
+    if (show('tracker') && !!torrent.tracker) addItem('tracker', t('screens.settings.expandedCardFieldsList.tracker'), torrent.tracker, true, true);
+    if (show('savePath') && !!torrent.save_path) addItem('savePath', t('screens.settings.expandedCardFieldsList.savePath'), torrent.save_path, true, true);
+  }
 
   return (
     <TouchableOpacity
@@ -179,101 +248,19 @@ function TorrentCardInner({
         {formatSize(downloaded)} / {formatSize(totalSize)}
       </Text>
 
-      {/* Expanded detail section */}
-      {hasAnyDetail && (
+      {/* Expanded detail section — two-column grid for short fields, full-width for long ones */}
+      {detailItems.length > 0 && (
         <View style={[styles.detailGrid, { borderTopColor: colors.surfaceOutline }]}>
-          {show('status') && (
+          {detailItems.map((item) => (
             <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.status')}
-              value={stateLabel}
+              key={item.key}
+              label={item.label}
+              value={item.value}
+              column={item.column}
+              fullWidth={item.fullWidth}
+              truncate={item.truncate}
             />
-          )}
-          {show('progress') && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.progress')}
-              value={`${progress.toFixed(1)}%`}
-            />
-          )}
-          {show('dlSpeed') && dlspeed > 0 && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.dlSpeed')}
-              value={`${formatSpeed(dlspeed)}`}
-            />
-          )}
-          {show('ulSpeed') && upspeed > 0 && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.ulSpeed')}
-              value={`${formatSpeed(upspeed)}`}
-            />
-          )}
-          {show('eta') && hasEta && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.eta')}
-              value={formatTime(torrent.eta)}
-            />
-          )}
-          {show('seeds') && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.seeds')}
-              value={`${torrent.num_seeds} / ${torrent.num_complete}`}
-            />
-          )}
-          {show('peers') && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.peers')}
-              value={`${torrent.num_leechs} / ${torrent.num_incomplete}`}
-            />
-          )}
-          {show('ratio') && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.ratio')}
-              value={torrent.ratio != null ? torrent.ratio.toFixed(2) : '—'}
-            />
-          )}
-          {show('uploaded') && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.uploaded')}
-              value={formatSize(torrent.uploaded)}
-            />
-          )}
-          {show('availability') && torrent.availability > 0 && torrent.availability < 1 && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.availability')}
-              value={`${(torrent.availability * 100).toFixed(1)}%`}
-            />
-          )}
-          {show('seedingTime') && torrent.seeding_time > 0 && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.seedingTime')}
-              value={formatTime(torrent.seeding_time)}
-            />
-          )}
-          {show('addedOn') && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.addedOn')}
-              value={new Date(torrent.added_on * 1000).toLocaleDateString()}
-            />
-          )}
-          {show('tags') && !!torrent.tags && (
-            <DetailRow label={t('screens.settings.expandedCardFieldsList.tags')} value={torrent.tags} />
-          )}
-          {show('category') && !!torrent.category && (
-            <DetailRow label={t('screens.settings.expandedCardFieldsList.category')} value={torrent.category} />
-          )}
-          {show('tracker') && !!torrent.tracker && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.tracker')}
-              value={torrent.tracker}
-              truncate
-            />
-          )}
-          {show('savePath') && !!torrent.save_path && (
-            <DetailRow
-              label={t('screens.settings.expandedCardFieldsList.savePath')}
-              value={torrent.save_path}
-              truncate
-            />
-          )}
+          ))}
         </View>
       )}
     </TouchableOpacity>
@@ -291,6 +278,8 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.torrent.num_seeds === next.torrent.num_seeds &&
     prev.torrent.num_leechs === next.torrent.num_leechs &&
     prev.torrent.ratio === next.torrent.ratio &&
+    prev.torrent.ratio_limit === next.torrent.ratio_limit &&
+    prev.torrent.max_ratio === next.torrent.max_ratio &&
     prev.torrent.uploaded === next.torrent.uploaded &&
     prev.torrent.uploaded_session === next.torrent.uploaded_session &&
     prev.torrent.downloaded_session === next.torrent.downloaded_session &&
@@ -360,6 +349,8 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   detailGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,

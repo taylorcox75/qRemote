@@ -17,6 +17,8 @@ export type ExpandedCardField =
   | 'seeds'
   | 'peers'
   | 'ratio'
+  | 'ratioLimit'
+  | 'maxRatio'
   | 'uploaded'
   | 'availability'
   | 'savePath'
@@ -186,6 +188,8 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
     seeds: true,
     peers: true,
     ratio: true,
+    ratioLimit: false,
+    maxRatio: false,
     uploaded: true,
     availability: true,
     savePath: false,
