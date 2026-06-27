@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/services/query-client';
 import { ServerProvider } from '@/context/ServerContext';
+import { ApiVersionProvider } from '@/context/ApiVersionContext';
 import { TorrentProvider } from '@/context/TorrentContext';
 import { TransferProvider } from '@/context/TransferContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
@@ -122,11 +123,13 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <ToastProvider>
               <ServerProvider>
+                <ApiVersionProvider>
                 <TorrentProvider>
                   <TransferProvider>
                     <StackNavigator />
                   </TransferProvider>
                 </TorrentProvider>
+                </ApiVersionProvider>
               </ServerProvider>
             </ToastProvider>
           </QueryClientProvider>

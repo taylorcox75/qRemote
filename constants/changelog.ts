@@ -20,6 +20,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       'Set Category popup redesigned to match the Tags popup: chip-based selection, all server categories listed, create new inline',
       'Creating a new category from the torrent detail screen is now fixed — categories are properly saved to the server before being assigned',
       'Tags displayed in the torrent detail screen now appear as individual chips matching the Category badge style',
+      'Improved qBittorrent v4.x compatibility',
     ],
   },
   {
@@ -39,7 +40,7 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '3.2.0',
     date: '2026-05-29',
-    changes: ['Search plugin support'],
+    changes: ['Search plugin support (feature flag - disabled for App Store builds)'],
   },
   {
     version: '3.1.2',

@@ -98,7 +98,7 @@ export interface TorrentInfo {
   category: string;
   completed: number;
   completion_on: number;
-  content_path: string;
+  content_path?: string;
   dl_limit: number;
   dlspeed: number;
   download_path: string;
@@ -120,10 +120,10 @@ export interface TorrentInfo {
   priority: number;
   progress: number;
   ratio: number;
-  ratio_limit: number;
+  ratio_limit?: number;
   save_path: string;
   seeding_time: number;
-  seeding_time_limit: number;
+  seeding_time_limit?: number;
   seen_complete: number;
   seq_dl: boolean;
   size: number;

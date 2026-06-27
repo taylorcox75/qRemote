@@ -953,7 +953,7 @@ export default function TorrentDetail() {
               staticRow(t('torrentDetail.downloaded'), formatSize(torrent.completed)),
               staticRow(t('torrentDetail.uploaded'), formatSize(torrent.uploaded)),
               staticRow(t('torrentDetail.ratio'), torrent.ratio ? torrent.ratio.toFixed(2) : '0.00'),
-              staticRow(t('torrentDetail.ratioLimit'), torrent.ratio_limit >= 0 ? torrent.ratio_limit.toFixed(2) : t('common.unlimited')),
+              (torrent.ratio_limit !== undefined) && staticRow(t('torrentDetail.ratioLimit'), torrent.ratio_limit >= 0 ? torrent.ratio_limit.toFixed(2) : t('common.unlimited')),
               staticRow(t('torrentDetail.maxRatio'), torrent.max_ratio >= 0 ? torrent.max_ratio.toFixed(2) : t('common.unlimited')),
               staticRow(t('torrentDetail.seedingTime'), formatTime(torrent.seeding_time)),
               properties && staticRow(t('torrentDetail.savePath'), properties.save_path),

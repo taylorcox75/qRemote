@@ -31,6 +31,7 @@ import { categoriesApi } from '@/services/api/categories';
 import { tagsApi } from '@/services/api/tags';
 import { useTorrents } from '@/context/TorrentContext';
 import { useServer } from '@/context/ServerContext';
+import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useTransfer } from '@/context/TransferContext';
@@ -69,6 +70,7 @@ export function TorrentDetails({
   const router = useRouter();
   const { categories, tags, sync, torrents } = useTorrents();
   const { isConnected, currentServer, reconnect } = useServer();
+  const { features } = useApiFeatures();
   const { colors } = useTheme();
   const { showToast } = useToast();
   const { transferInfo, toggleAlternativeSpeedLimits } = useTransfer();
@@ -1255,8 +1257,12 @@ export function TorrentDetails({
             </View>
             <InfoRow icon="download-outline" label={t('torrentDetail.downloadLimit')} value={torrent.dl_limit > 0 ? formatSpeed(torrent.dl_limit) : t('common.unlimited')} />
             <InfoRow icon="cloud-upload-outline" label={t('torrentDetail.uploadLimit')} value={torrent.up_limit > 0 ? formatSpeed(torrent.up_limit) : t('common.unlimited')} />
-            <InfoRow icon="swap-horizontal-outline" label={t('torrentDetail.ratioLimit')} value={torrent.ratio_limit >= 0 ? torrent.ratio_limit.toFixed(2) : t('common.unlimited')} />
-            <InfoRow icon="hourglass-outline" label={t('torrentDetail.seedingTimeLimit')} value={torrent.seeding_time_limit >= 0 ? formatTime(torrent.seeding_time_limit) : t('common.unlimited')} />
+            {features.hasRatioLimitFields && (
+              <InfoRow icon="swap-horizontal-outline" label={t('torrentDetail.ratioLimit')} value={(torrent.ratio_limit ?? -1) >= 0 ? torrent.ratio_limit!.toFixed(2) : t('common.unlimited')} />
+            )}
+            {features.hasRatioLimitFields && (
+              <InfoRow icon="hourglass-outline" label={t('torrentDetail.seedingTimeLimit')} value={(torrent.seeding_time_limit ?? -1) >= 0 ? formatTime(torrent.seeding_time_limit!) : t('common.unlimited')} />
+            )}
           </View>
         )}
 
