@@ -26,6 +26,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { colorThemeManager } from '@/services/color-theme-manager';
+import { FEATURES } from '@/constants/features';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -170,12 +171,14 @@ export default function SettingsScreen() {
               onPress={() => router.push('/settings/notifications')}
               colors={colors}
             />
-            <NavRow
-              icon="extension-puzzle-outline"
-              label={t('screens.search.pluginsTitle')}
-              onPress={() => router.push('/search/plugins')}
-              colors={colors}
-            />
+            {FEATURES.search && (
+              <NavRow
+                icon="extension-puzzle-outline"
+                label={t('screens.search.pluginsTitle')}
+                onPress={() => router.push('/search/plugins')}
+                colors={colors}
+              />
+            )}
             <NavRow
               icon="construct-outline"
               label={t('screens.settings.advanced')}

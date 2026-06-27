@@ -21,7 +21,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -42,6 +42,7 @@ import { typography } from '@/constants/typography';
 import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
+import { FEATURES } from '@/constants/features';
 
 const ALL = 'all';
 const ENABLED = 'enabled';
@@ -56,6 +57,13 @@ const SORT_OPTIONS: Array<{ key: SortKey; labelKey: string; icon: React.Componen
 ];
 
 export default function SearchScreen() {
+  // Search is a compile-time feature flag (off by default for App Store builds).
+  // Block direct/deep-link navigation when the feature is disabled.
+  if (!FEATURES.search) return <Redirect href="/" />;
+  return <SearchScreenContent />;
+}
+
+function SearchScreenContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isConnected } = useServer();

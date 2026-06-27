@@ -16,7 +16,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -31,8 +31,16 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
+import { FEATURES } from '@/constants/features';
 
 export default function PluginsScreen() {
+  // Search is a compile-time feature flag (off by default for App Store builds).
+  // Block direct/deep-link navigation when the feature is disabled.
+  if (!FEATURES.search) return <Redirect href="/" />;
+  return <PluginsScreenContent />;
+}
+
+function PluginsScreenContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();

@@ -12,6 +12,17 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.3.1',
+    date: '2026-06-27',
+    changes: [
+      'Expanded torrent card now shows details in a two-column grid, cutting card height roughly in half',
+      'Detail card field toggles (ETA, speeds, availability, seeding time) now always appear when enabled, showing — when no live data is available',
+      'Set Category popup redesigned to match the Tags popup: chip-based selection, all server categories listed, create new inline',
+      'Creating a new category from the torrent detail screen is now fixed — categories are properly saved to the server before being assigned',
+      'Tags displayed in the torrent detail screen now appear as individual chips matching the Category badge style',
+    ],
+  },
+  {
     version: '3.3.0',
     date: '2026-06-05',
     changes: [
