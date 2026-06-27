@@ -34,10 +34,15 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 7. Color defaults use mixed formats (rgb, rgba, hex). The color picker only handles 6-digit hex. Changing a default from `rgba(...)` to `#hex` removes the alpha channel and changes visual appearance.
 8. **Changelog discipline (user-facing changes only).** The in-app "What's New" panel reads `constants/changelog.ts` (`CHANGELOG`, newest first). When your change is **user-facing** (feature, bug fix, visible UI/behavior change):
    1. Compare `package.json` `version` to the top entry `CHANGELOG[0].version`.
-   2. **If they are equal** → the latest entry is already released. Add a **new** entry at the top with a **patch bump** (`x.y.(z+1)`), today's date (`YYYY-MM-DD`), and your change in `changes[]`. **Do NOT touch `package.json`** — the release process owns the app version.
-   3. **If they differ** (changelog is ahead of package.json) → a previous agent already opened the unreleased entry. **Append** your change to that top entry's `changes[]`. Do not create another entry.
+   2. **If they are EQUAL** → the latest entry is already released. Add ONE **new** entry at the top with a **patch bump only** (`x.y.(z+1)`), today's date (`YYYY-MM-DD`), and your change in `changes[]`. **Do NOT touch `package.json`** — the release process owns the app version.
+   3. **If they DIFFER** (changelog is ahead of package.json) → a previous agent already opened the unreleased entry. **Append** your change line to that top entry's `changes[]`. Do **NOT** create a new entry and do **NOT** change its `version`.
 
    This keeps a single unreleased entry accumulating until a human cuts a release by bumping `package.json` to match. Internal-only work (docs, config, refactors, tests, tooling) gets **no** changelog entry.
+
+   **Ignore semver instinct.** You never decide major/minor/patch — the only version edit you ever make is a single patch bump, and only in the EQUAL case. A new feature does NOT mean a minor bump. When in doubt, you are almost always in the DIFFER case → just append a line, touch nothing else.
+
+   *Worked example:* `package.json` is `3.3.0`, top changelog entry is `3.3.1` → they DIFFER → append your line to `3.3.1`'s `changes[]`. (A wrong fix would be creating a `3.4.0` entry — don't.)
+9. **NEVER enable the `search` feature flag for App Store builds.** In-app search (Search tab + Search plugins screen) is gated by `FEATURES.search` in `constants/features.ts`, default `false`. App Store builds must not expose arbitrary-indexer search/download — only flip it to `true` for sideloaded / non-App-Store builds, and never commit it as `true` on the default branch.
 
 ## Dead Code
 All dead code files and unused client fields have been removed (Task 3.5 complete).
