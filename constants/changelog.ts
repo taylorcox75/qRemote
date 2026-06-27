@@ -12,7 +12,7 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.4.0',
+    version: '3.4.1',
     date: '2026-06-27',
     changes: [
       'Expanded torrent card now shows details in a two-column grid, cutting card height roughly in half',
