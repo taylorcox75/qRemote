@@ -380,7 +380,9 @@
     "password": "Mot de passe",
     "trackerUrl": "https://tracker.example.com/announce",
     "enterKbs": "Entrer KiB/s",
-    "fallbackHost": "Hôte ou IP de secours"
+    "fallbackHost": "Hôte ou IP de secours",
+    "proxyUsername": "Nom d'utilisateur proxy",
+    "proxyPassword": "Mot de passe proxy"
   },
   "actions": {
     "resume": "Reprendre",
@@ -466,7 +468,10 @@
     "testEndpointOk": "{{endpoint}} : OK",
     "testEndpointFail": "{{endpoint}} : échec",
     "connectedViaPrimary": "Connecté via le principal",
-    "connectedViaFallback": "Connecté via le secours"
+    "connectedViaFallback": "Connecté via le secours",
+    "proxyAuthentication": "AUTHENTIFICATION PROXY",
+    "useBasicAuth": "Auth Basique (Proxy)",
+    "useBasicAuthHint": "Requis quand un proxy inverse protège le serveur"
   },
   "torrentDetail": {
     "notFound": "Torrent introuvable",
@@ -749,6 +754,7 @@
     "connectionFailedManual": "Connection failed: {{error}}. Please try connecting manually.",
     "fillNameAndHost": "Remplissez le nom et l'hôte du serveur",
     "fillUsernamePassword": "Remplissez le nom d'utilisateur et le mot de passe, ou activez le contournement d'authentification",
+    "fillBasicAuthUsername": "Remplissez le nom d'utilisateur proxy pour l'Auth Basique",
     "validPort": "Entrez un numéro de port valide (1-65535)",
     "fillFallbackHost": "Saisissez un hôte de secours",
     "selectTorrentFile": "Sélectionnez un fichier .torrent",

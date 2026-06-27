@@ -33,6 +33,13 @@ export interface ServerConfig {
   fallbackUseHttps?: boolean;
   /** Reserved for future fallback base path UI; not surfaced in settings yet. */
   fallbackBasePath?: string;
+
+  /** When true, send an HTTP Basic Auth header on every request (for reverse-proxy frontends). */
+  useBasicAuth?: boolean;
+  /** Proxy Basic Auth username (in-memory + AsyncStorage; separate from qBittorrent WebUI username). */
+  basicAuthUsername?: string;
+  /** Proxy Basic Auth password (in-memory only; stored in SecureStore). */
+  basicAuthPassword?: string;
 }
 
 export type ServerEndpointKind = 'primary' | 'fallback';

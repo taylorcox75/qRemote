@@ -379,7 +379,9 @@
     "password": "Passwort",
     "trackerUrl": "https://tracker.example.com/announce",
     "enterKbs": "KiB/s eingeben",
-    "fallbackHost": "Fallback-Host oder IP"
+    "fallbackHost": "Fallback-Host oder IP",
+    "proxyUsername": "Proxy-Benutzername",
+    "proxyPassword": "Proxy-Passwort"
   },
   "actions": {
     "resume": "Fortsetzen",
@@ -463,7 +465,10 @@
     "testEndpointOk": "{{endpoint}}: OK",
     "testEndpointFail": "{{endpoint}}: Fehler",
     "connectedViaPrimary": "Verbunden über Primär",
-    "connectedViaFallback": "Verbunden über Fallback"
+    "connectedViaFallback": "Verbunden über Fallback",
+    "proxyAuthentication": "PROXY-AUTHENTIFIZIERUNG",
+    "useBasicAuth": "Basic Auth (Proxy)",
+    "useBasicAuthHint": "Erforderlich wenn ein Reverse Proxy den Server schützt"
   },
   "torrentDetail": {
     "notFound": "Torrent nicht gefunden",
@@ -737,6 +742,7 @@
     "connectionFailedManual": "Connection failed: {{error}}. Please try connecting manually.",
     "fillNameAndHost": "Bitte Server-Name und Host ausfüllen",
     "fillUsernamePassword": "Bitte Benutzername und Passwort eingeben oder Auth-Umgehung aktivieren",
+    "fillBasicAuthUsername": "Bitte Proxy-Benutzername für Basic Auth eingeben",
     "validPort": "Bitte gültige Portnummer eingeben (1-65535)",
     "fillFallbackHost": "Bitte einen Fallback-Host angeben",
     "selectTorrentFile": "Bitte eine .torrent-Datei auswählen",

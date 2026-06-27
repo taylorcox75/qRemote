@@ -12,7 +12,7 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.3.1',
+    version: '3.4.0',
     date: '2026-06-27',
     changes: [
       'Expanded torrent card now shows details in a two-column grid, cutting card height roughly in half',
@@ -25,6 +25,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       'Tag filters use OR semantics: a torrent matches if it has any of the selected tags',
       'Filter selections are remembered across sessions',
       'Search plugin support (feature flag - disabled for App Store builds)',
+      'Added optional Basic Auth credentials for servers behind a reverse proxy',
     ],
   },
   {
