@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { InputModal } from '@/components/InputModal';
+import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
@@ -168,6 +169,7 @@ function PluginsScreenContent() {
             onPress={() => router.back()}
             style={styles.headerButton}
             activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -220,25 +222,14 @@ function PluginsScreenContent() {
               <ActivityIndicator color={colors.primary} />
             </View>
           ) : !isConnected ? (
-            <View style={styles.center}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                {t('toast.notConnected')}
-              </Text>
-            </View>
+            <EmptyState subtitle={t('toast.notConnected')} />
           ) : plugins.length === 0 ? (
-            <View style={styles.center}>
-              <Ionicons
-                name="extension-puzzle-outline"
-                size={56}
-                color={colors.textSecondary}
-              />
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                {t('screens.search.noPluginsTitle')}
-              </Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                {t('screens.search.noPluginsSubtitle')}
-              </Text>
-            </View>
+            <EmptyState
+              icon="extension-puzzle-outline"
+              iconSize={56}
+              title={t('screens.search.noPluginsTitle')}
+              subtitle={t('screens.search.noPluginsSubtitle')}
+            />
           ) : (
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               {plugins.map((plugin, index) => (
@@ -288,6 +279,7 @@ function PluginRow({
   onUninstall,
   colors,
 }: PluginRowProps) {
+  const { t } = useTranslation();
   return (
     <>
       <View style={styles.row}>
@@ -315,6 +307,7 @@ function PluginRow({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={styles.iconButton}
             activeOpacity={0.6}
+            accessibilityLabel={t('common.delete')}
           >
             <Ionicons name="trash-outline" size={20} color={colors.error} />
           </TouchableOpacity>
@@ -424,13 +417,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxxl,
     paddingHorizontal: spacing.xl,
     gap: spacing.sm,
-  },
-  emptyTitle: {
-    ...typography.h3,
-    textAlign: 'center',
-  },
-  emptyText: {
-    ...typography.secondary,
-    textAlign: 'center',
   },
 });

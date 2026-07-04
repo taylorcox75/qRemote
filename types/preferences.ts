@@ -21,6 +21,7 @@ export type ExpandedCardField =
   | 'maxRatio'
   | 'uploaded'
   | 'availability'
+  | 'popularity'
   | 'savePath'
   | 'tracker'
   | 'addedOn'
@@ -201,6 +202,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
     maxRatio: false,
     uploaded: true,
     availability: true,
+    popularity: true,
     savePath: false,
     tracker: false,
     addedOn: true,

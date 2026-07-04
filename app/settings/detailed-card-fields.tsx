@@ -24,6 +24,7 @@ const FIELD_ORDER: ExpandedCardField[] = [
   'maxRatio',
   'uploaded',
   'availability',
+  'popularity',
   'progress',
   'addedOn',
   'seedingTime',
@@ -87,6 +88,7 @@ export default function DetailedCardFieldsScreen() {
       maxRatio: { icon: 'trending-up-outline', labelKey: 'screens.settings.expandedCardFieldsList.maxRatio' },
       uploaded: { icon: 'cloud-upload-outline', labelKey: 'screens.settings.expandedCardFieldsList.uploaded' },
       availability: { icon: 'stats-chart-outline', labelKey: 'screens.settings.expandedCardFieldsList.availability' },
+      popularity: { icon: 'flame-outline', labelKey: 'screens.settings.expandedCardFieldsList.popularity' },
       savePath: { icon: 'folder-outline', labelKey: 'screens.settings.expandedCardFieldsList.savePath' },
       tracker: { icon: 'globe-outline', labelKey: 'screens.settings.expandedCardFieldsList.tracker' },
       addedOn: { icon: 'calendar-outline', labelKey: 'screens.settings.expandedCardFieldsList.addedOn' },
@@ -103,7 +105,7 @@ export default function DetailedCardFieldsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>

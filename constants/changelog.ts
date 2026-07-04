@@ -16,12 +16,17 @@ export const CHANGELOG: ChangelogRelease[] = [
     date: '2026-07-04',
     changes: [
       'qRemote now registers as an "Open In" handler for .torrent files — open a torrent file from another app to add it directly',
+      'Fixed connection diagnostic incorrectly reporting login failure on servers that respond with HTTP 204',
+      'Compact torrent cards now show the seed ratio once a torrent is complete',
+      'Added Popularity (qBittorrent 5.x) to detailed cards and the torrent detail screen',
+      'Fixed Basic Auth toggle being clipped off the card edge on the server add/edit screens',
+      'Translated the entire torrent detail screen into Spanish, Chinese, French and German (previously showed English)',
+      'Translated most remaining screens (settings, transfer, logs, trackers, search) into Spanish, Chinese, French, German and Russian — previously showed English in several places',
+      'Improved accessibility: added descriptive labels to icon-only buttons throughout the app for screen reader support',
+      'Fixed a few hardcoded colors that did not adapt to dark mode (filter menu dividers, bulk-select bar border, download progress glow effect)',
+      'Search results no longer show duplicate entries and scroll more smoothly',
+      'Fixed "Run Full Diagnostic" falsely reporting HTTP 403 on the API check step for servers the app can otherwise connect to, by fixing the diagnostic\'s unreliable session-cookie capture',
     ],
-  },
-  {
-    version: '3.5.0',
-    date: '2026-06-27',
-    changes: ['Enabled search feature flag'],
   },
   {
     version: '3.4.2',

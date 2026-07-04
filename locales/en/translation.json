@@ -22,7 +22,10 @@
     "normal": "Normal",
     "max": "Max",
     "on": "ON",
-    "off": "OFF"
+    "off": "OFF",
+    "back": "Back",
+    "clearSearch": "Clear search",
+    "moreInfo": "More information"
   },
   "states": {
     "dlAndUl": "DL + UL",
@@ -63,7 +66,12 @@
       "selectTorrentFile": "Select .torrent file",
       "yourServers": "YOUR SERVERS",
       "fileSelected": "File selected: {{name}}",
-      "enterLimitKbs": "Enter limit in KiB/s (0 for unlimited)"
+      "enterLimitKbs": "Enter limit in KiB/s (0 for unlimited)",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "selectMode": "Select",
+      "selectTorrent": "Select torrent",
+      "deselectTorrent": "Deselect torrent"
     },
     "addTorrent": {
       "none": "None",
@@ -231,6 +239,7 @@
         "maxRatio": "Max Ratio",
         "uploaded": "Uploaded",
         "availability": "Availability",
+        "popularity": "Popularity",
         "savePath": "Save Path",
         "tracker": "Tracker",
         "addedOn": "Added On",
@@ -289,6 +298,10 @@
       "noFilesFound": "No files found",
       "selectAll": "Select All",
       "deselectAll": "Deselect All",
+      "selectFolder": "Select folder",
+      "deselectFolder": "Deselect folder",
+      "selectFile": "Select file",
+      "deselectFile": "Deselect file",
       "changePriority": "Change Priority",
       "filesCount": "{{count}} files",
       "setPriority": "Set Priority",
@@ -488,7 +501,14 @@
     "connectedViaFallback": "Connected via fallback",
     "proxyAuthentication": "PROXY AUTHENTICATION",
     "useBasicAuth": "Basic Auth (Proxy)",
-    "useBasicAuthHint": "Required when a reverse proxy protects the server"
+    "useBasicAuthHint": "Required when a password protected proxy protects the server",
+    "debugFullUrl": "Full URL",
+    "debugProtocol": "Protocol",
+    "debugHost": "Host",
+    "debugPort": "Port",
+    "debugLoginApi": "Login API",
+    "debugEmpty": "(empty)",
+    "debugDefaultPort": "default (80/443)"
   },
   "torrentDetail": {
     "notFound": "Torrent not found",
@@ -599,6 +619,7 @@
     "seeds": "Seeds",
     "peers": "Peers",
     "availability": "Availability",
+    "popularity": "Popularity",
     "files": "Files",
     "trackers": "Trackers",
     "forceStart": "Force Start",

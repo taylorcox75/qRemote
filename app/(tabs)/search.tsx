@@ -28,6 +28,8 @@ import * as Clipboard from 'expo-clipboard';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { SearchResultRow } from '@/components/SearchResultRow';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
+import { EmptyState } from '@/components/EmptyState';
+import { FilterChip } from '@/components/FilterChip';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
@@ -132,8 +134,16 @@ function SearchScreenContent() {
   }, [plugin, plugins]);
 
   // Sort the live results client-side; qBittorrent's search API doesn't sort.
+  // De-duplicate by fileUrl first so the list keyExtractor can rely on a
+  // stable, unique key instead of the array index.
   const sortedResults = useMemo(() => {
-    const sorted = [...results];
+    const seenUrls = new Set<string>();
+    const deduped = results.filter((r) => {
+      if (seenUrls.has(r.fileUrl)) return false;
+      seenUrls.add(r.fileUrl);
+      return true;
+    });
+    const sorted = deduped;
     sorted.sort((a, b) => {
       let cmp = 0;
       switch (sortBy) {
@@ -323,12 +333,11 @@ function SearchScreenContent() {
   const renderEmptyState = () => {
     if (!isConnected) {
       return (
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Ionicons name="cloud-offline-outline" size={64} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            {t('toast.notConnected')}
-          </Text>
-        </View>
+        <EmptyState
+          style={{ backgroundColor: colors.background }}
+          icon="cloud-offline-outline"
+          title={t('toast.notConnected')}
+        />
       );
     }
     if (pluginsQuery.isLoading) {
@@ -340,48 +349,34 @@ function SearchScreenContent() {
     }
     if (noPlugins) {
       return (
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Ionicons name="extension-puzzle-outline" size={64} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            {t('screens.search.noPluginsTitle')}
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {t('screens.search.noPluginsSubtitle')}
-          </Text>
-          <TouchableOpacity
-            style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-            onPress={handleOpenPlugins}
-            activeOpacity={0.8}
-          >
-            <View style={styles.emptyButtonInner}>
-              <Ionicons name="add" size={20} color="#FFFFFF" />
-              <Text style={styles.emptyButtonText}>{t('screens.search.installPlugins')}</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          style={{ backgroundColor: colors.background }}
+          icon="extension-puzzle-outline"
+          title={t('screens.search.noPluginsTitle')}
+          subtitle={t('screens.search.noPluginsSubtitle')}
+          actionLabel={t('screens.search.installPlugins')}
+          actionIcon="add"
+          onAction={handleOpenPlugins}
+        />
       );
     }
     if (jobId === null) {
       return (
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Ionicons name="search-outline" size={64} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            {t('screens.search.tipsTitle')}
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {t('screens.search.tipsBody')}
-          </Text>
-        </View>
+        <EmptyState
+          style={{ backgroundColor: colors.background }}
+          icon="search-outline"
+          title={t('screens.search.tipsTitle')}
+          subtitle={t('screens.search.tipsBody')}
+        />
       );
     }
     if (status === 'Stopped' && total === 0) {
       return (
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Ionicons name="file-tray-outline" size={64} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            {t('screens.search.noResults')}
-          </Text>
-        </View>
+        <EmptyState
+          style={{ backgroundColor: colors.background }}
+          icon="file-tray-outline"
+          title={t('screens.search.noResults')}
+        />
       );
     }
     if (status === 'Running' && results.length === 0) {
@@ -463,6 +458,7 @@ function SearchScreenContent() {
                 <TouchableOpacity
                   onPress={onClearQuery}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityLabel={t('common.clearSearch')}
                 >
                   <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -486,6 +482,7 @@ function SearchScreenContent() {
               onPress={handleSubmit}
               activeOpacity={0.7}
               disabled={!query.trim()}
+              accessibilityLabel={t('screens.search.tabTitle')}
             >
               <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
             </TouchableOpacity>
@@ -510,36 +507,20 @@ function SearchScreenContent() {
               {pluginChips.map((chip) => {
                 const isActive = plugin === chip.key;
                 return (
-                  <TouchableOpacity
+                  <FilterChip
                     key={chip.key}
-                    style={[
-                      styles.filterChip,
-                      isActive && shadows.filterActive,
-                      {
-                        backgroundColor: isActive ? colors.primary : colors.surface,
-                        borderColor: isActive ? colors.primary : colors.surfaceOutline,
-                        borderWidth: isActive ? 0 : 0.2,
-                      },
-                    ]}
+                    label={chip.label}
+                    icon={chip.icon}
+                    active={isActive}
+                    numberOfLines={1}
+                    style={styles.filterChip}
+                    textStyle={styles.filterChipText}
                     onPress={() => {
                       haptics.light();
                       setPlugin(chip.key);
                       setCategory(ALL);
                     }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={chip.icon}
-                      size={14}
-                      color={isActive ? '#FFFFFF' : colors.text}
-                    />
-                    <Text
-                      style={[styles.filterChipText, { color: isActive ? '#FFFFFF' : colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {chip.label}
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 );
               })}
             </ScrollView>
@@ -562,30 +543,18 @@ function SearchScreenContent() {
                 ].map((cat) => {
                   const isActive = category === cat.id;
                   return (
-                    <TouchableOpacity
+                    <FilterChip
                       key={cat.id}
-                      style={[
-                        styles.filterChip,
-                        isActive && shadows.filterActive,
-                        {
-                          backgroundColor: isActive ? colors.primary : colors.surface,
-                          borderColor: isActive ? colors.primary : colors.surfaceOutline,
-                          borderWidth: isActive ? 0 : 0.2,
-                        },
-                      ]}
+                      label={cat.name}
+                      active={isActive}
+                      numberOfLines={1}
+                      style={styles.filterChip}
+                      textStyle={styles.filterChipText}
                       onPress={() => {
                         haptics.light();
                         setCategory(cat.id);
                       }}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[styles.filterChipText, { color: isActive ? '#FFFFFF' : colors.text }]}
-                        numberOfLines={1}
-                      >
-                        {cat.name}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   );
                 })}
               </ScrollView>
@@ -649,9 +618,7 @@ function SearchScreenContent() {
                     style={[
                       styles.sortOption,
                       isActive && {
-                        backgroundColor: isDark
-                          ? 'rgba(100, 150, 255, 0.15)'
-                          : colors.primary,
+                        backgroundColor: isDark ? colors.primaryOpac : colors.primary,
                       },
                     ]}
                     onPress={() => {
@@ -716,7 +683,7 @@ function SearchScreenContent() {
         ) : (
           <FlatList
             data={sortedResults}
-            keyExtractor={(item, idx) => `${item.fileUrl}-${idx}`}
+            keyExtractor={(item) => item.fileUrl}
             renderItem={({ item }) => (
               <SearchResultRow
                 result={item}
@@ -732,6 +699,10 @@ function SearchScreenContent() {
             // Scrolling or starting a drag on the result list dismisses the keyboard
             // on iOS, matching the system Mail/Messages convention.
             keyboardDismissMode="on-drag"
+            removeClippedSubviews={false}
+            initialNumToRender={10}
+            maxToRenderPerBatch={5}
+            windowSize={10}
           />
         )}
       </View>
@@ -880,25 +851,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     gap: spacing.lg,
   },
-  emptyTitle: {
-    ...typography.h3,
-    marginTop: spacing.lg,
-    textAlign: 'center',
-  },
   emptySubtitle: {
     ...typography.secondary,
     textAlign: 'center',
-  },
-  emptyButton: {
-    ...buttonStyles.primary,
-    marginTop: spacing.sm,
-  },
-  emptyButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  emptyButtonText: {
-    ...buttonText.primary,
   },
 });

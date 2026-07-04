@@ -124,6 +124,8 @@ export interface TorrentInfo {
   num_incomplete: number;
   num_leechs: number;
   num_seeds: number;
+  /** qBittorrent 5.x only — absent on 4.x servers. */
+  popularity?: number;
   priority: number;
   progress: number;
   ratio: number;

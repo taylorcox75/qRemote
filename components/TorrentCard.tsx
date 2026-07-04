@@ -4,7 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { TorrentInfo } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
-import { getStateColor, getStateLabel, hasEta } from '@/utils/torrent-state';
+import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
+import { haptics } from '@/utils/haptics';
+import { getStateColor, getStateLabel, hasEta, isTorrentComplete } from '@/utils/torrent-state';
 import { formatSpeed, formatSize, formatTime } from '@/utils/format';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -140,18 +142,21 @@ function TorrentCardInner({
   const totalSize = torrent.total_size > 0 ? torrent.total_size : torrent.size || 0;
   const downloaded = torrent.completed || 0;
   const etaVisible = hasEta(torrent.eta, torrent.progress ?? 0);
+  const seeding = isTorrentComplete(torrent.progress ?? 0);
 
   const speedParts: string[] = [];
   if (dlspeed > 0) speedParts.push(`${formatSpeed(dlspeed)} ↓`);
   if (upspeed > 0) speedParts.push(`${formatSpeed(upspeed)} ↑`);
   const speedText = speedParts.length > 0 ? speedParts.join('  ') : null;
 
-  // Build statusLine to include percent+ETA inline
+  // Build statusLine to include percent+ETA/ratio inline. Once a torrent is
+  // seeding, ETA is meaningless (see hasEta) and ratio becomes the relevant metric.
   const statusLine = [
     stateLabel,
     speedText,
     `${progress.toFixed(0)}%`,
     etaVisible ? formatTime(torrent.eta) : null,
+    !etaVisible && seeding ? `${t('torrentDetail.ratio')}: ${(torrent.ratio ?? 0).toFixed(2)}` : null,
   ].filter(Boolean).join('  ·  ');
 
   // Build two-column detail items: short fields get 50% width, long ones span full width.
@@ -193,6 +198,7 @@ function TorrentCardInner({
     if (show('maxRatio')) addItem('maxRatio', t('screens.settings.expandedCardFieldsList.maxRatio'), torrent.max_ratio != null && torrent.max_ratio >= 0 ? torrent.max_ratio.toFixed(2) : '∞');
     if (show('uploaded')) addItem('uploaded', t('screens.settings.expandedCardFieldsList.uploaded'), formatSize(torrent.uploaded));
     if (show('availability')) addItem('availability', t('screens.settings.expandedCardFieldsList.availability'), torrent.availability > 0 && torrent.availability < 1 ? `${(torrent.availability * 100).toFixed(1)}%` : '—');
+    if (show('popularity') && torrent.popularity != null) addItem('popularity', t('screens.settings.expandedCardFieldsList.popularity'), torrent.popularity.toFixed(2));
     if (show('seedingTime')) addItem('seedingTime', t('screens.settings.expandedCardFieldsList.seedingTime'), torrent.seeding_time > 0 ? formatTime(torrent.seeding_time) : '—');
     if (show('addedOn')) addItem('addedOn', t('screens.settings.expandedCardFieldsList.addedOn'), new Date(torrent.added_on * 1000).toLocaleDateString());
     if (show('tags') && !!torrent.tags) addItem('tags', t('screens.settings.expandedCardFieldsList.tags'), torrent.tags, true);
@@ -221,10 +227,11 @@ function TorrentCardInner({
         </Text>
         {onPauseResume && (
           <TouchableOpacity
-            onPress={(e) => { e.stopPropagation?.(); onPauseResume(); }}
+            onPress={(e) => { e.stopPropagation?.(); haptics.medium(); onPauseResume(); }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.pauseButton}
             activeOpacity={0.6}
+            accessibilityLabel={isPaused ? t('actions.resume') : t('actions.pause')}
           >
             <Ionicons
               name={isPaused ? 'play-circle-outline' : 'pause-circle-outline'}
@@ -236,11 +243,12 @@ function TorrentCardInner({
       </View>
 
       {/* Full-width progress bar — no siblings */}
-      <View style={[styles.progressBar, { backgroundColor: colors.surfaceOutline }]}>
-        <View style={[
-          styles.progressFill,
-          { width: `${Math.min(100, Math.max(0, progress))}%`, backgroundColor: stateColor }
-        ]} />
+      <View style={styles.progressBar}>
+        <AnimatedProgressBar
+          progress={Math.min(100, Math.max(0, progress))}
+          color={stateColor}
+          height={4}
+        />
       </View>
 
       {/* Line 4: Downloaded / Total */}
@@ -285,6 +293,7 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.torrent.downloaded_session === next.torrent.downloaded_session &&
     prev.torrent.amount_left === next.torrent.amount_left &&
     prev.torrent.availability === next.torrent.availability &&
+    prev.torrent.popularity === next.torrent.popularity &&
     prev.torrent.seeding_time === next.torrent.seeding_time &&
     prev.torrent.dl_limit === next.torrent.dl_limit &&
     prev.torrent.up_limit === next.torrent.up_limit &&
@@ -335,14 +344,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     width: '100%',
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
     marginBottom: 4,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
   },
   sizeText: {
     fontSize: 13,

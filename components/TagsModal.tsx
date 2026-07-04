@@ -18,6 +18,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -48,6 +49,7 @@ export function TagsModal({
   onClose,
 }: TagsModalProps) {
   const { colors, isDark } = useTheme();
+  const { t } = useTranslation();
   const [newTagInput, setNewTagInput] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -132,7 +134,7 @@ export function TagsModal({
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>Tags</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel={t('common.close')}>
               <Ionicons name="close-circle" size={26} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -164,6 +166,7 @@ export function TagsModal({
                       onPress={() => handleRemove(tag)}
                       disabled={isLoading}
                       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      accessibilityLabel={t('common.remove')}
                     >
                       <Ionicons name="close" size={14} color={colors.primary} />
                     </TouchableOpacity>
@@ -232,6 +235,7 @@ export function TagsModal({
                 onPress={handleCreate}
                 disabled={isLoading || !newTagInput.trim()}
                 activeOpacity={0.8}
+                accessibilityLabel={t('screens.settings.createTag')}
               >
                 {isLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
