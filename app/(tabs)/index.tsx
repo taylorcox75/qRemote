@@ -61,7 +61,11 @@ export default function TorrentsScreen() {
   const { torrents, categories, tags, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
   const { isConnected, currentServer, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
-  const params = useLocalSearchParams<{ magnet?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    magnet?: string | string[];
+    torrentFileUri?: string | string[];
+    torrentFileName?: string | string[];
+  }>();
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,6 +91,7 @@ export default function TorrentsScreen() {
   const [showTagPicker, setShowTagPicker] = useState(false);
 
   const lastAppliedMagnetRef = useRef<{ value: string; at: number } | null>(null);
+  const lastAppliedTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
 
   // Action menu state
   const [selectedTorrent, setSelectedTorrent] = useState<TorrentInfo | null>(null);
@@ -247,6 +252,49 @@ export default function TorrentsScreen() {
 
     void handleIncomingMagnet();
   }, [params.magnet, router]);
+
+  useEffect(() => {
+    const fileUri = Array.isArray(params.torrentFileUri) ? params.torrentFileUri[0] : params.torrentFileUri;
+    if (!fileUri) return;
+    const rawName = Array.isArray(params.torrentFileName) ? params.torrentFileName[0] : params.torrentFileName;
+    const fileName = rawName || 'download.torrent';
+
+    const now = Date.now();
+    if (
+      lastAppliedTorrentFileRef.current &&
+      lastAppliedTorrentFileRef.current.value === fileUri &&
+      now - lastAppliedTorrentFileRef.current.at < 1500
+    ) {
+      return;
+    }
+    lastAppliedTorrentFileRef.current = { value: fileUri, at: now };
+
+    const handleIncomingTorrentFile = async () => {
+      let variant: 'compact' | 'full' = 'compact';
+      try {
+        const prefs = await storageService.getPreferences();
+        variant = getAddTorrentDialogueVariant(prefs);
+      } catch {
+        // Keep compact fallback.
+      }
+
+      if (variant === 'full') {
+        router.push({
+          pathname: '/torrents/add',
+          params: { torrentFileUri: fileUri, torrentFileName: fileName },
+        });
+        router.replace('/');
+        return;
+      }
+
+      setSelectedFile({ uri: fileUri, name: fileName, mimeType: 'application/x-bittorrent' });
+      setTorrentUrl('');
+      setShowAddModal(true);
+      router.replace('/');
+    };
+
+    void handleIncomingTorrentFile();
+  }, [params.torrentFileUri, params.torrentFileName, router]);
 
   // Filter, sort, and search logic
   const filteredTorrents = useMemo(() => {
