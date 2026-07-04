@@ -40,6 +40,10 @@ describe('app.config torrent file registration', () => {
     expect(hasTorrentType).toBe(true);
   });
 
+  it('declares LSSupportsOpeningDocumentsInPlace for ITMS-90737 compliance', () => {
+    expect(expoConfig?.ios?.infoPlist?.LSSupportsOpeningDocumentsInPlace).toBe(true);
+  });
+
   it('declares the torrent UTI with the .torrent extension on iOS', () => {
     const importedTypes = expoConfig?.ios?.infoPlist?.UTImportedTypeDeclarations;
     expect(Array.isArray(importedTypes)).toBe(true);

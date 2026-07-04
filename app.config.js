@@ -29,6 +29,9 @@ module.exports = {
             CFBundleURLSchemes: ['magnet'],
           },
         ],
+        // Required when CFBundleDocumentTypes is set (ITMS-90737). We import
+        // .torrent files via Linking rather than UIDocumentBrowserViewController.
+        LSSupportsOpeningDocumentsInPlace: true,
         // Register as an "Open In" handler for .torrent files (issue #88)
         CFBundleDocumentTypes: [
           {
