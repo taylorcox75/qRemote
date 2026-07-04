@@ -12,6 +12,11 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.6.0',
+    date: '2026-07-04',
+    changes: ['Enabled search feature flag'],
+  },
+  {
     version: '3.5.1',
     date: '2026-07-04',
     changes: [
