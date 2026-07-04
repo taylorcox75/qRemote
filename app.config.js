@@ -29,6 +29,26 @@ module.exports = {
             CFBundleURLSchemes: ['magnet'],
           },
         ],
+        // Register as an "Open In" handler for .torrent files (issue #88)
+        CFBundleDocumentTypes: [
+          {
+            CFBundleTypeName: 'BitTorrent Document',
+            CFBundleTypeRole: 'Viewer',
+            LSHandlerRank: 'Alternate',
+            LSItemContentTypes: ['org.bittorrent.torrent', 'com.bittorrent.torrent'],
+          },
+        ],
+        UTImportedTypeDeclarations: [
+          {
+            UTTypeIdentifier: 'org.bittorrent.torrent',
+            UTTypeConformsTo: ['public.data'],
+            UTTypeDescription: 'BitTorrent Document',
+            UTTypeTagSpecification: {
+              'public.filename-extension': ['torrent'],
+              'public.mime-type': ['application/x-bittorrent'],
+            },
+          },
+        ],
       },
     },
     android: {
@@ -50,6 +70,17 @@ module.exports = {
             },
           ],
           category: ['BROWSABLE', 'DEFAULT'],
+        },
+        // Open .torrent files shared from other apps (issue #88)
+        {
+          action: 'VIEW',
+          autoVerify: false,
+          data: [
+            {
+              mimeType: 'application/x-bittorrent',
+            },
+          ],
+          category: ['DEFAULT'],
         },
       ],
     },

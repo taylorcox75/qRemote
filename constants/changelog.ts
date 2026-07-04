@@ -12,6 +12,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.5.1',
+    date: '2026-07-04',
+    changes: [
+      'qRemote now registers as an "Open In" handler for .torrent files — open a torrent file from another app to add it directly',
+    ],
+  },
+  {
     version: '3.5.0',
     date: '2026-06-27',
     changes: ['Enabled search feature flag'],

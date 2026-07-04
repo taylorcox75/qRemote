@@ -45,8 +45,13 @@ export default function AddTorrentFullScreen() {
   const { showToast } = useToast();
   const { isConnected } = useServer();
   const { categories, tags } = useTorrents();
-  const params = useLocalSearchParams<{ magnet?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    magnet?: string | string[];
+    torrentFileUri?: string | string[];
+    torrentFileName?: string | string[];
+  }>();
   const lastAppliedMagnetRef = useRef<string | null>(null);
+  const lastAppliedTorrentFileRef = useRef<string | null>(null);
 
   const [fieldVisibility, setFieldVisibility] = useState<Record<AddTorrentDialogField, boolean>>(
     DEFAULT_PREFERENCES.addTorrentDialogueFields
@@ -237,6 +242,17 @@ export default function AddTorrentFullScreen() {
     setTorrentUrl(magnetLink);
     setSelectedFile(null);
   }, [params.magnet]);
+
+  useEffect(() => {
+    const fileUri = Array.isArray(params.torrentFileUri) ? params.torrentFileUri[0] : params.torrentFileUri;
+    if (!fileUri) return;
+    if (lastAppliedTorrentFileRef.current === fileUri) return;
+
+    lastAppliedTorrentFileRef.current = fileUri;
+    const rawName = Array.isArray(params.torrentFileName) ? params.torrentFileName[0] : params.torrentFileName;
+    setSelectedFile({ uri: fileUri, name: rawName || 'download.torrent', mimeType: 'application/x-bittorrent' });
+    setTorrentUrl('');
+  }, [params.torrentFileUri, params.torrentFileName]);
 
   return (
     <>
