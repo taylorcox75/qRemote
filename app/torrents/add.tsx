@@ -259,7 +259,7 @@ export default function AddTorrentFullScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.torrents.addTorrent')}</Text>
@@ -340,6 +340,7 @@ export default function AddTorrentFullScreen() {
                           onPress={() => setSelectedFile(null)}
                           style={styles.clearIconButton}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          accessibilityLabel={t('common.remove')}
                         >
                           <Ionicons name="close-circle" size={20} color="#FFFFFF" />
                         </TouchableOpacity>
@@ -406,7 +407,12 @@ export default function AddTorrentFullScreen() {
                         <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.addTorrent.tags')}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                        <TouchableOpacity onPress={() => setCreateTagVisible(true)} activeOpacity={0.7}>
+                        <TouchableOpacity
+                          onPress={() => setCreateTagVisible(true)}
+                          activeOpacity={0.7}
+                          accessibilityLabel={t('screens.settings.createTag')}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
                           <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
                         </TouchableOpacity>
                         <TouchableOpacity

@@ -2,6 +2,7 @@ import { AxiosError } from 'axios';
 import { apiClient } from './client';
 import { LoginResponse } from '@/types/api';
 import { clogInfo, clogWarn, clogError, clogDebug } from '@/services/connectivity-log';
+import { isLoginBodyOk, isLoginSuccess } from '@/utils/login-response';
 
 const API_VERSION = 'v2';
 
@@ -30,19 +31,13 @@ export const authApi = {
 
       clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`);
       
-      // Auth responses vary between qBittorrent versions:
-      //   v4.x: 200 OK with body "Ok." on success, "Fails." on failure
-      //   v5.x: 204 No Content with empty body + Set-Cookie on success,
-      //         401/403 on failure (handled in the catch block below)
-      // Treat the presence of a session cookie as the source of truth and
-      // fall back to the legacy body strings for backwards compatibility.
+      // Success/failure interpretation is shared with the connection
+      // diagnostic — see utils/login-response.ts for the version matrix.
       const responseStr = typeof response === 'string' ? response.trim() : String(response).trim();
       const hasCookie = !!cookies && cookies.length > 0;
-      const bodyOk = responseStr === 'Ok.' || responseStr === 'Ok';
-      const bodyFail = responseStr === 'Fails.' || responseStr === 'Fails';
 
-      if (bodyOk || (!bodyFail && hasCookie)) {
-        const via = bodyOk ? 'body "Ok."' : 'session cookie';
+      if (isLoginSuccess({ body: responseStr, hasSessionCookie: hasCookie })) {
+        const via = isLoginBodyOk(responseStr) ? 'body "Ok."' : 'session cookie';
         console.log(`[Auth] Login successful via ${via}`);
         clogInfo('AUTH', `Login successful via ${via}`);
         return { status: 'Ok' };

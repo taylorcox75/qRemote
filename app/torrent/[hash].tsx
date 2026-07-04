@@ -31,6 +31,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
 import { InputModal } from '@/components/InputModal';
 import { OptionPicker } from '@/components/OptionPicker';
 import { TagsModal } from '@/components/TagsModal';
@@ -48,6 +49,7 @@ import {
 } from '@/types/api';
 import { formatDate } from '@/utils/format';
 import { getErrorMessage } from '@/utils/error';
+import { haptics } from '@/utils/haptics';
 
 export default function TorrentDetail() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
@@ -206,6 +208,7 @@ export default function TorrentDetail() {
     if (actionLoading) return;
     const currentlyPaused = torrent!.state.includes('paused') || torrent!.state.includes('stopped');
     const expectedNewState = !currentlyPaused;
+    haptics.medium();
     setOptimisticPaused(expectedNewState);
     setActionLoading(true);
     try {
@@ -235,6 +238,7 @@ export default function TorrentDetail() {
   };
 
   const handleDelete = () => {
+    haptics.warning();
     Alert.alert(
       t('torrentDetail.deleteTorrent'),
       t('alerts.deleteName', { name: torrent!.name }),
@@ -245,6 +249,7 @@ export default function TorrentDetail() {
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent!.hash], false);
+              haptics.success();
               showToast(t('toast.torrentDeleted'), 'success');
               router.back();
             } catch (error: unknown) {
@@ -258,6 +263,7 @@ export default function TorrentDetail() {
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent!.hash], true);
+              haptics.success();
               showToast(t('toast.torrentDeleted'), 'success');
               router.back();
             } catch (error: unknown) {
@@ -270,6 +276,7 @@ export default function TorrentDetail() {
   };
 
   const handleRecheck = async () => {
+    haptics.medium();
     try {
       setActionLoading(true);
       await torrentsApi.recheckTorrents([torrent!.hash]);
@@ -479,6 +486,7 @@ export default function TorrentDetail() {
           await torrentsApi.setTorrentDownloadLimit([torrent!.hash], limit);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
+          haptics.success();
           showToast(t('torrentDetail.dlLimitSet', { value: limit === 0 ? t('common.unlimited') : formatSpeed(limit) }), 'success');
         } catch (error: unknown) {
           showToast(getErrorMessage(error), 'error');
@@ -505,6 +513,7 @@ export default function TorrentDetail() {
           await torrentsApi.setTorrentUploadLimit([torrent!.hash], limit);
           await new Promise(resolve => setTimeout(resolve, 500));
           await loadTorrentData();
+          haptics.success();
           showToast(t('torrentDetail.ulLimitSet', { value: limit === 0 ? t('common.unlimited') : formatSpeed(limit) }), 'success');
         } catch (error: unknown) {
           showToast(getErrorMessage(error), 'error');
@@ -757,7 +766,7 @@ export default function TorrentDetail() {
       <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
       <View style={styles.rowRight}>
         {category ? (
-          <View style={[styles.categoryBadge, { backgroundColor: colors.primaryOpac ?? 'rgba(0,122,255,0.15)', borderColor: colors.primary }]}>
+          <View style={[styles.categoryBadge, { backgroundColor: colors.primaryOpac, borderColor: colors.primary }]}>
             <Text style={[styles.categoryBadgeText, { color: colors.primary }]} numberOfLines={1}>
               {category}
             </Text>
@@ -796,7 +805,7 @@ export default function TorrentDetail() {
                   style={[
                     styles.categoryBadge,
                     {
-                      backgroundColor: colors.primaryOpac ?? 'rgba(0,122,255,0.15)',
+                      backgroundColor: colors.primaryOpac,
                       borderColor: colors.primary,
                     },
                   ]}
@@ -846,6 +855,7 @@ export default function TorrentDetail() {
         onPress={handleReannounce}
         disabled={actionLoading}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityLabel={t('actions.reannounce')}
       >
         <Ionicons name="megaphone-outline" size={18} color={colors.textSecondary} />
       </TouchableOpacity>
@@ -870,7 +880,7 @@ export default function TorrentDetail() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.topBar, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} accessibilityLabel={t('common.back')}>
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -893,12 +903,11 @@ export default function TorrentDetail() {
                 {stateLabel}
               </Text>
             </View>
-            <View style={[styles.progressBarBg, { backgroundColor: colors.surfaceOutline }]}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${Math.min(progress, 100)}%`, backgroundColor: stateColor },
-                ]}
+            <View style={styles.progressBarBg}>
+              <AnimatedProgressBar
+                progress={Math.min(progress, 100)}
+                color={stateColor}
+                height={4}
               />
             </View>
             <View style={styles.heroStatsRow}>
@@ -997,6 +1006,7 @@ export default function TorrentDetail() {
                 handleOpenPeerDetails,
               ),
               staticRow(t('torrentDetail.availability'), torrent.availability ? torrent.availability.toFixed(2) : '0.00'),
+              torrent.popularity != null && staticRow(t('torrentDetail.popularity'), torrent.popularity.toFixed(2)),
             ])}
           </View>
 
@@ -1125,7 +1135,11 @@ export default function TorrentDetail() {
             <View style={[styles.peersModalContent, { backgroundColor: colors.surface }]}>
               <View style={[styles.peersModalHeader, { borderBottomColor: colors.surfaceOutline }]}>
                 <Text style={[styles.peersModalTitle, { color: colors.text }]}>{t('torrentDetail.connectedPeers')}</Text>
-                <TouchableOpacity onPress={() => setPeersModalVisible(false)}>
+                <TouchableOpacity
+                  onPress={() => setPeersModalVisible(false)}
+                  accessibilityLabel={t('common.close')}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                   <Ionicons name="close" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
@@ -1236,14 +1250,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   progressBarBg: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
     marginBottom: 8,
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 2,
   },
   heroStatsRow: {
     flexDirection: 'row',

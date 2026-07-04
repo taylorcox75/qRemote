@@ -117,7 +117,7 @@ export function CategoryModal({
             <Text style={[styles.title, { color: colors.text }]}>
               {t('torrentDetail.setCategory')}
             </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel={t('common.close')}>
               <Ionicons name="close-circle" size={26} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -143,6 +143,7 @@ export function CategoryModal({
                     onPress={handleRemove}
                     disabled={isLoading}
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    accessibilityLabel={t('common.remove')}
                   >
                     <Ionicons name="close" size={14} color={colors.primary} />
                   </TouchableOpacity>
@@ -203,6 +204,7 @@ export function CategoryModal({
                 onPress={handleCreate}
                 disabled={isLoading || !newInput.trim()}
                 activeOpacity={0.8}
+                accessibilityLabel={t('screens.settings.addCategory')}
               >
                 {isLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />

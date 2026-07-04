@@ -80,6 +80,7 @@ export class ServerManager {
     const currentServer = apiClient.getServer();
     if (currentServer?.id === id) {
       // Disconnect from this server
+      clogInfo('CONN', `Deleting currently-connected server ${currentServer.host}:${currentServer.port || 'default'} — clearing API client`);
       apiClient.setServer(null);
       await storageService.setCurrentServerId(null);
     }
@@ -206,11 +207,15 @@ export class ServerManager {
    * Disconnect from current server
    */
   static async disconnect(): Promise<void> {
+    const previousServer = apiClient.getServer();
     try {
       await authApi.logout();
     } catch (error) {
       // Ignore logout errors
     }
+    clogInfo('CONN', previousServer
+      ? `Disconnecting from ${previousServer.host}:${previousServer.port || 'default'} (user requested)`
+      : 'Disconnect requested (no server was connected)');
     apiClient.setServer(null);
     await storageService.setCurrentServerId(null);
   }

@@ -5,6 +5,7 @@ import { ServerManager } from '@/services/server-manager';
 import { apiClient } from '@/services/api/client';
 import { storageService } from '@/services/storage';
 import { getActiveEndpoint } from '@/utils/server';
+import { clogInfo, clogWarn } from '@/services/connectivity-log';
 
 interface ServerContextType {
   currentServer: ServerConfig | null;
@@ -67,25 +68,31 @@ export function ServerProvider({ children }: { children: ReactNode }) {
             const connected = await ServerManager.connectToServer(server);
             setIsConnected(connected);
             refreshActiveEndpoint(server, connected);
+            // On failure, connectToServer/connectToEndpoint has already
+            // cleared apiClient and logged the reason — no need to repeat it.
             if (!connected) {
               setCurrentServer(null);
-              apiClient.setServer(null);
             }
           } catch {
             setIsConnected(false);
             setActiveEndpoint(null);
             setCurrentServer(null);
-            apiClient.setServer(null);
           }
         } else {
           setIsConnected(false);
           setActiveEndpoint(null);
-          apiClient.setServer(null);
+          if (apiClient.getServer()) {
+            clogInfo('CONN', 'No saved server to auto-connect to at startup — clearing API client');
+            apiClient.setServer(null);
+          }
         }
       } catch {
         setIsConnected(false);
         setActiveEndpoint(null);
-        apiClient.setServer(null);
+        if (apiClient.getServer()) {
+          clogWarn('CONN', 'Startup auto-connect failed unexpectedly — clearing API client');
+          apiClient.setServer(null);
+        }
       } finally {
         setInitLoading(false);
       }

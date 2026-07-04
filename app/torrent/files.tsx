@@ -24,6 +24,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { InputModal } from '@/components/InputModal';
+import { EmptyState } from '@/components/EmptyState';
 import { torrentsApi } from '@/services/api/torrents';
 import { TorrentFile, FilePriority } from '@/types/api';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -459,7 +460,7 @@ export default function TorrentFilesScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} accessibilityLabel={t('common.back')}>
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>{t('screens.files.title')}</Text>
@@ -467,10 +468,7 @@ export default function TorrentFilesScreen() {
         </View>
 
         {files.length === 0 ? (
-          <View style={styles.center}>
-            <Ionicons name="folder-open-outline" size={64} color={colors.textSecondary} />
-            <Text style={[styles.emptyText, { color: colors.text }]}>{t('screens.files.noFilesFound')}</Text>
-          </View>
+          <EmptyState icon="folder-open-outline" title={t('screens.files.noFilesFound')} />
         ) : (
           <>
             {/* Bulk Actions Header */}
@@ -516,6 +514,10 @@ export default function TorrentFilesScreen() {
               data={displayItems}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.listContent}
+              removeClippedSubviews={false}
+              initialNumToRender={10}
+              maxToRenderPerBatch={5}
+              windowSize={10}
               renderItem={({ item }) => {
                 const indent = item.depth * 12;
 
@@ -527,6 +529,7 @@ export default function TorrentFilesScreen() {
                         style={styles.folderCheckbox}
                         onPress={() => handleFolderToggle(item.path, item.fileIndices!)}
                         disabled={updating}
+                        accessibilityLabel={item.allSelected ? t('screens.files.deselectFolder') : t('screens.files.selectFolder')}
                       >
                         <Ionicons
                           name={item.allSelected ? 'checkbox' : item.someSelected ? 'remove-outline' : 'square-outline'}
@@ -578,6 +581,7 @@ export default function TorrentFilesScreen() {
                       style={styles.fileCheckbox}
                       onPress={() => handleFileToggle(file)}
                       disabled={updating}
+                      accessibilityLabel={file.priority === 0 ? t('screens.files.selectFile') : t('screens.files.deselectFile')}
                     >
                       <Ionicons
                         name={file.priority === 0 ? 'square-outline' : 'checkbox'}
@@ -615,7 +619,7 @@ export default function TorrentFilesScreen() {
                             <Text style={[styles.fileSize, { color: colors.textSecondary }]}>
                               {formatSize(file.size)}
                             </Text>
-                            <Text style={styles.fileSeparator}>•</Text>
+                            <Text style={[styles.fileSeparator, { color: colors.textSecondary }]}>•</Text>
                             <Text style={[styles.fileProgress, { color: colors.textSecondary }]}>
                               {(file.progress * 100).toFixed(1)}%
                             </Text>
@@ -830,10 +834,6 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
-  emptyText: {
-    fontSize: 16,
-    marginTop: spacing.md,
-  },
   bulkActionsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -944,7 +944,6 @@ const styles = StyleSheet.create({
   },
   fileSeparator: {
     marginHorizontal: 4,
-    color: '#8E8E93',
     fontSize: 11,
   },
   fileProgress: {

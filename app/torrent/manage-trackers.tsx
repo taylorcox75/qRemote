@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { EmptyState } from '@/components/EmptyState';
 import { torrentsApi } from '@/services/api/torrents';
 import { Tracker } from '@/types/api';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -173,6 +174,7 @@ export default function ManageTrackersScreen() {
           onPress={() => router.back()}
           style={styles.backButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel={t('common.back')}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -181,7 +183,7 @@ export default function ManageTrackersScreen() {
           numberOfLines={1}
           adjustsFontSizeToFit
         >
-          Manage Trackers
+          {t('screens.trackers.title')}
         </Text>
         <TouchableOpacity
           style={[styles.reannounceButton, { 
@@ -191,6 +193,7 @@ export default function ManageTrackersScreen() {
           onPress={handleReannounceAll}
           disabled={reannouncing}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel={t('actions.reannounce')}
         >
           {reannouncing ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
@@ -336,14 +339,11 @@ export default function ManageTrackersScreen() {
 
           {/* Trackers List */}
           {trackers.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="globe-outline" size={48} color={colors.textSecondary} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No trackers</Text>
-            </View>
+            <EmptyState compact icon="globe-outline" iconSize={48} subtitle={t('screens.trackers.noTrackers')} />
           ) : (
             <View style={{ marginTop: 16 }}>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: 8, marginLeft: 4 }]}>
-                Existing Trackers ({trackers.length})
+                {t('screens.trackers.existingTrackers', { count: trackers.length })}
               </Text>
               {trackers.map((tracker, index) => (
                 <View 
@@ -371,6 +371,7 @@ export default function ManageTrackersScreen() {
                       style={styles.trackerActionButton}
                       onPress={() => handleCopyTracker(tracker)}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityLabel={t('screens.search.copyLink')}
                     >
                       <Ionicons name="copy-outline" size={20} color={colors.primary} />
                     </TouchableOpacity>
@@ -378,6 +379,7 @@ export default function ManageTrackersScreen() {
                       style={styles.trackerActionButton}
                       onPress={() => handleEditTracker(tracker)}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityLabel={t('common.edit')}
                     >
                       <Ionicons name="create-outline" size={20} color={colors.primary} />
                     </TouchableOpacity>
@@ -385,6 +387,7 @@ export default function ManageTrackersScreen() {
                       style={styles.trackerActionButton}
                       onPress={() => handleRemoveTracker(tracker)}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityLabel={t('common.delete')}
                     >
                       <Ionicons name="trash-outline" size={20} color={colors.error} />
                     </TouchableOpacity>
@@ -434,15 +437,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.lg,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    ...typography.body,
-    marginTop: spacing.md,
   },
   trackerRow: {
     flexDirection: 'row',

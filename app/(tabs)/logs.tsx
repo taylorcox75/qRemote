@@ -103,13 +103,13 @@ export default function LogsScreen() {
   const getLogTypeColor = (type: number): string => {
     switch (type) {
       case 1:
-        return '#007AFF'; // Normal
+        return colors.primary; // Normal
       case 2:
-        return '#FF9500'; // Warning
+        return colors.warning; // Warning
       case 4:
-        return '#FF3B30'; // Critical
+        return colors.error; // Critical
       default:
-        return '#8E8E93';
+        return colors.textSecondary;
     }
   };
 
@@ -221,7 +221,11 @@ export default function LogsScreen() {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityLabel={t('common.clearSearch')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
@@ -366,10 +370,10 @@ export default function LogsScreen() {
   );
 }
 
+// Colors are applied inline via useTheme() — this sheet is layout-only.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
   center: {
     flex: 1,
@@ -379,19 +383,15 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 16,
-    color: '#8E8E93',
   },
   subMessage: {
     fontSize: 14,
-    color: '#8E8E93',
     textAlign: 'center',
     marginTop: 8,
   },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
   },
   tab: {
     flex: 1,
@@ -400,17 +400,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  tabActive: {
-    borderBottomColor: '#007AFF',
-  },
   tabText: {
     fontSize: 16,
-    color: '#8E8E93',
     fontWeight: '500',
-  },
-  tabTextActive: {
-    color: '#007AFF',
-    fontWeight: '600',
   },
   searchContainer: {
     padding: 12,
@@ -430,7 +422,6 @@ const styles = StyleSheet.create({
   },
   filters: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
     padding: 12,
     paddingTop: 4,
     alignItems: 'center',
@@ -439,31 +430,21 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     fontSize: 14,
-    color: '#8E8E93',
     marginRight: 8,
   },
   filterButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#F2F2F7',
-  },
-  filterButtonActive: {
-    backgroundColor: '#007AFF',
   },
   filterButtonText: {
     fontSize: 12,
-    color: '#000000',
     fontWeight: '500',
-  },
-  filterButtonTextActive: {
-    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
   },
   logItem: {
-    backgroundColor: '#FFFFFF',
     padding: 12,
     marginBottom: 8,
     marginHorizontal: 8,
@@ -487,17 +468,14 @@ const styles = StyleSheet.create({
   },
   logTimestamp: {
     fontSize: 11,
-    color: '#8E8E93',
   },
   logMessage: {
     fontSize: 14,
-    color: '#000000',
     marginBottom: 4,
   },
   logIp: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
   },
 });
 

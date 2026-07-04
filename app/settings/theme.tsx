@@ -78,10 +78,11 @@ export default function ThemeSettingsScreen() {
             onPress={() => router.back()}
             style={styles.headerButton}
             activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Theme & Colors</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.themeAndColors')}</Text>
           <View style={styles.headerButton} />
         </View>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -123,6 +124,8 @@ export default function ThemeSettingsScreen() {
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.torrentStateColors')}</Text>
             <TouchableOpacity
+              accessibilityLabel={t('screens.settings.resetStateColors')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={async () => {
                 try {
                   await colorThemeManager.resetTorrentStateColors(isDark);
@@ -221,6 +224,8 @@ export default function ThemeSettingsScreen() {
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.advancedColors')}</Text>
             <TouchableOpacity
+              accessibilityLabel={t('screens.settings.resetColors')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={async () => {
                 try {
                   await colorThemeManager.resetCustomColors(isDark);
@@ -348,7 +353,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128, 128, 128, 0.2)',
   },
   headerButton: {
     width: 40,

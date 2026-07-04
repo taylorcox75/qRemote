@@ -18,6 +18,7 @@ import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { EmptyState } from '@/components/EmptyState';
 import { ServerManager } from '@/services/server-manager';
 import { storageService } from '@/services/storage';
 import { ServerConfig } from '@/types/api';
@@ -25,7 +26,6 @@ import { AppPreferences } from '@/types/preferences';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
-import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
 
 function SwipeableServerItem({
@@ -251,11 +251,11 @@ export default function ServersSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.servers')}</Text>
-          <TouchableOpacity onPress={handleAddServer} style={styles.headerButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleAddServer} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('screens.settings.addServer')}>
             <Ionicons name="add" size={26} color={colors.primary} />
           </TouchableOpacity>
         </View>
@@ -287,19 +287,24 @@ export default function ServersSettingsScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Text style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}>{t('screens.settings.servers').toUpperCase()}</Text>
-              <TouchableOpacity onPress={handleAddServer}>
+              <TouchableOpacity
+                onPress={handleAddServer}
+                accessibilityLabel={t('screens.settings.addServer')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Ionicons name="add-circle" size={24} color={colors.primary} />
               </TouchableOpacity>
             </View>
             <View style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}>
               {servers.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="server-outline" size={40} color={colors.textSecondary} />
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('screens.settings.noServersConfigured')}</Text>
-                  <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }]} onPress={handleAddServer}>
-                    <Text style={styles.primaryButtonText}>{t('screens.settings.addServer')}</Text>
-                  </TouchableOpacity>
-                </View>
+                <EmptyState
+                  compact
+                  icon="server-outline"
+                  iconSize={40}
+                  subtitle={t('screens.settings.noServersConfigured')}
+                  actionLabel={t('screens.settings.addServer')}
+                  onAction={handleAddServer}
+                />
               ) : (
                 servers.map((server, index) => (
                   <SwipeableServerItem
@@ -369,10 +374,6 @@ const styles = StyleSheet.create({
   listItemRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   smallButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   smallButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-  emptyState: { alignItems: 'center', paddingVertical: 32, gap: 12 },
-  emptyText: { fontSize: 15 },
-  primaryButton: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginTop: 4 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   swipeableContainer: { position: 'relative', overflow: 'hidden' },
   swipeableAction: {
     position: 'absolute',

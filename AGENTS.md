@@ -11,7 +11,7 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 
 ### Verification (run before considering a change done)
 - `npx tsc --noEmit` — typecheck (currently clean)
-- `npm test` — Jest (ts-jest). Tests live in `tests/`, currently 150 passing across 7 suites
+- `npm test` — Jest (ts-jest). Tests live in `tests/`, currently 209 passing across 12 suites
 - `npm run lint` — ESLint
 - `npm run format` — Prettier
 
@@ -22,7 +22,8 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - **Storage:** AsyncStorage for preferences, SecureStore for passwords
 - **API:** Thin wrappers in `services/api/` over a singleton axios-based `apiClient`
 - **Styling:** All colors via `useTheme()` → ThemeContext. Users can override any color via the color picker.
-- **i18n:** react-i18next with 5 locales (en, es, zh, fr, de). Many screens still have hardcoded English strings.
+- **i18n:** react-i18next with 6 locales (en, es, zh, fr, de, ru). `tests/locales/i18n-parity.test.ts` guards against locale drift: it fails if a locale is missing/adds keys vs `en`, or if a long string (≥16 chars) is left byte-identical to the English source (the exact failure mode that let the `torrentDetail` namespace regress to ~170 untranslated keys per locale in v3.5.1). Legitimate coincidental matches (loanwords like "tracker"/"Status"/"OK", literal URL/path placeholders) are tracked in that test's `COINCIDENTAL_MATCH_ALLOWLIST` — extend it only after verifying by hand that a match is intentional, not a translation gap. A few screens may still have hardcoded English strings; when you touch a screen, i18n any you find.
+- **Basic Auth credentials:** Reverse-proxy Basic Auth (`useBasicAuth`, added in #118) follows the same secure-storage split as the main server password: `basicAuthUsername` is plain text in AsyncStorage (`services/storage.ts`), but `basicAuthPassword` is written to `expo-secure-store` under `server_basic_auth_password_{id}` and stripped to `''` before the server record is persisted to AsyncStorage. `services/api/client.ts` reads it back off the in-memory `ServerConfig` to build the `Authorization` header via `utils/basicAuth.ts`. Follow this pattern for any future per-server secret.
 
 ## Critical Rules
 1. NEVER hardcode colors — always use `useTheme()` and `colors.*`
@@ -45,7 +46,7 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 9. **NEVER enable the `search` feature flag for App Store builds.** In-app search (Search tab + Search plugins screen) is gated by `FEATURES.search` in `constants/features.ts`, default `false`. App Store builds must not expose arbitrary-indexer search/download — only flip it to `true` for sideloaded / non-App-Store builds, and never commit it as `true` on the default branch.
 
 ## Dead Code
-All dead code files and unused client fields have been removed (Task 3.5 complete).
+All dead code files and unused client fields have been removed (Task 3.5 complete). Precedent: `components/TorrentDetails.tsx` was deleted after its markup was consolidated into `app/torrent/[hash].tsx`, which is now the single torrent-detail screen — when replacing a component with a route-level screen (or vice versa), delete the superseded file in the same change rather than leaving it as unreferenced dead code.
 
 ## Known Bugs
 None currently tracked. Do not trust a static bug list — run `npx tsc --noEmit` and `npm test`, and read the actual code before assuming a defect exists. (All previously documented bugs were fixed in v3.1.0; see `constants/changelog.ts`.)
@@ -54,7 +55,7 @@ None currently tracked. Do not trust a static bug list — run `npx tsc --noEmit
 - Components: PascalCase (`TorrentCard.tsx`)
 - Utilities/hooks: camelCase (`formatSpeed.ts`, `useTorrentActions.ts`)
 - Services: kebab-case (`server-manager.ts`, `color-theme-manager.ts`)
-- Tests: `tests/` at repo root, organized by module (`tests/utils/`, `tests/services/`). NOT `__tests__/`.
+- Tests: `tests/` at repo root, organized by module (`tests/utils/`, `tests/services/`, `tests/locales/`). NOT `__tests__/`.
 - Route groups: `(groupname)` with parentheses is Expo Router syntax, not a naming choice.
 - Dynamic routes: `[param].tsx` with square brackets is Expo Router syntax for URL parameters (like `/torrent/:hash`). The brackets cannot be removed. The name inside becomes the param key in `useLocalSearchParams()`.
 - Layout files: `_layout.tsx` with the underscore prefix is Expo Router syntax for layout routes. Cannot be renamed.

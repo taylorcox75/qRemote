@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -45,6 +46,7 @@ export function OptionPicker({
   onClose,
 }: OptionPickerProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const menuContainerRef = useRef<View>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
@@ -134,11 +136,12 @@ export function OptionPicker({
           onStartShouldSetResponder={() => true}
         >
           {/* Title */}
-          <View style={styles.menuHeader}>
+          <View style={[styles.menuHeader, { borderBottomColor: colors.surfaceOutline }]}>
             <Text style={[styles.menuTitle, { color: colors.text }]}>{title}</Text>
             <TouchableOpacity
               onPress={onClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel={t('common.close')}
             >
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -214,7 +217,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
     marginBottom: spacing.xs,
   },
   menuTitle: {

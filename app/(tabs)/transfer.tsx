@@ -38,6 +38,7 @@ import { SpeedGraph } from '@/components/SpeedGraph';
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { OptionPicker } from '@/components/OptionPicker';
 import { getErrorMessage } from '@/utils/error';
+import { haptics } from '@/utils/haptics';
 
 const SPEED_PRESETS = [
   { label: '∞', value: 0 },
@@ -266,6 +267,7 @@ export default function TransferScreen() {
   };
 
   const handleToggleAltSpeed = async () => {
+    haptics.medium();
     setActionLoading('altSpeed');
     try {
       await toggleAlternativeSpeedLimits();
@@ -363,7 +365,7 @@ export default function TransferScreen() {
       case 'connected':
         return colors.success;
       case 'firewalled':
-        return '#FF9500';
+        return colors.warning;
       case 'disconnected':
         return colors.error;
       default:

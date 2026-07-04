@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, Modal, StatusBar } from 'react-native';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { shadows } from '@/constants/shadows';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -17,6 +18,7 @@ interface ToastProps {
 
 export function Toast({ message, type = 'info', duration = 3000, onHide }: ToastProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   // Use initialWindowMetrics as fallback for when toast is in a Modal (which loses SafeAreaProvider context)
   const safeTop = insets.top || initialWindowMetrics?.insets.top || (Platform.OS === 'ios' ? 47 : StatusBar.currentHeight || 24);
@@ -114,7 +116,7 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
         <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
           {message}
         </Text>
-        <TouchableOpacity onPress={hide} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity onPress={hide} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={t('common.close')}>
           <Ionicons name="close" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </TouchableOpacity>

@@ -20,6 +20,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  LayoutAnimation,
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
@@ -32,9 +33,12 @@ import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { TorrentInfo, ServerConfig } from '@/types/api';
 import { TorrentCard } from '@/components/TorrentCard';
+import { SkeletonTorrentCard } from '@/components/SkeletonLoader';
 import { ActionMenu } from '@/components/ActionMenu';
 import { InputModal } from '@/components/InputModal';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { EmptyState } from '@/components/EmptyState';
+import { FilterChip } from '@/components/FilterChip';
 import { torrentsApi } from '@/services/api/torrents';
 import { applicationApi } from '@/services/api/application';
 import { storageService } from '@/services/storage';
@@ -392,25 +396,26 @@ export default function TorrentsScreen() {
     setSelectMode(!selectMode);
   };
 
-  const toggleSelection = (hash: string) => {
+  const toggleSelection = useCallback((hash: string) => {
     haptics.selection();
-    const newSelection = new Set(selectedHashes);
-    if (newSelection.has(hash)) {
-      newSelection.delete(hash);
-    } else {
-      newSelection.add(hash);
-    }
-    setSelectedHashes(newSelection);
-  };
+    setSelectedHashes((prev) => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(hash)) {
+        newSelection.delete(hash);
+      } else {
+        newSelection.add(hash);
+      }
+      return newSelection;
+    });
+  }, []);
 
-  const selectAll = () => {
-    const allHashes = new Set(filteredTorrents.map(t => t.hash));
-    setSelectedHashes(allHashes);
-  };
+  const selectAll = useCallback(() => {
+    setSelectedHashes(new Set(filteredTorrents.map((t) => t.hash)));
+  }, [filteredTorrents]);
 
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     setSelectedHashes(new Set());
-  };
+  }, []);
 
   // Bulk actions
   const handleBulkPause = async () => {
@@ -463,6 +468,7 @@ export default function TorrentsScreen() {
             setBulkLoading(true);
             try {
               await torrentsApi.deleteTorrents(Array.from(selectedHashes), false);
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               refresh();
               setSelectedHashes(new Set());
               setSelectMode(false);
@@ -481,6 +487,7 @@ export default function TorrentsScreen() {
             setBulkLoading(true);
             try {
               await torrentsApi.deleteTorrents(Array.from(selectedHashes), true);
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               refresh();
               setSelectedHashes(new Set());
               setSelectMode(false);
@@ -583,6 +590,7 @@ export default function TorrentsScreen() {
       setTorrentUrl('');
       setSelectedFile(null);
       setShowAddModal(false);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       refresh();
       showToast(t('toast.torrentAdded'), 'success');
     } catch (error: unknown) {
@@ -643,6 +651,7 @@ export default function TorrentsScreen() {
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent.hash], false);
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               refresh();
               showToast(t('toast.torrentDeleted'), 'success');
             } catch (err: unknown) {
@@ -658,6 +667,7 @@ export default function TorrentsScreen() {
           onPress: async () => {
             try {
               await torrentsApi.deleteTorrents([torrent.hash], true);
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               refresh();
               showToast(t('toast.torrentDeleted'), 'success');
             } catch (err: unknown) {
@@ -737,6 +747,7 @@ export default function TorrentsScreen() {
   const hasSecondaryFilter = categoryFilter !== null || tagFilters.length > 0;
 
   const clearAllFilters = useCallback(async () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setFilter('all');
     setCategoryFilter(null);
     setTagFilters([]);
@@ -767,6 +778,7 @@ export default function TorrentsScreen() {
 
   const handleCategorySelect = useCallback(async (value: string) => {
     const newFilter = value === '__all__' ? null : value;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setCategoryFilter(newFilter);
     setShowCategoryPicker(false);
     haptics.light();
@@ -779,6 +791,7 @@ export default function TorrentsScreen() {
   }, []);
 
   const handleTagsChange = useCallback(async (values: string[]) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setTagFilters(values);
     try {
       const prefs = await storageService.getPreferences();
@@ -824,16 +837,17 @@ export default function TorrentsScreen() {
     );
   }
 
-  // Show loading screen during initial app launch (server connecting or first data fetch)
+  // Show skeleton list during initial app launch (server connecting or first data fetch)
   if (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) {
     return (
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
-            {t('common.loading')}
-          </Text>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={styles.skeletonList}>
+            {Array.from({ length: 6 }, (_, i) => (
+              <SkeletonTorrentCard key={i} />
+            ))}
+          </View>
         </View>
       </>
     );
@@ -844,21 +858,15 @@ export default function TorrentsScreen() {
     return (
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            {t('screens.torrents.somethingWentWrong')}
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {error}
-          </Text>
-          <TouchableOpacity
-            style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-            onPress={refresh}
-          >
-            <Text style={styles.emptyButtonText}>{t('common.retry')}</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          style={{ backgroundColor: colors.background }}
+          icon="alert-circle-outline"
+          iconColor={colors.error}
+          title={t('screens.torrents.somethingWentWrong')}
+          subtitle={error}
+          actionLabel={t('common.retry')}
+          onAction={refresh}
+        />
       </>
     );
   }
@@ -892,6 +900,7 @@ export default function TorrentsScreen() {
                   ]}
                   onPress={() => setShowSortMenu(!showSortMenu)}
                   activeOpacity={0.7}
+                  accessibilityLabel={t('screens.settings.sortBy')}
                 >
                   <Ionicons
                     name="swap-vertical"
@@ -942,6 +951,7 @@ export default function TorrentsScreen() {
                     void handleOpenAddTorrent();
                   }}
                   activeOpacity={0.7}
+                  accessibilityLabel={t('screens.torrents.addTorrent')}
                 >
                   <Ionicons name="add" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
@@ -971,6 +981,13 @@ export default function TorrentsScreen() {
                   }
                 }}
                 activeOpacity={0.7}
+                accessibilityLabel={
+                  selectMode
+                    ? (selectedHashes.size === filteredTorrents.length
+                        ? t('screens.torrents.deselectAll')
+                        : t('screens.torrents.selectAll'))
+                    : t('screens.torrents.selectMode')
+                }
               >
                 <Ionicons 
                   name={
@@ -989,19 +1006,14 @@ export default function TorrentsScreen() {
 
               {!selectMode &&
                 filterOptions.map((item) => (
-                  <TouchableOpacity
+                  <FilterChip
                     key={item.key}
-                    style={[
-                      styles.filterChipCompact,
-                      filter === item.key && styles.filterChipElevated,
-                      {
-                        backgroundColor: filter === item.key ? colors.primary : colors.surface,
-                        borderColor: filter === item.key ? colors.primary : colors.surfaceOutline,
-                        borderWidth: filter === item.key ? 0 : 0.2,
-                      },
-                    ]}
+                    label={t(item.labelKey)}
+                    icon={item.icon}
+                    active={filter === item.key}
                     onPress={() => {
                       haptics.light();
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                       if (filter === item.key) {
                         // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
                         setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -1013,24 +1025,7 @@ export default function TorrentsScreen() {
                         else if (item.key === 'uploading') setSortBy('upspeed');
                       }
                     }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={item.icon}
-                      size={14}
-                      color={filter === item.key ? '#FFFFFF' : colors.text}
-                    />
-                    <Text
-                      style={[
-                        styles.filterChipTextCompact,
-                        {
-                          color: filter === item.key ? '#FFFFFF' : colors.text,
-                        },
-                      ]}
-                    >
-                      {t(item.labelKey)}
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 ))}
                 
               {!selectMode && (
@@ -1039,95 +1034,44 @@ export default function TorrentsScreen() {
                   <View style={[styles.filterChipSeparator, { backgroundColor: colors.surfaceOutline }]} />
 
                   {/* Category filter chip */}
-                  <TouchableOpacity
-                    style={[
-                      styles.filterChipCompact,
-                      categoryFilter !== null && styles.filterChipElevated,
-                      {
-                        backgroundColor: categoryFilter !== null ? colors.primary : colors.surface,
-                        borderColor: categoryFilter !== null ? colors.primary : colors.surfaceOutline,
-                        borderWidth: categoryFilter !== null ? 0 : 0.2,
-                      },
-                    ]}
+                  <FilterChip
+                    icon="folder-outline"
+                    active={categoryFilter !== null}
                     onPress={() => { haptics.light(); setShowCategoryPicker(true); }}
-                    activeOpacity={0.7}
                     accessibilityLabel={t('filters.category')}
-                    accessibilityState={{ selected: categoryFilter !== null }}
-                  >
-                    <Ionicons
-                      name="folder-outline"
-                      size={14}
-                      color={categoryFilter !== null ? '#FFFFFF' : colors.text}
-                    />
-                    <Text
-                      style={[
-                        styles.filterChipTextCompact,
-                        { color: categoryFilter !== null ? '#FFFFFF' : colors.text },
-                      ]}
-                    >
-                      {categoryFilter === null
+                    label={
+                      categoryFilter === null
                         ? t('filters.category')
                         : categoryFilter === ''
                           ? t('filters.uncategorized')
-                          : categoryFilter}
-                    </Text>
-                  </TouchableOpacity>
+                          : categoryFilter
+                    }
+                  />
 
                   {/* Tags filter chip */}
-                  <TouchableOpacity
-                    style={[
-                      styles.filterChipCompact,
-                      tagFilters.length > 0 && styles.filterChipElevated,
-                      {
-                        backgroundColor: tagFilters.length > 0 ? colors.primary : colors.surface,
-                        borderColor: tagFilters.length > 0 ? colors.primary : colors.surfaceOutline,
-                        borderWidth: tagFilters.length > 0 ? 0 : 0.2,
-                      },
-                    ]}
+                  <FilterChip
+                    icon="pricetag-outline"
+                    active={tagFilters.length > 0}
                     onPress={() => { haptics.light(); setShowTagPicker(true); }}
-                    activeOpacity={0.7}
                     accessibilityLabel={t('filters.tags')}
-                    accessibilityState={{ selected: tagFilters.length > 0 }}
-                  >
-                    <Ionicons
-                      name="pricetag-outline"
-                      size={14}
-                      color={tagFilters.length > 0 ? '#FFFFFF' : colors.text}
-                    />
-                    <Text
-                      style={[
-                        styles.filterChipTextCompact,
-                        { color: tagFilters.length > 0 ? '#FFFFFF' : colors.text },
-                      ]}
-                    >
-                      {tagFilters.length > 0
+                    label={
+                      tagFilters.length > 0
                         ? t('filters.tagsCount', { count: tagFilters.length })
-                        : t('filters.tags')}
-                    </Text>
-                  </TouchableOpacity>
+                        : t('filters.tags')
+                    }
+                  />
                 </>
               )}
 
               {selectMode && (
-                <TouchableOpacity
+                <FilterChip
+                  icon="close"
+                  active
+                  activeColor={colors.error}
                   onPress={toggleSelectMode}
-                  style={[
-                    styles.filterChipCompact,
-                    {
-                      backgroundColor: colors.error,
-                      borderColor: colors.error,
-                      marginLeft: 8,
-                    }
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="close" size={14} color="#FFFFFF" />
-                  <Text 
-                    style={[styles.filterChipTextCompact, { color: '#FFFFFF' }]}
-                  >
-                    {t('common.close')}
-                  </Text>
-                </TouchableOpacity>
+                  label={t('common.close')}
+                  style={{ marginLeft: 8 }}
+                />
               )}
               </ScrollView>
             </View>
@@ -1143,9 +1087,8 @@ export default function TorrentsScreen() {
                     key={option.key}
                     style={[
                       styles.sortOption,
-                      sortBy === option.key && { 
-                        backgroundColor: isDark ? 'rgba(100, 150, 255, 0.15)' : colors.primary 
-                        
+                      sortBy === option.key && {
+                        backgroundColor: isDark ? colors.primaryOpac : colors.primary,
                       },
                     ]}
                     onPress={() => {
@@ -1286,7 +1229,7 @@ export default function TorrentsScreen() {
                     <RectButton
                       style={[
                         styles.swipeAction,
-                        { backgroundColor: itemIsPaused ? colors.success : '#FF9500' },
+                        { backgroundColor: itemIsPaused ? colors.success : colors.warning },
                       ]}
                       onPress={() => handleSwipePauseResume(item, swipeRef)}
                     >
@@ -1298,7 +1241,7 @@ export default function TorrentsScreen() {
                       </Animated.View>
                     </RectButton>
                     <RectButton
-                      style={[styles.swipeAction, { backgroundColor: '#FF3B30' }]}
+                      style={[styles.swipeAction, { backgroundColor: colors.error }]}
                       onPress={() => handleSwipeDelete(item, swipeRef)}
                     >
                       <Animated.View style={[styles.swipeActionContent, { transform: [{ scale: deleteScale }] }]}>
@@ -1322,7 +1265,7 @@ export default function TorrentsScreen() {
 
                 return (
                   <RectButton
-                    style={[styles.swipeActionLeft, { backgroundColor: '#007AFF' }]}
+                    style={[styles.swipeActionLeft, { backgroundColor: colors.primary }]}
                     onPress={() => handleSwipeForceStart(item, swipeRef)}
                   >
                     <Animated.View style={[styles.swipeActionContent, { transform: [{ scale }] }]}>
@@ -1369,6 +1312,11 @@ export default function TorrentsScreen() {
                       <TouchableOpacity
                         style={styles.checkbox}
                         onPress={() => toggleSelection(item.hash)}
+                        accessibilityLabel={
+                          selectedHashes.has(item.hash)
+                            ? t('screens.torrents.deselectTorrent')
+                            : t('screens.torrents.selectTorrent')
+                        }
                       >
                         <Ionicons
                           name={selectedHashes.has(item.hash) ? 'checkbox' : 'square-outline'}
@@ -1415,7 +1363,7 @@ export default function TorrentsScreen() {
         )}
 
         {selectMode && selectedHashes.size > 0 && (
-          <View style={[styles.bulkActionsBar, { backgroundColor: colors.surface }]}>
+          <View style={[styles.bulkActionsBar, { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline }]}>
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: colors.success }]}
               onPress={handleBulkResume}
@@ -1425,7 +1373,7 @@ export default function TorrentsScreen() {
               <Text style={styles.bulkActionText}>{t('actions.resume')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.bulkActionButton, { backgroundColor: '#FF9500' }]}
+              style={[styles.bulkActionButton, { backgroundColor: colors.warning }]}
               onPress={handleBulkPause}
               disabled={bulkLoading}
             >
@@ -1433,7 +1381,7 @@ export default function TorrentsScreen() {
               <Text style={styles.bulkActionText}>{t('actions.pause')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.bulkActionButton, { backgroundColor: '#FF3B30' }]}
+              style={[styles.bulkActionButton, { backgroundColor: colors.error }]}
               onPress={handleBulkDelete}
               disabled={bulkLoading}
             >
@@ -1466,11 +1414,15 @@ export default function TorrentsScreen() {
               >
                 <View style={styles.modalHeader}>
                   <Text style={[styles.modalTitle, { color: colors.text }]}>{t('screens.torrents.addTorrent')}</Text>
-                  <TouchableOpacity onPress={() => {
-                    setShowAddModal(false);
-                    setTorrentUrl('');
-                    setSelectedFile(null);
-                  }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowAddModal(false);
+                      setTorrentUrl('');
+                      setSelectedFile(null);
+                    }}
+                    accessibilityLabel={t('common.close')}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
                     <Ionicons name="close" size={24} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
@@ -1538,6 +1490,7 @@ export default function TorrentsScreen() {
                     <TouchableOpacity
                       onPress={() => setSelectedFile(null)}
                       style={styles.clearFileButton}
+                      accessibilityLabel={t('common.remove')}
                     >
                       <Ionicons name="close-circle" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
@@ -1837,24 +1790,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     borderRadius: borderRadius.small,
   },
-  filterChip: {
-    ...buttonStyles.chip,
-  },
-  filterChipElevated: {
-    ...shadows.filterActive,
-  },
   selectButtonStationary: {
     flexShrink: 0,
-  },
-  filterChipText: {
-    ...typography.smallSemibold,
-    letterSpacing: 0.3,
-  },
-  filterChipCompact: {
-    ...buttonStyles.chip,
-  },
-  filterChipTextCompact: {
-    ...buttonText.chip,
   },
   filterChipSeparator: {
     width: 1,
@@ -1866,6 +1803,10 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 100,
     borderRadius: borderRadius.large,
+  },
+  skeletonList: {
+    paddingTop: 100,
+    paddingHorizontal: spacing.sm,
   },
   selectionHeader: {
     flexDirection: 'row',
@@ -1902,7 +1843,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
     ...shadows.medium,
   },
   bulkActionButton: {
