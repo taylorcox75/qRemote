@@ -44,17 +44,33 @@ describe('app.config torrent file registration', () => {
     expect(expoConfig?.ios?.infoPlist?.LSSupportsOpeningDocumentsInPlace).toBe(true);
   });
 
-  it('declares the torrent UTI with the .torrent extension on iOS', () => {
-    const importedTypes = expoConfig?.ios?.infoPlist?.UTImportedTypeDeclarations;
-    expect(Array.isArray(importedTypes)).toBe(true);
+  it('EXPORTS the torrent UTI with the .torrent extension on iOS (issue #125)', () => {
+    // Must be UTExportedTypeDeclarations, not Imported: an imported
+    // declaration leaves the type unowned (no app exports a torrent UTI),
+    // so Files showed "No Apps Available" under Always Open With.
+    expect(expoConfig?.ios?.infoPlist?.UTImportedTypeDeclarations).toBeUndefined();
+    const exportedTypes = expoConfig?.ios?.infoPlist?.UTExportedTypeDeclarations;
+    expect(Array.isArray(exportedTypes)).toBe(true);
 
-    const torrentType = importedTypes.find(
+    const torrentType = exportedTypes.find(
       (entry: { UTTypeIdentifier?: string }) => entry.UTTypeIdentifier === 'org.bittorrent.torrent'
     );
 
     expect(torrentType).toBeDefined();
     expect(torrentType.UTTypeTagSpecification['public.filename-extension']).toContain('torrent');
     expect(torrentType.UTTypeTagSpecification['public.mime-type']).toContain('application/x-bittorrent');
+    // public.content conformance is required for Files' open-with
+    // eligibility; public.data alone only surfaces the app in the share sheet.
+    expect(torrentType.UTTypeConformsTo).toContain('public.data');
+    expect(torrentType.UTTypeConformsTo).toContain('public.content');
+  });
+
+  it('claims Owner handler rank for the torrent document type (issue #125)', () => {
+    const documentTypes = expoConfig?.ios?.infoPlist?.CFBundleDocumentTypes;
+    const torrentDoc = documentTypes.find((entry: { LSItemContentTypes?: string[] }) =>
+      Array.isArray(entry.LSItemContentTypes) && entry.LSItemContentTypes.includes('org.bittorrent.torrent')
+    );
+    expect(torrentDoc.LSHandlerRank).toBe('Owner');
   });
 
   it('registers torrent mime-type intent filter on Android', () => {

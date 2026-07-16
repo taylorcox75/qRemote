@@ -12,6 +12,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.7.1',
+    date: '2026-07-16',
+    changes: [
+      'Fixed .torrent files not offering qRemote under "Always Open With" in the Files app — tapping a torrent now opens it in qRemote instead of Preview (previously only the Share sheet worked)',
+    ],
+  },
+  {
     version: '3.7.0',
     date: '2026-07-16',
     changes: [
