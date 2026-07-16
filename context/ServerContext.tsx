@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ServerConfig, ServerEndpointKind } from '@/types/api';
 import { ServerManager } from '@/services/server-manager';
@@ -158,30 +158,52 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     }
   }, [currentServer, refreshActiveEndpoint]);
 
-  const checkAndReconnect = useCallback(async (): Promise<boolean> => {
-    if (!currentServer) {
-      setIsConnected(false);
-      setActiveEndpoint(null);
-      return false;
+  // Multiple independent consumers (TorrentContext, useSearchJob) each call
+  // this on their own AppState foreground listener, all firing off the same
+  // OS event. Without de-duping, two concurrent reconnect attempts race each
+  // other's login/cookie-refresh flow — one can see the other's in-progress
+  // state as a failure, flipping isConnected to false for a moment even
+  // though the session was actually fine, which then trips anything that
+  // clears state on disconnect (e.g. an active search job). Sharing one
+  // in-flight promise across all callers avoids that entirely.
+  const checkAndReconnectPromiseRef = useRef<Promise<boolean> | null>(null);
+
+  const checkAndReconnect = useCallback((): Promise<boolean> => {
+    if (checkAndReconnectPromiseRef.current) {
+      return checkAndReconnectPromiseRef.current;
     }
 
-    try {
-      const success = await ServerManager.reconnect();
-      setIsConnected(success);
-      refreshActiveEndpoint(currentServer, success);
-      return success;
-    } catch {
-      try {
-        const reconnected = await ServerManager.connectToServer(currentServer);
-        setIsConnected(reconnected);
-        refreshActiveEndpoint(currentServer, reconnected);
-        return reconnected;
-      } catch {
+    const run = async (): Promise<boolean> => {
+      if (!currentServer) {
         setIsConnected(false);
         setActiveEndpoint(null);
         return false;
       }
-    }
+
+      try {
+        const success = await ServerManager.reconnect();
+        setIsConnected(success);
+        refreshActiveEndpoint(currentServer, success);
+        return success;
+      } catch {
+        try {
+          const reconnected = await ServerManager.connectToServer(currentServer);
+          setIsConnected(reconnected);
+          refreshActiveEndpoint(currentServer, reconnected);
+          return reconnected;
+        } catch {
+          setIsConnected(false);
+          setActiveEndpoint(null);
+          return false;
+        }
+      }
+    };
+
+    const promise = run().finally(() => {
+      checkAndReconnectPromiseRef.current = null;
+    });
+    checkAndReconnectPromiseRef.current = promise;
+    return promise;
   }, [currentServer, refreshActiveEndpoint]);
 
   const isLoading =

@@ -23,23 +23,21 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { SearchResult } from '@/types/api';
 import { formatSize } from '@/utils/format';
+import { resultTrackerLabel } from '@/utils/searchResult';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { haptics } from '@/utils/haptics';
 
 interface SearchResultRowProps {
   result: SearchResult;
+  /** True when every result in the current batch shares one siteUrl (a
+   * proxying plugin like Prowlarr/Jackett) — see resultTrackerLabel. */
+  isAggregatedSource?: boolean;
   onAdd: (result: SearchResult) => void;
   onLongPress?: (result: SearchResult) => void;
   onOpenLink?: (url: string) => void;
   onCopyUrl?: (url: string) => void;
   isAdding?: boolean;
-}
-
-function siteHost(url: string): string {
-  if (!url) return '';
-  const stripped = url.replace(/^https?:\/\//i, '');
-  return stripped.split('/')[0] || stripped;
 }
 
 // Health dot mirrors the Torrents "state dot" convention:
@@ -57,6 +55,7 @@ function healthColor(
 
 export function SearchResultRow({
   result,
+  isAggregatedSource,
   onAdd,
   onLongPress,
   onOpenLink,
@@ -69,7 +68,7 @@ export function SearchResultRow({
 
   const seeders = Math.max(0, result.nbSeeders ?? 0);
   const leechers = Math.max(0, result.nbLeechers ?? 0);
-  const host = siteHost(result.siteUrl);
+  const host = resultTrackerLabel(result, isAggregatedSource ?? false);
   const dotColor = healthColor(seeders, colors);
 
   return (

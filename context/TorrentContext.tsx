@@ -9,9 +9,9 @@ import { AppState, AppStateStatus } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TorrentInfo, MainData, ServerState, Category } from '@/types/api';
 import { syncApi } from '@/services/api/sync';
-import { apiClient } from '@/services/api/client';
 import { useServer } from './ServerContext';
 import { getErrorMessage } from '@/utils/error';
+import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
 
 interface TorrentContextType {
   torrents: TorrentInfo[];
@@ -38,7 +38,7 @@ const EMPTY_STATE: SyncState = { torrents: [], categories: {}, tags: [], serverS
 const TorrentContext = createContext<TorrentContextType | undefined>(undefined);
 
 export function TorrentProvider({ children }: { children: ReactNode }) {
-  const { isConnected, checkAndReconnect } = useServer();
+  const { isConnected } = useServer();
   const queryClient = useQueryClient();
 
   const ridRef = useRef(0);
@@ -179,25 +179,12 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, queryClient]);
 
-  // Auto-reconnect when the sync fails due to auth or missing session state.
-  // Covers: qBittorrent server restart (session invalidated), and dev Fast
-  // Refresh re-evaluating apiClient (singleton loses cookies/currentServer).
-  const reconnectingRef = useRef(false);
-  useEffect(() => {
-    if (!queryError || !isConnected || reconnectingRef.current) return;
-    const message = getErrorMessage(queryError);
-    if (
-      message.includes('Authentication failed') ||
-      message.includes('No server configured')
-    ) {
-      if (!apiClient.getApiVersion() || !apiClient.getCookies()) {
-        reconnectingRef.current = true;
-        checkAndReconnect().finally(() => {
-          reconnectingRef.current = false;
-        });
-      }
-    }
-  }, [queryError, isConnected, checkAndReconnect]);
+  // Auto-reconnect when the sync fails due to auth or connection failure.
+  // Covers: qBittorrent server restart (session invalidated), dev Fast
+  // Refresh re-evaluating apiClient (singleton loses cookies/currentServer),
+  // and a session that died while the app was backgrounded. Cooldown and
+  // trigger conditions live in the shared hook.
+  useReactiveReconnect(queryError);
 
   // AppState handler: background/foreground recovery
   useEffect(() => {
@@ -206,15 +193,22 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       appStateRef.current = nextAppState;
 
       if (previousAppState === 'background' && nextAppState === 'active') {
-        const timeInBackground = Date.now() - lastActiveTime.current;
         lastActiveTime.current = Date.now();
 
         if (isConnected) {
           setIsRecoveringState(true);
 
-          if (timeInBackground > 30000) {
-            await checkAndReconnect();
-          }
+          // Deliberately NOT eagerly reconnecting here. checkAndReconnect
+          // always performs a fresh login (server-manager.ts has no
+          // lightweight "is my session still valid" path) — calling it on
+          // every foreground return, even when the old session was still
+          // fine, was forcing a needless re-login on every single app
+          // switch. qBittorrent's search jobs are tied to session state, so
+          // that was silently orphaning any in-progress search. If the
+          // session actually died while backgrounded, the re-sync below
+          // will fail naturally and the reactive effect above (which
+          // watches queryError) picks it up and reconnects — but only when
+          // it's actually needed.
 
           // Force full re-sync on foreground
           syncVersionRef.current++;
@@ -229,7 +223,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [isConnected, checkAndReconnect, queryClient]);
+  }, [isConnected, queryClient]);
 
   const refresh = useCallback(async () => {
     if (!isConnected) return;

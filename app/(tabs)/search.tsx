@@ -5,7 +5,7 @@
  * same sort dropdown, and the same surface card rows for results. Wraps
  * qBittorrent's /api/v2/search/* endpoints behind a clean, consistent UI.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,9 +19,12 @@ import {
   Share,
   Keyboard,
   TouchableWithoutFeedback,
+  Animated,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter, Redirect } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -38,13 +41,13 @@ import { searchApi } from '@/services/api/search';
 import { torrentsApi } from '@/services/api/torrents';
 import { storageService } from '@/services/storage';
 import { SearchPlugin, SearchResult } from '@/types/api';
+import { siteHost, resultTrackerLabel } from '@/utils/searchResult';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
-import { FEATURES } from '@/constants/features';
 
 const ALL = 'all';
 const ENABLED = 'enabled';
@@ -59,18 +62,83 @@ const SORT_OPTIONS: Array<{ key: SortKey; labelKey: string; icon: React.Componen
 ];
 
 export default function SearchScreen() {
-  // Search is a compile-time feature flag (off by default for App Store builds).
-  // Block direct/deep-link navigation when the feature is disabled.
-  if (!FEATURES.search) return <Redirect href="/" />;
-  return <SearchScreenContent />;
-}
-
-function SearchScreenContent() {
   const { t } = useTranslation();
   const router = useRouter();
+  const navigation = useNavigation();
   const { isConnected } = useServer();
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
+  const queryInputRef = useRef<TextInput>(null);
+
+  // Scroll-to-collapse header, matching the Torrents tab's pattern: the
+  // header floats absolutely above the list and slides off-screen on scroll
+  // down, back in on scroll up (or near the top). headerHeight is measured
+  // via onLayout rather than hardcoded like Torrents' — this header's height
+  // varies a lot more (category/indexer rows and the sort dropdown are all
+  // conditional), so a fixed guess would leave gaps or clip content.
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const lastScrollY = useRef(0);
+  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const isHeaderVisible = useRef(true);
+  const isAnimating = useRef(false);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const currentScrollY = event.nativeEvent.contentOffset.y;
+      const scrollDifference = currentScrollY - lastScrollY.current;
+
+      // Larger "hug the top" zone than a bare scroll-to-zero check, so the
+      // header stays put through small bounces/overscroll near the top
+      // instead of snapping open and shut.
+      if (currentScrollY <= 30) {
+        if (!isHeaderVisible.current) {
+          isHeaderVisible.current = true;
+          Animated.timing(headerTranslateY, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+          }).start();
+        }
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      // Middle ground between too twitchy (15 — collapsed on any incidental
+      // touch drift) and too sluggish (40 — needed several cards of scroll
+      // before reacting, since this compares per-event deltas which
+      // scrollEventThrottle already batches).
+      const minMovement = 22;
+      if (Math.abs(scrollDifference) < minMovement || isAnimating.current) {
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      if (scrollDifference < -minMovement && !isHeaderVisible.current) {
+        isAnimating.current = true;
+        isHeaderVisible.current = true;
+        Animated.timing(headerTranslateY, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }).start(() => {
+          isAnimating.current = false;
+        });
+      } else if (scrollDifference > minMovement && isHeaderVisible.current) {
+        isAnimating.current = true;
+        isHeaderVisible.current = false;
+        Animated.timing(headerTranslateY, {
+          toValue: -(headerHeight || 300),
+          duration: 250,
+          useNativeDriver: true,
+        }).start(() => {
+          isAnimating.current = false;
+        });
+      }
+
+      lastScrollY.current = currentScrollY;
+    },
+    [headerHeight, headerTranslateY],
+  );
 
   const {
     jobId,
@@ -85,20 +153,23 @@ function SearchScreenContent() {
   } = useSearchJob();
 
   const [query, setQuery] = useState('');
-  const [plugin, setPlugin] = useState<string>(ENABLED);
+  const [plugin, setPlugin] = useState<string>(ALL);
   const [category, setCategory] = useState<string>(ALL);
+  const [selectedTrackers, setSelectedTrackers] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortKey>('seeders');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [pendingAddUrl, setPendingAddUrl] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<SearchResult | null>(null);
 
-  // Load remembered query/plugin/category once at mount.
+  // Load remembered plugin/category once at mount. The query text itself is
+  // deliberately NOT restored — it should reset on a fresh app launch, and
+  // React state already keeps it intact when just switching tabs within the
+  // same running session (this screen stays mounted, it doesn't remount).
   useEffect(() => {
     (async () => {
       try {
         const prefs = await storageService.getPreferences();
-        if (prefs.lastSearchQuery) setQuery(prefs.lastSearchQuery);
         if (prefs.lastSearchPlugin) setPlugin(prefs.lastSearchPlugin);
         if (prefs.lastSearchCategory) setCategory(prefs.lastSearchCategory);
       } catch {
@@ -106,6 +177,27 @@ function SearchScreenContent() {
       }
     })();
   }, []);
+
+  // Re-tapping the already-active Search tab focuses the query input and
+  // opens the keyboard. `tabPress` fires on this tab's own navigation
+  // whenever its icon is tapped, whether switching to it or not — checking
+  // isFocused() at that moment is what distinguishes "already here, tapped
+  // again" (true) from "switching in from another tab" (false).
+  useEffect(() => {
+    // useNavigation()'s generic return type doesn't know about the
+    // bottom-tabs navigator's "tabPress" event — narrow just enough to
+    // register the listener without pulling in @react-navigation types
+    // directly (expo-router discourages that as of SDK 56+).
+    const tabsNavigation = navigation as unknown as {
+      addListener: (event: 'tabPress', callback: () => void) => () => void;
+    };
+    const unsubscribe = tabsNavigation.addListener('tabPress', () => {
+      if (navigation.isFocused()) {
+        queryInputRef.current?.focus();
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const pluginsQuery = useQuery<SearchPlugin[]>({
     queryKey: ['search', 'plugins'],
@@ -126,12 +218,73 @@ function SearchScreenContent() {
     });
   }, [plugins]);
 
-  // Categories supported by the currently selected plugin.
+  // Categories supported by the currently selected plugin. When searching
+  // across every plugin (ALL, or the legacy ENABLED value some users may
+  // still have persisted), fall back to the union of every installed
+  // plugin's categories, deduped by id — qBittorrent's category filter is
+  // still valid to apply across plugins/indexers, it just isn't limited to
+  // one plugin's specific list in that case.
   const categories = useMemo(() => {
-    if (plugin === ALL || plugin === ENABLED) return [];
+    if (plugin === ALL || plugin === ENABLED) {
+      const seen = new Map<string, { id: string; name: string }>();
+      for (const p of plugins) {
+        for (const c of p.supportedCategories) {
+          if (c.id && c.id !== ALL && !seen.has(c.id)) {
+            seen.set(c.id, c);
+          }
+        }
+      }
+      return [...seen.values()];
+    }
     const selected = plugins.find((p) => p.name === plugin);
     return selected?.supportedCategories.filter((c) => c.id && c.id !== ALL) || [];
   }, [plugin, plugins]);
+
+  // Aggregator/bridge plugins (Prowlarr, Jackett) proxy every result through
+  // one qBittorrent plugin entry, so siteUrl is identical across the whole
+  // batch — in that case the real per-result indexer name lives in a
+  // bracketed tag in the title instead (see resultTrackerLabel).
+  //
+  // LATCHED for the lifetime of a search: once a batch looks aggregated it
+  // stays aggregated even if a later poll adds a result from a second host
+  // (e.g. a direct plugin alongside Prowlarr). Flipping mid-search would
+  // relabel every chip from bracket-tag to hostname, orphaning any labels
+  // the user already selected in selectedTrackers and silently filtering
+  // out everything. Non-aggregated results without a bracket tag still fall
+  // back to their hostname label inside resultTrackerLabel, so latching
+  // stays correct for mixed batches. Reset alongside selectedTrackers on
+  // each new search (handleSubmit / onClearQuery).
+  const [isAggregatedSource, setIsAggregatedSource] = useState(false);
+  useEffect(() => {
+    if (isAggregatedSource || results.length < 2) return;
+    const hosts = new Set(results.map((r) => siteHost(r.siteUrl)).filter(Boolean));
+    if (hosts.size <= 1) setIsAggregatedSource(true);
+  }, [results, isAggregatedSource]);
+
+  // Tracker chips derived from whatever results have come back so far — this
+  // naturally grows as more plugins/indexers report in during a running
+  // search, since it's recomputed from `results` on every poll tick.
+  const availableTrackers = useMemo(() => {
+    const labels = new Set<string>();
+    for (const r of results) {
+      const label = resultTrackerLabel(r, isAggregatedSource);
+      if (label) labels.add(label);
+    }
+    return [...labels].sort((a, b) => a.localeCompare(b));
+  }, [results, isAggregatedSource]);
+
+  const toggleTracker = useCallback((host: string) => {
+    haptics.light();
+    setSelectedTrackers((prev) => {
+      const next = new Set(prev);
+      if (next.has(host)) {
+        next.delete(host);
+      } else {
+        next.add(host);
+      }
+      return next;
+    });
+  }, []);
 
   // Sort the live results client-side; qBittorrent's search API doesn't sort.
   // De-duplicate by fileUrl first so the list keyExtractor can rely on a
@@ -143,8 +296,12 @@ function SearchScreenContent() {
       seenUrls.add(r.fileUrl);
       return true;
     });
-    const sorted = deduped;
-    sorted.sort((a, b) => {
+    // Empty selection means "no tracker filter" — show everything.
+    const filtered =
+      selectedTrackers.size === 0
+        ? deduped
+        : deduped.filter((r) => selectedTrackers.has(resultTrackerLabel(r, isAggregatedSource)));
+    filtered.sort((a, b) => {
       let cmp = 0;
       switch (sortBy) {
         case 'seeders':
@@ -162,8 +319,25 @@ function SearchScreenContent() {
       }
       return sortDirection === 'asc' ? cmp : -cmp;
     });
-    return sorted;
-  }, [results, sortBy, sortDirection]);
+    return filtered;
+  }, [results, selectedTrackers, isAggregatedSource, sortBy, sortDirection]);
+
+  // The FlatList unmounts whenever the (filtered) result set is empty — the
+  // empty state has no scrollable surface, so no onScroll event could ever
+  // fire to bring a collapsed header back. Restore it explicitly here, or a
+  // filter that matches nothing leaves the search bar and every filter chip
+  // stranded off-screen with no way to recover.
+  useEffect(() => {
+    if (sortedResults.length === 0 && !isHeaderVisible.current) {
+      isHeaderVisible.current = true;
+      lastScrollY.current = 0;
+      Animated.timing(headerTranslateY, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [sortedResults.length, headerTranslateY]);
 
   // ────────────────────────────────────────────────── actions ──────────────
 
@@ -178,11 +352,12 @@ function SearchScreenContent() {
     Keyboard.dismiss();
     haptics.medium();
     try {
+      setSelectedTrackers(new Set());
+      setIsAggregatedSource(false);
       await start(pattern, plugin, category);
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({
         ...prefs,
-        lastSearchQuery: pattern,
         lastSearchPlugin: plugin,
         lastSearchCategory: category,
       });
@@ -196,12 +371,29 @@ function SearchScreenContent() {
     if (!error) return;
     if (/409|conflict/i.test(error)) {
       showToast(t('screens.search.serverBusy'), 'error');
-    } else if (/404/.test(error)) {
+    } else if (/404|endpoint not found/i.test(error)) {
+      // The search job expired or was cleaned up server-side — apiClient
+      // rewrites 404s into an "Endpoint not found: <url>" message with no
+      // literal status code in it, so match that text too, not just "404".
       void reset();
     } else {
       showToast(error, 'error');
     }
   }, [error, reset, showToast, t]);
+
+  // Toast once when a search naturally finishes (Running -> Stopped with
+  // results). Tracking the previous status avoids re-firing while status
+  // stays 'Stopped', and a manual reset() sets status back to null rather
+  // than 'Stopped', so it doesn't trigger this. Skipped when total is 0 —
+  // the empty state already communicates "no results" without a toast on
+  // top of it.
+  const prevStatusRef = useRef<typeof status>(null);
+  useEffect(() => {
+    if (prevStatusRef.current === 'Running' && status === 'Stopped' && total > 0) {
+      showToast(t('screens.search.foundCount', { count: total }), 'success');
+    }
+    prevStatusRef.current = status;
+  }, [status, total, showToast, t]);
 
   const handleAddResult = useCallback(
     async (result: SearchResult) => {
@@ -267,6 +459,8 @@ function SearchScreenContent() {
 
   const onClearQuery = () => {
     setQuery('');
+    setSelectedTrackers(new Set());
+    setIsAggregatedSource(false);
     if (jobId !== null) void reset();
   };
 
@@ -315,7 +509,6 @@ function SearchScreenContent() {
 
   const pluginChips: PluginChip[] = useMemo(() => {
     const chips: PluginChip[] = [
-      { key: ENABLED, label: t('screens.search.enabledPlugins'), icon: 'checkmark-circle' },
       { key: ALL, label: t('screens.search.allPlugins'), icon: 'apps' },
     ];
     for (const p of sortedPlugins) {
@@ -370,6 +563,19 @@ function SearchScreenContent() {
         />
       );
     }
+    if (results.length > 0 && selectedTrackers.size > 0) {
+      // Raw results exist, but the tracker filter excludes all of them.
+      return (
+        <EmptyState
+          style={{ backgroundColor: colors.background }}
+          icon="funnel-outline"
+          title={t('screens.search.noTrackerResults')}
+          actionLabel={t('screens.search.allTrackers')}
+          actionIcon="close-circle-outline"
+          onAction={() => setSelectedTrackers(new Set())}
+        />
+      );
+    }
     if (status === 'Stopped' && total === 0) {
       return (
         <EmptyState
@@ -399,11 +605,20 @@ function SearchScreenContent() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header: search row + filter chip rows + status + sort dropdown.
-            Wrapping in TouchableWithoutFeedback lets the user tap any empty
-            area in the header (gap between chips, status banner, etc.) to
-            dismiss the keyboard without stealing taps from the controls. */}
+            Floats absolutely above the list and slides away on scroll (see
+            handleScroll). Wrapping in TouchableWithoutFeedback lets the user
+            tap any empty area in the header (gap between chips, status
+            banner, etc.) to dismiss the keyboard without stealing taps from
+            the controls. */}
+        <Animated.View
+          style={[
+            styles.headerContainer,
+            { transform: [{ translateY: headerTranslateY }] },
+          ]}
+          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+        >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={styles.searchCard}>
+        <View style={[styles.searchCard, { backgroundColor: colors.background }]}>
           {/* Search row: [42x42 plugins button] [search input] [42x42 submit] */}
           <View style={styles.searchRow}>
             <TouchableOpacity
@@ -444,6 +659,7 @@ function SearchScreenContent() {
                 style={styles.searchInputIcon}
               />
               <TextInput
+                ref={queryInputRef}
                 value={query}
                 onChangeText={setQuery}
                 style={[styles.searchInput, { color: colors.text }]}
@@ -526,6 +742,51 @@ function SearchScreenContent() {
             </ScrollView>
           </View>
 
+          {/* Tracker/indexer chip row — populates as results stream in, so it
+              grows while a search is still running (each plugin/indexer
+              reports at its own pace). Multi-select: toggling a chip filters
+              already-fetched results client-side, it does not re-run the
+              search. Rendered above Category since it's independent of which
+              plugin is selected. */}
+          {availableTrackers.length > 1 && (
+            <View style={styles.filterRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterRowContainer}
+              >
+                <View style={styles.filterRowLabel}>
+                  <Ionicons name="globe-outline" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.filterRowLabelText, { color: colors.textSecondary }]}>
+                    {t('screens.search.indexerLabel')}
+                  </Text>
+                </View>
+                <FilterChip
+                  label={t('screens.search.allTrackers')}
+                  active={selectedTrackers.size === 0}
+                  numberOfLines={1}
+                  style={styles.filterChip}
+                  textStyle={styles.filterChipText}
+                  onPress={() => {
+                    haptics.light();
+                    setSelectedTrackers(new Set());
+                  }}
+                />
+                {availableTrackers.map((host) => (
+                  <FilterChip
+                    key={host}
+                    label={host}
+                    active={selectedTrackers.has(host)}
+                    numberOfLines={1}
+                    style={styles.filterChip}
+                    textStyle={styles.filterChipText}
+                    onPress={() => toggleTracker(host)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           {/* Category chip row (only when a specific plugin is selected) */}
           {categories.length > 0 && (
             <View style={styles.filterRow}>
@@ -536,6 +797,9 @@ function SearchScreenContent() {
               >
                 <View style={styles.filterRowLabel}>
                   <Ionicons name="folder-outline" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.filterRowLabelText, { color: colors.textSecondary }]}>
+                    {t('screens.search.categoryLabel')}
+                  </Text>
                 </View>
                 {[
                   { id: ALL, name: t('screens.search.allCategories') },
@@ -676,6 +940,7 @@ function SearchScreenContent() {
           )}
         </View>
         </TouchableWithoutFeedback>
+        </Animated.View>
 
         {/* Results list / empty state */}
         {sortedResults.length === 0 ? (
@@ -687,6 +952,7 @@ function SearchScreenContent() {
             renderItem={({ item }) => (
               <SearchResultRow
                 result={item}
+                isAggregatedSource={isAggregatedSource}
                 onAdd={handleAddResult}
                 onLongPress={handleLongPressResult}
                 onOpenLink={handleOpenLink}
@@ -694,7 +960,9 @@ function SearchScreenContent() {
                 isAdding={pendingAddUrl === item.fileUrl}
               />
             )}
-            contentContainerStyle={{ paddingBottom: spacing.xxxl, paddingTop: spacing.xs }}
+            contentContainerStyle={{ paddingBottom: spacing.xxxl, paddingTop: headerHeight + spacing.xs }}
+            onScroll={handleScroll}
+            scrollEventThrottle={50}
             keyboardShouldPersistTaps="handled"
             // Scrolling or starting a drag on the result list dismisses the keyboard
             // on iOS, matching the system Mail/Messages convention.
@@ -721,6 +989,13 @@ function SearchScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
   },
   searchCard: {
     paddingHorizontal: spacing.md,
@@ -770,6 +1045,7 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: spacing.xs,
   },
   filterRowContainer: {
     flexDirection: 'row',
@@ -779,7 +1055,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   filterRowLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: spacing.xs,
+  },
+  filterRowLabelText: {
+    ...typography.captionSemibold,
+    letterSpacing: 0.2,
   },
   pluginsCornerButton: {
     width: 32,

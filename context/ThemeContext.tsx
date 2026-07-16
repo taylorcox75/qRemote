@@ -40,7 +40,10 @@ interface ThemeContextType {
   colors: ThemeColors;
 }
 
-function resolveIsDark(mode: ThemeMode, system: 'light' | 'dark' | null | undefined): boolean {
+function resolveIsDark(
+  mode: ThemeMode,
+  system: 'light' | 'dark' | 'unspecified' | null | undefined
+): boolean {
   if (mode === 'dark') return true;
   if (mode === 'light') return false;
   // 'system' — follow OS; default to dark if the platform can't report it yet.

@@ -90,7 +90,7 @@ module.exports = {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-router', 'expo-localization'],
+    plugins: ['expo-router', 'expo-font', 'expo-localization', "expo-mail-composer", "expo-secure-store", "expo-sharing", "expo-status-bar"],
     extra: {
       router: {},
       eas: {

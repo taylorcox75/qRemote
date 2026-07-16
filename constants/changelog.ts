@@ -12,6 +12,20 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.7.0',
+    date: '2026-07-16',
+    changes: [
+      'Search is now available to everyone — search your qBittorrent plugins, filter, sort, and add results in one tap',
+      'Filter search results by indexer as they load (works with Prowlarr/Jackett), plus category filtering across all plugins',
+      'Search results are no longer capped at 200',
+      'Search polish: filters collapse as you scroll, double-tap the tab icon to focus the search bar, result-count toast when a search finishes',
+      'Fixed toasts freezing the screen on iOS — and they now actually appear on every screen',
+      'Fixed an active search being wiped when switching apps — the app now reconnects only when the connection actually dropped',
+      'Fixed a crash loop and a stray "Endpoint not found" toast on the search tab',
+      'Upgraded to Expo SDK 57 / React Native 0.86 — now requires iOS 16.4 or later',
+    ],
+  },
+  {
     version: '3.6.0',
     date: '2026-07-04',
     changes: ['Enabled search feature flag'],
