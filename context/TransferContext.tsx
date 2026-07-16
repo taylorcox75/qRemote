@@ -41,7 +41,7 @@ async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
 }
 
 export function TransferProvider({ children }: { children: ReactNode }) {
-  const { isConnected, checkAndReconnect } = useServer();
+  const { isConnected } = useServer();
   const queryClient = useQueryClient();
 
   const appStateRef = useRef(AppState.currentState);
@@ -84,17 +84,20 @@ export function TransferProvider({ children }: { children: ReactNode }) {
       appStateRef.current = nextState;
 
       if (prevState === 'background' && nextState === 'active') {
-        const timeInBackground = Date.now() - lastActiveTime.current;
         lastActiveTime.current = Date.now();
 
         if (isConnected) {
           setIsRecoveringState(true);
           setMutationError(null);
 
-          if (timeInBackground > 30000) {
-            await checkAndReconnect();
-          }
-
+          // Deliberately NOT eagerly reconnecting here (mirrors TorrentContext
+          // and useSearchJob): checkAndReconnect always performs a fresh
+          // login, and qBittorrent ties search jobs to session state — an
+          // unnecessary re-login on foreground return orphans any in-progress
+          // search. If the session actually died while backgrounded, the
+          // torrents sync poll fails the same way and TorrentContext's
+          // reactive reconnect effect recovers the shared session for this
+          // query too — only when it's actually needed.
           await queryClient.invalidateQueries({ queryKey: ['transfer'] });
           setIsRecoveringState(false);
         }
@@ -105,7 +108,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [isConnected, checkAndReconnect, queryClient]);
+  }, [isConnected, queryClient]);
 
   const refresh = useCallback(async () => {
     if (!isConnected) return;

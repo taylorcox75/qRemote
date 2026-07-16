@@ -11,9 +11,27 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 
 ### Verification (run before considering a change done)
 - `npx tsc --noEmit` — typecheck (currently clean)
-- `npm test` — Jest (ts-jest). Tests live in `tests/`, currently 209 passing across 12 suites
-- `npm run lint` — ESLint
-- `npm run format` — Prettier
+- `npm test` — Jest (ts-jest). Tests live in `tests/`, currently 220 passing across 13 suites
+- `npm run lint` — ESLint. Run ONLY right before committing, not after every edit — the warning baseline (~140, all pre-existing) makes per-edit runs noisy and slow. Zero *errors* is the bar.
+- `npm run format` — Prettier (also commit-time only)
+
+### File Index (start here — don't re-explore what's already mapped)
+- `app/(tabs)/index.tsx` — Torrents list: filters/sort/swipe actions, collapsing header (scroll pattern copied in search.tsx)
+- `app/(tabs)/search.tsx` — Search tab: job polling UI, plugin/category/indexer filter chip rows, client-side sort, collapsing header
+- `app/(tabs)/transfer.tsx` / `app/(tabs)/settings.tsx` / `app/(tabs)/logs.tsx` — transfer stats, settings hub, connectivity logs
+- `app/search/plugins.tsx` — search plugin install/enable/uninstall
+- `app/torrent/[hash].tsx` — torrent detail (single source; old TorrentDetails.tsx component was deleted)
+- `app/server/add.tsx`, `app/server/[id].tsx` — server add/edit; presented as native modal sheets → they mount `<ModalToast/>` locally (see ToastContext)
+- `context/ServerContext.tsx` — connection lifecycle; `checkAndReconnect()` ALWAYS does a full re-login (no session-validity probe) and de-dupes concurrent calls via a shared in-flight promise. qBittorrent ties search jobs to the session — never call it eagerly on foreground/AppState events, only reactively after a request actually fails
+- `context/TorrentContext.tsx` — rid-based incremental torrent sync + the reactive auto-reconnect effect other providers piggyback on
+- `context/TransferContext.tsx` — transfer-info poll; relies on TorrentContext's reactive reconnect
+- `context/ToastContext.tsx` + `components/Toast.tsx` — global toast is a plain view (NEVER wrap in RN `<Modal>` — a Modal captures all touches and freezes the UI); native-modal-sheet screens need the locally-mounted `ModalToast`
+- `hooks/useSearchJob.ts` — search job lifecycle: start/stop/delete, 2s status+results polling, cleanup on unmount
+- `services/api/client.ts` — axios singleton; normalizes HTTP errors into human-text `Error`s (callers currently substring-match these — grep before rewording any message)
+- `services/server-manager.ts` — server CRUD + connect/reconnect/test
+- `services/storage.ts` — AsyncStorage preferences (typed shape + defaults in `types/preferences.ts`)
+- `utils/` — pure helpers: `searchResult.ts` (indexer-label heuristics), `magnet.ts`, `torrent-file.ts`, `format.ts`, `error.ts`
+- `constants/changelog.ts` — in-app "What's New" data (see Changelog discipline below)
 
 ## Architecture
 - **Routing:** Expo Router file-based routing in `app/`. The `(tabs)` directory uses parentheses because Expo Router requires this syntax for route groups — it is a framework convention, not a naming choice. The parens cannot be removed.
@@ -43,7 +61,7 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
    **Ignore semver instinct.** You never decide major/minor/patch — the only version edit you ever make is a single patch bump, and only in the EQUAL case. A new feature does NOT mean a minor bump. When in doubt, you are almost always in the DIFFER case → just append a line, touch nothing else.
 
    *Worked example:* `package.json` is `3.3.0`, top changelog entry is `3.3.1` → they DIFFER → append your line to `3.3.1`'s `changes[]`. (A wrong fix would be creating a `3.4.0` entry — don't.)
-9. **NEVER enable the `search` feature flag for App Store builds.** In-app search (Search tab + Search plugins screen) is gated by `FEATURES.search` in `constants/features.ts`, default `false`. App Store builds must not expose arbitrary-indexer search/download — only flip it to `true` for sideloaded / non-App-Store builds, and never commit it as `true` on the default branch.
+9. ~~Search feature flag~~ — retired in v3.7.0. In-app search ships publicly; `constants/features.ts` and the `FEATURES.search` gate were removed entirely. Do not reintroduce a feature-flag system for it without being asked.
 
 ## Dead Code
 All dead code files and unused client fields have been removed (Task 3.5 complete). Precedent: `components/TorrentDetails.tsx` was deleted after its markup was consolidated into `app/torrent/[hash].tsx`, which is now the single torrent-detail screen — when replacing a component with a route-level screen (or vice versa), delete the superseded file in the same change rather than leaving it as unreferenced dead code.

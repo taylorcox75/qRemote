@@ -23,8 +23,16 @@ import {
 } from '@/types/api';
 import { getErrorMessage } from '@/utils/error';
 import { useServer } from '@/context/ServerContext';
+import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
 
-const RESULTS_LIMIT = 200;
+// Large bounded cap: the old 200 silently truncated aggregator searches
+// (Prowlarr fanning out across many indexers), hiding whole indexers whose
+// results landed past position 200 in the server's ordering. 0 would mean
+// "no limit" per qBittorrent's API docs, but since this hook re-fetches the
+// full window at offset 0 on every 2s poll tick, an unbounded payload grows
+// monotonically for the whole search — 1000 keeps every realistic search
+// intact while bounding per-tick transfer/parse cost and the FlatList size.
+const RESULTS_LIMIT = 1000;
 const POLL_INTERVAL_MS = 2000;
 
 export interface UseSearchJobResult {
@@ -205,7 +213,15 @@ export function useSearchJob(): UseSearchJobResult {
     }
   }, [isConnected]);
 
-  // Refresh on returning from background while a job is active.
+  // Refresh on returning from background while a job is active. Deliberately
+  // NOT eagerly reconnecting here — checkAndReconnect always performs a
+  // fresh login (server-manager.ts has no lightweight "is my session still
+  // valid" path), so calling it on every foreground return re-authenticates
+  // even when the old session was still fine. qBittorrent's search jobs are
+  // tied to session state, so that unnecessary re-login was silently
+  // orphaning the active search. If the session actually died while
+  // backgrounded, the refetch below fails naturally and the reactive effect
+  // below picks it up and reconnects — but only when it's actually needed.
   useEffect(() => {
     const handle = (next: AppStateStatus) => {
       if (next === 'active' && activeJobRef.current !== null) {
@@ -217,6 +233,11 @@ export function useSearchJob(): UseSearchJobResult {
     const sub = AppState.addEventListener('change', handle);
     return () => sub.remove();
   }, [queryClient]);
+
+  // Auto-reconnect when polling actually fails due to auth/connection loss
+  // (e.g. a session that died while backgrounded). Shared policy with
+  // TorrentContext — trigger conditions and cooldown live in the hook.
+  useReactiveReconnect(queryError);
 
   const error = mutationError
     ?? (queryError ? getErrorMessage(queryError) : null);

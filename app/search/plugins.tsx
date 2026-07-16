@@ -16,7 +16,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useFocusEffect, Redirect } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -32,16 +32,8 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
-import { FEATURES } from '@/constants/features';
 
 export default function PluginsScreen() {
-  // Search is a compile-time feature flag (off by default for App Store builds).
-  // Block direct/deep-link navigation when the feature is disabled.
-  if (!FEATURES.search) return <Redirect href="/" />;
-  return <PluginsScreenContent />;
-}
-
-function PluginsScreenContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
@@ -132,6 +124,12 @@ function PluginsScreenContent() {
         haptics.success();
         showToast(t('screens.search.installedToast'), 'success');
         await refresh();
+        // qBT installs plugins asynchronously — the immediate refresh above
+        // often races the server, so refresh again shortly after (mirrors
+        // handleUpdateAll's workaround for the same underlying behavior).
+        setTimeout(() => {
+          void refresh();
+        }, 2000);
       } catch (err: unknown) {
         haptics.error();
         showToast(getErrorMessage(err), 'error');
@@ -304,8 +302,9 @@ function PluginRow({
           )}
           <TouchableOpacity
             onPress={onUninstall}
+            disabled={isBusy}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={styles.iconButton}
+            style={[styles.iconButton, isBusy && { opacity: 0.4 }]}
             activeOpacity={0.6}
             accessibilityLabel={t('common.delete')}
           >
