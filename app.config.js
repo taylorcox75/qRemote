@@ -32,19 +32,30 @@ module.exports = {
         // Required when CFBundleDocumentTypes is set (ITMS-90737). We import
         // .torrent files via Linking rather than UIDocumentBrowserViewController.
         LSSupportsOpeningDocumentsInPlace: true,
-        // Register as an "Open In" handler for .torrent files (issue #88)
+        // Register as an "Open In" handler for .torrent files (issues #88, #125).
+        // LSHandlerRank must be Owner (paired with the EXPORTED declaration
+        // below) for Files' tap-to-open and "Always Open With" to list the
+        // app — as a mere Alternate viewer of an unowned type, iOS fell back
+        // to QuickLook Preview and showed "No Apps Available" (#125).
         CFBundleDocumentTypes: [
           {
             CFBundleTypeName: 'BitTorrent Document',
             CFBundleTypeRole: 'Viewer',
-            LSHandlerRank: 'Alternate',
+            LSHandlerRank: 'Owner',
             LSItemContentTypes: ['org.bittorrent.torrent', 'com.bittorrent.torrent'],
           },
         ],
-        UTImportedTypeDeclarations: [
+        // EXPORTED, not imported (#125): "imported" tells iOS another app
+        // owns this type definition — but no installed app exports a torrent
+        // UTI, so the type was effectively unowned and Files offered no
+        // open-with handlers. Exporting makes qRemote the canonical definer.
+        // Conformance to public.content (alongside public.data) is also
+        // required for Files' open-with eligibility — public.data alone only
+        // gets the type into the share sheet.
+        UTExportedTypeDeclarations: [
           {
             UTTypeIdentifier: 'org.bittorrent.torrent',
-            UTTypeConformsTo: ['public.data'],
+            UTTypeConformsTo: ['public.data', 'public.content'],
             UTTypeDescription: 'BitTorrent Document',
             UTTypeTagSpecification: {
               'public.filename-extension': ['torrent'],
