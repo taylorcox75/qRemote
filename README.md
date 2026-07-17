@@ -6,53 +6,15 @@ Native iOS app for qBittorrent • **[GitHub](https://github.com/taylorcox75/qRe
 
 ## Screenshots
 
-### Torrent Card
-
-Your torrents at a glance — status, speed, progress, and ETA on every card, with one-tap pause/resume. Filter by state, search, and sort however you want.
-
 <p align="center">
-  <img src="https://i.imgur.com/8wMET7H.png" width="250">
+  <img src="screenshots/torrent-list.png" width="260">
+  <img src="screenshots/torrent-detail.png" width="260">
+  <img src="screenshots/transfer.png" width="260">
 </p>
 
-### Detailed Torrent Card
-
-Expand any card inline for the full picture: seeds, peers, ratio, availability, popularity, upload speed, category, and date added — without leaving the list.
-
 <p align="center">
-  <img src="https://i.imgur.com/sYJdadK.png" width="250">
-</p>
-
-### Torrent View
-
-Everything about a single torrent in one place. Pause, recheck, or delete up top; manage ratio limits, seeding time, save path, category, tags, trackers, files, and peers below.
-
-<p align="center">
-  <img src="https://i.imgur.com/lnbMj7E.png" width="250">
-</p>
-
-### Transfer Management
-
-Live speed graph with session and all-time stats. Set global speed limits, toggle alternative speeds, and resume, pause, or force-start everything at once. Connection health — DHT nodes, peers, and free disk space — is right there too.
-
-<p align="center">
-  <img src="https://i.imgur.com/L68N3Bw.png" width="250">
-  <img src="https://i.imgur.com/I4xmXaX.png" width="250">
-</p>
-
-### Search Plugins
-
-Search your qBittorrent search plugins directly from the app. Filter by plugin, category, or indexer (works great with Prowlarr/Jackett), sort the results, and add a torrent in one tap.
-
-<p align="center">
-  <img src="https://i.imgur.com/Nh35yPS.png" width="250">
-</p>
-
-### Torrent Settings
-
-Tune how torrents behave: default sort and filter for the list, pause on add, default save path, auto-categorize by tracker, first/last piece priority, and full category and tag management.
-
-<p align="center">
-  <img src="https://i.imgur.com/eMw77bm.png" width="250">
+  <img src="screenshots/search.png" width="260">
+  <img src="screenshots/server-settings.png" width="260">
 </p>
 
 ## What It Does
