@@ -7,7 +7,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
 import { haptics } from '@/utils/haptics';
 import { getStateColor, getStateLabel, hasEta, isTorrentComplete } from '@/utils/torrent-state';
-import { formatSpeed, formatSize, formatTime } from '@/utils/format';
+import { formatSpeed, formatSize, formatTime, formatProgress, formatAvailability } from '@/utils/format';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
@@ -154,7 +154,7 @@ function TorrentCardInner({
   const statusLine = [
     stateLabel,
     speedText,
-    `${progress.toFixed(0)}%`,
+    formatProgress(torrent.progress, 0),
     etaVisible ? formatTime(torrent.eta) : null,
     !etaVisible && seeding ? `${t('torrentDetail.ratio')}: ${(torrent.ratio ?? 0).toFixed(2)}` : null,
   ].filter(Boolean).join('  ·  ');
@@ -187,7 +187,7 @@ function TorrentCardInner({
     };
 
     if (show('status')) addItem('status', t('screens.settings.expandedCardFieldsList.status'), stateLabel);
-    if (show('progress')) addItem('progress', t('screens.settings.expandedCardFieldsList.progress'), `${progress.toFixed(1)}%`);
+    if (show('progress')) addItem('progress', t('screens.settings.expandedCardFieldsList.progress'), formatProgress(torrent.progress));
     if (show('dlSpeed')) addItem('dlSpeed', t('screens.settings.expandedCardFieldsList.dlSpeed'), dlspeed > 0 ? formatSpeed(dlspeed) : '—');
     if (show('ulSpeed')) addItem('ulSpeed', t('screens.settings.expandedCardFieldsList.ulSpeed'), upspeed > 0 ? formatSpeed(upspeed) : '—');
     if (show('eta') && etaVisible) addItem('eta', t('screens.settings.expandedCardFieldsList.eta'), formatTime(torrent.eta));
@@ -197,7 +197,7 @@ function TorrentCardInner({
     if (show('ratioLimit')) addItem('ratioLimit', t('screens.settings.expandedCardFieldsList.ratioLimit'), torrent.ratio_limit != null && torrent.ratio_limit >= 0 ? torrent.ratio_limit.toFixed(2) : '∞');
     if (show('maxRatio')) addItem('maxRatio', t('screens.settings.expandedCardFieldsList.maxRatio'), torrent.max_ratio != null && torrent.max_ratio >= 0 ? torrent.max_ratio.toFixed(2) : '∞');
     if (show('uploaded')) addItem('uploaded', t('screens.settings.expandedCardFieldsList.uploaded'), formatSize(torrent.uploaded));
-    if (show('availability')) addItem('availability', t('screens.settings.expandedCardFieldsList.availability'), torrent.availability > 0 && torrent.availability < 1 ? `${(torrent.availability * 100).toFixed(1)}%` : '—');
+    if (show('availability')) addItem('availability', t('screens.settings.expandedCardFieldsList.availability'), torrent.availability > 0 ? formatAvailability(torrent.availability) : '—');
     if (show('popularity') && torrent.popularity != null) addItem('popularity', t('screens.settings.expandedCardFieldsList.popularity'), torrent.popularity.toFixed(2));
     if (show('seedingTime')) addItem('seedingTime', t('screens.settings.expandedCardFieldsList.seedingTime'), torrent.seeding_time > 0 ? formatTime(torrent.seeding_time) : '—');
     if (show('addedOn')) addItem('addedOn', t('screens.settings.expandedCardFieldsList.addedOn'), new Date(torrent.added_on * 1000).toLocaleDateString());

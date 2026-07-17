@@ -5,6 +5,9 @@ import {
   formatDate,
   formatRatio,
   formatPercent,
+  floorTo,
+  formatProgress,
+  formatAvailability,
 } from '@/utils/format';
 
 describe('formatSize', () => {
@@ -238,5 +241,77 @@ describe('formatPercent', () => {
 
   it('formats negative values', () => {
     expect(formatPercent(-0.1)).toBe('-10.0%');
+  });
+});
+
+describe('floorTo', () => {
+  it('floors without rounding up', () => {
+    expect(floorTo(99.99, 1)).toBe(99.9);
+    expect(floorTo(99.95, 0)).toBe(99);
+  });
+
+  it('does not truncate exact decimals that binary floats under-represent', () => {
+    // 0.29 * 100 === 28.999999999999996 — naive Math.floor gives 28
+    expect(floorTo(0.29 * 100, 0)).toBe(29);
+    expect(floorTo(0.58 * 100, 0)).toBe(58);
+    expect(floorTo(1.005, 3)).toBe(1.005);
+  });
+
+  it('never pushes a genuinely-below-boundary value across it', () => {
+    expect(floorTo(99.9999, 0)).toBe(99);
+    expect(floorTo(0.9999, 3)).toBe(0.999);
+  });
+});
+
+describe('formatProgress', () => {
+  it('returns zero for null, undefined, and NaN', () => {
+    expect(formatProgress(null)).toBe('0.0%');
+    expect(formatProgress(undefined)).toBe('0.0%');
+    expect(formatProgress(NaN)).toBe('0.0%');
+    expect(formatProgress(null, 0)).toBe('0%');
+  });
+
+  it('truncates instead of rounding up near completion', () => {
+    expect(formatProgress(0.9995)).toBe('99.9%');
+    expect(formatProgress(0.999999)).toBe('99.9%');
+    expect(formatProgress(0.995, 0)).toBe('99%');
+  });
+
+  it('shows 100% only at exactly complete', () => {
+    expect(formatProgress(1)).toBe('100.0%');
+    expect(formatProgress(1, 0)).toBe('100%');
+  });
+
+  it('does not understate exact percentages (float one-ULP guard)', () => {
+    expect(formatProgress(0.29, 0)).toBe('29%');
+    expect(formatProgress(0.58, 0)).toBe('58%');
+    expect(formatProgress(0.723)).toBe('72.3%');
+  });
+
+  it('truncates mid-range extra precision', () => {
+    expect(formatProgress(0.8615)).toBe('86.1%');
+  });
+});
+
+describe('formatAvailability', () => {
+  it('returns "0.000" for null, undefined, and NaN', () => {
+    expect(formatAvailability(null)).toBe('0.000');
+    expect(formatAvailability(undefined)).toBe('0.000');
+    expect(formatAvailability(NaN)).toBe('0.000');
+  });
+
+  it('truncates instead of rounding up to 1.000', () => {
+    expect(formatAvailability(0.9999)).toBe('0.999');
+    expect(formatAvailability(0.99999)).toBe('0.999');
+  });
+
+  it('shows 1.000 only at exactly 1', () => {
+    expect(formatAvailability(1)).toBe('1.000');
+  });
+
+  it('handles ratios above 1 and float one-ULP values', () => {
+    expect(formatAvailability(2.5)).toBe('2.500');
+    // 1.005 * 1000 === 1004.9999999999999 — naive Math.floor gives 1.004
+    expect(formatAvailability(1.005)).toBe('1.005');
   });
 });

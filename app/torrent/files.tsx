@@ -27,6 +27,7 @@ import { InputModal } from '@/components/InputModal';
 import { EmptyState } from '@/components/EmptyState';
 import { torrentsApi } from '@/services/api/torrents';
 import { TorrentFile, FilePriority } from '@/types/api';
+import { formatProgress } from '@/utils/format';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { getErrorMessage } from '@/utils/error';
@@ -621,7 +622,7 @@ export default function TorrentFilesScreen() {
                             </Text>
                             <Text style={[styles.fileSeparator, { color: colors.textSecondary }]}>•</Text>
                             <Text style={[styles.fileProgress, { color: colors.textSecondary }]}>
-                              {(file.progress * 100).toFixed(1)}%
+                              {formatProgress(file.progress)}
                             </Text>
                           </View>
                         </View>

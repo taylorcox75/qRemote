@@ -80,6 +80,46 @@ export const formatPercent = (value: number | undefined | null): string => {
 };
 
 /**
+ * One-ULP guard for flooring binary floats that represent exact decimals:
+ * 0.29 * 100 === 28.999999999999996, which Math.floor would truncate to 28.
+ * Small enough that a genuinely-below-boundary value (e.g. 0.9999) can never
+ * be pushed across it.
+ */
+const FLOOR_EPSILON = 1e-6;
+
+/**
+ * Floor a value to `decimals` places without ever rounding up.
+ */
+export const floorTo = (value: number, decimals: number): number => {
+  const factor = Math.pow(10, decimals);
+  return Math.floor(value * factor + FLOOR_EPSILON) / factor;
+};
+
+/**
+ * Format a 0-1 progress fraction as a truncated percentage string.
+ * Truncates rather than rounds so an incomplete torrent (0.9995) never
+ * displays as "100%" — below 1.0 the file cannot yet be assembled.
+ */
+export const formatProgress = (
+  fraction: number | undefined | null,
+  decimals: number = 1,
+): string => {
+  if (fraction == null || isNaN(fraction)) return `${(0).toFixed(decimals)}%`;
+  return `${floorTo(fraction * 100, decimals).toFixed(decimals)}%`;
+};
+
+/**
+ * Format an availability ratio truncated to 3 decimals (e.g. 0.9999 -> "0.999").
+ * Truncates rather than rounds because availability just below 1.0 means the
+ * complete file cannot be assembled from currently-connected peers — rounding
+ * up to "1.000" hides exactly the state the user needs to see.
+ */
+export const formatAvailability = (availability: number | undefined | null): string => {
+  if (availability == null || isNaN(availability)) return '0.000';
+  return floorTo(availability, 3).toFixed(3);
+};
+
+/**
  * Format a Unix timestamp to a locale date string
  * Returns "Not provided" for invalid timestamps (0, -1, or undefined)
  */

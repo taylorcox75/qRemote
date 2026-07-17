@@ -47,7 +47,7 @@ import {
   TorrentFile,
   TorrentInfo,
 } from '@/types/api';
-import { formatDate } from '@/utils/format';
+import { formatDate, formatProgress, formatAvailability } from '@/utils/format';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 
@@ -914,7 +914,7 @@ export default function TorrentDetail() {
               <Text style={[styles.heroStatText, { color: colors.textSecondary }]}>
                 {hasEta(torrent.eta, torrent.progress)
                   ? t('torrentDetail.remaining', { time: formatTime(torrent.eta) })
-                  : progress >= 100
+                  : torrent.progress >= 1
                   ? t('torrentDetail.complete')
                   : '∞'}
               </Text>
@@ -1005,7 +1005,7 @@ export default function TorrentDetail() {
                 `${torrent.num_leechs || 0} / ${torrent.num_incomplete || 0}`,
                 handleOpenPeerDetails,
               ),
-              staticRow(t('torrentDetail.availability'), torrent.availability ? torrent.availability.toFixed(2) : '0.00'),
+              staticRow(t('torrentDetail.availability'), torrent.availability > 0 ? formatAvailability(torrent.availability) : '0.000'),
               torrent.popularity != null && staticRow(t('torrentDetail.popularity'), torrent.popularity.toFixed(2)),
             ])}
           </View>
@@ -1165,7 +1165,7 @@ export default function TorrentDetail() {
                       style={[styles.peerRow, { borderBottomColor: colors.surfaceOutline }]}
                     >
                       <Text style={[styles.peerProgress, { color: colors.text }]}>
-                        {(p.progress * 100).toFixed(1)}%
+                        {formatProgress(p.progress)}
                       </Text>
                       <View style={styles.peerInfo}>
                         <Text style={[styles.peerIp, { color: colors.text }]} numberOfLines={1}>
