@@ -1,71 +1,82 @@
 # qRemote
 
-Native iOS & Android App for qBittorrent •  **[GitHub](https://github.com/taylorcox75/qRemote/)**
+Native iOS app for qBittorrent • **[GitHub](https://github.com/taylorcox75/qRemote/)**
 
-**iOS:** [Download on the App Store](https://apps.apple.com/app/qremote-for-qbittorrent/id6756276747) · [TestFlight Beta](https://testflight.apple.com/join/ZHp9Uq4h)  
-
-
-**Android:** Closed beta — [Join Google Group](https://groups.google.com/g/qremote), then [access Play Store preview](https://play.google.com/apps/testing/com.qRemote.app)
-
-*Android Note: No recent builds, ETA End of April*
-
+**iOS:** [Download on the App Store](https://apps.apple.com/app/qremote-for-qbittorrent/id6756276747) · [TestFlight Beta](https://testflight.apple.com/join/ZHp9Uq4h)
 
 ## Screenshots
 
-### Torrents List
-Dark mode and light mode both work. Filter by status, search, and sort however you want.
+### Torrent Card
+
+Your torrents at a glance — status, speed, progress, and ETA on every card, with one-tap pause/resume. Filter by state, search, and sort however you want.
 
 <p align="center">
-  <img src="assets/screens/torrents-dark-min.PNG" width="250">
-  <img src="assets/screens/torrents-light-min.PNG" width="250">
+  <img src="https://i.imgur.com/8wMET7H.png" width="250">
 </p>
 
-### Torrent Details
-Everything you need in one place. Speeds, trackers, files, peers. Pause, delete, recheck, change priorities.
+### Detailed Torrent Card
+
+Expand any card inline for the full picture: seeds, peers, ratio, availability, popularity, upload speed, category, and date added — without leaving the list.
 
 <p align="center">
-  <img src="assets/screens/detailed-1-min.PNG" width="250">
-  <img src="assets/screens/detailed-2-min.PNG" width="250">
+  <img src="https://i.imgur.com/sYJdadK.png" width="250">
 </p>
 
-### Transfer Monitor
-Watch your speeds and tweak limits on the fly. Quick presets or set your own values.
+### Torrent View
+
+Everything about a single torrent in one place. Pause, recheck, or delete up top; manage ratio limits, seeding time, save path, category, tags, trackers, files, and peers below.
 
 <p align="center">
-  <img src="assets/screens/transfers-min.PNG" width="250">
+  <img src="https://i.imgur.com/lnbMj7E.png" width="250">
 </p>
 
-### Settings
-Connect to multiple servers. Supports IP addresses, hostnames, and subdomains. Manage categories and tags.
+### Transfer Management
+
+Live speed graph with session and all-time stats. Set global speed limits, toggle alternative speeds, and resume, pause, or force-start everything at once. Connection health — DHT nodes, peers, and free disk space — is right there too.
 
 <p align="center">
-  <img src="assets/screens/settings-min.PNG" width="250">
+  <img src="https://i.imgur.com/L68N3Bw.png" width="250">
+  <img src="https://i.imgur.com/I4xmXaX.png" width="250">
 </p>
 
+### Search Plugins
+
+Search your qBittorrent search plugins directly from the app. Filter by plugin, category, or indexer (works great with Prowlarr/Jackett), sort the results, and add a torrent in one tap.
+
 <p align="center">
-  <img src="assets/screens/add-server-min.jpg" width="250">
+  <img src="https://i.imgur.com/Nh35yPS.png" width="250">
+</p>
+
+### Torrent Settings
+
+Tune how torrents behave: default sort and filter for the list, pause on add, default save path, auto-categorize by tracker, first/last piece priority, and full category and tag management.
+
+<p align="center">
+  <img src="https://i.imgur.com/eMw77bm.png" width="250">
 </p>
 
 ## What It Does
 
-- Manage torrents: pause, resume, delete, recheck, reannounce
-- Monitor transfers with real-time updates
-- Set speed limits (global and per-torrent)
-- Manage trackers, files, and priorities
-- Multiple servers with secure credential storage
-- Categories and tags
-- Dark/light mode
+- Manage torrents: pause, resume, delete, recheck, reannounce, force start
+- Built-in search across your qBittorrent search plugins, with indexer and category filters
+- Monitor transfers with real-time updates and a live speed graph
+- Speed limits — global, per-torrent, and alternative speed toggle
+- Manage trackers, files, priorities, categories, and tags
+- Add torrents via magnet links or .torrent files (qRemote registers as an "Open With" handler)
+- Multiple servers with secure credential storage, HTTPS, and reverse-proxy Basic Auth support
+- Fully customizable theme colors, dark/light mode
+- Available in 6 languages: English, Spanish, Chinese, French, German, Russian
 
 ## Requirements
 
 - qBittorrent 4.1+ with WebUI enabled
-- iOS 14+
+- iOS 16.4+
 - Node.js 18+ (for development)
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/yourusername/qRemote.git
+git clone https://github.com/taylorcox75/qRemote.git
 cd qRemote
 npm install
 npm start
@@ -83,7 +94,7 @@ eas build --platform ios --profile production
 
 ## Setup
 
-1. Go to Settings → tap **+** 
+1. Go to Settings → tap **+**
 2. Add your qBittorrent server (IP/hostname, port, credentials)
 3. Enable HTTPS if needed
 4. Connect and you're good to go
@@ -99,4 +110,3 @@ PRs welcome. Issues too.
 ## License
 
 MIT
-
