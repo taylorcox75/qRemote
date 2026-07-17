@@ -59,5 +59,10 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.57.0"
   },
+  "overrides": {
+    "xcode": {
+      "uuid": "^11.1.1"
+    }
+  },
   "private": true
 }
