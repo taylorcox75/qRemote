@@ -14,7 +14,10 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '3.7.12',
     date: '2026-07-16',
-    changes: [],
+    changes: [
+      'Progress and availability now truncate instead of rounding up — an incomplete torrent never shows "100%", and availability below 1.0 never shows "1.000" (below 1.0 the complete file cannot be assembled from connected peers)',
+      'Availability is now shown as a ratio to 3 decimals (matching qBittorrent) and appears on the expanded card even when above 1.0',
+    ],
   },
   {
     version: '3.7.2',
