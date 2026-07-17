@@ -88,6 +88,9 @@ export default function AdvancedSettingsScreen() {
           username: s.username,
           useHttps: s.useHttps,
           bypassAuth: s.bypassAuth,
+          useBasicAuth: s.useBasicAuth,
+          basicAuthUsername: s.basicAuthUsername,
+          // basicAuthPassword intentionally excluded — re-enter after import
         })),
         exportDate: new Date().toISOString(),
         appVersion: APP_VERSION,
@@ -191,7 +194,7 @@ export default function AdvancedSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.advanced')}</Text>

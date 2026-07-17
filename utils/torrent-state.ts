@@ -72,6 +72,23 @@ export function getStateColor(
   }
 }
 
+/**
+ * `progress` is the raw fraction (0–1); a torrent is complete/seeding once
+ * it reaches 100%, regardless of its exact state (uploading, stalledUP,
+ * forcedUP, paused-after-completion, ...).
+ */
+export function isTorrentComplete(progress: number): boolean {
+  return progress >= 1;
+}
+
+/**
+ * ETA is only meaningful while a torrent is still downloading.
+ * `8640000` is qBittorrent's sentinel for an infinite/unknown ETA.
+ */
+export function hasEta(eta: number, progress: number): boolean {
+  return eta > 0 && eta < 8640000 && !isTorrentComplete(progress);
+}
+
 type TranslateFn = (key: string) => string;
 
 export function getStateLabel(

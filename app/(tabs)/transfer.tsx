@@ -38,6 +38,7 @@ import { SpeedGraph } from '@/components/SpeedGraph';
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { OptionPicker } from '@/components/OptionPicker';
 import { getErrorMessage } from '@/utils/error';
+import { haptics } from '@/utils/haptics';
 
 const SPEED_PRESETS = [
   { label: '∞', value: 0 },
@@ -266,6 +267,7 @@ export default function TransferScreen() {
   };
 
   const handleToggleAltSpeed = async () => {
+    haptics.medium();
     setActionLoading('altSpeed');
     try {
       await toggleAlternativeSpeedLimits();
@@ -324,8 +326,9 @@ export default function TransferScreen() {
       setSettingLimit(true);
       setLimitModalVisible(false);
       if (limitType === 'altDownload') {
-        // Alt limits are passed directly in KB/s (preferences API accepts KiB/s)
-        await setAltDownloadLimit(Math.round(limit));
+        // Alt limits accept bytes/s on the qBT preferences endpoint, so convert
+        // the KiB/s user input the same way regular limits do.
+        await setAltDownloadLimit(kbToBytes(Math.round(limit)));
         showToast(
           limit === 0
             ? t('screens.transfer.altDownloadLimitRemoved')
@@ -333,7 +336,7 @@ export default function TransferScreen() {
           'success',
         );
       } else if (limitType === 'altUpload') {
-        await setAltUploadLimit(Math.round(limit));
+        await setAltUploadLimit(kbToBytes(Math.round(limit)));
         showToast(
           limit === 0
             ? t('screens.transfer.altUploadLimitRemoved')
@@ -362,7 +365,7 @@ export default function TransferScreen() {
       case 'connected':
         return colors.success;
       case 'firewalled':
-        return '#FF9500';
+        return colors.warning;
       case 'disconnected':
         return colors.error;
       default:

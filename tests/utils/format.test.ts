@@ -5,6 +5,9 @@ import {
   formatDate,
   formatRatio,
   formatPercent,
+  floorTo,
+  formatProgress,
+  formatAvailability,
 } from '@/utils/format';
 
 describe('formatSize', () => {
@@ -32,27 +35,27 @@ describe('formatSize', () => {
     expect(formatSize(500)).toBe('500.00 B');
   });
 
-  it('formats KB correctly', () => {
-    expect(formatSize(1024)).toBe('1.00 KB');
-    expect(formatSize(1536)).toBe('1.50 KB');
+  it('formats KiB correctly', () => {
+    expect(formatSize(1024)).toBe('1.00 KiB');
+    expect(formatSize(1536)).toBe('1.50 KiB');
   });
 
-  it('formats MB correctly', () => {
-    expect(formatSize(1048576)).toBe('1.00 MB');
-    expect(formatSize(5 * 1024 * 1024)).toBe('5.00 MB');
+  it('formats MiB correctly', () => {
+    expect(formatSize(1048576)).toBe('1.00 MiB');
+    expect(formatSize(5 * 1024 * 1024)).toBe('5.00 MiB');
   });
 
-  it('formats GB correctly', () => {
-    expect(formatSize(1073741824)).toBe('1.00 GB');
+  it('formats GiB correctly', () => {
+    expect(formatSize(1073741824)).toBe('1.00 GiB');
   });
 
-  it('formats TB correctly', () => {
-    expect(formatSize(1099511627776)).toBe('1.00 TB');
+  it('formats TiB correctly', () => {
+    expect(formatSize(1099511627776)).toBe('1.00 TiB');
   });
 
   it('handles very large numbers', () => {
     const result = formatSize(5 * 1099511627776);
-    expect(result).toBe('5.00 TB');
+    expect(result).toBe('5.00 TiB');
   });
 });
 
@@ -81,22 +84,22 @@ describe('formatSpeed', () => {
     expect(formatSpeed(500)).toBe('500.0 B/s');
   });
 
-  it('formats KB/s correctly', () => {
-    expect(formatSpeed(1024)).toBe('1.0 KB/s');
-    expect(formatSpeed(8700)).toBe('8.5 KB/s');
+  it('formats KiB/s correctly', () => {
+    expect(formatSpeed(1024)).toBe('1.0 KiB/s');
+    expect(formatSpeed(8700)).toBe('8.5 KiB/s');
   });
 
-  it('formats MB/s correctly', () => {
-    expect(formatSpeed(1048576)).toBe('1.0 MB/s');
+  it('formats MiB/s correctly', () => {
+    expect(formatSpeed(1048576)).toBe('1.0 MiB/s');
   });
 
-  it('formats GB/s correctly', () => {
-    expect(formatSpeed(1073741824)).toBe('1.0 GB/s');
+  it('formats GiB/s correctly', () => {
+    expect(formatSpeed(1073741824)).toBe('1.0 GiB/s');
   });
 
   it('handles very large numbers', () => {
     const result = formatSpeed(10 * 1073741824);
-    expect(result).toBe('10.0 GB/s');
+    expect(result).toBe('10.0 GiB/s');
   });
 });
 
@@ -238,5 +241,77 @@ describe('formatPercent', () => {
 
   it('formats negative values', () => {
     expect(formatPercent(-0.1)).toBe('-10.0%');
+  });
+});
+
+describe('floorTo', () => {
+  it('floors without rounding up', () => {
+    expect(floorTo(99.99, 1)).toBe(99.9);
+    expect(floorTo(99.95, 0)).toBe(99);
+  });
+
+  it('does not truncate exact decimals that binary floats under-represent', () => {
+    // 0.29 * 100 === 28.999999999999996 — naive Math.floor gives 28
+    expect(floorTo(0.29 * 100, 0)).toBe(29);
+    expect(floorTo(0.58 * 100, 0)).toBe(58);
+    expect(floorTo(1.005, 3)).toBe(1.005);
+  });
+
+  it('never pushes a genuinely-below-boundary value across it', () => {
+    expect(floorTo(99.9999, 0)).toBe(99);
+    expect(floorTo(0.9999, 3)).toBe(0.999);
+  });
+});
+
+describe('formatProgress', () => {
+  it('returns zero for null, undefined, and NaN', () => {
+    expect(formatProgress(null)).toBe('0.0%');
+    expect(formatProgress(undefined)).toBe('0.0%');
+    expect(formatProgress(NaN)).toBe('0.0%');
+    expect(formatProgress(null, 0)).toBe('0%');
+  });
+
+  it('truncates instead of rounding up near completion', () => {
+    expect(formatProgress(0.9995)).toBe('99.9%');
+    expect(formatProgress(0.999999)).toBe('99.9%');
+    expect(formatProgress(0.995, 0)).toBe('99%');
+  });
+
+  it('shows 100% only at exactly complete', () => {
+    expect(formatProgress(1)).toBe('100.0%');
+    expect(formatProgress(1, 0)).toBe('100%');
+  });
+
+  it('does not understate exact percentages (float one-ULP guard)', () => {
+    expect(formatProgress(0.29, 0)).toBe('29%');
+    expect(formatProgress(0.58, 0)).toBe('58%');
+    expect(formatProgress(0.723)).toBe('72.3%');
+  });
+
+  it('truncates mid-range extra precision', () => {
+    expect(formatProgress(0.8615)).toBe('86.1%');
+  });
+});
+
+describe('formatAvailability', () => {
+  it('returns "0.000" for null, undefined, and NaN', () => {
+    expect(formatAvailability(null)).toBe('0.000');
+    expect(formatAvailability(undefined)).toBe('0.000');
+    expect(formatAvailability(NaN)).toBe('0.000');
+  });
+
+  it('truncates instead of rounding up to 1.000', () => {
+    expect(formatAvailability(0.9999)).toBe('0.999');
+    expect(formatAvailability(0.99999)).toBe('0.999');
+  });
+
+  it('shows 1.000 only at exactly 1', () => {
+    expect(formatAvailability(1)).toBe('1.000');
+  });
+
+  it('handles ratios above 1 and float one-ULP values', () => {
+    expect(formatAvailability(2.5)).toBe('2.500');
+    // 1.005 * 1000 === 1004.9999999999999 — naive Math.floor gives 1.004
+    expect(formatAvailability(1.005)).toBe('1.005');
   });
 });

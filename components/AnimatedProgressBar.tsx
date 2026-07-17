@@ -88,6 +88,7 @@ export function AnimatedProgressBar({
               styles.glow,
               {
                 backgroundColor: barColor,
+                shadowColor: barColor,
                 opacity: 0.4,
                 transform: [{ scale: pulseAnim }],
               },
@@ -105,15 +106,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   background: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   fill: {
     height: '100%',
     position: 'relative',
   },
   glow: {
-    ...StyleSheet.absoluteFillObject,
-    shadowColor: '#000',
+    ...StyleSheet.absoluteFill,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 8,

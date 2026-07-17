@@ -16,8 +16,8 @@ interface TransferContextType {
   toggleAlternativeSpeedLimits: () => Promise<void>;
   setDownloadLimit: (limit: number) => Promise<void>;
   setUploadLimit: (limit: number) => Promise<void>;
-  setAltDownloadLimit: (kbLimit: number) => Promise<void>;
-  setAltUploadLimit: (kbLimit: number) => Promise<void>;
+  setAltDownloadLimit: (bytesLimit: number) => Promise<void>;
+  setAltUploadLimit: (bytesLimit: number) => Promise<void>;
 }
 
 const TransferContext = createContext<TransferContextType | undefined>(undefined);
@@ -32,14 +32,16 @@ async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
   return {
     ...info,
     use_alt_speed_limits: altSpeedLimitsState,
-    // Preferences returns kB/s; multiply by 1024 to normalize to bytes/s like dl_rate_limit
-    alt_dl_limit: serverPrefs?.alt_dl_limit != null ? (serverPrefs.alt_dl_limit as number) * 1024 : undefined,
-    alt_up_limit: serverPrefs?.alt_ul_limit != null ? (serverPrefs.alt_ul_limit as number) * 1024 : undefined,
+    // qBittorrent's app/preferences endpoint stores alt_*_limit in bytes/s
+    // (despite the WebUI API wiki claiming KiB/s). Verified empirically: setting
+    // 1024 ends up as 1 KiB/s in qBT's WebUI, i.e. qBT divides by 1024 for display.
+    alt_dl_limit: serverPrefs?.alt_dl_limit != null ? (serverPrefs.alt_dl_limit as number) : undefined,
+    alt_up_limit: serverPrefs?.alt_up_limit != null ? (serverPrefs.alt_up_limit as number) : undefined,
   };
 }
 
 export function TransferProvider({ children }: { children: ReactNode }) {
-  const { isConnected, checkAndReconnect } = useServer();
+  const { isConnected } = useServer();
   const queryClient = useQueryClient();
 
   const appStateRef = useRef(AppState.currentState);
@@ -82,17 +84,20 @@ export function TransferProvider({ children }: { children: ReactNode }) {
       appStateRef.current = nextState;
 
       if (prevState === 'background' && nextState === 'active') {
-        const timeInBackground = Date.now() - lastActiveTime.current;
         lastActiveTime.current = Date.now();
 
         if (isConnected) {
           setIsRecoveringState(true);
           setMutationError(null);
 
-          if (timeInBackground > 30000) {
-            await checkAndReconnect();
-          }
-
+          // Deliberately NOT eagerly reconnecting here (mirrors TorrentContext
+          // and useSearchJob): checkAndReconnect always performs a fresh
+          // login, and qBittorrent ties search jobs to session state — an
+          // unnecessary re-login on foreground return orphans any in-progress
+          // search. If the session actually died while backgrounded, the
+          // torrents sync poll fails the same way and TorrentContext's
+          // reactive reconnect effect recovers the shared session for this
+          // query too — only when it's actually needed.
           await queryClient.invalidateQueries({ queryKey: ['transfer'] });
           setIsRecoveringState(false);
         }
@@ -103,7 +108,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [isConnected, checkAndReconnect, queryClient]);
+  }, [isConnected, queryClient]);
 
   const refresh = useCallback(async () => {
     if (!isConnected) return;
@@ -140,20 +145,24 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, queryClient]);
 
-  const setAltDownloadLimit = useCallback(async (kbLimit: number) => {
+  // Alt limits use the pref keys alt_dl_limit / alt_up_limit (note: 'up', not 'ul';
+  // confirmed against qBT 5.x server output) and are stored in bytes/s on the
+  // app/preferences endpoint, despite the WebUI API wiki claiming KiB/s.
+  // Mirrors the bytes/s contract of setDownloadLimit / setUploadLimit above.
+  const setAltDownloadLimit = useCallback(async (bytesLimit: number) => {
     if (!isConnected) return;
     try {
-      await applicationApi.setPreferences({ alt_dl_limit: kbLimit });
+      await applicationApi.setPreferences({ alt_dl_limit: bytesLimit });
       await queryClient.invalidateQueries({ queryKey: ['transfer'] });
     } catch (err: unknown) {
       setMutationError(getErrorMessage(err));
     }
   }, [isConnected, queryClient]);
 
-  const setAltUploadLimit = useCallback(async (kbLimit: number) => {
+  const setAltUploadLimit = useCallback(async (bytesLimit: number) => {
     if (!isConnected) return;
     try {
-      await applicationApi.setPreferences({ alt_ul_limit: kbLimit });
+      await applicationApi.setPreferences({ alt_up_limit: bytesLimit });
       await queryClient.invalidateQueries({ queryKey: ['transfer'] });
     } catch (err: unknown) {
       setMutationError(getErrorMessage(err));

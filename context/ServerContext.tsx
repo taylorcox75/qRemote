@@ -1,14 +1,22 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ServerConfig } from '@/types/api';
+import { ServerConfig, ServerEndpointKind } from '@/types/api';
 import { ServerManager } from '@/services/server-manager';
 import { apiClient } from '@/services/api/client';
 import { storageService } from '@/services/storage';
+import { getActiveEndpoint } from '@/utils/server';
+import { clogInfo, clogWarn } from '@/services/connectivity-log';
 
 interface ServerContextType {
   currentServer: ServerConfig | null;
   isConnected: boolean;
   isLoading: boolean;
+  /**
+   * Which endpoint of `currentServer` is currently active in `apiClient`.
+   * Null when not connected or when the server has no fallback configured
+   * and the endpoint is unambiguous (callers can treat null as "primary").
+   */
+  activeEndpoint: ServerEndpointKind | null;
   connectToServer: (server: ServerConfig) => Promise<boolean>;
   disconnect: () => Promise<void>;
   reconnect: () => Promise<boolean>;
@@ -20,8 +28,20 @@ const ServerContext = createContext<ServerContextType | undefined>(undefined);
 export function ServerProvider({ children }: { children: ReactNode }) {
   const [currentServer, setCurrentServer] = useState<ServerConfig | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [activeEndpoint, setActiveEndpoint] = useState<ServerEndpointKind | null>(null);
   const [initLoading, setInitLoading] = useState(true);
   const [reconnecting, setReconnecting] = useState(false);
+
+  // Derive the active endpoint from the server config + the endpoint the
+  // apiClient ended up on after a (re)connect. Called from each connection
+  // flow rather than via subscription because apiClient doesn't emit events.
+  const refreshActiveEndpoint = useCallback((server: ServerConfig | null, connected: boolean) => {
+    if (!server || !connected) {
+      setActiveEndpoint(null);
+      return;
+    }
+    setActiveEndpoint(getActiveEndpoint(server, apiClient.getServer()));
+  }, []);
 
   useEffect(() => {
     async function autoConnect() {
@@ -47,28 +67,38 @@ export function ServerProvider({ children }: { children: ReactNode }) {
           try {
             const connected = await ServerManager.connectToServer(server);
             setIsConnected(connected);
+            refreshActiveEndpoint(server, connected);
+            // On failure, connectToServer/connectToEndpoint has already
+            // cleared apiClient and logged the reason — no need to repeat it.
             if (!connected) {
               setCurrentServer(null);
-              apiClient.setServer(null);
             }
           } catch {
             setIsConnected(false);
+            setActiveEndpoint(null);
             setCurrentServer(null);
-            apiClient.setServer(null);
           }
         } else {
           setIsConnected(false);
-          apiClient.setServer(null);
+          setActiveEndpoint(null);
+          if (apiClient.getServer()) {
+            clogInfo('CONN', 'No saved server to auto-connect to at startup — clearing API client');
+            apiClient.setServer(null);
+          }
         }
       } catch {
         setIsConnected(false);
-        apiClient.setServer(null);
+        setActiveEndpoint(null);
+        if (apiClient.getServer()) {
+          clogWarn('CONN', 'Startup auto-connect failed unexpectedly — clearing API client');
+          apiClient.setServer(null);
+        }
       } finally {
         setInitLoading(false);
       }
     }
     autoConnect();
-  }, []);
+  }, [refreshActiveEndpoint]);
 
   const connectMutation = useMutation({
     mutationFn: (server: ServerConfig) => ServerManager.connectToServer(server),
@@ -76,12 +106,15 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       if (success) {
         setCurrentServer(server);
         setIsConnected(true);
+        refreshActiveEndpoint(server, true);
       } else {
         setIsConnected(false);
+        setActiveEndpoint(null);
       }
     },
     onError: () => {
       setIsConnected(false);
+      setActiveEndpoint(null);
     },
   });
 
@@ -101,6 +134,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       setCurrentServer(null);
       setIsConnected(false);
+      setActiveEndpoint(null);
     },
   });
 
@@ -113,36 +147,64 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       setReconnecting(true);
       const success = await ServerManager.reconnect();
       setIsConnected(success);
+      refreshActiveEndpoint(currentServer, success);
       return success;
     } catch {
       setIsConnected(false);
+      setActiveEndpoint(null);
       return false;
     } finally {
       setReconnecting(false);
     }
-  }, []);
+  }, [currentServer, refreshActiveEndpoint]);
 
-  const checkAndReconnect = useCallback(async (): Promise<boolean> => {
-    if (!currentServer) {
-      setIsConnected(false);
-      return false;
+  // Multiple independent consumers (TorrentContext, useSearchJob) each call
+  // this on their own AppState foreground listener, all firing off the same
+  // OS event. Without de-duping, two concurrent reconnect attempts race each
+  // other's login/cookie-refresh flow — one can see the other's in-progress
+  // state as a failure, flipping isConnected to false for a moment even
+  // though the session was actually fine, which then trips anything that
+  // clears state on disconnect (e.g. an active search job). Sharing one
+  // in-flight promise across all callers avoids that entirely.
+  const checkAndReconnectPromiseRef = useRef<Promise<boolean> | null>(null);
+
+  const checkAndReconnect = useCallback((): Promise<boolean> => {
+    if (checkAndReconnectPromiseRef.current) {
+      return checkAndReconnectPromiseRef.current;
     }
 
-    try {
-      const success = await ServerManager.reconnect();
-      setIsConnected(success);
-      return success;
-    } catch {
-      try {
-        const reconnected = await ServerManager.connectToServer(currentServer);
-        setIsConnected(reconnected);
-        return reconnected;
-      } catch {
+    const run = async (): Promise<boolean> => {
+      if (!currentServer) {
         setIsConnected(false);
+        setActiveEndpoint(null);
         return false;
       }
-    }
-  }, [currentServer]);
+
+      try {
+        const success = await ServerManager.reconnect();
+        setIsConnected(success);
+        refreshActiveEndpoint(currentServer, success);
+        return success;
+      } catch {
+        try {
+          const reconnected = await ServerManager.connectToServer(currentServer);
+          setIsConnected(reconnected);
+          refreshActiveEndpoint(currentServer, reconnected);
+          return reconnected;
+        } catch {
+          setIsConnected(false);
+          setActiveEndpoint(null);
+          return false;
+        }
+      }
+    };
+
+    const promise = run().finally(() => {
+      checkAndReconnectPromiseRef.current = null;
+    });
+    checkAndReconnectPromiseRef.current = promise;
+    return promise;
+  }, [currentServer, refreshActiveEndpoint]);
 
   const isLoading =
     initLoading || connectMutation.isPending || disconnectMutation.isPending || reconnecting;
@@ -153,6 +215,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         currentServer,
         isConnected,
         isLoading,
+        activeEndpoint,
         connectToServer,
         disconnect,
         reconnect,

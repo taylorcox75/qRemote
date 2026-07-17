@@ -92,7 +92,7 @@ function getRandomColor(): string {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 9999,
   },
   confettiPiece: {

@@ -6,12 +6,16 @@
 import axios, { AxiosInstance, AxiosError, AxiosHeaders } from 'axios';
 import { ServerConfig } from '@/types/api';
 import { clogDebug, clogInfo, clogWarn, clogError } from '@/services/connectivity-log';
+import { ApiFeatures, getApiFeatures } from '@/utils/apiVersion';
+import { basicAuthHeader } from '@/utils/basicAuth';
 
 class ApiClient {
   private client: AxiosInstance;
   private currentServer: ServerConfig | null = null;
   private cookies: string = '';
   private retryAttempts: number = 3;
+  private apiVersion: string | null = null;
+  private cachedFeatures: ApiFeatures | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -55,6 +59,14 @@ class ApiClient {
         
         clogDebug('HTTP', `${config.method?.toUpperCase() || 'REQ'} ${config.baseURL}${config.url || ''}`);
         
+        // Add proxy Basic Auth header when configured
+        if (this.currentServer.useBasicAuth && this.currentServer.basicAuthUsername) {
+          config.headers.Authorization = basicAuthHeader(
+            this.currentServer.basicAuthUsername,
+            this.currentServer.basicAuthPassword ?? ''
+          );
+        }
+
         // Add cookies if available
         if (this.cookies) {
           config.headers.Cookie = this.cookies;
@@ -168,10 +180,28 @@ class ApiClient {
     }
   }
 
+  setApiVersion(v: string | null): void {
+    this.apiVersion = v;
+    this.cachedFeatures = null;
+  }
+
+  getApiVersion(): string | null {
+    return this.apiVersion;
+  }
+
+  getApiFeatures(): ApiFeatures {
+    if (!this.cachedFeatures) {
+      this.cachedFeatures = getApiFeatures(this.apiVersion);
+    }
+    return this.cachedFeatures;
+  }
+
   setServer(server: ServerConfig | null) {
     // Only clear cookies if we're switching to a different server or disconnecting
     if (!server || (this.currentServer && this.currentServer.id !== server.id)) {
       this.cookies = '';
+      this.apiVersion = null;
+      this.cachedFeatures = null;
     }
     this.currentServer = server;
     if (server) {

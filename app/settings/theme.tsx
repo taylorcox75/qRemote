@@ -5,8 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,11 +13,13 @@ import { useTranslation } from 'react-i18next';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ColorPicker } from '@/components/ColorPicker';
+import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
 import { useToast } from '@/context/ToastContext';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
+import type { ThemeMode } from '@/types/preferences';
 
 interface ColorSettingRowProps {
   label: string;
@@ -43,11 +43,12 @@ function ColorSettingRow({ label, color, onPress, colors }: ColorSettingRowProps
 
 export default function ThemeSettingsScreen() {
   const router = useRouter();
-  const { isDark, toggleTheme, colors, reloadCustomColors } = useTheme();
+  const { isDark, themeMode, setThemeMode, colors, reloadCustomColors } = useTheme();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [colorPickerKey, setColorPickerKey] = useState<keyof ColorTheme | null>(null);
+  const [themeModePickerVisible, setThemeModePickerVisible] = useState(false);
 
   useEffect(() => {
     reloadCustomColors();
@@ -57,6 +58,15 @@ export default function ThemeSettingsScreen() {
     setColorPickerKey(key);
     setColorPickerVisible(true);
   };
+
+  const themeModeOptions: OptionPickerItem[] = [
+    { label: t('screens.settings.themeModeSystem'), value: 'system', icon: 'phone-portrait-outline' },
+    { label: t('screens.settings.themeModeLight'), value: 'light', icon: 'sunny-outline' },
+    { label: t('screens.settings.themeModeDark'), value: 'dark', icon: 'moon-outline' },
+  ];
+  const currentThemeModeLabel =
+    themeModeOptions.find((opt) => opt.value === themeMode)?.label ??
+    t('screens.settings.themeModeSystem');
 
   return (
     <>
@@ -68,34 +78,44 @@ export default function ThemeSettingsScreen() {
             onPress={() => router.back()}
             style={styles.headerButton}
             activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Theme & Colors</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.themeAndColors')}</Text>
           <View style={styles.headerButton} />
         </View>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Theme Toggle */}
+        {/* Theme Mode */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.appearance').toUpperCase()}</Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <View style={styles.settingRow}>
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => setThemeModePickerVisible(true)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('screens.settings.themeMode')}
+              accessibilityValue={{ text: currentThemeModeLabel }}
+            >
               <View style={styles.settingLeft}>
-                <Ionicons name="moon-outline" size={22} color={colors.primary} />
+                <Ionicons
+                  name={isDark ? 'moon-outline' : 'sunny-outline'}
+                  size={22}
+                  color={colors.primary}
+                />
                 <View style={styles.settingText}>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.darkMode')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.themeMode')}</Text>
                   <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                    {t('screens.settings.darkModeHint')}
+                    {t('screens.settings.themeModeHint')}
                   </Text>
                 </View>
               </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                ios_backgroundColor={colors.surfaceOutline}
-              />
-            </View>
+              <View style={styles.themeModeValue}>
+                <Text style={[styles.themeModeValueText, { color: colors.text }]}>{currentThemeModeLabel}</Text>
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -104,6 +124,8 @@ export default function ThemeSettingsScreen() {
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.torrentStateColors')}</Text>
             <TouchableOpacity
+              accessibilityLabel={t('screens.settings.resetStateColors')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={async () => {
                 try {
                   await colorThemeManager.resetTorrentStateColors(isDark);
@@ -202,6 +224,8 @@ export default function ThemeSettingsScreen() {
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.advancedColors')}</Text>
             <TouchableOpacity
+              accessibilityLabel={t('screens.settings.resetColors')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={async () => {
                 try {
                   await colorThemeManager.resetCustomColors(isDark);
@@ -302,6 +326,18 @@ export default function ThemeSettingsScreen() {
         />
         </ScrollView>
       </SafeAreaView>
+
+      <OptionPicker
+        visible={themeModePickerVisible}
+        title={t('screens.settings.themeMode')}
+        options={themeModeOptions}
+        selectedValue={themeMode}
+        onSelect={async (value) => {
+          await setThemeMode(value as ThemeMode);
+          setThemeModePickerVisible(false);
+        }}
+        onClose={() => setThemeModePickerVisible(false)}
+      />
     </>
   );
 }
@@ -317,7 +353,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128, 128, 128, 0.2)',
   },
   headerButton: {
     width: 40,
@@ -406,6 +441,15 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: borderRadius.small,
     borderWidth: 2,
+  },
+  themeModeValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  themeModeValueText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

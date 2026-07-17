@@ -170,7 +170,7 @@ export default function TorrentDefaultsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.torrentList')}</Text>
@@ -271,7 +271,11 @@ export default function TorrentDefaultsScreen() {
                     {defaultSavePath ? <Text style={[styles.settingHint, { color: colors.textSecondary }]} numberOfLines={1}>{defaultSavePath}</Text> : null}
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => setSavePathModalVisible(true)}>
+                <TouchableOpacity
+                  onPress={() => setSavePathModalVisible(true)}
+                  accessibilityLabel={t('common.edit')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Ionicons name="create-outline" size={22} color={colors.primary} />
                 </TouchableOpacity>
               </View>
@@ -316,7 +320,11 @@ export default function TorrentDefaultsScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}>{t('screens.settings.categories').toUpperCase()}</Text>
-                <TouchableOpacity onPress={() => setShowAddCategory(!showAddCategory)}>
+                <TouchableOpacity
+                  onPress={() => setShowAddCategory(!showAddCategory)}
+                  accessibilityLabel={showAddCategory ? t('common.cancel') : t('screens.settings.addCategory')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Ionicons name={showAddCategory ? 'close-circle' : 'add-circle'} size={24} color={colors.primary} />
                 </TouchableOpacity>
               </View>
@@ -374,6 +382,8 @@ export default function TorrentDefaultsScreen() {
                                 showToast(t('errors.failedToDeleteCategory'), 'error');
                               }
                             }}
+                            accessibilityLabel={t('common.delete')}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
                             <Ionicons name="trash-outline" size={20} color={colors.error} />
                           </TouchableOpacity>
@@ -392,7 +402,11 @@ export default function TorrentDefaultsScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}>{t('screens.settings.tags').toUpperCase()}</Text>
-                <TouchableOpacity onPress={() => setShowAddTag(!showAddTag)}>
+                <TouchableOpacity
+                  onPress={() => setShowAddTag(!showAddTag)}
+                  accessibilityLabel={showAddTag ? t('common.cancel') : t('screens.settings.createTag')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Ionicons name={showAddTag ? 'close-circle' : 'add-circle'} size={24} color={colors.primary} />
                 </TouchableOpacity>
               </View>

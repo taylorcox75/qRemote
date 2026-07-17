@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/services/query-client';
 import { ServerProvider } from '@/context/ServerContext';
+import { ApiVersionProvider } from '@/context/ApiVersionContext';
 import { TorrentProvider } from '@/context/TorrentContext';
 import { TransferProvider } from '@/context/TransferContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
@@ -17,6 +18,7 @@ import { apiClient } from '@/services/api/client';
 import { setHapticsEnabled } from '@/utils/haptics';
 import { setDebugMode as setConnectivityDebugMode } from '@/services/connectivity-log';
 import { extractMagnetLink } from '@/utils/magnet';
+import { extractTorrentFile } from '@/utils/torrent-file';
 
 const { width } = Dimensions.get('window');
 
@@ -24,25 +26,45 @@ function StackNavigator() {
   const { colors } = useTheme();
   const router = useRouter();
   const lastHandledMagnetRef = useRef<{ value: string; at: number } | null>(null);
+  const lastHandledTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
 
   useEffect(() => {
     const handleIncomingUrl = (incomingUrl?: string | null) => {
       const magnetLink = extractMagnetLink(incomingUrl);
-      if (!magnetLink) return;
+      if (magnetLink) {
+        const now = Date.now();
+        if (
+          lastHandledMagnetRef.current &&
+          lastHandledMagnetRef.current.value === magnetLink &&
+          now - lastHandledMagnetRef.current.at < 1500
+        ) {
+          return;
+        }
+        lastHandledMagnetRef.current = { value: magnetLink, at: now };
+
+        router.push({
+          pathname: '/',
+          params: { magnet: magnetLink },
+        });
+        return;
+      }
+
+      const torrentFile = extractTorrentFile(incomingUrl);
+      if (!torrentFile) return;
 
       const now = Date.now();
       if (
-        lastHandledMagnetRef.current &&
-        lastHandledMagnetRef.current.value === magnetLink &&
-        now - lastHandledMagnetRef.current.at < 1500
+        lastHandledTorrentFileRef.current &&
+        lastHandledTorrentFileRef.current.value === torrentFile.uri &&
+        now - lastHandledTorrentFileRef.current.at < 1500
       ) {
         return;
       }
-      lastHandledMagnetRef.current = { value: magnetLink, at: now };
+      lastHandledTorrentFileRef.current = { value: torrentFile.uri, at: now };
 
       router.push({
         pathname: '/',
-        params: { magnet: magnetLink },
+        params: { torrentFileUri: torrentFile.uri, torrentFileName: torrentFile.name },
       });
     };
 
@@ -122,11 +144,13 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <ToastProvider>
               <ServerProvider>
+                <ApiVersionProvider>
                 <TorrentProvider>
                   <TransferProvider>
                     <StackNavigator />
                   </TransferProvider>
                 </TorrentProvider>
+                </ApiVersionProvider>
               </ServerProvider>
             </ToastProvider>
           </QueryClientProvider>

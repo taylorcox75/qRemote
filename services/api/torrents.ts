@@ -103,15 +103,16 @@ export const torrentsApi = {
   },
 
   /**
-   * Pause torrents
+   * Pause torrents.
+   * Uses /torrents/stop on qBittorrent 5.x (WebAPI ≥ 2.11) and /torrents/pause on 4.x.
    */
   async pauseTorrents(hashes: string[]): Promise<void> {
     const hashString = hashes.join('|');
+    const endpoint = apiClient.getApiFeatures().useStartStopEndpoints ? 'stop' : 'pause';
     try {
-      const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/stop`, {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/${endpoint}`, {
         hashes: hashString,
       });
-      // console.log('Pause response:', response);
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
         console.error('Pause API error:', {
@@ -126,12 +127,14 @@ export const torrentsApi = {
   },
 
   /**
-   * Resume torrents
+   * Resume torrents.
+   * Uses /torrents/start on qBittorrent 5.x (WebAPI ≥ 2.11) and /torrents/resume on 4.x.
    */
   async resumeTorrents(hashes: string[]): Promise<void> {
     const hashString = hashes.join('|');
+    const endpoint = apiClient.getApiFeatures().useStartStopEndpoints ? 'start' : 'resume';
     try {
-      const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/start`, {
+      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/${endpoint}`, {
         hashes: hashString,
       });
     } catch (error: unknown) {

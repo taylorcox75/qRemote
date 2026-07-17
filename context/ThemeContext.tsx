@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Appearance, useColorScheme } from 'react-native';
 import { storageService } from '@/services/storage';
 import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
+import type { ThemeMode } from '@/types/preferences';
 
 export interface ThemeColors {
   background: string;
@@ -28,9 +30,42 @@ export interface ThemeColors {
 
 interface ThemeContextType {
   isDark: boolean;
+  /** User-selected theme mode. 'system' follows the OS appearance. */
+  themeMode: ThemeMode;
+  /** Toggle between light and dark. Switches to an explicit mode (away from 'system'). */
   toggleTheme: () => void;
+  /** Set the theme mode directly. Use 'system' to follow the OS. */
+  setThemeMode: (mode: ThemeMode) => Promise<void>;
   reloadCustomColors: () => Promise<void>;
   colors: ThemeColors;
+}
+
+function resolveIsDark(
+  mode: ThemeMode,
+  system: 'light' | 'dark' | 'unspecified' | null | undefined
+): boolean {
+  if (mode === 'dark') return true;
+  if (mode === 'light') return false;
+  // 'system' — follow OS; default to dark if the platform can't report it yet.
+  return system !== 'light';
+}
+
+/**
+ * Normalize a stored preference value into a ThemeMode.
+ * Accepts:
+ *   - new key `themeMode`: 'system' | 'light' | 'dark'
+ *   - legacy key `theme`: 'dark' | 'light' | true | false
+ */
+function normalizeThemeMode(
+  themeMode: unknown,
+  legacyTheme: unknown
+): ThemeMode {
+  if (themeMode === 'system' || themeMode === 'light' || themeMode === 'dark') {
+    return themeMode;
+  }
+  if (legacyTheme === 'light' || legacyTheme === false) return 'light';
+  if (legacyTheme === 'dark' || legacyTheme === true) return 'dark';
+  return 'system';
 }
 
 const lightColors = {
@@ -109,9 +144,16 @@ const trueBlackColors = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [isDark, setIsDark] = useState(true); // Default to dark theme
+  // Seed the system color scheme from Appearance so the first paint already
+  // matches the OS appearance when themeMode is 'system'.
+  const initialSystemScheme = Appearance.getColorScheme();
+  const systemColorScheme = useColorScheme();
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [isLoading, setIsLoading] = useState(true);
   const [customColors, setCustomColors] = useState<ColorTheme | null>(null);
+
+  const effectiveSystem = systemColorScheme ?? initialSystemScheme ?? null;
+  const isDark = resolveIsDark(themeMode, effectiveSystem);
 
   useEffect(() => {
     loadThemePreference();
@@ -121,18 +163,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (!isLoading) {
       loadCustomColors();
     }
+    // Re-load custom color overrides when the effective palette flips
+    // (either user changed mode, or the OS toggled while in 'system').
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDark, isLoading]);
 
   const loadThemePreference = async () => {
     try {
       const preferences = await storageService.getPreferences();
-      const savedTheme = preferences.theme;
-      if (savedTheme !== undefined) {
-        setIsDark(savedTheme === true || savedTheme === 'dark');
-      }
-      // If no saved preference, default to dark (already set)
+      const mode = normalizeThemeMode(
+        (preferences as { themeMode?: unknown }).themeMode,
+        preferences.theme
+      );
+      setThemeModeState(mode);
     } catch (error) {
-      // Ignore theme loading errors
+      // Ignore theme loading errors — fall back to default 'system'
     } finally {
       setIsLoading(false);
     }
@@ -147,35 +192,57 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const toggleTheme = async () => {
-    const newTheme = !isDark;
-    setIsDark(newTheme);
+  const persistThemeMode = async (mode: ThemeMode, effectiveDark: boolean) => {
     try {
       const preferences = await storageService.getPreferences();
       await storageService.savePreferences({
         ...preferences,
-        theme: newTheme ? 'dark' : 'light',
+        themeMode: mode,
+        // Keep the legacy `theme` key in sync so older code paths and
+        // exported settings still reflect the current appearance.
+        theme: effectiveDark ? 'dark' : 'light',
       });
-      // Reload custom colors for new theme
-      const custom = await colorThemeManager.getCustomColors(newTheme);
-      setCustomColors(custom);
     } catch (error) {
       // Ignore theme saving errors
     }
+  };
+
+  const setThemeMode = async (mode: ThemeMode) => {
+    setThemeModeState(mode);
+    const nextIsDark = resolveIsDark(mode, effectiveSystem);
+    await persistThemeMode(mode, nextIsDark);
+    try {
+      const custom = await colorThemeManager.getCustomColors(nextIsDark);
+      setCustomColors(custom);
+    } catch (error) {
+      // Ignore color loading errors
+    }
+  };
+
+  const toggleTheme = async () => {
+    // Toggling explicitly opts out of 'system' and flips to the opposite
+    // of the currently-effective appearance.
+    const nextMode: ThemeMode = isDark ? 'light' : 'dark';
+    await setThemeMode(nextMode);
   };
 
   const baseColors = isDark ? darkColors : lightColors;
   const colors = colorThemeManager.mergeColors(baseColors, customColors) as typeof baseColors;
 
   if (isLoading) {
-    // Return with default dark theme while loading
+    // While loading, use the system appearance (or dark as a fallback) so the
+    // first paint avoids a flash of the wrong theme.
+    const initialIsDark = effectiveSystem !== 'light';
+    const initialColors = initialIsDark ? darkColors : lightColors;
     return (
       <ThemeContext.Provider
         value={{
-          isDark: true,
+          isDark: initialIsDark,
+          themeMode: 'system',
           toggleTheme,
+          setThemeMode,
           reloadCustomColors: loadCustomColors,
-          colors: darkColors,
+          colors: initialColors,
         }}
       >
         {children}
@@ -184,14 +251,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-      <ThemeContext.Provider
-        value={{
-          isDark,
-          toggleTheme,
-          reloadCustomColors: loadCustomColors,
-          colors,
-        }}
-      >
+    <ThemeContext.Provider
+      value={{
+        isDark,
+        themeMode,
+        toggleTheme,
+        setThemeMode,
+        reloadCustomColors: loadCustomColors,
+        colors,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

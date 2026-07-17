@@ -87,7 +87,7 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
       case 1:
         return colors.textSecondary; // Normal
       case 2:
-        return '#FF9500'; // Warning
+        return colors.warning;
       case 4:
         return colors.error; // Critical
       default:
@@ -138,6 +138,7 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
               <TouchableOpacity
                 onPress={onClose}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel={t('common.close')}
               >
                 <Ionicons name="close" size={28} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -164,7 +165,7 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
               showsVerticalScrollIndicator
             >
               {logs.map((log) => (
-                <View key={log.id} style={[styles.logEntry, { borderLeftColor: getLogTypeColor(log.type) }]}>
+                <View key={log.id} style={[styles.logEntry, { backgroundColor: colors.background, borderLeftColor: getLogTypeColor(log.type) }]}>
                   <View style={styles.logHeader}>
                     <View style={[styles.logTypeBadge, { backgroundColor: colors.primary }]}>
                       <Text style={[styles.logTypeText, { color: colors.surface }]}>
@@ -271,7 +272,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     borderRadius: borderRadius.small,
     borderLeftWidth: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
   },
   logHeader: {
     flexDirection: 'row',

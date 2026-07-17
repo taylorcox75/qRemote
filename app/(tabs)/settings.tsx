@@ -21,6 +21,7 @@ import { useServer } from '@/context/ServerContext';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { APP_VERSION } from '@/utils/version';
+import { hasFallback } from '@/utils/server';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
@@ -55,7 +56,7 @@ function NavRow({ icon, label, onPress, colors, isLast, iconColor }: NavRowProps
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { currentServer, isConnected, disconnect } = useServer();
+  const { currentServer, isConnected, activeEndpoint, disconnect } = useServer();
   const { isDark, colors } = useTheme();
   const disconnectBadgeBackground = colorThemeManager.hexToRgba(
     colorThemeManager.rgbaToHex(colors.error),
@@ -114,6 +115,13 @@ export default function SettingsScreen() {
                     {currentServer.host}
                     {currentServer.port != null && currentServer.port > 0 ? `:${currentServer.port}` : ''}
                   </Text>
+                  {isConnected && hasFallback(currentServer) && activeEndpoint && (
+                    <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
+                      {activeEndpoint === 'fallback'
+                        ? t('server.connectedViaFallback')
+                        : t('server.connectedViaPrimary')}
+                    </Text>
+                  )}
                 </View>
                 {isConnected && (
                   <View
@@ -160,6 +168,12 @@ export default function SettingsScreen() {
               icon="notifications-outline"
               label={t('screens.settings.notificationsFeedback')}
               onPress={() => router.push('/settings/notifications')}
+              colors={colors}
+            />
+            <NavRow
+              icon="extension-puzzle-outline"
+              label={t('screens.search.pluginsTitle')}
+              onPress={() => router.push('/search/plugins')}
               colors={colors}
             />
             <NavRow

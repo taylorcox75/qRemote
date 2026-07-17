@@ -121,7 +121,7 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
         <View style={[styles.modal, { backgroundColor: colors.surface, opacity: 1 }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>{t('screens.settings.pickAColor')}</Text>
-            <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={t('common.close')}>
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -194,6 +194,7 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
                       { borderColor: colors.surfaceOutline },
                     ]}
                     onPress={() => handlePresetSelect(color)}
+                    accessibilityLabel={color}
                   >
                     {colorThemeManager.rgbaToHex(currentColor).toUpperCase() === color.toUpperCase() && (
                       <Ionicons name="checkmark" size={20} color="#FFFFFF" />

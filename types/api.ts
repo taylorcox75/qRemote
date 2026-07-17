@@ -17,7 +17,32 @@ export interface ServerConfig {
   password: string;
   useHttps?: boolean;
   bypassAuth?: boolean; // Skip authentication when local network auth is disabled
+
+  /**
+   * When true, the connection flow will attempt the fallback endpoint after the
+   * primary endpoint fails with a network error. Authentication is shared with
+   * the primary endpoint since fallback represents an alternate route to the
+   * same qBittorrent instance (e.g. LAN vs WAN, DDNS vs static IP).
+   */
+  useFallback?: boolean;
+  /** Fallback host (IP or domain). Required when useFallback is true. */
+  fallbackHost?: string;
+  /** Fallback port. Same 1–65535 validation as the primary port. */
+  fallbackPort?: number;
+  /** Whether the fallback endpoint should be reached over HTTPS. */
+  fallbackUseHttps?: boolean;
+  /** Reserved for future fallback base path UI; not surfaced in settings yet. */
+  fallbackBasePath?: string;
+
+  /** When true, send an HTTP Basic Auth header on every request (for reverse-proxy frontends). */
+  useBasicAuth?: boolean;
+  /** Proxy Basic Auth username (in-memory + AsyncStorage; separate from qBittorrent WebUI username). */
+  basicAuthUsername?: string;
+  /** Proxy Basic Auth password (in-memory only; stored in SecureStore). */
+  basicAuthPassword?: string;
 }
+
+export type ServerEndpointKind = 'primary' | 'fallback';
 
 // Authentication
 export interface LoginResponse {
@@ -80,7 +105,7 @@ export interface TorrentInfo {
   category: string;
   completed: number;
   completion_on: number;
-  content_path: string;
+  content_path?: string;
   dl_limit: number;
   dlspeed: number;
   download_path: string;
@@ -99,13 +124,15 @@ export interface TorrentInfo {
   num_incomplete: number;
   num_leechs: number;
   num_seeds: number;
+  /** qBittorrent 5.x only — absent on 4.x servers. */
+  popularity?: number;
   priority: number;
   progress: number;
   ratio: number;
-  ratio_limit: number;
+  ratio_limit?: number;
   save_path: string;
   seeding_time: number;
-  seeding_time_limit: number;
+  seeding_time_limit?: number;
   seen_complete: number;
   seq_dl: boolean;
   size: number;
@@ -269,4 +296,48 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   status: number;
+}
+
+// Search (qBittorrent /api/v2/search/*)
+// Available from qBittorrent v4.1.4 / WebAPI v2.1.1.
+export interface SearchJob {
+  id: number;
+}
+
+export type SearchStatusValue = 'Running' | 'Stopped';
+
+export interface SearchJobStatus {
+  id: number;
+  status: SearchStatusValue;
+  total: number;
+}
+
+export interface SearchResult {
+  fileName: string;
+  fileSize: number;
+  fileUrl: string;
+  nbLeechers: number;
+  nbSeeders: number;
+  siteUrl: string;
+  descrLink: string;
+}
+
+export interface SearchResultsResponse {
+  status: SearchStatusValue;
+  results: SearchResult[];
+  total: number;
+}
+
+export interface SearchPluginCategory {
+  id: string;
+  name: string;
+}
+
+export interface SearchPlugin {
+  enabled: boolean;
+  fullName: string;
+  name: string;
+  supportedCategories: SearchPluginCategory[];
+  url: string;
+  version: string;
 }

@@ -16,6 +16,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
+import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -27,6 +28,71 @@ import { getConnectivityLog, formatConnectivityLog } from '@/services/connectivi
 import { logsApi } from '@/services/api/logs';
 import { apiClient } from '@/services/api/client';
 import { getErrorMessage } from '@/utils/error';
+import { isLoginBodyFail, isLoginSuccess } from '@/utils/login-response';
+
+// ---------------------------------------------------------------------------
+// Diagnostic HTTP client
+// ---------------------------------------------------------------------------
+//
+// The login (Step 2) and cookie-check (Step 3) steps used to run over the
+// raw fetch() API so this panel had zero dependency on the app's own HTTP
+// stack. On React Native, fetch() is backed by a pure-JS `whatwg-fetch`
+// polyfill (react-native/Libraries/Core/setUpXHR.js) that itself dispatches
+// through XMLHttpRequest — so in principle it has the same access to
+// response headers as XHR does. In practice, though, React Native's own
+// networking docs list cookie-based auth over fetch() as unstable and
+// specifically call out `credentials: 'omit'` (which this panel used) as
+// "currently not working" (https://reactnative.dev/docs/network#known-issues-with-fetch-and-cookie-based-authentication,
+// see also facebook/react-native#23185). That matches what was actually
+// observed: Step 3 could never see the Set-Cookie header even when the
+// server sent one and the login itself succeeded.
+//
+// `services/api/client.ts` never hits this problem because it never uses
+// fetch() at all — plain `axios.create()` resolves to axios's `xhr` adapter
+// on React Native (XMLHttpRequest is defined globally), and that adapter's
+// response headers come straight from `xhr.getAllResponseHeaders()`, which
+// reliably includes Set-Cookie here. This is exactly how its response
+// interceptor captures `headers['set-cookie']` today.
+//
+// So this panel now drives a dedicated, isolated axios instance for the
+// login/API-check steps instead of fetch() — reusing the same proven
+// XHR-based path, without touching the shared `apiClient` singleton or its
+// cookie jar/current-server state.
+const diagnosticHttp = axios.create({
+  withCredentials: false,
+  // Let the diagnostic inspect every status code itself (401/403/404/etc.),
+  // same as fetch() never throwing based on HTTP status.
+  validateStatus: () => true,
+});
+
+/** Reads the Set-Cookie value(s) off an axios response's headers, tolerant of
+ * the array shape (duplicate headers) and casing quirks — mirrors the proven
+ * extraction in services/api/client.ts's response interceptor. Returns one
+ * raw Set-Cookie string per cookie the server sent. */
+function extractSetCookieValues(headers: unknown): string[] {
+  const h = headers as Record<string, string | string[] | undefined> | undefined;
+  const raw = h?.['set-cookie'] ?? h?.['Set-Cookie'] ?? h?.['SET-COOKIE'];
+  if (!raw) return [];
+  return Array.isArray(raw) ? raw : [raw];
+}
+
+/** Picks the session cookie `name=value` pair to send back on later requests.
+ *
+ * qBittorrent's session cookie is NOT always named `SID` — 5.x has a
+ * configurable "Session cookie name" (e.g. `QBT_SID_8080`), so requiring the
+ * classic name produced false "no cookie" results. The real app never cared:
+ * services/api/client.ts's interceptor just takes `split(';')[0].trim()`
+ * (the whole first name=value pair, whatever the name). Do the same here:
+ * prefer a cookie whose name mentions SID when several were sent, otherwise
+ * use the first one. */
+function pickSessionCookiePair(setCookieValues: string[]): string {
+  const pairs = setCookieValues
+    .map((cookie) => cookie.split(';')[0].trim())
+    .filter((pair) => pair.includes('='));
+  if (pairs.length === 0) return '';
+  const sidLike = pairs.find((pair) => pair.split('=')[0].toUpperCase().includes('SID'));
+  return sidLike ?? pairs[0];
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +105,10 @@ export interface SuperDebugPanelProps {
   username: string;
   password: string;
   bypassAuth: boolean;
+  /** Optional proxy Basic Auth fields — when absent, no Authorization header is sent. */
+  useBasicAuth?: boolean;
+  basicAuthUsername?: string;
+  basicAuthPassword?: string;
 }
 
 type DiagnosticStep = 'REACH' | 'LOGIN' | 'COOKIE' | 'API' | 'INFO' | 'WARN' | 'ERROR';
@@ -53,6 +123,22 @@ interface DiagnosticEntry {
   status: DiagnosticStatus;
 }
 
+/**
+ * A session proven to work by the diagnostic's own Step 4 API check (via the
+ * isolated diagnosticHttp axios instance above, independent of the shared
+ * apiClient singleton). Reused by the log export so it doesn't depend on
+ * apiClient.getServer(), which reflects unrelated app-wide connection state
+ * and can be null even right after this panel's own diagnostic just
+ * succeeded.
+ */
+interface ValidatedSession {
+  configKey: string;
+  baseUrl: string;
+  /** Full `name=value` session cookie pair (name is server-configurable, not always `SID`). */
+  sessionCookie: string;
+  basicAuth: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -64,6 +150,9 @@ export function SuperDebugPanel({
   username,
   password,
   bypassAuth,
+  useBasicAuth = false,
+  basicAuthUsername = '',
+  basicAuthPassword = '',
 }: SuperDebugPanelProps) {
   const { colors } = useTheme();
   const [log, setLog] = useState<DiagnosticEntry[]>([]);
@@ -72,6 +161,7 @@ export function SuperDebugPanel({
   const abortRef = useRef<AbortController | null>(null);
   const idRef = useRef(0);
   const scrollRef = useRef<ScrollView>(null);
+  const validatedSessionRef = useRef<ValidatedSession | null>(null);
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -87,6 +177,39 @@ export function SuperDebugPanel({
     const portPart = portNum && portNum > 0 && !isNaN(portNum) ? `:${portNum}` : '';
     return `${protocol}://${clean}${portPart}`;
   }, [host, port, useHttps]);
+
+  /** Build the Authorization header value when proxy Basic Auth is enabled. */
+  const buildBasicAuthHeader = useCallback((): string | null => {
+    if (!useBasicAuth || !basicAuthUsername.trim()) return null;
+    const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const input = `${basicAuthUsername.trim()}:${basicAuthPassword}`;
+    const bytes: number[] = [];
+    for (let i = 0; i < input.length; i++) {
+      const code = input.charCodeAt(i);
+      if (code < 0x80) { bytes.push(code); }
+      else if (code < 0x800) { bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f)); }
+      else { bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f)); }
+    }
+    let b64 = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+      const b0 = bytes[i], b1 = bytes[i + 1] ?? 0, b2 = bytes[i + 2] ?? 0;
+      b64 += BASE64[b0 >> 2];
+      b64 += BASE64[((b0 & 3) << 4) | (b1 >> 4)];
+      b64 += i + 1 < bytes.length ? BASE64[((b1 & 15) << 2) | (b2 >> 6)] : '=';
+      b64 += i + 2 < bytes.length ? BASE64[b2 & 63] : '=';
+    }
+    return 'Basic ' + b64;
+  }, [useBasicAuth, basicAuthUsername, basicAuthPassword]);
+
+  /** Fingerprint of everything that affects the diagnostic's outcome, so a
+   * validated session is only trusted for export while the form still
+   * matches the config it was actually proven against. */
+  const buildConfigKey = useCallback((): string => {
+    return JSON.stringify({
+      host: sanitizeHost(host), port, useHttps, bypassAuth, username, password,
+      useBasicAuth, basicAuthUsername, basicAuthPassword,
+    });
+  }, [host, port, useHttps, bypassAuth, username, password, useBasicAuth, basicAuthUsername, basicAuthPassword]);
 
   const addEntry = useCallback(
     (step: DiagnosticStep, message: string, status: DiagnosticStatus, detail?: string) => {
@@ -129,10 +252,14 @@ export function SuperDebugPanel({
     const start = Date.now();
 
     try {
+      const basicAuth = buildBasicAuthHeader();
+      const reachHeaders: Record<string, string> = {};
+      if (basicAuth) reachHeaders['Authorization'] = basicAuth;
       let response: Response;
       try {
         response = await fetch(url, {
           method: 'HEAD',
+          headers: reachHeaders,
           signal: controller.signal,
         });
       } catch {
@@ -140,6 +267,7 @@ export function SuperDebugPanel({
         if (controller.signal.aborted) throw new Error('Timed out after 15s');
         response = await fetch(url, {
           method: 'GET',
+          headers: reachHeaders,
           signal: controller.signal,
         });
       }
@@ -148,7 +276,11 @@ export function SuperDebugPanel({
       if (response.status < 400) {
         addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms`, 'success');
       } else if (response.status === 401 || response.status === 403) {
-        addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms (auth required, this is normal)`, 'success');
+        if (useBasicAuth && response.status === 401) {
+          addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms (proxy credentials rejected or not accepted)`, 'warning');
+        } else {
+          addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms (auth required, this is normal)`, 'success');
+        }
       } else {
         addEntry('REACH', `Host responded with HTTP ${response.status} in ${latency}ms`, 'warning');
       }
@@ -234,6 +366,7 @@ export function SuperDebugPanel({
     // Clear previous results for a clean run
     setLog([]);
     idRef.current = 0;
+    validatedSessionRef.current = null;
 
     const baseUrl = buildUrl();
     const controller = new AbortController();
@@ -247,11 +380,11 @@ export function SuperDebugPanel({
     addEntry('INFO', `Target: ${baseUrl}`, 'info');
     addEntry('INFO', `Platform: ${Platform.OS} ${Platform.Version}`, 'info');
     addEntry('INFO', `App: ${APP_VERSION}`, 'info');
-    addEntry('INFO', `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`, 'info');
+    addEntry('INFO', `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'} | Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`, 'info');
 
     let passed = 0;
     const totalSteps = bypassAuth ? 2 : 4;
-    let sidCookie = '';
+    let sessionCookie = '';
 
     try {
       // -- Step 1: Reachability -----------------------------------------------
@@ -261,18 +394,27 @@ export function SuperDebugPanel({
         if (!controller.signal.aborted) controller.abort();
       }, 15000);
 
+      const basicAuth = buildBasicAuthHeader();
+      const diagHeaders: Record<string, string> = {};
+      if (basicAuth) diagHeaders['Authorization'] = basicAuth;
+
       try {
         let reachResp: Response;
         try {
-          reachResp = await fetch(baseUrl, { method: 'HEAD', signal: controller.signal });
+          reachResp = await fetch(baseUrl, { method: 'HEAD', headers: diagHeaders, signal: controller.signal });
         } catch {
           if (controller.signal.aborted) throw new Error('Timed out after 15s');
-          reachResp = await fetch(baseUrl, { method: 'GET', signal: controller.signal });
+          reachResp = await fetch(baseUrl, { method: 'GET', headers: diagHeaders, signal: controller.signal });
         }
         clearTimeout(reachTimeout);
         const reachLatency = Date.now() - reachStart;
-        addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms`, 'success');
-        passed++;
+        if (reachResp.status === 401 && useBasicAuth) {
+          addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms (proxy credentials rejected — check Basic Auth username/password)`, 'warning');
+          passed++;
+        } else {
+          addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms`, 'success');
+          passed++;
+        }
       } catch (err: unknown) {
         clearTimeout(reachTimeout);
         if (controller.signal.aborted && !getErrorMessage(err).includes('Timed out')) throw err;
@@ -301,20 +443,24 @@ export function SuperDebugPanel({
         const loginUrl = `${baseUrl}/api/v2/auth/login`;
         const loginStart = Date.now();
         try {
-          const loginResp = await fetch(loginUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `username=${encodeURIComponent(username.trim())}&password=${encodeURIComponent(password.trim())}`,
-            signal: controller.signal,
-            credentials: 'omit',
-          });
+          const loginResp = await diagnosticHttp.post(
+            loginUrl,
+            `username=${encodeURIComponent(username.trim())}&password=${encodeURIComponent(password.trim())}`,
+            {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                ...(basicAuth ? { 'Authorization': basicAuth } : {}),
+              },
+              signal: controller.signal,
+            },
+          );
           const loginLatency = Date.now() - loginStart;
-          const loginBody = await loginResp.text();
+          const loginBody = typeof loginResp.data === 'string' ? loginResp.data : String(loginResp.data ?? '');
           const bodyTrimmed = loginBody.trim();
+          const loginSetCookies = extractSetCookieValues(loginResp.headers);
+          const loginCookiePresent = loginSetCookies.length > 0;
 
-          if (bodyTrimmed === 'Ok.' || bodyTrimmed === 'Ok') {
-            addEntry('LOGIN', `Login successful — "${bodyTrimmed}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'success');
-          } else if (bodyTrimmed === 'Fails.' || bodyTrimmed === 'Fails') {
+          if (isLoginBodyFail(bodyTrimmed)) {
             addEntry('LOGIN', `Login REJECTED — "${bodyTrimmed}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'error');
             addEntry('WARN', 'The server said "Fails." which means the username or password is wrong.\n\nChecklist:\n  1. Double-check your username (default: admin)\n  2. Double-check your password\n  3. Check if qBittorrent has locked you out (too many failed attempts)\n  4. Try logging in via the browser first to confirm credentials work', 'warning');
             addEntry('ERROR', 'Stopping diagnostic — login failed.', 'error');
@@ -324,6 +470,17 @@ export function SuperDebugPanel({
             addEntry('WARN', 'The /api/v2/auth/login endpoint does not exist. This could mean:\n  1. qBittorrent WebUI API is disabled\n  2. A reverse proxy is not forwarding /api/ paths\n  3. An incompatible qBittorrent version', 'warning');
             addEntry('ERROR', 'Stopping diagnostic — API endpoint missing.', 'error');
             return;
+          } else if (
+            isLoginSuccess({
+              status: loginResp.status,
+              body: loginBody,
+              hasSessionCookie: loginCookiePresent,
+            })
+          ) {
+            const detail = bodyTrimmed
+              ? `"${bodyTrimmed.substring(0, 40)}"`
+              : 'empty body (qBittorrent 5.x style)';
+            addEntry('LOGIN', `Login successful — ${detail} (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'success');
           } else {
             addEntry('LOGIN', `Unexpected response — "${bodyTrimmed.substring(0, 80)}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'error');
             addEntry('ERROR', 'Stopping diagnostic — unexpected login response.', 'error');
@@ -333,9 +490,11 @@ export function SuperDebugPanel({
 
           // Log response headers for diagnosis
           const headerLines: string[] = [];
-          loginResp.headers.forEach((value: string, key: string) => {
-            headerLines.push(`  ${key}: ${value}`);
-          });
+          const loginHeaders = loginResp.headers as unknown as Record<string, unknown>;
+          for (const key of Object.keys(loginHeaders)) {
+            const value = loginHeaders[key];
+            headerLines.push(`  ${key}: ${Array.isArray(value) ? value.join('; ') : String(value)}`);
+          }
           if (headerLines.length > 0) {
             addEntry('LOGIN', `Response headers:\n${headerLines.join('\n')}`, 'info');
           }
@@ -343,28 +502,26 @@ export function SuperDebugPanel({
           // -- Step 3: Cookie Check -------------------------------------------
           addEntry('COOKIE', 'Step 3 — Was a session cookie received?', 'info');
 
-          const setCookieHeader =
-            loginResp.headers.get('set-cookie') ||
-            loginResp.headers.get('Set-Cookie') ||
-            loginResp.headers.get('SET-COOKIE');
+          // The session cookie name is configurable in qBittorrent 5.x (e.g.
+          // QBT_SID_8080), so capture whatever name=value pair the server
+          // sent instead of insisting on the classic `SID` name — exactly
+          // like the real app's client.ts interceptor does.
+          const cookiePair = pickSessionCookiePair(loginSetCookies);
 
-          if (setCookieHeader) {
-            const sidMatch = setCookieHeader.match(/SID=([^;]+)/i);
-            if (sidMatch) {
-              sidCookie = `SID=${sidMatch[1]}`;
-              const truncated = sidMatch[1].length > 12
-                ? sidMatch[1].substring(0, 12) + '...'
-                : sidMatch[1];
-              addEntry('COOKIE', `Session cookie captured: SID=${truncated}`, 'success');
-              passed++;
-            } else {
-              addEntry('COOKIE', `set-cookie header found but no SID: "${setCookieHeader.substring(0, 80)}"`, 'warning');
-              passed++; // Not a hard failure
-            }
+          if (cookiePair) {
+            sessionCookie = cookiePair;
+            const eqIdx = cookiePair.indexOf('=');
+            const cookieName = cookiePair.substring(0, eqIdx);
+            const cookieValue = cookiePair.substring(eqIdx + 1);
+            const truncated = cookieValue.length > 12
+              ? cookieValue.substring(0, 12) + '...'
+              : cookieValue;
+            addEntry('COOKIE', `Session cookie captured: ${cookieName}=${truncated}`, 'success');
+            passed++;
           } else {
             addEntry('COOKIE', 'No set-cookie header received from server.', 'warning');
-            addEntry('WARN', 'This is common on React Native — the OS networking layer often strips set-cookie headers from responses.\n\nThe app uses Axios which may handle cookies differently, so this is not necessarily a problem. However, if the app connects but then gets "403 Forbidden" errors:\n\n  1. In qBittorrent: Settings > WebUI > enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet (e.g. 192.168.1.0/24 or 100.0.0.0/8 for Tailscale)\n  3. Then enable "Bypass Authentication" in qBitRemote', 'warning');
-            passed++; // Not a hard failure — Axios may handle this
+            addEntry('WARN', 'The server genuinely did not send a session cookie for this login. This is expected if qBittorrent is configured to bypass authentication for this device\'s IP/subnet, or if this qBittorrent version/setup authenticates purely via the response body without issuing a cookie.\n\nIf the app still gets "403 Forbidden" errors after this:\n\n  1. In qBittorrent: Settings > WebUI > enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet (e.g. 192.168.1.0/24 or 100.0.0.0/8 for Tailscale)\n  3. Then enable "Bypass Authentication" in qBitRemote', 'warning');
+            passed++; // Not a hard failure — server may intentionally omit the cookie
           }
         } catch (err: unknown) {
           if (controller.signal.aborted) throw err;
@@ -382,25 +539,31 @@ export function SuperDebugPanel({
       const apiStart = Date.now();
       try {
         const headers: Record<string, string> = {};
-        if (sidCookie) {
-          headers['Cookie'] = sidCookie;
+        if (sessionCookie) {
+          headers['Cookie'] = sessionCookie;
         }
-        const apiResp = await fetch(versionUrl, {
-          method: 'GET',
+        if (basicAuth) {
+          headers['Authorization'] = basicAuth;
+        }
+        const apiResp = await diagnosticHttp.get(versionUrl, {
           headers,
           signal: controller.signal,
-          credentials: 'omit',
         });
         const apiLatency = Date.now() - apiStart;
-        const apiBody = await apiResp.text();
+        const apiBody = typeof apiResp.data === 'string' ? apiResp.data : String(apiResp.data ?? '');
 
         if (apiResp.status === 200) {
           addEntry('API', `qBittorrent ${apiBody.trim()} (HTTP ${apiResp.status}, ${apiLatency}ms)`, 'success');
           passed++;
+          // This proves the session (cookie/basic-auth combo) actually works
+          // end-to-end — remember it so "Export Full Logs" can fetch server
+          // logs using it instead of depending on the unrelated apiClient
+          // singleton.
+          validatedSessionRef.current = { configKey: buildConfigKey(), baseUrl, sessionCookie, basicAuth };
         } else if (apiResp.status === 403) {
           addEntry('API', `HTTP 403 Forbidden — Not authenticated (${apiLatency}ms)`, 'error');
-          if (!bypassAuth && !sidCookie) {
-            addEntry('WARN', 'Login succeeded (Step 2) but no session cookie was captured (Step 3), so this API request was rejected.\n\nThis confirms the cookie issue. Solution:\n  1. In qBittorrent: Settings > WebUI > "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet\n  3. Enable "Bypass Authentication" toggle in qBitRemote', 'warning');
+          if (!bypassAuth && !sessionCookie) {
+            addEntry('WARN', 'Login succeeded (Step 2) but no session cookie was captured (Step 3), so this API request was rejected.\n\nSolution:\n  1. In qBittorrent: Settings > WebUI > "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet\n  3. Enable "Bypass Authentication" toggle in qBitRemote', 'warning');
           } else if (bypassAuth) {
             addEntry('WARN', 'Auth bypass is enabled, but the server still requires authentication.\n\nIn qBittorrent: Settings > WebUI:\n  1. Enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet to the whitelist', 'warning');
           } else {
@@ -466,6 +629,7 @@ export function SuperDebugPanel({
       `Port: ${portNum || 'default (80/443)'}`,
       `HTTPS: ${useHttps ? 'Yes' : 'No'}`,
       `Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`,
+      `Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
       '',
       '--- Diagnostic Log ---',
       ...log.map((e) => `${formatTime(e.timestamp)} [${e.step}] ${e.message}`),
@@ -530,6 +694,7 @@ export function SuperDebugPanel({
         `Port: ${portNum || 'default (80/443)'}`,
         `HTTPS: ${useHttps ? 'Yes' : 'No'}`,
         `Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`,
+        `Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
         `Username: ${username ? '(set)' : '(empty)'}`,
         '',
       ];
@@ -561,14 +726,80 @@ export function SuperDebugPanel({
       ];
 
       // --- Section 5: qBittorrent Server Logs (if connected) ---
-      let serverLogSection: string[] = [
+      const serverLogSection: string[] = [
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
         'qBITTORRENT SERVER LOGS',
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       ];
 
-      const hasServer = !!apiClient.getServer();
-      if (hasServer) {
+      // Prefer the diagnostic's own already-validated session (proven working
+      // by Step 4 above, using this screen's own host/credentials) over the
+      // shared apiClient singleton, whose "current server" reflects unrelated
+      // app-wide connection lifecycle and can be null even when this exact
+      // diagnostic just succeeded. Only trust it while the form still matches
+      // the config it was validated against.
+      const validatedSession = validatedSessionRef.current?.configKey === buildConfigKey()
+        ? validatedSessionRef.current
+        : null;
+
+      if (validatedSession) {
+        const logHeaders: Record<string, string> = {};
+        if (validatedSession.sessionCookie) logHeaders['Cookie'] = validatedSession.sessionCookie;
+        if (validatedSession.basicAuth) logHeaders['Authorization'] = validatedSession.basicAuth;
+
+        try {
+          const mainLogResp = await fetch(
+            `${validatedSession.baseUrl}/api/v2/log/main?normal=1&info=1&warning=1&critical=1`,
+            { method: 'GET', headers: logHeaders, credentials: 'omit' },
+          );
+          if (!mainLogResp.ok) throw new Error(`HTTP ${mainLogResp.status}`);
+          const appLogs = (await mainLogResp.json()) as { id: number; message: string; timestamp: number; type: number }[];
+
+          if (appLogs.length > 0) {
+            serverLogSection.push('');
+            serverLogSection.push(`--- Application Logs (${appLogs.length} entries) ---`);
+            const sorted = [...appLogs].sort((a, b) => a.id - b.id);
+            for (const entry of sorted) {
+              const typeLabel =
+                entry.type === 1 ? 'NORMAL' :
+                entry.type === 2 ? 'WARNING' :
+                entry.type === 4 ? 'CRITICAL' : 'INFO';
+              const ts = new Date(entry.timestamp * 1000).toISOString().replace('T', ' ').replace('Z', '');
+              serverLogSection.push(`${ts} [${typeLabel}] ${entry.message}`);
+            }
+          } else {
+            serverLogSection.push('(no application log entries returned from server)');
+          }
+
+          try {
+            const peerLogResp = await fetch(
+              `${validatedSession.baseUrl}/api/v2/log/peers`,
+              { method: 'GET', headers: logHeaders, credentials: 'omit' },
+            );
+            if (!peerLogResp.ok) throw new Error(`HTTP ${peerLogResp.status}`);
+            const peerLogs = (await peerLogResp.json()) as { id: number; ip: string; port: number; connection: string; flags: string; client: string }[];
+            if (peerLogs.length > 0) {
+              serverLogSection.push('');
+              serverLogSection.push(`--- Peer Logs (${peerLogs.length} entries) ---`);
+              const sortedPeers = [...peerLogs].sort((a, b) => a.id - b.id);
+              for (const entry of sortedPeers) {
+                const ts = new Date(entry.id * 1000).toISOString().replace('T', ' ').replace('Z', '');
+                serverLogSection.push(
+                  `${ts} ${entry.ip}:${entry.port} | ${entry.client} | ${entry.connection} | flags=${entry.flags}`,
+                );
+              }
+            } else {
+              serverLogSection.push('');
+              serverLogSection.push('(no peer log entries returned from server)');
+            }
+          } catch {
+            serverLogSection.push('');
+            serverLogSection.push('(failed to fetch peer logs)');
+          }
+        } catch (err: unknown) {
+          serverLogSection.push(`(could not fetch server logs using this screen's validated diagnostic session: ${getErrorMessage(err)})`);
+        }
+      } else if (apiClient.getServer()) {
         try {
           // Fetch application logs (all levels)
           const appLogs = await logsApi.getLog(true, true, true, true);
@@ -613,7 +844,7 @@ export function SuperDebugPanel({
           serverLogSection.push(`(could not fetch server logs: ${getErrorMessage(err)})`);
         }
       } else {
-        serverLogSection.push('(not connected — server logs not available)');
+        serverLogSection.push('(not connected — run "Run Full Diagnostic" above first to include this server\'s logs in the report)');
       }
       serverLogSection.push('');
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import { Toast, ToastType } from '@/components/Toast';
 import { storageService } from '@/services/storage';
@@ -14,6 +14,8 @@ interface ToastContextType {
   showToast: (message: string, type?: ToastType, duration?: number) => void;
   toast: ToastState | null;
   hideToast: () => void;
+  /** Internal — ModalToast mounts register here so the global toast yields. */
+  registerModalHost: () => () => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -21,6 +23,17 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [defaultDuration, setDefaultDuration] = useState<number>(3000);
+  // Number of currently-mounted ModalToast hosts (screens presented as
+  // native modal sheets). While one is mounted on iOS, the global toast
+  // below stays unrendered — otherwise both would show the same toast
+  // (one in the sheet's layer, a ghost copy behind it, both visible during
+  // an interactive sheet dismissal).
+  const [modalHostCount, setModalHostCount] = useState(0);
+
+  const registerModalHost = useCallback(() => {
+    setModalHostCount((n) => n + 1);
+    return () => setModalHostCount((n) => Math.max(0, n - 1));
+  }, []);
 
   // Load toast duration preference
   useEffect(() => {
@@ -37,19 +50,46 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     loadToastDuration();
   }, []);
 
-  const showToast = (message: string, type: ToastType = 'info', duration?: number) => {
-    setToast({ message, type, duration: duration ?? defaultDuration, id: Date.now() });
-  };
+  // Stable identity: callers routinely list showToast/hideToast in their own
+  // effect dependency arrays. Recreating them every render (as plain
+  // functions would) makes those effects re-fire in a loop whenever their
+  // other trigger condition stays true across renders — setToast() here
+  // causes this provider to re-render, which would hand out a new function
+  // reference, which the consuming effect sees as a "changed" dependency.
+  const showToast = useCallback(
+    (message: string, type: ToastType = 'info', duration?: number) => {
+      setToast({ message, type, duration: duration ?? defaultDuration, id: Date.now() });
+    },
+    [defaultDuration],
+  );
 
-  const hideToast = () => {
+  const hideToast = useCallback(() => {
     setToast(null);
-  };
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({ showToast, toast, hideToast, registerModalHost }),
+    [showToast, toast, hideToast, registerModalHost],
+  );
+
+  // On iOS, yield to a mounted ModalToast host: rendering both would show
+  // the same toast twice (the local one in the sheet's layer, this one as a
+  // ghost copy behind it, both visible during an interactive dismissal).
+  const suppressGlobal = Platform.OS === 'ios' && modalHostCount > 0;
 
   return (
-    <ToastContext.Provider value={{ showToast, toast, hideToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
-      {/* Only render toast here on Android - iOS modal screens render their own */}
-      {Platform.OS === 'android' && toast && (
+      {/* Always a plain view, never wrapped in a native Modal — a Modal
+          captures every touch on screen at the native layer regardless of
+          pointerEvents settings on its content, freezing the rest of the UI
+          until the toast times out. This mount lives above the Stack
+          navigator, so a screen presented as its own native modal sheet
+          (its own separate native layer) would render this behind that
+          sheet — those screens mount <ModalToast/> locally instead, which
+          renders the exact same plain view but from within their own tree,
+          so it's already in the right layer without needing any Modal. */}
+      {toast && !suppressGlobal && (
         <Toast
           key={toast.id}
           message={toast.message}
@@ -71,12 +111,26 @@ export function useToast() {
 }
 
 /**
- * Component to render toast in modal screens on iOS.
- * Add this at the end of your modal screen's root view.
+ * Toast for screens presented as a native modal sheet (`presentation:
+ * 'modal'` in the Stack navigator) — server/add.tsx, server/[id].tsx. That
+ * presentation is its own separate native layer on iOS, so the global toast
+ * mounted above the Stack navigator would render behind it. Mounting this
+ * plain (non-Modal — see the comment on the global mount above for why)
+ * Toast locally, as a child of the modal screen's own tree, puts it in the
+ * same layer as that screen's content with no extra wrapping needed. Only
+ * does anything on iOS — Android's global toast already layers above
+ * everything there, so rendering this too would just show it twice.
  */
 export function ModalToast() {
-  const { toast, hideToast } = useToast();
-  
+  const { toast, hideToast, registerModalHost } = useToast();
+
+  // Register as the active toast host so the provider's global toast yields
+  // while this screen is mounted (prevents the same toast rendering twice).
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    return registerModalHost();
+  }, [registerModalHost]);
+
   if (Platform.OS !== 'ios' || !toast) {
     return null;
   }

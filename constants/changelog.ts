@@ -12,6 +12,106 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.7.2',
+    date: '2026-07-16',
+    changes: [
+      'Progress and availability now truncate instead of rounding up — a torrent at 99.96% no longer shows "100%", and availability 0.9999 shows "0.999" instead of "1.00" (below 1.0 the complete file cannot be assembled from connected peers)',
+      'Availability is now shown as a ratio to 3 decimals (matching qBittorrent) and appears on the expanded card even when above 1.0',
+    ],
+  },
+  {
+    version: '3.7.1',
+    date: '2026-07-16',
+    changes: [
+      'Fixed .torrent files not offering qRemote under "Always Open With" in the Files app — tapping a torrent now opens it in qRemote instead of Preview (previously only the Share sheet worked)',
+    ],
+  },
+  {
+    version: '3.7.0',
+    date: '2026-07-16',
+    changes: [
+      'Search is now available to everyone — search your qBittorrent plugins, filter, sort, and add results in one tap',
+      'Filter search results by indexer as they load (works with Prowlarr/Jackett), plus category filtering across all plugins',
+      'Search results are no longer capped at 200',
+      'Search polish: filters collapse as you scroll, double-tap the tab icon to focus the search bar, result-count toast when a search finishes',
+      'Fixed toasts freezing the screen on iOS — and they now actually appear on every screen',
+      'Fixed an active search being wiped when switching apps — the app now reconnects only when the connection actually dropped',
+      'Fixed a crash loop and a stray "Endpoint not found" toast on the search tab',
+      'Upgraded to Expo SDK 57 / React Native 0.86 — now requires iOS 16.4 or later',
+    ],
+  },
+  {
+    version: '3.6.0',
+    date: '2026-07-04',
+    changes: ['Enabled search feature flag'],
+  },
+  {
+    version: '3.5.1',
+    date: '2026-07-04',
+    changes: [
+      'qRemote now registers as an "Open In" handler for .torrent files — open a torrent file from another app to add it directly',
+      'Fixed connection diagnostic incorrectly reporting login failure on servers that respond with HTTP 204',
+      'Compact torrent cards now show the seed ratio once a torrent is complete',
+      'Added Popularity (qBittorrent 5.x) to detailed cards and the torrent detail screen',
+      'Fixed Basic Auth toggle being clipped off the card edge on the server add/edit screens',
+      'Translated the entire torrent detail screen into Spanish, Chinese, French and German (previously showed English)',
+      'Translated most remaining screens (settings, transfer, logs, trackers, search) into Spanish, Chinese, French, German and Russian — previously showed English in several places',
+      'Improved accessibility: added descriptive labels to icon-only buttons throughout the app for screen reader support',
+      'Fixed a few hardcoded colors that did not adapt to dark mode (filter menu dividers, bulk-select bar border, download progress glow effect)',
+      'Search results no longer show duplicate entries and scroll more smoothly',
+      'Fixed "Run Full Diagnostic" falsely reporting HTTP 403 on the API check step for servers the app can otherwise connect to, by fixing the diagnostic\'s unreliable session-cookie capture',
+    ],
+  },
+  {
+    version: '3.4.2',
+    date: '2026-06-27',
+    changes: [
+      'Expanded torrent card now shows details in a two-column grid, cutting card height roughly in half',
+      'Detail card field toggles (ETA, speeds, availability, seeding time) now always appear when enabled, showing — when no live data is available',
+      'Set Category popup redesigned to match the Tags popup: chip-based selection, all server categories listed, create new inline',
+      'Creating a new category from the torrent detail screen is now fixed — categories are properly saved to the server before being assigned',
+      'Tags displayed in the torrent detail screen now appear as individual chips matching the Category badge style',
+      'Improved qBittorrent v4.x compatibility',
+      'Added category and tag filters to the torrents tab — tap the Category or Tags chip in the filter row to narrow the list',
+      'Tag filters use OR semantics: a torrent matches if it has any of the selected tags',
+      'Filter selections are remembered across sessions',
+      'Search plugin support (feature flag - disabled for App Store builds)',
+      'Added optional Basic Auth credentials for servers behind a reverse proxy',
+    ],
+  },
+  {
+    version: '3.3.0',
+    date: '2026-06-05',
+    changes: [
+      'Theme now follows your system light/dark appearance automatically',
+      'Added server fallback URL support with automatic failover',
+      'Fixed top safe-area background color in tabs so the status bar matches',
+    ],
+  },
+  {
+    version: '3.2.1',
+    date: '2026-05-29',
+    changes: ['Minor bugfixes'],
+  },
+  {
+    version: '3.2.0',
+    date: '2026-05-29',
+    changes: ['Search plugin support'],
+  },
+  {
+    version: '3.1.2',
+    date: '2026-05-29',
+    changes: [
+      'Fixed alternative speed limit units, key handling, and IEC labels',
+      'Added ability to rename files and folders from the file browser',
+    ],
+  },
+  {
+    version: '3.1.1',
+    date: '2026-05-26',
+    changes: ['Improved authentication to support qBittorrent 5.x 204 + Set-Cookie login responses'],
+  },
+  {
     version: '3.1.0',
     date: '2026-04-11',
     changes: [

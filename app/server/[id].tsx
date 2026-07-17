@@ -30,6 +30,8 @@ import { useServer } from '@/context/ServerContext';
 import { useToast, ModalToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { SuperDebugPanel } from '@/components/SuperDebugPanel';
+import { DebugRow } from '@/components/DebugRow';
+import { SettingRow } from '@/components/SettingRow';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
@@ -50,6 +52,14 @@ export default function EditServerScreen() {
   const [password, setPassword] = useState('');
   const [useHttps, setUseHttps] = useState(false);
   const [bypassAuth, setBypassAuth] = useState(false);
+  const [useBasicAuth, setUseBasicAuth] = useState(false);
+  const [basicAuthUsername, setBasicAuthUsername] = useState('');
+  const [basicAuthPassword, setBasicAuthPassword] = useState('');
+  const [useFallback, setUseFallback] = useState(false);
+  const [fallbackHost, setFallbackHost] = useState('');
+  const [fallbackPort, setFallbackPort] = useState('');
+  const [fallbackUseHttps, setFallbackUseHttps] = useState(false);
+  const [preservedFallbackBasePath, setPreservedFallbackBasePath] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -192,8 +202,18 @@ App Version: ${APP_VERSION}`;
         setPassword(server.password || '');
         setUseHttps(server.useHttps || false);
         setBypassAuth(server.bypassAuth || false);
+        setUseBasicAuth(server.useBasicAuth || false);
+        setBasicAuthUsername(server.basicAuthUsername || '');
+        setBasicAuthPassword(server.basicAuthPassword || '');
         // Preserve existing basePath for backward compatibility
         setPreservedBasePath(server.basePath || '/');
+        // Round-trip fallback fields
+        setUseFallback(server.useFallback === true);
+        setFallbackHost(server.fallbackHost || '');
+        const hasFallbackPort = server.fallbackPort != null && server.fallbackPort > 0;
+        setFallbackPort(hasFallbackPort ? server.fallbackPort!.toString() : '');
+        setFallbackUseHttps(server.fallbackUseHttps || false);
+        setPreservedFallbackBasePath(server.fallbackBasePath);
       } else {
         showToast(t('toast.serverNotFound'), 'error');
         router.back();
@@ -217,10 +237,27 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
+    if (useBasicAuth && !basicAuthUsername.trim()) {
+      showToast(t('errors.fillBasicAuthUsername'), 'error');
+      return;
+    }
+
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       showToast(t('errors.validPort'), 'error');
       return;
+    }
+
+    const fallbackPortNum = fallbackPort.trim() ? parseInt(fallbackPort, 10) : undefined;
+    if (useFallback) {
+      if (!fallbackHost.trim()) {
+        showToast(t('errors.fillFallbackHost'), 'error');
+        return;
+      }
+      if (fallbackPortNum !== undefined && (isNaN(fallbackPortNum) || fallbackPortNum < 1 || fallbackPortNum > 65535)) {
+        showToast(t('errors.validPort'), 'error');
+        return;
+      }
     }
 
     try {
@@ -241,6 +278,14 @@ App Version: ${APP_VERSION}`;
         password: bypassAuth ? '' : password.trim(),
         useHttps,
         bypassAuth,
+        useBasicAuth,
+        basicAuthUsername: useBasicAuth ? basicAuthUsername.trim() : '',
+        basicAuthPassword: useBasicAuth ? basicAuthPassword : '',
+        useFallback,
+        fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
+        fallbackPort: useFallback ? fallbackPortNum : undefined,
+        fallbackUseHttps: useFallback ? fallbackUseHttps : false,
+        fallbackBasePath: preservedFallbackBasePath, // Preserve existing fallback base path
       };
 
       await ServerManager.saveServer(server);
@@ -287,10 +332,27 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
+    if (useBasicAuth && !basicAuthUsername.trim()) {
+      showToast(t('errors.fillBasicAuthUsername'), 'error');
+      return;
+    }
+
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       showToast(t('errors.validPort'), 'error');
       return;
+    }
+
+    const fallbackPortNum = fallbackPort.trim() ? parseInt(fallbackPort, 10) : undefined;
+    if (useFallback) {
+      if (!fallbackHost.trim()) {
+        showToast(t('errors.fillFallbackHost'), 'error');
+        return;
+      }
+      if (fallbackPortNum !== undefined && (isNaN(fallbackPortNum) || fallbackPortNum < 1 || fallbackPortNum > 65535)) {
+        showToast(t('errors.validPort'), 'error');
+        return;
+      }
     }
 
     try {
@@ -306,11 +368,27 @@ App Version: ${APP_VERSION}`;
         password: bypassAuth ? '' : password.trim(),
         useHttps,
         bypassAuth,
+        useBasicAuth,
+        basicAuthUsername: useBasicAuth ? basicAuthUsername.trim() : '',
+        basicAuthPassword: useBasicAuth ? basicAuthPassword : '',
+        useFallback,
+        fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
+        fallbackPort: useFallback ? fallbackPortNum : undefined,
+        fallbackUseHttps: useFallback ? fallbackUseHttps : false,
       };
 
       const result = await ServerManager.testConnection(server, testAbortController.current.signal);
-      
-      if (result.success) {
+
+      if (result.primary || result.fallback) {
+        const primaryOk = result.primary?.success;
+        const fallbackOk = result.fallback?.success;
+        const ok = (label: string) => t('server.testEndpointOk', { endpoint: label });
+        const fail = (label: string) => t('server.testEndpointFail', { endpoint: label });
+        const primaryLabel = t('server.endpointPrimary');
+        const fallbackLabel = t('server.endpointFallback');
+        const summary = `${primaryOk ? ok(primaryLabel) : fail(primaryLabel)} · ${fallbackOk ? ok(fallbackLabel) : fail(fallbackLabel)}`;
+        showToast(summary, result.success ? 'success' : 'error');
+      } else if (result.success) {
         showToast(t('toast.connectionTestSuccess'), 'success');
       } else {
         showToast(result.error || t('errors.connectionTestFailed'), 'error');
@@ -413,7 +491,12 @@ App Version: ${APP_VERSION}`;
                   autoCorrect={false}
                   keyboardType="default"
                 />
-                <TouchableOpacity onPress={() => setShowHostTooltip(true)} style={styles.infoButton}>
+                <TouchableOpacity
+                  onPress={() => setShowHostTooltip(true)}
+                  style={styles.infoButton}
+                  accessibilityLabel={t('common.moreInfo')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
@@ -428,10 +511,69 @@ App Version: ${APP_VERSION}`;
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="numeric"
                 />
-                <TouchableOpacity onPress={() => setShowPortTooltip(true)} style={styles.infoButton}>
+                <TouchableOpacity
+                  onPress={() => setShowPortTooltip(true)}
+                  style={styles.infoButton}
+                  accessibilityLabel={t('common.moreInfo')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+
+          {/* Fallback URL Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.fallbackUrl')}</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <SettingRow icon="swap-horizontal-outline" label={t('server.useFallback')} hint={t('server.useFallbackHint')}>
+                <Switch
+                  value={useFallback}
+                  onValueChange={setUseFallback}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </SettingRow>
+              {useFallback && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons name="globe-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={fallbackHost}
+                      onChangeText={setFallbackHost}
+                      placeholder={t('placeholders.fallbackHost')}
+                      placeholderTextColor={colors.textSecondary}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="default"
+                    />
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons name="link-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={fallbackPort}
+                      onChangeText={setFallbackPort}
+                      placeholder={t('placeholders.portOptional')}
+                      placeholderTextColor={colors.textSecondary}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <SettingRow icon="shield-checkmark-outline" label={t('server.fallbackUseHttps')}>
+                    <Switch
+                      value={fallbackUseHttps}
+                      onValueChange={setFallbackUseHttps}
+                      trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </SettingRow>
+                </>
+              )}
             </View>
           </View>
 
@@ -479,34 +621,74 @@ App Version: ${APP_VERSION}`;
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.security')}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('server.useHttps')}</Text>
-                </View>
+              <SettingRow icon="shield-checkmark-outline" label={t('server.useHttps')}>
                 <Switch
                   value={useHttps}
                   onValueChange={setUseHttps}
                   trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
-              </View>
+              </SettingRow>
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="lock-open-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                  <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('server.bypassAuth')}</Text>
-                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('server.bypassAuthHint')}</Text>
-                  </View>
-                </View>
+              <SettingRow icon="lock-open-outline" label={t('server.bypassAuth')} hint={t('server.bypassAuthHint')}>
                 <Switch
                   value={bypassAuth}
                   onValueChange={setBypassAuth}
                   trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
-              </View>
+              </SettingRow>
+            </View>
+          </View>
+
+          {/* Proxy Authentication Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.proxyAuthentication')}</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <SettingRow icon="globe-outline" label={t('server.useBasicAuth')} hint={t('server.useBasicAuthHint')}>
+                <Switch
+                  value={useBasicAuth}
+                  onValueChange={setUseBasicAuth}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </SettingRow>
+              {useBasicAuth && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={basicAuthUsername}
+                      onChangeText={setBasicAuthUsername}
+                      placeholder={t('placeholders.proxyUsername')}
+                      placeholderTextColor={colors.textSecondary}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="none"
+                      autoComplete="off"
+                    />
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={basicAuthPassword}
+                      onChangeText={setBasicAuthPassword}
+                      placeholder={t('placeholders.proxyPassword')}
+                      placeholderTextColor={colors.textSecondary}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="password"
+                      autoComplete="off"
+                      passwordRules=""
+                    />
+                  </View>
+                </>
+              )}
             </View>
           </View>
 
@@ -540,18 +722,14 @@ App Version: ${APP_VERSION}`;
               
               {/* Debug Toggle */}
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="bug-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.debugMode')}</Text>
-                </View>
+              <SettingRow icon="bug-outline" label={t('screens.settings.debugMode')}>
                 <Switch
                   value={showDebugInfo}
                   onValueChange={setShowDebugInfo}
                   trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
-              </View>
+              </SettingRow>
             </View>
           </View>
 
@@ -572,41 +750,28 @@ App Version: ${APP_VERSION}`;
               </View>
               <View style={[styles.card, { backgroundColor: colors.surface }]}>
                 {/* Full URL */}
-                <View style={styles.debugRow}>
-                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Full URL</Text>
-                  <Text style={[styles.debugValue, { color: colors.text }]} selectable>
-                    {debugInfo.baseUrl}
-                  </Text>
-                </View>
-                
+                <DebugRow label={t('server.debugFullUrl')} value={debugInfo.baseUrl} selectable />
+
                 <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                
+
                 {/* Breakdown */}
-                <View style={styles.debugRow}>
-                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Protocol</Text>
-                  <Text style={[styles.debugValue, { color: colors.text }]}>{debugInfo.protocol}://</Text>
-                </View>
-                <View style={styles.debugRow}>
-                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Host</Text>
-                  <Text style={[styles.debugValue, { color: colors.text }]}>{debugInfo.cleanHost || '(empty)'}</Text>
-                </View>
-                <View style={styles.debugRow}>
-                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Port</Text>
-                  <Text style={[styles.debugValue, { color: colors.text }]}>
-                    {debugInfo.portNum || 'default (80/443)'}
-                  </Text>
-                </View>
-                
+                <DebugRow label={t('server.debugProtocol')} value={`${debugInfo.protocol}://`} />
+                <DebugRow label={t('server.debugHost')} value={debugInfo.cleanHost || t('server.debugEmpty')} />
+                <DebugRow
+                  label={t('server.debugPort')}
+                  value={debugInfo.portNum ? String(debugInfo.portNum) : t('server.debugDefaultPort')}
+                />
+
                 <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                
+
                 {/* Endpoints */}
-                <View style={styles.debugRow}>
-                  <Text style={[styles.debugLabel, { color: colors.textSecondary }]}>Login API</Text>
-                  <Text style={[styles.debugValue, { color: colors.text }]} selectable numberOfLines={2}>
-                    {debugInfo.loginEndpoint}
-                  </Text>
-                </View>
-                
+                <DebugRow
+                  label={t('server.debugLoginApi')}
+                  value={debugInfo.loginEndpoint}
+                  selectable
+                  numberOfLines={2}
+                />
+
                 <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                 
                 {/* Warnings */}
@@ -655,6 +820,9 @@ App Version: ${APP_VERSION}`;
                 username={username}
                 password={password}
                 bypassAuth={bypassAuth}
+                useBasicAuth={useBasicAuth}
+                basicAuthUsername={basicAuthUsername}
+                basicAuthPassword={basicAuthPassword}
               />
             </View>
           )}
@@ -835,24 +1003,6 @@ const styles = StyleSheet.create({
     height: 1,
     marginLeft: 48,
   },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingLabel: {
-    fontSize: 16,
-  },
-  settingHint: {
-    fontSize: 12,
-    marginTop: 1,
-  },
   dangerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -969,22 +1119,6 @@ const styles = StyleSheet.create({
   copyButton: {
     padding: 8,
     marginRight: 4,
-  },
-  debugRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignItems: 'flex-start',
-  },
-  debugLabel: {
-    width: 70,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  debugValue: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   debugWarnings: {
     padding: 8,

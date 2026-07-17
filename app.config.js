@@ -29,6 +29,40 @@ module.exports = {
             CFBundleURLSchemes: ['magnet'],
           },
         ],
+        // Required when CFBundleDocumentTypes is set (ITMS-90737). We import
+        // .torrent files via Linking rather than UIDocumentBrowserViewController.
+        LSSupportsOpeningDocumentsInPlace: true,
+        // Register as an "Open In" handler for .torrent files (issues #88, #125).
+        // LSHandlerRank must be Owner (paired with the EXPORTED declaration
+        // below) for Files' tap-to-open and "Always Open With" to list the
+        // app — as a mere Alternate viewer of an unowned type, iOS fell back
+        // to QuickLook Preview and showed "No Apps Available" (#125).
+        CFBundleDocumentTypes: [
+          {
+            CFBundleTypeName: 'BitTorrent Document',
+            CFBundleTypeRole: 'Viewer',
+            LSHandlerRank: 'Owner',
+            LSItemContentTypes: ['org.bittorrent.torrent', 'com.bittorrent.torrent'],
+          },
+        ],
+        // EXPORTED, not imported (#125): "imported" tells iOS another app
+        // owns this type definition — but no installed app exports a torrent
+        // UTI, so the type was effectively unowned and Files offered no
+        // open-with handlers. Exporting makes qRemote the canonical definer.
+        // Conformance to public.content (alongside public.data) is also
+        // required for Files' open-with eligibility — public.data alone only
+        // gets the type into the share sheet.
+        UTExportedTypeDeclarations: [
+          {
+            UTTypeIdentifier: 'org.bittorrent.torrent',
+            UTTypeConformsTo: ['public.data', 'public.content'],
+            UTTypeDescription: 'BitTorrent Document',
+            UTTypeTagSpecification: {
+              'public.filename-extension': ['torrent'],
+              'public.mime-type': ['application/x-bittorrent'],
+            },
+          },
+        ],
       },
     },
     android: {
@@ -51,12 +85,23 @@ module.exports = {
           ],
           category: ['BROWSABLE', 'DEFAULT'],
         },
+        // Open .torrent files shared from other apps (issue #88)
+        {
+          action: 'VIEW',
+          autoVerify: false,
+          data: [
+            {
+              mimeType: 'application/x-bittorrent',
+            },
+          ],
+          category: ['DEFAULT'],
+        },
       ],
     },
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-router', 'expo-localization'],
+    plugins: ['expo-router', 'expo-font', 'expo-localization', "expo-mail-composer", "expo-secure-store", "expo-sharing", "expo-status-bar"],
     extra: {
       router: {},
       eas: {

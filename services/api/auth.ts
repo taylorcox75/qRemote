@@ -2,6 +2,7 @@ import { AxiosError } from 'axios';
 import { apiClient } from './client';
 import { LoginResponse } from '@/types/api';
 import { clogInfo, clogWarn, clogError, clogDebug } from '@/services/connectivity-log';
+import { isLoginBodyOk, isLoginSuccess } from '@/utils/login-response';
 
 const API_VERSION = 'v2';
 
@@ -30,22 +31,20 @@ export const authApi = {
 
       clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`);
       
-      // qBittorrent returns 'Ok.' on success, 'Fails.' on failure
-      // Handle both string and trimmed string responses
+      // Success/failure interpretation is shared with the connection
+      // diagnostic — see utils/login-response.ts for the version matrix.
       const responseStr = typeof response === 'string' ? response.trim() : String(response).trim();
-      
-      if (responseStr === 'Ok.' || responseStr === 'Ok') {
-        // Successful login - verify we have session cookies
-        if (!cookies || cookies.length === 0) {
-          console.warn('[Auth] Warning: Login succeeded but no cookies received. This may cause issues with qBittorrent 5.x');
-          clogWarn('AUTH', 'Login succeeded but no session cookies received — may cause issues with qBittorrent 5.x');
-        }
-        clogInfo('AUTH', 'Login successful');
+      const hasCookie = !!cookies && cookies.length > 0;
+
+      if (isLoginSuccess({ body: responseStr, hasSessionCookie: hasCookie })) {
+        const via = isLoginBodyOk(responseStr) ? 'body "Ok."' : 'session cookie';
+        console.log(`[Auth] Login successful via ${via}`);
+        clogInfo('AUTH', `Login successful via ${via}`);
         return { status: 'Ok' };
       }
-      
-      console.warn('[Auth] Login failed with response:', responseStr);
-      clogWarn('AUTH', `Login failed — server responded: "${responseStr}"`);
+
+      console.warn('[Auth] Login failed with response:', responseStr, 'cookies:', hasCookie);
+      clogWarn('AUTH', `Login failed — body: "${responseStr}", cookies: ${hasCookie}`);
       return { status: 'Fails' };
     } catch (error: unknown) {
       if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {

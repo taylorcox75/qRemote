@@ -17,8 +17,11 @@ export type ExpandedCardField =
   | 'seeds'
   | 'peers'
   | 'ratio'
+  | 'ratioLimit'
+  | 'maxRatio'
   | 'uploaded'
   | 'availability'
+  | 'popularity'
   | 'savePath'
   | 'tracker'
   | 'addedOn'
@@ -45,9 +48,21 @@ export type AddTorrentDialogField =
   | 'autoTMM'
   | 'cookie';
 
+export type ThemeMode = 'system' | 'light' | 'dark';
+
 export interface AppPreferences {
-  /** 'dark' | 'light'; legacy values stored as boolean are also accepted */
+  /**
+   * @deprecated Use `themeMode` instead. Kept for backward compatibility:
+   * existing users have this set to 'dark' | 'light' (or boolean) and the
+   * ThemeContext still reads it as a fallback when `themeMode` is absent.
+   */
   theme: string | boolean;
+
+  /**
+   * Theme selection. 'system' follows the OS appearance and reactively updates
+   * when the user toggles light/dark in their device settings.
+   */
+  themeMode: ThemeMode;
 
   /** Per-theme color overrides, keyed by 'dark' | 'light' */
   customColors: Record<string, ColorTheme>;
@@ -115,10 +130,26 @@ export interface AppPreferences {
 
   /** Per-field visibility for the expanded (detailed) torrent card */
   expandedCardFields: Record<ExpandedCardField, boolean>;
+
+  /** Last selected search plugin ("all", "enabled", or a plugin name) */
+  lastSearchPlugin?: string;
+
+  /** Last selected search category ("all" or a plugin-supported category id) */
+  lastSearchCategory?: string;
+
+  /**
+   * Last active category filter on the torrents tab.
+   * null = All categories; '' = Uncategorized (torrents with no category set).
+   */
+  lastCategoryFilter?: string | null;
+
+  /** Last active tag filters on the torrents tab (OR semantics). */
+  lastTagFilters?: string[];
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
   theme: 'dark',
+  themeMode: 'system',
   customColors: {},
   defaultSortBy: 'added_on',
   defaultSortDirection: 'desc',
@@ -164,8 +195,11 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
     seeds: true,
     peers: true,
     ratio: true,
+    ratioLimit: false,
+    maxRatio: false,
     uploaded: true,
     availability: true,
+    popularity: true,
     savePath: false,
     tracker: false,
     addedOn: true,
@@ -174,4 +208,8 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
     category: true,
     progress: false,
   },
+  lastSearchPlugin: 'all',
+  lastSearchCategory: 'all',
+  lastCategoryFilter: null,
+  lastTagFilters: [],
 };
