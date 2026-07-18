@@ -226,7 +226,8 @@
         "seedingTime": "做种时间",
         "tags": "标签",
         "category": "分类",
-        "progress": "进度 %"
+        "progress": "进度 %",
+        "addedTime": "时间"
       }
     },
     "transfer": {
@@ -453,7 +454,11 @@
     "shutdownConfirm": "这将停止你服务器上的 qBittorrent 应用程序。",
     "deleteName": "删除“{{name}}”吗？",
     "torrentOnly": "Torrent Only",
-    "withFiles": "With Files"
+    "withFiles": "With Files",
+    "deleteCategory": "删除分类 \"{{name}}\"？",
+    "deleteCategoryMessage": "该分类将从 qBittorrent 中删除，并从使用它的种子中移除。文件不受影响。",
+    "deleteTag": "删除标签 \"{{tag}}\"？",
+    "deleteTagMessage": "该标签将从 qBittorrent 中删除，并从使用它的种子中移除。"
   },
   "server": {
     "serverInfo": "服务器信息",
@@ -668,7 +673,14 @@
     "trackersTab": "Tracker（{{count}}）",
     "categoryColon": "分类：",
     "tagsLabel": "标签：",
-    "trackerStatusLabel": "状态：{{status}}"
+    "trackerStatusLabel": "状态：{{status}}",
+    "sectionCurrent": "当前",
+    "sectionAllCategories": "所有分类",
+    "sectionNewCategory": "新建分类",
+    "sectionAssigned": "已分配",
+    "sectionAddFromLibrary": "从库中添加",
+    "sectionNewTag": "新建标签",
+    "longPressToDelete": "长按可从 qBittorrent 中删除"
   },
   "filters": {
     "all": "全部",
@@ -682,7 +694,8 @@
     "allCategories": "所有分类",
     "uncategorized": "未分类",
     "tags": "标签",
-    "tagsCount": "标签 ({{count}})"
+    "tagsCount": "标签 ({{count}})",
+    "untagged": "无标签"
   },
   "sort": {
     "dateAdded": "添加日期",

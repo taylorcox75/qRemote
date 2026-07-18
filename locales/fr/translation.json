@@ -226,7 +226,8 @@
         "seedingTime": "Temps de seeding",
         "tags": "Étiquettes",
         "category": "Catégorie",
-        "progress": "Progression %"
+        "progress": "Progression %",
+        "addedTime": "Heure"
       }
     },
     "transfer": {
@@ -453,7 +454,11 @@
     "shutdownConfirm": "Cela arrêtera l'application qBittorrent sur votre serveur.",
     "deleteName": "Supprimer \"{{name}}\" ?",
     "torrentOnly": "Torrent Only",
-    "withFiles": "With Files"
+    "withFiles": "With Files",
+    "deleteCategory": "Supprimer la catégorie \"{{name}}\" ?",
+    "deleteCategoryMessage": "La catégorie est supprimée de qBittorrent et retirée des torrents qui l'utilisent. Les fichiers ne sont pas affectés.",
+    "deleteTag": "Supprimer l'étiquette \"{{tag}}\" ?",
+    "deleteTagMessage": "L'étiquette est supprimée de qBittorrent et retirée des torrents qui l'utilisent."
   },
   "server": {
     "serverInfo": "INFO SERVEUR",
@@ -668,7 +673,14 @@
     "trackersTab": "Trackers ({{count}})",
     "categoryColon": "Catégorie :",
     "tagsLabel": "Étiquettes :",
-    "trackerStatusLabel": "Statut : {{status}}"
+    "trackerStatusLabel": "Statut : {{status}}",
+    "sectionCurrent": "Actuelle",
+    "sectionAllCategories": "Toutes les catégories",
+    "sectionNewCategory": "Nouvelle catégorie",
+    "sectionAssigned": "Assignées",
+    "sectionAddFromLibrary": "Ajouter depuis la bibliothèque",
+    "sectionNewTag": "Nouvelle étiquette",
+    "longPressToDelete": "Appui long pour supprimer de qBittorrent"
   },
   "filters": {
     "all": "Tous",
@@ -682,7 +694,8 @@
     "allCategories": "Toutes les catégories",
     "uncategorized": "Non catégorisé",
     "tags": "Étiquettes",
-    "tagsCount": "Étiquettes ({{count}})"
+    "tagsCount": "Étiquettes ({{count}})",
+    "untagged": "Sans étiquette"
   },
   "sort": {
     "dateAdded": "Date",

@@ -18,6 +18,8 @@ export interface ApiFeatures {
   supportsInactiveSeedingLimit: boolean;
   /** app/getCookies and app/setCookies endpoints exist (WebAPI ≥ 2.11.0). */
   supportsSetCookies: boolean;
+  /** search/downloadTorrent endpoint exists (WebAPI ≥ 2.11.0 / qBit 5.0). */
+  supportsSearchDownloadTorrent: boolean;
 }
 
 export function parseApiVersion(raw: string): ParsedVersion | null {
@@ -45,6 +47,7 @@ const V5_FEATURES: ApiFeatures = {
   hasContentPath: true,
   supportsInactiveSeedingLimit: true,
   supportsSetCookies: true,
+  supportsSearchDownloadTorrent: true,
 };
 
 export function getApiFeatures(apiVersion: string | null): ApiFeatures {
@@ -59,5 +62,6 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     hasContentPath: isV5,
     supportsInactiveSeedingLimit: isV5,
     supportsSetCookies: isV5,
+    supportsSearchDownloadTorrent: isV5,
   };
 }

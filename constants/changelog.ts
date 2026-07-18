@@ -16,6 +16,12 @@ export const CHANGELOG: ChangelogRelease[] = [
     date: '2026-07-18',
     changes: [
       'Fixed unreadable status bar icons (time, battery, signal) when the app is in light mode while the device is in dark mode',
+      'Search results now add reliably: direct tracker results go through qBittorrent’s search plugin (qBittorrent 5.0+) for login/cookie handling, while Prowlarr/Jackett results use a direct add so magnet redirects resolve instantly',
+      'The search sort menu now closes after picking an option and floats above the filter rows instead of pushing them down',
+      'Long-pressing while multi-selecting torrents now opens a bulk actions menu: set category, add/remove tags, verify data, reannounce, resume, pause, and delete',
+      'Categories and tags can now be deleted from the server: long-press a chip in the torrent detail category/tags popups, or use the delete buttons in Settings → Torrent Defaults (all with confirmation)',
+      'The tag filter now has an Untagged option to show torrents with no tags, matching the category filter’s Uncategorized',
+      'The "Added on" field on the detailed torrent card now shows date and time side by side on their own row',
     ],
   },
   {

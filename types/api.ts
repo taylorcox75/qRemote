@@ -320,6 +320,8 @@ export interface SearchResult {
   nbSeeders: number;
   siteUrl: string;
   descrLink: string;
+  /** Name of the plugin that produced this result. Absent on older servers. */
+  engineName?: string;
 }
 
 export interface SearchResultsResponse {

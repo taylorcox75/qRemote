@@ -246,7 +246,8 @@
         "seedingTime": "Seeding Time",
         "tags": "Tags",
         "category": "Category",
-        "progress": "Progress %"
+        "progress": "Progress %",
+        "addedTime": "Time"
       }
     },
     "transfer": {
@@ -473,7 +474,11 @@
     "shutdownConfirm": "This will stop the qBittorrent application on your server.",
     "deleteName": "Delete \"{{name}}\"?",
     "torrentOnly": "Torrent Only",
-    "withFiles": "With Files"
+    "withFiles": "With Files",
+    "deleteCategory": "Delete category \"{{name}}\"?",
+    "deleteCategoryMessage": "The category is removed from qBittorrent and cleared from any torrents using it. Files are not affected.",
+    "deleteTag": "Delete tag \"{{tag}}\"?",
+    "deleteTagMessage": "The tag is removed from qBittorrent and from any torrents using it."
   },
   "server": {
     "serverInfo": "SERVER INFO",
@@ -688,7 +693,14 @@
     "trackersTab": "Trackers ({{count}})",
     "categoryColon": "Category:",
     "tagsLabel": "Tags:",
-    "trackerStatusLabel": "Status: {{status}}"
+    "trackerStatusLabel": "Status: {{status}}",
+    "sectionCurrent": "Current",
+    "sectionAllCategories": "All categories",
+    "sectionNewCategory": "New category",
+    "sectionAssigned": "Assigned",
+    "sectionAddFromLibrary": "Add from library",
+    "sectionNewTag": "New tag",
+    "longPressToDelete": "Long-press to delete from qBittorrent"
   },
   "filters": {
     "all": "All",
@@ -702,7 +714,8 @@
     "allCategories": "All Categories",
     "uncategorized": "Uncategorized",
     "tags": "Tags",
-    "tagsCount": "Tags ({{count}})"
+    "tagsCount": "Tags ({{count}})",
+    "untagged": "Untagged"
   },
   "sort": {
     "dateAdded": "Date Added",

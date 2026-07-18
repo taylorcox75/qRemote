@@ -34,7 +34,7 @@ import { useToast } from '@/context/ToastContext';
 import { TorrentInfo, ServerConfig } from '@/types/api';
 import { TorrentCard } from '@/components/TorrentCard';
 import { SkeletonTorrentCard } from '@/components/SkeletonLoader';
-import { ActionMenu } from '@/components/ActionMenu';
+import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { InputModal } from '@/components/InputModal';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
@@ -56,7 +56,7 @@ import { extractMagnetLink } from '@/utils/magnet';
 import { getAddTorrentDialogueVariant } from '@/utils/add-torrent-dialogue';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSelectPicker';
-import { torrentHasAnyTag } from '@/utils/tags';
+import { torrentHasAnyTag, UNTAGGED_FILTER } from '@/utils/tags';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -81,6 +81,12 @@ export default function TorrentsScreen() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkMenuVisible, setBulkMenuVisible] = useState(false);
+  const [showBulkCategoryPicker, setShowBulkCategoryPicker] = useState(false);
+  // Tag editing works as a draft: toggles accumulate in bulkTagDraft and are
+  // applied in one addTags/removeTags call when the picker closes.
+  const [bulkTagMode, setBulkTagMode] = useState<'add' | 'remove' | null>(null);
+  const [bulkTagDraft, setBulkTagDraft] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'>('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -503,6 +509,81 @@ export default function TorrentsScreen() {
     );
   };
 
+  // Shared wrapper for the long-press bulk menu actions: mirrors the
+  // pause/resume pattern (exit select mode on success, toast on error).
+  const runBulkAction = async (action: (hashes: string[]) => Promise<void>) => {
+    if (selectedHashes.size === 0) return;
+    haptics.medium();
+    setBulkLoading(true);
+    try {
+      await action(Array.from(selectedHashes));
+      haptics.success();
+      refresh();
+      setSelectedHashes(new Set());
+      setSelectMode(false);
+    } catch (error: unknown) {
+      haptics.error();
+      showToast(getErrorMessage(error), 'error');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkSetCategory = (category: string) => {
+    setShowBulkCategoryPicker(false);
+    void runBulkAction((hashes) => torrentsApi.setTorrentCategory(hashes, category));
+  };
+
+  const handleBulkTagsDone = () => {
+    const mode = bulkTagMode;
+    const draft = bulkTagDraft;
+    setBulkTagMode(null);
+    setBulkTagDraft([]);
+    if (!mode || draft.length === 0) return;
+    void runBulkAction((hashes) =>
+      mode === 'add'
+        ? torrentsApi.addTorrentTags(hashes, draft)
+        : torrentsApi.removeTorrentTags(hashes, draft)
+    );
+  };
+
+  const bulkMenuItems: ActionMenuItemDef[] = [
+    { label: t('actions.resume'), icon: 'play', onPress: () => void handleBulkResume() },
+    { label: t('actions.pause'), icon: 'pause', onPress: () => void handleBulkPause() },
+    {
+      label: t('actions.setCategory'),
+      icon: 'folder-open-outline',
+      onPress: () => setShowBulkCategoryPicker(true),
+    },
+    {
+      label: t('actions.addTags'),
+      icon: 'pricetag-outline',
+      onPress: () => {
+        setBulkTagDraft([]);
+        setBulkTagMode('add');
+      },
+    },
+    {
+      label: t('actions.removeTags'),
+      icon: 'pricetags-outline',
+      onPress: () => {
+        setBulkTagDraft([]);
+        setBulkTagMode('remove');
+      },
+    },
+    {
+      label: t('actions.verifyData'),
+      icon: 'checkmark-done-outline',
+      onPress: () => void runBulkAction((hashes) => torrentsApi.recheckTorrents(hashes)),
+    },
+    {
+      label: t('actions.reannounce'),
+      icon: 'megaphone-outline',
+      onPress: () => void runBulkAction((hashes) => torrentsApi.reannounceTorrents(hashes)),
+    },
+    { label: t('common.delete'), icon: 'trash-outline', onPress: handleBulkDelete, destructive: true },
+  ];
+
   // ─── Server quick-connect state (used in not-connected early return) ────────
   const [savedServers, setSavedServers] = useState<ServerConfig[]>([]);
   const [serversLoaded, setServersLoaded] = useState(false);
@@ -775,6 +856,40 @@ export default function TorrentsScreen() {
       .sort((a, b) => a.localeCompare(b))
       .map((tag) => ({ label: tag, value: tag, icon: 'pricetag-outline' as const }));
   }, [tags]);
+
+  // Tag FILTER options: Untagged sentinel + server tags. Separate from
+  // tagPickerOptions so the bulk Add Tags picker never offers the sentinel.
+  const tagFilterPickerOptions = useMemo<MultiSelectPickerItem[]>(() => {
+    return [
+      { label: t('filters.untagged'), value: UNTAGGED_FILTER, icon: 'remove-circle-outline' as const },
+      ...tagPickerOptions,
+    ];
+  }, [tagPickerOptions, t]);
+
+  // Bulk "Set Category" options: Uncategorized ('' clears it) + server categories
+  const bulkCategoryOptions = useMemo<OptionPickerItem[]>(() => {
+    const sorted = Object.keys(categories).sort((a, b) => a.localeCompare(b));
+    return [
+      { label: t('filters.uncategorized'), value: '', icon: 'remove-circle-outline' as const },
+      ...sorted.map((name) => ({ label: name, value: name, icon: 'folder-outline' as const })),
+    ];
+  }, [categories, t]);
+
+  // Bulk "Remove Tags" options: only tags actually present on the selection
+  const bulkRemoveTagOptions = useMemo<MultiSelectPickerItem[]>(() => {
+    if (bulkTagMode !== 'remove') return [];
+    const present = new Set<string>();
+    torrents.forEach((tor) => {
+      if (!selectedHashes.has(tor.hash) || !tor.tags) return;
+      tor.tags.split(',').forEach((tag) => {
+        const trimmed = tag.trim();
+        if (trimmed) present.add(trimmed);
+      });
+    });
+    return [...present]
+      .sort((a, b) => a.localeCompare(b))
+      .map((tag) => ({ label: tag, value: tag, icon: 'pricetag-outline' as const }));
+  }, [bulkTagMode, torrents, selectedHashes]);
 
   const handleCategorySelect = useCallback(async (value: string) => {
     const newFilter = value === '__all__' ? null : value;
@@ -1149,10 +1264,36 @@ export default function TorrentsScreen() {
         <MultiSelectPicker
           visible={showTagPicker}
           title={t('filters.tags')}
-          options={tagPickerOptions}
+          options={tagFilterPickerOptions}
           selectedValues={tagFilters}
           onChange={(values) => void handleTagsChange(values)}
           onClose={() => setShowTagPicker(false)}
+        />
+
+        {/* Bulk actions menu — long-press while in select mode */}
+        <ActionMenu
+          visible={bulkMenuVisible}
+          onClose={() => setBulkMenuVisible(false)}
+          items={bulkMenuItems}
+        />
+
+        {/* Bulk Set Category picker */}
+        <OptionPicker
+          visible={showBulkCategoryPicker}
+          title={t('actions.setCategory')}
+          options={bulkCategoryOptions}
+          onSelect={handleBulkSetCategory}
+          onClose={() => setShowBulkCategoryPicker(false)}
+        />
+
+        {/* Bulk Add/Remove Tags picker — applies the draft on close */}
+        <MultiSelectPicker
+          visible={bulkTagMode !== null}
+          title={bulkTagMode === 'remove' ? t('actions.removeTags') : t('actions.addTags')}
+          options={bulkTagMode === 'remove' ? bulkRemoveTagOptions : tagPickerOptions}
+          selectedValues={bulkTagDraft}
+          onChange={setBulkTagDraft}
+          onClose={handleBulkTagsDone}
         />
 
         {filteredTorrents.length === 0 ? (
@@ -1337,8 +1478,15 @@ export default function TorrentsScreen() {
                         }}
                         onLongPress={() => {
                           haptics.medium();
-                          setSelectedTorrent(item);
-                          setMenuVisible(true);
+                          if (selectMode) {
+                            // Bulk menu for the current selection; a long-press
+                            // with nothing selected selects the pressed row.
+                            if (selectedHashes.size === 0) toggleSelection(item.hash);
+                            setBulkMenuVisible(true);
+                          } else {
+                            setSelectedTorrent(item);
+                            setMenuVisible(true);
+                          }
                         }}
                         onPauseResume={() => handleCardPauseResume(item)}
                         compact={cardViewMode === 'compact'}

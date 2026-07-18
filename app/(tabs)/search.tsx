@@ -33,6 +33,7 @@ import { SearchResultRow } from '@/components/SearchResultRow';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
+import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
@@ -66,6 +67,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { isConnected } = useServer();
+  const { features } = useApiFeatures();
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
   const queryInputRef = useRef<TextInput>(null);
@@ -400,7 +402,26 @@ export default function SearchScreen() {
       if (!result.fileUrl) return;
       setPendingAddUrl(result.fileUrl);
       try {
-        await torrentsApi.addTorrent(result.fileUrl);
+        // Non-magnet result URLs from direct tracker plugins often need the
+        // plugin's context to resolve (login cookies, magnet extraction from
+        // an HTML page, …) — delegate those to search/downloadTorrent
+        // (qBit 5.0+) so the owning plugin fetches server-side, the way
+        // qBittorrent's own WebUI adds results. Aggregator (Prowlarr/Jackett)
+        // URLs are the exception: they carry their own apikey, and their
+        // download links often answer with a redirect straight to a magnet
+        // URI — qBittorrent CORE follows that fine via torrents/add, while
+        // the Python search plugins choke on the non-HTTP redirect.
+        const isMagnet = result.fileUrl.trim().toLowerCase().startsWith('magnet:');
+        if (
+          !isMagnet &&
+          !isAggregatedSource &&
+          features.supportsSearchDownloadTorrent &&
+          result.engineName
+        ) {
+          await searchApi.downloadTorrent(result.fileUrl, result.engineName);
+        } else {
+          await torrentsApi.addTorrent(result.fileUrl);
+        }
         haptics.success();
         showToast(t('screens.search.addedToast'), 'success');
       } catch (err: unknown) {
@@ -410,7 +431,7 @@ export default function SearchScreen() {
         setPendingAddUrl(null);
       }
     },
-    [showToast, t],
+    [features.supportsSearchDownloadTorrent, isAggregatedSource, showToast, t],
   );
 
   const handleLongPressResult = useCallback((result: SearchResult) => {
@@ -893,6 +914,7 @@ export default function SearchScreen() {
                         setSortBy(opt.key);
                         setSortDirection(opt.key === 'name' ? 'asc' : 'desc');
                       }
+                      setShowSortMenu(false);
                     }}
                     activeOpacity={0.7}
                   >
@@ -1108,13 +1130,19 @@ const styles = StyleSheet.create({
   stopChipText: {
     ...typography.captionSemibold,
   },
+  // True floating popup anchored under the sort button (left side of the
+  // search row: 8 card padding + 42 button + 4 gap), overlaying the chip
+  // rows instead of sitting inline below them — matches the Torrents tab.
   sortDropdown: {
-    marginTop: spacing.xs,
-    marginHorizontal: spacing.xs,
-    borderRadius: borderRadius.medium,
+    position: 'absolute',
+    top: 54,
+    left: spacing.md,
+    minWidth: 200,
+    borderRadius: borderRadius.large,
     borderWidth: 0.5,
-    paddingVertical: spacing.xs,
-    ...shadows.medium,
+    ...shadows.large,
+    zIndex: 1000,
+    overflow: 'hidden',
   },
   sortOption: {
     flexDirection: 'row',

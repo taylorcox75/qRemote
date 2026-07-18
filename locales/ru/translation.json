@@ -246,7 +246,8 @@
         "seedingTime": "Время раздачи",
         "tags": "Теги",
         "category": "Категория",
-        "progress": "Прогресс %"
+        "progress": "Прогресс %",
+        "addedTime": "Время"
       }
     },
     "transfer": {
@@ -473,7 +474,11 @@
     "shutdownConfirm": "Приложение qBittorrent на сервере будет остановлено.",
     "deleteName": "Удалить «{{name}}»?",
     "torrentOnly": "Только торрент",
-    "withFiles": "С файлами"
+    "withFiles": "С файлами",
+    "deleteCategory": "Удалить категорию «{{name}}»?",
+    "deleteCategoryMessage": "Категория будет удалена из qBittorrent и снята со всех торрентов, где она используется. Файлы не затрагиваются.",
+    "deleteTag": "Удалить тег «{{tag}}»?",
+    "deleteTagMessage": "Тег будет удалён из qBittorrent и со всех торрентов, где он используется."
   },
   "server": {
     "serverInfo": "СЕРВЕР",
@@ -688,7 +693,14 @@
     "trackersTab": "Трекеры ({{count}})",
     "categoryColon": "Категория:",
     "tagsLabel": "Теги:",
-    "trackerStatusLabel": "Статус: {{status}}"
+    "trackerStatusLabel": "Статус: {{status}}",
+    "sectionCurrent": "Текущая",
+    "sectionAllCategories": "Все категории",
+    "sectionNewCategory": "Новая категория",
+    "sectionAssigned": "Назначенные",
+    "sectionAddFromLibrary": "Добавить из библиотеки",
+    "sectionNewTag": "Новый тег",
+    "longPressToDelete": "Удерживайте, чтобы удалить из qBittorrent"
   },
   "filters": {
     "all": "Все",
@@ -702,7 +714,8 @@
     "allCategories": "Все категории",
     "uncategorized": "Без категории",
     "tags": "Теги",
-    "tagsCount": "Теги ({{count}})"
+    "tagsCount": "Теги ({{count}})",
+    "untagged": "Без тегов"
   },
   "sort": {
     "dateAdded": "Дата добавления",
