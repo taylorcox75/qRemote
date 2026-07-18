@@ -1,6 +1,6 @@
 # qRemote
 
-[![iOS App Store Deploy](https://img.shields.io/github/actions/workflow/status/taylorcox75/qRemote/ios-deploy.yml?branch=main&label=v3.7.13&style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml) [![GitHub](https://img.shields.io/badge/GitHub-Source-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/taylorcox75/qRemote/)
+[![iOS App Store Deploy](https://img.shields.io/github/actions/workflow/status/taylorcox75/qRemote/ios-deploy.yml?branch=main&label=v3.7.13&style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml) [![Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftaylorcox75%2FqRemote%2Fcoverage%2Fcoverage-summary.json&query=%24.total.lines.pct&suffix=%25&label=Coverage&style=for-the-badge&logo=jest&logoColor=white&color=yellowgreen)](https://github.com/taylorcox75/qRemote/actions/workflows/coverage.yml) [![GitHub](https://img.shields.io/badge/GitHub-Source-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/taylorcox75/qRemote/)
 
 **The fast, modern iOS remote for qBittorrent.**
 
