@@ -18,7 +18,10 @@ module.exports = {
       supportsTablet: true,
       bundleIdentifier: 'com.qRemote.app',
       infoPlist: {
-        UIViewControllerBasedStatusBarAppearance: true,
+        // Must be false: RN's StatusBar API (expo-status-bar / FocusAwareStatusBar)
+        // is a no-op when iOS uses view-controller-based status bar appearance,
+        // leaving the bar stuck on the system appearance (white icons in light mode).
+        UIViewControllerBasedStatusBarAppearance: false,
         ITSAppUsesNonExemptEncryption: false,
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: true,

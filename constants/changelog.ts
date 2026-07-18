@@ -12,6 +12,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.7.13',
+    date: '2026-07-18',
+    changes: [
+      'Fixed unreadable status bar icons (time, battery, signal) when the app is in light mode while the device is in dark mode',
+    ],
+  },
+  {
     version: '3.7.12',
     date: '2026-07-16',
     changes: [
