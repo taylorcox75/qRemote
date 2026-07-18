@@ -1,5 +1,27 @@
 # qRemote
 
+[![iOS App Store Deploy](https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml/badge.svg)](https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml)
+
+<p align="center">
+  <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
+    <img src="https://img.shields.io/badge/1-Version%20Check-6e7681?style=for-the-badge&logo=github&logoColor=white" alt="Version Check" />
+  </a>
+  &nbsp;➜&nbsp;
+  <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
+    <img src="https://img.shields.io/badge/2-Create%20Release-8250df?style=for-the-badge&logo=github&logoColor=white" alt="Create Release" />
+  </a>
+  &nbsp;➜&nbsp;
+  <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
+    <img src="https://img.shields.io/badge/3-Build%20iOS-4630EB?style=for-the-badge&logo=expo&logoColor=white" alt="Build iOS" />
+  </a>
+  &nbsp;➜&nbsp;
+  <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
+    <img src="https://img.shields.io/badge/4-Submit%20to%20App%20Store-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Submit to App Store" />
+  </a>
+</p>
+
+<p align="center"><sub>Runs automatically on every version bump to <code>main</code> &nbsp;•&nbsp; click any stage to view the pipeline run</sub></p>
+
 **The fast, modern iOS remote for qBittorrent.**
 
 qRemote puts your entire qBittorrent server in your pocket. Start, monitor, and finish torrents from anywhere — with live updates every couple of seconds, a polished dark UI, one-tap actions, and built-in search across dozens of indexers. No web UI pinching and zooming, no clunky wrappers: a real native-feeling app designed for your thumb.
