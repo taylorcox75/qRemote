@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Project Overview
-qRemote is a React Native (Expo SDK 54) mobile app for remotely controlling
+qRemote is a React Native (Expo SDK 57) mobile app for remotely controlling
 qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 
 ## Dev Commands
@@ -12,8 +12,8 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 ### Verification (COMMIT TIME ONLY — never mid-task)
 Do NOT run typecheck, tests, or lint after individual edits or "to be safe" while working — on this hardware (Raspberry Pi) every run is expensive and the user has explicitly said not to. Run the checks ONCE, as a batch, only when getting ready to commit:
 - `npx tsc --noEmit` — typecheck (currently clean; incremental via `.tsbuildinfo`, ~25s warm / ~85s cold)
-- `npm test` — Jest (ts-jest), 220 tests across 13 suites. When only one module changed, `npm test -- tests/utils/<name>.test.ts` runs a single suite (~18s vs minutes)
-- `npm run lint` — the warning baseline (~140, all pre-existing) is expected noise. Zero *errors* is the bar.
+- `npm test` — Jest (ts-jest), 241 tests across 14 suites. When only one module changed, `npm test -- tests/utils/<name>.test.ts` runs a single suite (~18s vs minutes)
+- `npm run lint` — the warning baseline (~149, all pre-existing) is expected noise. Zero *errors* is the bar.
 - `npm run format` — Prettier
 
 ### File Index (complete map — trust it, don't re-explore; only open the files you're changing)
