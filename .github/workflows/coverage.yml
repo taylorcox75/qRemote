@@ -1,0 +1,47 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  coverage:
+    name: Test coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npx jest --coverage --coverageReporters=json-summary
+
+      # The README coverage badge reads coverage-summary.json off the
+      # `coverage` branch via shields.io's dynamic-JSON endpoint, so this
+      # branch holds only that file and is force-pushed on every run.
+      - name: Publish summary to coverage branch
+        run: |
+          pct=$(node -p "require('./coverage/coverage-summary.json').total.lines.pct")
+          mkdir /tmp/pub
+          cp coverage/coverage-summary.json /tmp/pub/
+          cd /tmp/pub
+          git init -b coverage
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add coverage-summary.json
+          git commit -m "coverage: ${pct}% lines ($GITHUB_SHA)"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" coverage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
