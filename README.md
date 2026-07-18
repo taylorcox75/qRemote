@@ -1,12 +1,10 @@
 # qRemote
 
-[![iOS App Store Deploy](https://img.shields.io/github/actions/workflow/status/taylorcox75/qRemote/ios-deploy.yml?branch=main&label=v3.7.13&style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml)
-
-**The fast, modern iOS remote for qBittorrent.**
-
-qRemote puts your entire qBittorrent server in your pocket. Start, monitor, and finish torrents from anywhere — with live updates every couple of seconds, a polished dark UI, one-tap actions, and built-in search across dozens of indexers. No web UI pinching and zooming, no clunky wrappers: a real native-feeling app designed for your thumb.
-
 <p align="center">
+  <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/taylorcox75/qRemote/ios-deploy.yml?branch=main&label=v3.7.13&style=for-the-badge&logo=githubactions&logoColor=white" alt="iOS App Store Deploy" />
+  </a>
+  &nbsp;
   <a href="https://apps.apple.com/app/qremote-for-qbittorrent/id6756276747">
     <img src="https://img.shields.io/badge/App%20Store-Download-0D96F6?style=for-the-badge&logo=appstore&logoColor=white" alt="Download on the App Store" />
   </a>
@@ -19,6 +17,10 @@ qRemote puts your entire qBittorrent server in your pocket. Start, monitor, and 
     <img src="https://img.shields.io/badge/GitHub-Source-181717?style=for-the-badge&logo=github&logoColor=white" alt="View on GitHub" />
   </a>
 </p>
+
+**The fast, modern iOS remote for qBittorrent.**
+
+qRemote puts your entire qBittorrent server in your pocket. Start, monitor, and finish torrents from anywhere — with live updates every couple of seconds, a polished dark UI, one-tap actions, and built-in search across dozens of indexers. No web UI pinching and zooming, no clunky wrappers: a real native-feeling app designed for your thumb.
 
 <p align="center">
   <img src="screenshots/torrent-list.png" width="300">
