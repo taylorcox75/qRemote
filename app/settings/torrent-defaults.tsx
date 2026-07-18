@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -374,13 +375,26 @@ export default function TorrentDefaultsScreen() {
                             </View>
                           </View>
                           <TouchableOpacity
-                            onPress={async () => {
-                              try {
-                                await categoriesApi.removeCategories([name]);
-                                showToast(t('toast.categoryDeleted', { name }), 'success');
-                              } catch {
-                                showToast(t('errors.failedToDeleteCategory'), 'error');
-                              }
+                            onPress={() => {
+                              Alert.alert(
+                                t('alerts.deleteCategory', { name }),
+                                t('alerts.deleteCategoryMessage'),
+                                [
+                                  { text: t('common.cancel'), style: 'cancel' },
+                                  {
+                                    text: t('common.delete'),
+                                    style: 'destructive',
+                                    onPress: async () => {
+                                      try {
+                                        await categoriesApi.removeCategories([name]);
+                                        showToast(t('toast.categoryDeleted', { name }), 'success');
+                                      } catch {
+                                        showToast(t('errors.failedToDeleteCategory'), 'error');
+                                      }
+                                    },
+                                  },
+                                ]
+                              );
                             }}
                             accessibilityLabel={t('common.delete')}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -434,23 +448,46 @@ export default function TorrentDefaultsScreen() {
                   </View>
                 ) : (
                   <View style={styles.tagsWrap}>
-                    {tags.map((tag) => (
-                      <TouchableOpacity
-                        key={tag}
-                        style={[styles.tagChip, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}
-                        onLongPress={async () => {
-                          try {
-                            await tagsApi.deleteTags([tag]);
-                            showToast(t('toast.tagDeleted', { tag }), 'success');
-                          } catch {
-                            showToast(t('errors.failedToDeleteTag'), 'error');
-                          }
-                        }}
-                      >
-                        <Ionicons name="pricetag-outline" size={14} color={colors.primary} />
-                        <Text style={[styles.tagChipText, { color: colors.text }]}>{tag}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {tags.map((tag) => {
+                      const confirmDeleteTag = () => {
+                        Alert.alert(
+                          t('alerts.deleteTag', { tag }),
+                          t('alerts.deleteTagMessage'),
+                          [
+                            { text: t('common.cancel'), style: 'cancel' },
+                            {
+                              text: t('common.delete'),
+                              style: 'destructive',
+                              onPress: async () => {
+                                try {
+                                  await tagsApi.deleteTags([tag]);
+                                  showToast(t('toast.tagDeleted', { tag }), 'success');
+                                } catch {
+                                  showToast(t('errors.failedToDeleteTag'), 'error');
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      };
+                      return (
+                        <TouchableOpacity
+                          key={tag}
+                          style={[styles.tagChip, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}
+                          onLongPress={confirmDeleteTag}
+                        >
+                          <Ionicons name="pricetag-outline" size={14} color={colors.primary} />
+                          <Text style={[styles.tagChipText, { color: colors.text }]}>{tag}</Text>
+                          <TouchableOpacity
+                            onPress={confirmDeleteTag}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            accessibilityLabel={t('common.delete')}
+                          >
+                            <Ionicons name="close" size={14} color={colors.error} />
+                          </TouchableOpacity>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 )}
               </View>

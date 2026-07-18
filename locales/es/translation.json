@@ -226,7 +226,8 @@
         "seedingTime": "Tiempo de seeding",
         "tags": "Etiquetas",
         "category": "Categoría",
-        "progress": "Progreso %"
+        "progress": "Progreso %",
+        "addedTime": "Hora"
       }
     },
     "transfer": {
@@ -453,7 +454,11 @@
     "shutdownConfirm": "Esto detendrá la aplicación qBittorrent en tu servidor.",
     "deleteName": "¿Eliminar \"{{name}}\"?",
     "torrentOnly": "Torrent Only",
-    "withFiles": "With Files"
+    "withFiles": "With Files",
+    "deleteCategory": "¿Eliminar la categoría \"{{name}}\"?",
+    "deleteCategoryMessage": "La categoría se elimina de qBittorrent y se quita de los torrents que la usan. Los archivos no se ven afectados.",
+    "deleteTag": "¿Eliminar la etiqueta \"{{tag}}\"?",
+    "deleteTagMessage": "La etiqueta se elimina de qBittorrent y de los torrents que la usan."
   },
   "server": {
     "serverInfo": "INFO DEL SERVIDOR",
@@ -668,7 +673,14 @@
     "trackersTab": "Trackers ({{count}})",
     "categoryColon": "Categoría:",
     "tagsLabel": "Etiquetas:",
-    "trackerStatusLabel": "Estado: {{status}}"
+    "trackerStatusLabel": "Estado: {{status}}",
+    "sectionCurrent": "Actual",
+    "sectionAllCategories": "Todas las categorías",
+    "sectionNewCategory": "Nueva categoría",
+    "sectionAssigned": "Asignadas",
+    "sectionAddFromLibrary": "Añadir de la biblioteca",
+    "sectionNewTag": "Nueva etiqueta",
+    "longPressToDelete": "Mantén pulsado para eliminar de qBittorrent"
   },
   "filters": {
     "all": "Todos",
@@ -682,7 +694,8 @@
     "allCategories": "Todas las categorías",
     "uncategorized": "Sin categoría",
     "tags": "Etiquetas",
-    "tagsCount": "Etiquetas ({{count}})"
+    "tagsCount": "Etiquetas ({{count}})",
+    "untagged": "Sin etiquetas"
   },
   "sort": {
     "dateAdded": "Fecha",

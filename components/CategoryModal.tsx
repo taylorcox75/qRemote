@@ -7,6 +7,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import {
+  Alert,
   Modal,
   View,
   Text,
@@ -37,6 +38,8 @@ interface CategoryModalProps {
   onSelect: (category: string) => Promise<void>;
   /** Called when the user creates and assigns a brand-new category */
   onCreateAndSelect: (category: string) => Promise<void>;
+  /** Optional: delete a category from the server entirely (long-press a chip) */
+  onDeleteCategory?: (category: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -47,6 +50,7 @@ export function CategoryModal({
   loading = false,
   onSelect,
   onCreateAndSelect,
+  onDeleteCategory,
   onClose,
 }: CategoryModalProps) {
   const { colors } = useTheme();
@@ -94,6 +98,30 @@ export function CategoryModal({
     }
   };
 
+  const confirmDelete = (category: string) => {
+    if (!onDeleteCategory) return;
+    haptics.medium();
+    Alert.alert(
+      t('alerts.deleteCategory', { name: category }),
+      t('alerts.deleteCategoryMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await onDeleteCategory(category);
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <Modal
       visible={visible}
@@ -128,7 +156,9 @@ export function CategoryModal({
             keyboardShouldPersistTaps="handled"
           >
             {/* Current category */}
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>CURRENT</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              {t('torrentDetail.sectionCurrent').toUpperCase()}
+            </Text>
             {!currentCategory ? (
               <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
                 {t('common.none')}
@@ -155,7 +185,7 @@ export function CategoryModal({
             {availableCategories.length > 0 && (
               <>
                 <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-                  ALL CATEGORIES
+                  {t('torrentDetail.sectionAllCategories').toUpperCase()}
                 </Text>
                 <View style={styles.chipRow}>
                   {availableCategories.map((cat) => (
@@ -163,6 +193,7 @@ export function CategoryModal({
                       key={cat}
                       style={[styles.availableChip, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}
                       onPress={() => handleSelect(cat)}
+                      onLongPress={onDeleteCategory ? () => confirmDelete(cat) : undefined}
                       disabled={isLoading}
                       activeOpacity={0.7}
                     >
@@ -171,12 +202,17 @@ export function CategoryModal({
                     </TouchableOpacity>
                   ))}
                 </View>
+                {onDeleteCategory && (
+                  <Text style={[styles.deleteHint, { color: colors.textSecondary }]}>
+                    {t('torrentDetail.longPressToDelete')}
+                  </Text>
+                )}
               </>
             )}
 
             {/* New category */}
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              NEW CATEGORY
+              {t('torrentDetail.sectionNewCategory').toUpperCase()}
             </Text>
             <View style={styles.newRow}>
               <TextInput
@@ -263,6 +299,11 @@ const styles = StyleSheet.create({
   emptyHint: {
     ...typography.small,
     marginBottom: spacing.sm,
+  },
+  deleteHint: {
+    ...typography.caption,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
   },
   chipRow: {
     flexDirection: 'row',

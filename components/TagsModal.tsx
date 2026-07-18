@@ -6,6 +6,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import {
+  Alert,
   Modal,
   View,
   Text,
@@ -35,6 +36,8 @@ interface TagsModalProps {
   onAddTag: (tag: string) => Promise<void>;
   onRemoveTag: (tag: string) => Promise<void>;
   onCreateTag?: (tag: string) => Promise<void>;
+  /** Optional: delete a tag from the server entirely (long-press a chip) */
+  onDeleteTag?: (tag: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -46,6 +49,7 @@ export function TagsModal({
   onAddTag,
   onRemoveTag,
   onCreateTag,
+  onDeleteTag,
   onClose,
 }: TagsModalProps) {
   const { colors, isDark } = useTheme();
@@ -108,6 +112,30 @@ export function TagsModal({
 
   const isLoading = loading || busy;
 
+  const confirmDelete = (tag: string) => {
+    if (!onDeleteTag) return;
+    haptics.medium();
+    Alert.alert(
+      t('alerts.deleteTag', { tag }),
+      t('alerts.deleteTagMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await onDeleteTag(tag);
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <Modal
       visible={visible}
@@ -133,7 +161,9 @@ export function TagsModal({
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>Tags</Text>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {t('screens.addTorrent.tags')}
+            </Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel={t('common.close')}>
               <Ionicons name="close-circle" size={26} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -146,11 +176,11 @@ export function TagsModal({
           >
             {/* Current tags */}
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              ASSIGNED
+              {t('torrentDetail.sectionAssigned').toUpperCase()}
             </Text>
             {currentTags.length === 0 ? (
               <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
-                No tags assigned yet
+                {t('common.none')}
               </Text>
             ) : (
               <View style={styles.chipRow}>
@@ -179,7 +209,7 @@ export function TagsModal({
             {availableTags.length > 0 && (
               <>
                 <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-                  ADD FROM LIBRARY
+                  {t('torrentDetail.sectionAddFromLibrary').toUpperCase()}
                 </Text>
                 <View style={styles.chipRow}>
                   {availableTags.map((tag) => (
@@ -190,6 +220,7 @@ export function TagsModal({
                         { backgroundColor: colors.background, borderColor: colors.surfaceOutline },
                       ]}
                       onPress={() => handleAdd(tag)}
+                      onLongPress={onDeleteTag ? () => confirmDelete(tag) : undefined}
                       disabled={isLoading}
                       activeOpacity={0.7}
                     >
@@ -200,12 +231,17 @@ export function TagsModal({
                     </TouchableOpacity>
                   ))}
                 </View>
+                {onDeleteTag && (
+                  <Text style={[styles.deleteHint, { color: colors.textSecondary }]}>
+                    {t('torrentDetail.longPressToDelete')}
+                  </Text>
+                )}
               </>
             )}
 
             {/* New tag input */}
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              NEW TAG
+              {t('torrentDetail.sectionNewTag').toUpperCase()}
             </Text>
             <View style={styles.newTagRow}>
               <TextInput
@@ -219,7 +255,7 @@ export function TagsModal({
                 ]}
                 value={newTagInput}
                 onChangeText={setNewTagInput}
-                placeholder="Tag name…"
+                placeholder={t('screens.settings.tagName')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={handleCreate}
@@ -290,6 +326,11 @@ const styles = StyleSheet.create({
   emptyHint: {
     ...typography.small,
     marginBottom: spacing.sm,
+  },
+  deleteHint: {
+    ...typography.caption,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
   },
   chipRow: {
     flexDirection: 'row',

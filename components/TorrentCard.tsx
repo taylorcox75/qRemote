@@ -200,7 +200,16 @@ function TorrentCardInner({
     if (show('availability')) addItem('availability', t('screens.settings.expandedCardFieldsList.availability'), torrent.availability > 0 ? formatAvailability(torrent.availability) : '—');
     if (show('popularity') && torrent.popularity != null) addItem('popularity', t('screens.settings.expandedCardFieldsList.popularity'), torrent.popularity.toFixed(2));
     if (show('seedingTime')) addItem('seedingTime', t('screens.settings.expandedCardFieldsList.seedingTime'), torrent.seeding_time > 0 ? formatTime(torrent.seeding_time) : '—');
-    if (show('addedOn')) addItem('addedOn', t('screens.settings.expandedCardFieldsList.addedOn'), new Date(torrent.added_on * 1000).toLocaleDateString());
+    if (show('addedOn')) {
+      // Date + time as a left/right pair on one row. If the previous short
+      // item ended on the left column, skip the right slot so the pair
+      // never splits across two rows.
+      if (shortCount % 2 === 1) shortCount++;
+      const added = new Date(torrent.added_on * 1000);
+      const addedValid = torrent.added_on > 0 && !isNaN(added.getTime());
+      addItem('addedOn', t('screens.settings.expandedCardFieldsList.addedOn'), addedValid ? added.toLocaleDateString() : '—');
+      addItem('addedOnTime', t('screens.settings.expandedCardFieldsList.addedTime'), addedValid ? added.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
+    }
     if (show('tags') && !!torrent.tags) addItem('tags', t('screens.settings.expandedCardFieldsList.tags'), torrent.tags, true);
     if (show('category') && !!torrent.category) addItem('category', t('screens.settings.expandedCardFieldsList.category'), torrent.category);
     if (show('tracker') && !!torrent.tracker) addItem('tracker', t('screens.settings.expandedCardFieldsList.tracker'), torrent.tracker, true, true);

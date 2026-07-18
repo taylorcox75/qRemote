@@ -1079,6 +1079,18 @@ export default function TorrentDetail() {
           loading={actionLoading}
           onSelect={handleCategorySelect}
           onCreateAndSelect={handleCategoryCreateAndSelect}
+          onDeleteCategory={async (name) => {
+            try {
+              setActionLoading(true);
+              await categoriesApi.removeCategories([name]);
+              await loadTorrentData();
+              showToast(t('toast.categoryDeleted', { name }), 'success');
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
+            } finally {
+              setActionLoading(false);
+            }
+          }}
           onClose={() => setCategoryPickerVisible(false)}
         />
 
@@ -1115,6 +1127,18 @@ export default function TorrentDetail() {
               await tagsApi.createTags([tag]);
               await torrentsApi.addTorrentTags([torrent.hash], [tag]);
               await loadTorrentData();
+            } catch (error: unknown) {
+              showToast(getErrorMessage(error), 'error');
+            } finally {
+              setActionLoading(false);
+            }
+          }}
+          onDeleteTag={async (tag) => {
+            try {
+              setActionLoading(true);
+              await tagsApi.deleteTags([tag]);
+              await loadTorrentData();
+              showToast(t('toast.tagDeleted', { tag }), 'success');
             } catch (error: unknown) {
               showToast(getErrorMessage(error), 'error');
             } finally {

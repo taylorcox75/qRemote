@@ -146,13 +146,15 @@ export const searchApi = {
    * Download a .torrent file or magnet using a specific plugin's context.
    *
    * Available from qBittorrent v5.0.0 / WebAPI v2.11. Useful when a plugin's
-   * result URL needs plugin-side fetching (cookies, login, etc.). For typical
-   * magnet/.torrent URLs, prefer torrentsApi.addTorrent directly.
+   * result URL needs plugin-side fetching (cookies, login, magnet extraction
+   * from a page, etc.). For typical magnet/.torrent URLs, prefer
+   * torrentsApi.addTorrent directly. Responds immediately; the plugin fetch
+   * and torrent add happen asynchronously server-side.
    */
-  async downloadTorrent(url: string, plugin: string): Promise<void> {
+  async downloadTorrent(torrentUrl: string, pluginName: string): Promise<void> {
     await apiClient.postUrlEncoded(
       `/api/${API_VERSION}/search/downloadTorrent`,
-      { url, plugin },
+      { torrentUrl, pluginName },
     );
   },
 };

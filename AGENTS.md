@@ -9,29 +9,70 @@ qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
 - `npm run ios` — iOS simulator
 - `npm run android` — Android emulator
 
-### Verification (run before considering a change done)
-- `npx tsc --noEmit` — typecheck (currently clean)
-- `npm test` — Jest (ts-jest). Tests live in `tests/`, currently 220 passing across 13 suites
-- `npm run lint` — ESLint. Run ONLY right before committing, not after every edit — the warning baseline (~140, all pre-existing) makes per-edit runs noisy and slow. Zero *errors* is the bar.
-- `npm run format` — Prettier (also commit-time only)
+### Verification (COMMIT TIME ONLY — never mid-task)
+Do NOT run typecheck, tests, or lint after individual edits or "to be safe" while working — on this hardware (Raspberry Pi) every run is expensive and the user has explicitly said not to. Run the checks ONCE, as a batch, only when getting ready to commit:
+- `npx tsc --noEmit` — typecheck (currently clean; incremental via `.tsbuildinfo`, ~25s warm / ~85s cold)
+- `npm test` — Jest (ts-jest), 220 tests across 13 suites. When only one module changed, `npm test -- tests/utils/<name>.test.ts` runs a single suite (~18s vs minutes)
+- `npm run lint` — the warning baseline (~140, all pre-existing) is expected noise. Zero *errors* is the bar.
+- `npm run format` — Prettier
 
-### File Index (start here — don't re-explore what's already mapped)
+### File Index (complete map — trust it, don't re-explore; only open the files you're changing)
+
+**Screens (`app/`, Expo Router):**
 - `app/(tabs)/index.tsx` — Torrents list: filters/sort/swipe actions, collapsing header (scroll pattern copied in search.tsx)
 - `app/(tabs)/search.tsx` — Search tab: job polling UI, plugin/category/indexer filter chip rows, client-side sort, collapsing header
 - `app/(tabs)/transfer.tsx` / `app/(tabs)/settings.tsx` / `app/(tabs)/logs.tsx` — transfer stats, settings hub, connectivity logs
+- `app/(tabs)/_layout.tsx` — tab bar; `app/_layout.tsx` — root providers/theme/deep-link handling
+- `app/settings/` — sub-screens, names = content: `about`, `add-torrent-dialogue`, `advanced`, `appearance`, `detailed-card-fields`, `notifications`, `servers`, `theme`, `torrent-defaults`, `whats-new`
+- `app/torrent/[hash].tsx` — torrent detail (single source; old TorrentDetails.tsx component was deleted); `app/torrent/files.tsx` — file list/priorities; `app/torrent/manage-trackers.tsx` — tracker add/edit/remove
+- `app/torrents/add.tsx` — add-torrent flow (magnet/.torrent, options)
 - `app/search/plugins.tsx` — search plugin install/enable/uninstall
-- `app/torrent/[hash].tsx` — torrent detail (single source; old TorrentDetails.tsx component was deleted)
 - `app/server/add.tsx`, `app/server/[id].tsx` — server add/edit; presented as native modal sheets → they mount `<ModalToast/>` locally (see ToastContext)
-- `context/ServerContext.tsx` — connection lifecycle; `checkAndReconnect()` ALWAYS does a full re-login (no session-validity probe) and de-dupes concurrent calls via a shared in-flight promise. qBittorrent ties search jobs to the session — never call it eagerly on foreground/AppState events, only reactively after a request actually fails
-- `context/TorrentContext.tsx` — rid-based incremental torrent sync + the reactive auto-reconnect effect other providers piggyback on
-- `context/TransferContext.tsx` — transfer-info poll; relies on TorrentContext's reactive reconnect
-- `context/ToastContext.tsx` + `components/Toast.tsx` — global toast is a plain view (NEVER wrap in RN `<Modal>` — a Modal captures all touches and freezes the UI); native-modal-sheet screens need the locally-mounted `ModalToast`
-- `hooks/useSearchJob.ts` — search job lifecycle: start/stop/delete, 2s status+results polling, cleanup on unmount
-- `services/api/client.ts` — axios singleton; normalizes HTTP errors into human-text `Error`s (callers currently substring-match these — grep before rewording any message)
-- `services/server-manager.ts` — server CRUD + connect/reconnect/test
-- `services/storage.ts` — AsyncStorage preferences (typed shape + defaults in `types/preferences.ts`)
-- `utils/` — pure helpers: `searchResult.ts` (indexer-label heuristics), `magnet.ts`, `torrent-file.ts`, `format.ts`, `error.ts`
-- `constants/changelog.ts` — in-app "What's New" data (see Changelog discipline below)
+
+**Contexts (`context/`):**
+- `ServerContext.tsx` — connection lifecycle; `checkAndReconnect()` ALWAYS does a full re-login (no session-validity probe) and de-dupes concurrent calls via a shared in-flight promise. qBittorrent ties search jobs to the session — never call it eagerly on foreground/AppState events, only reactively after a request actually fails
+- `TorrentContext.tsx` — rid-based incremental torrent sync + the reactive auto-reconnect effect other providers piggyback on
+- `TransferContext.tsx` — transfer-info poll; relies on TorrentContext's reactive reconnect
+- `ToastContext.tsx` + `components/Toast.tsx` — global toast is a plain view (NEVER wrap in RN `<Modal>` — a Modal captures all touches and freezes the UI); native-modal-sheet screens need the locally-mounted `ModalToast`
+- `ThemeContext.tsx` — `useTheme()`, `colors` object, user color overrides; `ApiVersionContext.tsx` — detected qBittorrent API version → feature gating via `utils/apiVersion.ts`
+
+**Components (`components/`, all PascalCase function components taking a `…Props` interface):**
+- Modals/pickers: `ActionMenu`, `InputModal` (preferred over `Alert.prompt`), `OptionPicker`, `MultiSelectPicker`, `CategoryModal`, `TagsModal`, `ColorPicker`
+- Torrent/search UI: `TorrentCard` (React.memo with custom comparator — keep it in sync when adding rendered fields), `SearchResultRow` (+internal ActionPill), `FilterChip`, `EmptyState`, `SkeletonLoader` (+`SkeletonTorrentCard`)
+- Visuals: `SpeedGraph`, `CircularProgress`, `AnimatedProgressBar`, `AnimatedButton`, `Confetti`
+- Chrome/diagnostics: `FocusAwareStatusBar`, `SettingRow`, `QuickConnectPanel`, `LogViewer`, `DebugRow`, `SuperDebugPanel` (connection diagnostics steps)
+
+**API wrappers (`services/api/`, thin objects over `apiClient`):**
+- `client.ts` — `apiClient` axios singleton; normalizes HTTP errors into human-text `Error`s (callers substring-match these — grep before rewording any message); holds server config, cookies, API version, Basic Auth header
+- `auth.ts` (login/logout) · `sync.ts` (getMainData rid-sync, getTorrentPeers) · `transfer.ts` (global speed limits, alt-speed toggle, banPeers) · `application.ts` (version/buildInfo/preferences/cookies) · `categories.ts` · `tags.ts` · `logs.ts` (main+peer logs) · `search.ts` (job start/stop/status/results/delete + plugin management + downloadTorrent)
+- `torrents.ts` — everything per-torrent: list/properties/trackers/webseeds/contents/pieces, pause/resume/delete/recheck/reannounce, add (URL+file), tracker & peer edits, priorities (queue + file), limits/share-limits, location/name/category/tags, AMM/sequential/firstLastPiece/forceStart/superSeeding, renameFile/renameFolder
+
+**Services (`services/`):**
+- `server-manager.ts` — server CRUD + connect/reconnect/test (`ConnectionTestResult`, `isNetworkError`)
+- `storage.ts` — AsyncStorage preferences (typed shape + defaults in `types/preferences.ts`)
+- `query-client.ts` — shared TanStack `QueryClient`; `color-theme-manager.ts` — save/load/apply user color themes
+- `connectivity-log.ts` — in-memory ring log, `clogDebug/Info/Warn/Error(tag, msg)`; `log-storage.ts` — persisted log entries for the Logs tab
+
+**Hooks (`hooks/`):**
+- `useSearchJob.ts` — search job lifecycle: start/stop/delete, 2s status+results polling, cleanup on unmount
+- `useTorrentActions.ts` — builds the per-torrent action menu (pause/resume/delete/etc.) used by list + detail
+- `useReactiveReconnect.ts` — feeds query errors into ServerContext reconnect (`isReconnectableError`)
+- `useSpeedTracker.ts` / `useSpeedHistory.ts` — sampling for SpeedGraph
+
+**Utils (`utils/`, pure, well-tested — add logic here when it doesn't need React):**
+- `format.ts` (size/speed/time/ratio/percent/progress/availability/date — progress & availability FLOOR, never round up) · `torrent-state.ts` (state→color/label, completion/eta rules) · `error.ts` (`getErrorMessage`) · `apiVersion.ts` (parse + `ApiFeatures` gating) · `server.ts` (endpoint resolution incl. fallback URL, avatar colors) · `magnet.ts` / `torrent-file.ts` (incoming link/file parsing) · `searchResult.ts` (indexer-label heuristics) · `login-response.ts` (qBittorrent login body/cookie interpretation) · `basicAuth.ts` · `haptics.ts` (global toggle + wrappers) · `tags.ts` (CSV tag parsing) · `add-torrent-dialogue.ts` (compact/full variant choice) · `version.ts` (`APP_VERSION`)
+
+**i18n:** `i18n/index.ts` initializes react-i18next; each locale is ONE file `locales/{en,es,zh,fr,de,ru}/translation.json` containing all namespaces: `common`, `states`, `screens`, `placeholders`, `actions`, `alerts`, `server`, `torrentDetail`, `filters`, `sort`, `toast`, `errors`. Keys look like `t('actions.pause')`.
+
+**Types/constants:** `types/api.ts` (all qBittorrent API shapes, `TorrentInfo`, `ServerConfig`), `types/preferences.ts` (typed prefs + defaults); `constants/`: `changelog.ts` (in-app "What's New" — see Changelog discipline), `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts` (shared style tokens — use these, don't invent ad-hoc spacing)
+
+### Task Recipes (exact touch-lists for recurring changes — follow, don't rediscover)
+- **Add/change a user-facing string:** add the key to ALL SIX `locales/*/translation.json` (really translate — the parity test rejects lazily-copied English ≥16 chars), use via `t('ns.key')`. Verify with `npm test` (parity test will name any file you missed).
+- **Add a preference:** typed shape + default in `types/preferences.ts` → read/write via `storageService` (`services/storage.ts`) → UI in the relevant `app/settings/*` screen using `SettingRow` + `OptionPicker`/switch → i18n the label (recipe above). NEVER rename existing keys.
+- **Add a qBittorrent API call:** method on the matching `services/api/*.ts` object (follow its neighbors' style) → response/param types in `types/api.ts` → if availability depends on qBittorrent version, gate via `ApiFeatures` in `utils/apiVersion.ts`.
+- **Add a torrent action:** API method (above) → menu item in `hooks/useTorrentActions.ts` → strings in `actions`/`toast` namespaces.
+- **Add a settings sub-screen:** create `app/settings/<name>.tsx` (copy structure of a sibling — the route registers itself, `_layout.tsx` needs no edit), link from `app/(tabs)/settings.tsx`.
+- **User-facing change of any kind:** finish with the Changelog discipline step (Critical Rule 8).
 
 ## Architecture
 - **Routing:** Expo Router file-based routing in `app/`. The `(tabs)` directory uses parentheses because Expo Router requires this syntax for route groups — it is a framework convention, not a naming choice. The parens cannot be removed.
