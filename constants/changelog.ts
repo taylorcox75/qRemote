@@ -12,6 +12,13 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.7.14',
+    date: '2026-07-18',
+    changes: [
+      'Fixed a bug where a server host pasted with a trailing slash (e.g. from a full URL) was saved with the slash intact instead of being stripped',
+    ],
+  },
+  {
     version: '3.7.13',
     date: '2026-07-18',
     changes: [

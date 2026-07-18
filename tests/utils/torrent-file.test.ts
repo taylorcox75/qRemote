@@ -71,4 +71,10 @@ describe('extractTorrentFile', () => {
     expect(extractTorrentFile(null)).toBeNull();
     expect(extractTorrentFile('')).toBeNull();
   });
+
+  it('falls back to the raw segment when percent-decoding fails (safeDecode catch)', () => {
+    // "%zz" is an invalid escape sequence for decodeURIComponent
+    const result = extractTorrentFile('file:///Inbox/bad%zzname.torrent');
+    expect(result?.name).toBe('bad%zzname.torrent');
+  });
 });
