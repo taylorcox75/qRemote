@@ -4,19 +4,19 @@
 
 <p align="center">
   <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
-    <img src="https://img.shields.io/badge/1-Version%20Check-6e7681?style=for-the-badge&logo=github&logoColor=white" alt="Version Check" />
+    <img src="https://img.shields.io/badge/1-Version%20Check-6e7681?style=for-the-badge&logo=githubactions&logoColor=white" alt="Version Check" />
   </a>
   &nbsp;➜&nbsp;
   <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
-    <img src="https://img.shields.io/badge/2-Create%20Release-8250df?style=for-the-badge&logo=github&logoColor=white" alt="Create Release" />
+    <img src="https://img.shields.io/badge/2-Create%20Release-8250df?style=for-the-badge&logo=githubactions&logoColor=white" alt="Create Release" />
   </a>
   &nbsp;➜&nbsp;
   <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
-    <img src="https://img.shields.io/badge/3-Build%20iOS-4630EB?style=for-the-badge&logo=expo&logoColor=white" alt="Build iOS" />
+    <img src="https://img.shields.io/badge/3-Build%20iOS-4630EB?style=for-the-badge&logo=githubactions&logoColor=white" alt="Build iOS" />
   </a>
   &nbsp;➜&nbsp;
   <a href="https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml">
-    <img src="https://img.shields.io/badge/4-Submit%20to%20App%20Store-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Submit to App Store" />
+    <img src="https://img.shields.io/badge/4-Submit%20to%20App%20Store-0D96F6?style=for-the-badge&logo=githubactions&logoColor=white" alt="Submit to App Store" />
   </a>
 </p>
 
