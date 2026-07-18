@@ -1,10 +1,10 @@
-# qRemote
+# qRemote [![GitHub](https://img.shields.io/badge/GitHub-source-4078c0?logo=github&logoColor=white)](https://github.com/taylorcox75/qRemote/)
+[![iOS App Store Deploy](https://img.shields.io/github/actions/workflow/status/taylorcox75/qRemote/ios-deploy.yml?branch=main&label=v3.7.13&logo=githubactions&logoColor=white)](https://github.com/taylorcox75/qRemote/actions/workflows/ios-deploy.yml) [![Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftaylorcox75%2FqRemote%2Fcoverage%2Fcoverage-summary.json&query=%24.total.lines.pct&suffix=%25&label=Coverage&logo=jest&logoColor=white&color=yellowgreen)](https://github.com/taylorcox75/qRemote/actions/workflows/coverage.yml) 
+[![Join the TestFlight Beta](https://img.shields.io/badge/TestFlight-join%20beta-0D96F6?logo=testflight&logoColor=white)](https://testflight.apple.com/join/ZHp9Uq4h) [![Download on the App Store](https://img.shields.io/badge/App%20Store-download-0D96F6?logo=appstore&logoColor=white)](https://apps.apple.com/app/qremote-for-qbittorrent/id6756276747)
 
 **The fast, modern iOS remote for qBittorrent.**
 
 qRemote puts your entire qBittorrent server in your pocket. Start, monitor, and finish torrents from anywhere — with live updates every couple of seconds, a polished dark UI, one-tap actions, and built-in search across dozens of indexers. No web UI pinching and zooming, no clunky wrappers: a real native-feeling app designed for your thumb.
-
-**iOS:** [Download on the App Store](https://apps.apple.com/app/qremote-for-qbittorrent/id6756276747) · [TestFlight Beta](https://testflight.apple.com/join/ZHp9Uq4h) · [GitHub](https://github.com/taylorcox75/qRemote/)
 
 <p align="center">
   <img src="screenshots/torrent-list.png" width="300">
