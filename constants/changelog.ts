@@ -16,6 +16,7 @@ export const CHANGELOG: ChangelogRelease[] = [
     date: '2026-07-18',
     changes: [
       'Fixed a bug where a server host pasted with a trailing slash (e.g. from a full URL) was saved with the slash intact instead of being stripped',
+      'Fixed the "Added on" detailed card field so date and time always stay paired on one row instead of splitting apart when another field precedes them',
     ],
   },
   {

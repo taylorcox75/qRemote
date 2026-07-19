@@ -64,6 +64,44 @@ function DetailRow({
   );
 }
 
+// Renders two label/value cells together on a single row, immune to the
+// surrounding grid's flex-wrap ordering — used for pairs (e.g. date + time)
+// that must never split across rows regardless of preceding item parity.
+function PairRow({
+  label,
+  value,
+  label2,
+  value2,
+}: {
+  label: string;
+  value: string;
+  label2: string;
+  value2: string;
+}) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={detailRowStyles.pairRow}>
+      <View style={detailRowStyles.cell}>
+        <Text style={[detailRowStyles.cellLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+          {label}
+        </Text>
+        <Text style={[detailRowStyles.cellValue, { color: colors.text }]} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
+      <View style={[detailRowStyles.cell, detailRowStyles.cellRight]}>
+        <Text style={[detailRowStyles.cellLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+          {label2}
+        </Text>
+        <Text style={[detailRowStyles.cellValue, { color: colors.text }]} numberOfLines={1}>
+          {value2}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const detailRowStyles = StyleSheet.create({
   fullRow: {
     flexDirection: 'row',
@@ -83,6 +121,10 @@ const detailRowStyles = StyleSheet.create({
     fontWeight: '400',
     flex: 1,
     textAlign: 'right',
+  },
+  pairRow: {
+    flexDirection: 'row',
+    width: '100%',
   },
   cell: {
     width: '50%',
@@ -168,6 +210,9 @@ function TorrentCardInner({
     fullWidth?: boolean;
     truncate?: boolean;
     column?: 'left' | 'right';
+    pair?: boolean;
+    label2?: string;
+    value2?: string;
   }> = [];
 
   if (!compact) {
@@ -201,14 +246,19 @@ function TorrentCardInner({
     if (show('popularity') && torrent.popularity != null) addItem('popularity', t('screens.settings.expandedCardFieldsList.popularity'), torrent.popularity.toFixed(2));
     if (show('seedingTime')) addItem('seedingTime', t('screens.settings.expandedCardFieldsList.seedingTime'), torrent.seeding_time > 0 ? formatTime(torrent.seeding_time) : '—');
     if (show('addedOn')) {
-      // Date + time as a left/right pair on one row. If the previous short
-      // item ended on the left column, skip the right slot so the pair
-      // never splits across two rows.
-      if (shortCount % 2 === 1) shortCount++;
+      // Date + time rendered as a self-contained left/right pair on one row —
+      // does not consume a shortCount slot, so it never splits across rows
+      // and doesn't disrupt column parity for fields that follow it.
       const added = new Date(torrent.added_on * 1000);
       const addedValid = torrent.added_on > 0 && !isNaN(added.getTime());
-      addItem('addedOn', t('screens.settings.expandedCardFieldsList.addedOn'), addedValid ? added.toLocaleDateString() : '—');
-      addItem('addedOnTime', t('screens.settings.expandedCardFieldsList.addedTime'), addedValid ? added.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
+      detailItems.push({
+        key: 'addedOn',
+        pair: true,
+        label: t('screens.settings.expandedCardFieldsList.addedOn'),
+        value: addedValid ? added.toLocaleDateString() : '—',
+        label2: t('screens.settings.expandedCardFieldsList.addedTime'),
+        value2: addedValid ? added.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+      });
     }
     if (show('tags') && !!torrent.tags) addItem('tags', t('screens.settings.expandedCardFieldsList.tags'), torrent.tags, true);
     if (show('category') && !!torrent.category) addItem('category', t('screens.settings.expandedCardFieldsList.category'), torrent.category);
@@ -268,16 +318,26 @@ function TorrentCardInner({
       {/* Expanded detail section — two-column grid for short fields, full-width for long ones */}
       {detailItems.length > 0 && (
         <View style={[styles.detailGrid, { borderTopColor: colors.surfaceOutline }]}>
-          {detailItems.map((item) => (
-            <DetailRow
-              key={item.key}
-              label={item.label}
-              value={item.value}
-              column={item.column}
-              fullWidth={item.fullWidth}
-              truncate={item.truncate}
-            />
-          ))}
+          {detailItems.map((item) =>
+            item.pair ? (
+              <PairRow
+                key={item.key}
+                label={item.label}
+                value={item.value}
+                label2={item.label2 ?? ''}
+                value2={item.value2 ?? ''}
+              />
+            ) : (
+              <DetailRow
+                key={item.key}
+                label={item.label}
+                value={item.value}
+                column={item.column}
+                fullWidth={item.fullWidth}
+                truncate={item.truncate}
+              />
+            ),
+          )}
         </View>
       )}
     </TouchableOpacity>
