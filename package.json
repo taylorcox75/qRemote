@@ -1,6 +1,6 @@
 {
   "name": "qRemote",
-  "version": "3.7.120",
+  "version": "3.7.13",
   "main": "index.ts",
   "scripts": {
     "start": "expo start --go",
