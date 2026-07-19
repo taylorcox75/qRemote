@@ -199,7 +199,7 @@ export default function AboutScreen() {
                 </View>
                 <View style={styles.starsRow}>
                   {[0, 1, 2, 3, 4].map((i) => (
-                    <Ionicons key={i} name="star" size={14} color={colors.warning} />
+                    <Ionicons key={i} name="star-outline" size={14} color={colors.primary} />
                   ))}
                 </View>
               </TouchableOpacity>
