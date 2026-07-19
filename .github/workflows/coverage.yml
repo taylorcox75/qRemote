@@ -28,19 +28,36 @@ jobs:
       - name: Run tests with coverage
         run: npx jest --coverage --coverageReporters=json-summary
 
-      # The README coverage badge reads coverage-summary.json off the
-      # `coverage` branch via shields.io's dynamic-JSON endpoint, so this
-      # branch holds only that file and is force-pushed on every run.
-      - name: Publish summary to coverage branch
+      # The README coverage badge reads badge.json off the `coverage` branch
+      # via shields.io's endpoint badge type, so this branch holds only that
+      # file and is force-pushed on every run. We compute the threshold color
+      # ourselves here because shields.io's dynamic/json badge only supports a
+      # fixed `color` query param — it can't derive color from the JSON value.
+      - name: Publish badge to coverage branch
         run: |
           pct=$(node -p "require('./coverage/coverage-summary.json').total.lines.pct")
+          color=$(node -p "
+            const pct = $pct;
+            pct >= 90 ? 'brightgreen' :
+            pct >= 80 ? 'green' :
+            pct >= 70 ? 'yellowgreen' :
+            pct >= 60 ? 'yellow' :
+            pct >= 50 ? 'orange' : 'red';
+          ")
           mkdir /tmp/pub
-          cp coverage/coverage-summary.json /tmp/pub/
+          node -e "
+            require('fs').writeFileSync('/tmp/pub/badge.json', JSON.stringify({
+              schemaVersion: 1,
+              label: 'Coverage',
+              message: '${pct}%',
+              color: '${color}',
+            }));
+          "
           cd /tmp/pub
           git init -b coverage
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add coverage-summary.json
+          git add badge.json
           git commit -m "coverage: ${pct}% lines ($GITHUB_SHA)"
           git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" coverage
         env:
