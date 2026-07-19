@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as StoreReview from 'expo-store-review';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -24,6 +25,8 @@ import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const APP_STORE_URL = 'https://apps.apple.com/us/app/qremote-for-qbittorrent/id6756276747';
 
 function InfoRow({ icon, label, value, colors }: { icon: IconName; label: string; value: string; colors: ThemeColors }) {
   return (
@@ -54,6 +57,18 @@ export default function AboutScreen() {
       }
     }, [isConnected])
   );
+
+  const handleRate = useCallback(async () => {
+    try {
+      if (await StoreReview.isAvailableAsync()) {
+        await StoreReview.requestReview();
+        return;
+      }
+    } catch {
+      // Fall through to opening the App Store listing directly.
+    }
+    Linking.openURL(`${APP_STORE_URL}?action=write-review`).catch(() => {});
+  }, []);
 
   const loadAppInfo = async () => {
     try {
@@ -172,6 +187,22 @@ export default function AboutScreen() {
                 </View>
                 <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={handleRate}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="thumbs-up-outline" size={22} color={colors.primary} />
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.rateApp')}</Text>
+                </View>
+                <View style={styles.starsRow}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <Ionicons key={i} name="star-outline" size={14} color={colors.primary} />
+                  ))}
+                </View>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -208,6 +239,7 @@ const styles = StyleSheet.create({
   },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   settingLabel: { fontSize: 16, fontWeight: '500' },
+  starsRow: { flexDirection: 'row', gap: 2 },
   separator: { height: 1, marginLeft: 50 },
   infoRow: {
     flexDirection: 'row',
