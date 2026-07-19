@@ -17,6 +17,7 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.qRemote.app',
+      appStoreUrl: 'https://apps.apple.com/us/app/qremote-for-qbittorrent/id6756276747',
       infoPlist: {
         // Must be false: RN's StatusBar API (expo-status-bar / FocusAwareStatusBar)
         // is a no-op when iOS uses view-controller-based status bar appearance,
