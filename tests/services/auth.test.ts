@@ -152,4 +152,45 @@ describe('authApi.login', () => {
     const postOrder = postUrlEncoded.mock.invocationCallOrder[0];
     expect(clearOrder).toBeLessThan(postOrder);
   });
+
+  it('re-throws ERR_CANCELED AxiosError instead of returning Fails', async () => {
+    const axiosErr = new AxiosError('canceled');
+    axiosErr.code = 'ERR_CANCELED';
+    postUrlEncoded.mockRejectedValue(axiosErr);
+    getCookies.mockReturnValue('');
+
+    await expect(authApi.login('admin', 'pw')).rejects.toBe(axiosErr);
+  });
+
+  it('returns Fails for a non-Error thrown value', async () => {
+    postUrlEncoded.mockRejectedValue('plain string failure');
+    getCookies.mockReturnValue('');
+
+    const result = await authApi.login('admin', 'pw');
+
+    expect(result).toEqual({ status: 'Fails' });
+  });
+});
+
+describe('authApi.logout', () => {
+  beforeEach(() => {
+    postUrlEncoded.mockReset();
+    clearCookies.mockReset();
+  });
+
+  it('posts to the logout endpoint and clears cookies', async () => {
+    postUrlEncoded.mockResolvedValue(undefined);
+
+    await authApi.logout();
+
+    expect(postUrlEncoded).toHaveBeenCalledWith('/api/v2/auth/logout', {});
+    expect(clearCookies).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates errors from postUrlEncoded and does not clear cookies', async () => {
+    postUrlEncoded.mockRejectedValue(new Error('network down'));
+
+    await expect(authApi.logout()).rejects.toThrow('network down');
+    expect(clearCookies).not.toHaveBeenCalled();
+  });
 });

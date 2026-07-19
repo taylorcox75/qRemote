@@ -6,6 +6,162 @@ jest.mock('@/services/storage', () => ({
 }));
 
 import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
+import { storageService } from '@/services/storage';
+
+const getPreferences = storageService.getPreferences as jest.Mock;
+const savePreferences = storageService.savePreferences as jest.Mock;
+
+describe('getCustomColors', () => {
+  beforeEach(() => {
+    getPreferences.mockReset();
+    savePreferences.mockReset();
+  });
+
+  it('returns dark colors when isDark is true', async () => {
+    getPreferences.mockResolvedValue({
+      customColors: { dark: { primary: '#111111' }, light: { primary: '#eeeeee' } },
+    });
+    const result = await colorThemeManager.getCustomColors(true);
+    expect(result).toEqual({ primary: '#111111' });
+  });
+
+  it('returns light colors when isDark is false', async () => {
+    getPreferences.mockResolvedValue({
+      customColors: { dark: { primary: '#111111' }, light: { primary: '#eeeeee' } },
+    });
+    const result = await colorThemeManager.getCustomColors(false);
+    expect(result).toEqual({ primary: '#eeeeee' });
+  });
+
+  it('returns null when no custom colors are stored', async () => {
+    getPreferences.mockResolvedValue({});
+    const result = await colorThemeManager.getCustomColors(true);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when getPreferences throws', async () => {
+    getPreferences.mockRejectedValue(new Error('storage failure'));
+    const result = await colorThemeManager.getCustomColors(true);
+    expect(result).toBeNull();
+  });
+});
+
+describe('saveCustomColors', () => {
+  beforeEach(() => {
+    getPreferences.mockReset();
+    savePreferences.mockReset();
+  });
+
+  it('saves colors under the correct theme key, preserving other theme', async () => {
+    getPreferences.mockResolvedValue({
+      customColors: { light: { primary: '#eeeeee' } },
+      otherPref: 'x',
+    });
+    savePreferences.mockResolvedValue(undefined);
+
+    await colorThemeManager.saveCustomColors(true, { primary: '#123456' });
+
+    expect(savePreferences).toHaveBeenCalledWith({
+      otherPref: 'x',
+      customColors: {
+        light: { primary: '#eeeeee' },
+        dark: { primary: '#123456' },
+      },
+    });
+  });
+
+  it('creates customColors object when none exists', async () => {
+    getPreferences.mockResolvedValue({});
+    savePreferences.mockResolvedValue(undefined);
+
+    await colorThemeManager.saveCustomColors(false, { primary: '#abcdef' });
+
+    expect(savePreferences).toHaveBeenCalledWith({
+      customColors: { light: { primary: '#abcdef' } },
+    });
+  });
+
+  it('rethrows when savePreferences fails', async () => {
+    getPreferences.mockResolvedValue({});
+    savePreferences.mockRejectedValue(new Error('save failed'));
+
+    await expect(colorThemeManager.saveCustomColors(true, {})).rejects.toThrow('save failed');
+  });
+});
+
+describe('resetCustomColors', () => {
+  beforeEach(() => {
+    getPreferences.mockReset();
+    savePreferences.mockReset();
+  });
+
+  it('deletes only the specified theme key', async () => {
+    getPreferences.mockResolvedValue({
+      customColors: { dark: { primary: '#111' }, light: { primary: '#eee' } },
+    });
+    savePreferences.mockResolvedValue(undefined);
+
+    await colorThemeManager.resetCustomColors(true);
+
+    expect(savePreferences).toHaveBeenCalledWith({
+      customColors: { light: { primary: '#eee' } },
+    });
+  });
+
+  it('rethrows when savePreferences fails', async () => {
+    getPreferences.mockResolvedValue({ customColors: {} });
+    savePreferences.mockRejectedValue(new Error('save failed'));
+
+    await expect(colorThemeManager.resetCustomColors(false)).rejects.toThrow('save failed');
+  });
+});
+
+describe('resetTorrentStateColors', () => {
+  beforeEach(() => {
+    getPreferences.mockReset();
+    savePreferences.mockReset();
+  });
+
+  it('does nothing when no custom colors exist for the theme', async () => {
+    getPreferences.mockResolvedValue({});
+    await colorThemeManager.resetTorrentStateColors(true);
+    expect(savePreferences).not.toHaveBeenCalled();
+  });
+
+  it('removes only torrent state color keys, keeps advanced colors', async () => {
+    getPreferences.mockResolvedValue({
+      customColors: {
+        dark: {
+          primary: '#123456',
+          stateDownloading: '#00ff00',
+          stateSeeding: '#0000ff',
+        },
+      },
+    });
+    savePreferences.mockResolvedValue(undefined);
+
+    await colorThemeManager.resetTorrentStateColors(true);
+
+    expect(savePreferences).toHaveBeenCalledWith({
+      customColors: {
+        dark: { primary: '#123456' },
+      },
+    });
+  });
+
+  it('rethrows when an error occurs during save', async () => {
+    getPreferences.mockResolvedValueOnce({
+      customColors: { dark: { stateDownloading: '#fff' } },
+    });
+    // second getPreferences call happens inside saveCustomColors via getCustomColors->resetTorrentStateColors flow
+    getPreferences.mockResolvedValueOnce({
+      customColors: { dark: { stateDownloading: '#fff' } },
+    });
+    savePreferences.mockRejectedValue(new Error('boom'));
+
+    await expect(colorThemeManager.resetTorrentStateColors(true)).rejects.toThrow('boom');
+  });
+});
 
 describe('mergeColors', () => {
   const defaults: ColorTheme = {

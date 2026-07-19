@@ -10,7 +10,7 @@ const STORAGE_KEYS = {
 } as const;
 
 const stripProtocol = (host: string): string =>
-  (host || '').replace(/^(https?:\/\/)/i, '');
+  (host || '').replace(/^(https?:\/\/)/i, '').replace(/\/+$/, '');
 
 export const storageService = {
   /**

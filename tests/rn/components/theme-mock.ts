@@ -1,0 +1,25 @@
+// Shared mock colors object for components/*.test.tsx files.
+// Not a test file itself (no .test suffix) so jest won't try to run it.
+export const mockColors = {
+  background: '#000000',
+  surface: '#111111',
+  surfaceOutline: '#222222',
+  text: '#ffffff',
+  textSecondary: '#aaaaaa',
+  primary: '#3366ff',
+  primaryOpac: 'rgba(51,102,255,0.1)',
+  error: '#ff0000',
+  success: '#00ff00',
+  warning: '#ffaa00',
+  stateDownloading: '#0af',
+  stateSeeding: '#0fa',
+  stateUploadAndDownload: '#aa0',
+  stateUploadOnly: '#a0a',
+  stateError: '#f00',
+  stateStalled: '#888',
+  statePaused: '#666',
+  stateChecking: '#f80',
+  stateMetadata: '#08f',
+  stateQueued: '#048',
+  stateOther: '#999',
+};

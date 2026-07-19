@@ -49,4 +49,14 @@ describe('extractMagnetLink', () => {
     const incomingText = `Hey, use this ${sampleMagnet} thanks`;
     expect(extractMagnetLink(incomingText)).toBe(sampleMagnet);
   });
+
+  it('handles malformed percent-encoding without throwing (safeDecode catch)', () => {
+    // "%" alone is an invalid escape sequence for decodeURIComponent
+    expect(extractMagnetLink('%')).toBeNull();
+  });
+
+  it('returns the raw magnet unchanged when it contains invalid percent-encoding', () => {
+    const malformed = 'magnet:?xt=urn:btih:abc%zz123';
+    expect(extractMagnetLink(malformed)).toBe(malformed);
+  });
 });

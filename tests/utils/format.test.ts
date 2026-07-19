@@ -315,3 +315,26 @@ describe('formatAvailability', () => {
     expect(formatAvailability(1.005)).toBe('1.005');
   });
 });
+
+describe('formatDate', () => {
+  it('returns "Not provided" for a value that produces an invalid Date', () => {
+    expect(formatDate(Infinity)).toBe('Not provided');
+  });
+
+  it('returns "Not provided" when Date construction throws', () => {
+    const RealDate = global.Date;
+    function ThrowingDate(): never {
+      throw new Error('boom');
+    }
+    global.Date = ThrowingDate as unknown as DateConstructor;
+    try {
+      expect(formatDate(1700000000)).toBe('Not provided');
+    } finally {
+      global.Date = RealDate;
+    }
+  });
+
+  it('formats a valid timestamp', () => {
+    expect(formatDate(1700000000)).not.toBe('Not provided');
+  });
+});

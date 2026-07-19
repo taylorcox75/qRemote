@@ -22,6 +22,11 @@ describe('siteHost', () => {
   it('returns empty string for empty input', () => {
     expect(siteHost('')).toBe('');
   });
+
+  it('falls back to the full stripped string when it starts with a slash', () => {
+    // split('/')[0] is '' for a leading slash, so the `|| stripped` fallback fires
+    expect(siteHost('/relative/path')).toBe('/relative/path');
+  });
 });
 
 describe('extractBracketTag', () => {
