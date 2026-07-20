@@ -40,5 +40,10 @@ yarn-error.*
 coverage/
 
 # generated native folders
-/ios
 /android
+
+# /ios is generated (Expo continuous native generation) but Xcode Cloud's
+# ci_scripts hook must be committed for Apple's build service to see it
+# (the hook itself regenerates the rest of /ios via `npm run pre`)
+/ios/*
+!/ios/ci_scripts
