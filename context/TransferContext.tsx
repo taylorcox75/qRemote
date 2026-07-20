@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, InteractionManager } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { GlobalTransferInfo } from '@/types/api';
 import { transferApi } from '@/services/api/transfer';
@@ -46,6 +46,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
 
   const appStateRef = useRef(AppState.currentState);
   const lastActiveTime = useRef(Date.now());
+  const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   const [isRecoveringState, setIsRecoveringState] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
@@ -57,7 +58,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   } = useQuery<GlobalTransferInfo>({
     queryKey: ['transfer'],
     queryFn: fetchTransferInfo,
-    refetchInterval: 3000,
+    refetchInterval: isAppActive ? 3000 : false,
     enabled: isConnected,
   });
 
@@ -82,6 +83,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     const handleAppStateChange = async (nextState: AppStateStatus) => {
       const prevState = appStateRef.current;
       appStateRef.current = nextState;
+      setIsAppActive(nextState === 'active');
 
       if (prevState === 'background' && nextState === 'active') {
         lastActiveTime.current = Date.now();
@@ -98,7 +100,13 @@ export function TransferProvider({ children }: { children: ReactNode }) {
           // torrents sync poll fails the same way and TorrentContext's
           // reactive reconnect effect recovers the shared session for this
           // query too — only when it's actually needed.
-          await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+          await new Promise<void>((resolve) => {
+            InteractionManager.runAfterInteractions(() => {
+              queryClient
+                .invalidateQueries({ queryKey: ['transfer'] })
+                .finally(() => resolve());
+            });
+          });
           setIsRecoveringState(false);
         }
       } else if (nextState === 'background') {

@@ -16,6 +16,8 @@ export const CHANGELOG: ChangelogRelease[] = [
     date: '2026-07-18',
     changes: [
       'Fixed a bug where a server host pasted with a trailing slash (e.g. from a full URL) was saved with the slash intact instead of being stripped',
+      'Reduced iOS launch/navigation crash risk by deferring deep-link routing until navigation is ready and removing a push/replace race in magnet and .torrent open flows',
+      'Reduced iOS background/foreground crash risk by pausing heavy polling while the app is backgrounded and resuming sync/search after UI interactions complete',
     ],
   },
   {

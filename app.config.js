@@ -105,7 +105,17 @@ module.exports = {
     web: {
       favicon: './assets/favicon.png',
     },
-    plugins: ['expo-router', 'expo-font', 'expo-localization', "expo-mail-composer", "expo-secure-store", "expo-sharing", "expo-status-bar"],
+    plugins: [
+      'expo-router',
+      'expo-font',
+      'expo-localization',
+      'expo-mail-composer',
+      'expo-secure-store',
+      'expo-sharing',
+      'expo-status-bar',
+      // Temporary: Xcode 27 requires UIScene lifecycle; remove when Expo 57 ships it.
+      './plugins/withIosSceneLifecycle',
+    ],
     extra: {
       router: {},
       eas: {
