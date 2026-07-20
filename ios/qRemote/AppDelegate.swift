@@ -63,6 +63,8 @@ class AppDelegate: ExpoAppDelegate {
   }
 }
 
+// Adapted from https://github.com/YesterdaysLemon/expo-ios-scene-lifecycle-plugin
+// (MIT, see IOS_SCENE_LIFECYCLE_LICENSE.txt in this directory).
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   var window: UIWindow?
 

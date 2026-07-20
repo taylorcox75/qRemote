@@ -17,11 +17,10 @@ describe('isTorrentFileUrl', () => {
     expect(isTorrentFileUrl('file:///Inbox/document.pdf')).toBe(false);
   });
 
-  it('accepts content:// URIs regardless of extension (Android mime-filtered)', () => {
+  it('rejects content:// URIs', () => {
     expect(
       isTorrentFileUrl('content://com.android.providers.downloads.documents/document/1234'),
-    ).toBe(true);
-    expect(isTorrentFileUrl('content://downloads/ubuntu.torrent')).toBe(true);
+    ).toBe(false);
   });
 
   it('rejects magnet links, http URLs, and app deep links', () => {
@@ -49,14 +48,6 @@ describe('extractTorrentFile', () => {
   it('strips query strings and fragments from the name', () => {
     const result = extractTorrentFile('file:///Inbox/ubuntu.torrent?foo=bar#frag');
     expect(result?.name).toBe('ubuntu.torrent');
-  });
-
-  it('appends .torrent to content:// names without the extension', () => {
-    const result = extractTorrentFile(
-      'content://com.android.providers.downloads.documents/document/1234',
-    );
-    expect(result?.name).toBe('1234.torrent');
-    expect(result?.uri).toBe('content://com.android.providers.downloads.documents/document/1234');
   });
 
   it('trims surrounding whitespace from the URL', () => {

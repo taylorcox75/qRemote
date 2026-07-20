@@ -1,13 +1,34 @@
 # AGENTS.md
 
 ## Project Overview
-qRemote is a React Native (Expo SDK 57) mobile app for remotely controlling
-qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
+qRemote is an iOS-only React Native (Expo SDK 57) app for remotely controlling
+qBittorrent servers via the WebUI API v2. Android support was dropped
+entirely — there is no `android/` platform, no Android build target, and no
+plan to re-add one without being asked. **iOS is a bare React Native
+project** — see "iOS Native Workflow" below before touching anything under
+`ios/`.
 
 ## Dev Commands
-- `npm start` — Start Expo dev server (Expo Go)
-- `npm run ios` — iOS simulator
-- `npm run android` — Android emulator
+- `npm run xcode` — Fresh-clone-safe: `npm install` → `pod install` → opens `ios/qRemote.xcworkspace` in Xcode. Safe to re-run any time (e.g. after pulling native/dependency changes); build/run from Xcode (Cmd+R) once it's open.
+- `npm start` — Start Metro for the dev-client build (`expo start --dev-client`; NOT `--go` — this app is bare with custom native code, so plain Expo Go can't run it correctly).
+
+## iOS Native Workflow (bare React Native — read this before editing `ios/`)
+- `ios/` is **committed source of truth**, not generated. `expo prebuild` must
+  never be run — there is no `npm run pre` anymore, and running prebuild by
+  hand would silently clobber hand-maintained native files (`AppDelegate.swift`,
+  `Info.plist`, entitlements, project settings).
+- Build/run iOS via **Xcode** (`npm run xcode` opens the workspace; press Run) or
+  `xcodebuild` for CLI/CI. For JS fast-refresh against a dev-client build, run
+  `npm start` (Metro) alongside.
+- Native iOS changes (Info.plist, entitlements, AppDelegate, build settings)
+  are made **directly in Xcode / the files under `ios/qRemote/`**, not through
+  Expo config plugins. `app.config.js`'s `ios.infoPlist` block is reference-only
+  documentation now (see the comment above it) — it is not applied to the app.
+- **Expo SDK upgrades (57 → 58…) are manual**: there's no `expo prebuild` to
+  resync the native template. Diff the new SDK's template against
+  `ios/qRemote/` by hand and port relevant changes.
+- Xcode Cloud CI (`ios/ci_scripts/ci_post_clone.sh`) reflects this: it runs
+  `npm ci` + `pod install`, no prebuild step.
 
 ### Verification (COMMIT TIME ONLY — never mid-task)
 Do NOT run typecheck, tests, or lint after individual edits or "to be safe" while working — on this hardware (Raspberry Pi) every run is expensive and the user has explicitly said not to. Run the checks ONCE, as a batch, only when getting ready to commit:
@@ -86,7 +107,7 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
 
 ## Critical Rules
 1. NEVER hardcode colors — always use `useTheme()` and `colors.*`
-2. Prefer `InputModal` over `Alert.prompt` for user text input. `Alert.prompt` is iOS-only, which is acceptable for the current iOS-first focus, but `InputModal` is already available and provides a consistent UX.
+2. Prefer `InputModal` over `Alert.prompt` for user text input. `Alert.prompt` is iOS-only, which is fine since the app is iOS-only, but `InputModal` is already available and provides a consistent UX.
 3. NEVER rename keys in the `colors` object (ThemeContext) — users store color overrides keyed by these names in AsyncStorage. Renaming silently breaks their customizations.
 4. NEVER rename preference keys — there is no migration system. Old keys become orphaned.
 5. All user-facing strings must use i18n: `const { t } = useTranslation()` then `t('key')`.
@@ -102,6 +123,8 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
    **Ignore semver instinct.** You never decide major/minor/patch — the only version edit you ever make is a single patch bump, and only in the EQUAL case. A new feature does NOT mean a minor bump. When in doubt, you are almost always in the DIFFER case → just append a line, touch nothing else.
 
    *Worked example:* `package.json` is `3.3.0`, top changelog entry is `3.3.1` → they DIFFER → append your line to `3.3.1`'s `changes[]`. (A wrong fix would be creating a `3.4.0` entry — don't.)
+
+   **Native version fields don't auto-sync anymore.** Now that iOS is bare (see "iOS Native Workflow"), `expo prebuild` no longer runs, so nothing propagates `package.json`'s `version` into the native app. Whenever `package.json`'s `version` is bumped as part of a release (the human-driven step in 8.2 above), `MARKETING_VERSION` must also be bumped by hand in **both** the Debug and Release configs of `ios/qRemote.xcodeproj/project.pbxproj` (or via Xcode's qRemote target → General tab → Version field) to match. `CURRENT_PROJECT_VERSION` (the build number, both configs) should be bumped too, on every new build/TestFlight submission, independent of the marketing version. `ios/qRemote/Info.plist`'s `CFBundleShortVersionString`/`CFBundleVersion` reference these via `$(MARKETING_VERSION)`/`$(CURRENT_PROJECT_VERSION)` and need no separate edit.
 9. ~~Search feature flag~~ — retired in v3.7.0. In-app search ships publicly; `constants/features.ts` and the `FEATURES.search` gate were removed entirely. Do not reintroduce a feature-flag system for it without being asked.
 
 ## Dead Code
@@ -120,9 +143,9 @@ None currently tracked. Do not trust a static bug list — run `npx tsc --noEmit
 - Layout files: `_layout.tsx` with the underscore prefix is Expo Router syntax for layout routes. Cannot be renamed.
 
 ## Verification / Environment
-- This is an iOS-first app. iOS-only APIs (`ActionSheetIOS`, `Alert.prompt`, etc.) are acceptable. Android parity is a future concern.
+- This is an iOS-only app (Android support was removed entirely). iOS-only APIs (`ActionSheetIOS`, `Alert.prompt`, etc.) are acceptable without gating.
 - `expo-*` packages are approved for use even if they require `expo-dev-client` (e.g. `expo-symbols`). Third-party native modules (`react-native-ios-context-menu`, `lottie-react-native`) still require explicit approval before adding.
-- The app cannot be launched in a headless/cloud agent environment (requires Expo Go / dev client on a device or simulator). When you can't run the app, verify with `npx tsc --noEmit` and `npm test`.
+- The app cannot be launched in a headless/cloud agent environment (requires a device/simulator via Xcode, or Expo Go/dev client). When you can't run the app, verify with `npx tsc --noEmit` and `npm test`.
 
 ## Cursor Cloud specific instructions
 - Primary verification here is the trio already documented above (Verification section): `npx tsc --noEmit`, `npm test`, `npm run lint`. Test/lint counts drift upward over time — the bar is exit 0, tests all passing, and lint 0 *errors* (warnings are baseline noise). No device/simulator is available.

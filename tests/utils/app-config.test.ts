@@ -13,16 +13,6 @@ describe('app.config magnet registration', () => {
     expect(hasMagnetScheme).toBe(true);
   });
 
-  it('registers magnet intent filter on Android', () => {
-    const intentFilters = expoConfig?.android?.intentFilters;
-    expect(Array.isArray(intentFilters)).toBe(true);
-
-    const hasMagnetIntent = intentFilters.some((filter: { data?: Array<{ scheme?: string }> }) =>
-      Array.isArray(filter.data) && filter.data.some((d) => d.scheme === 'magnet')
-    );
-
-    expect(hasMagnetIntent).toBe(true);
-  });
 });
 
 describe('app.config torrent file registration', () => {
@@ -71,16 +61,5 @@ describe('app.config torrent file registration', () => {
       Array.isArray(entry.LSItemContentTypes) && entry.LSItemContentTypes.includes('org.bittorrent.torrent')
     );
     expect(torrentDoc.LSHandlerRank).toBe('Owner');
-  });
-
-  it('registers torrent mime-type intent filter on Android', () => {
-    const intentFilters = expoConfig?.android?.intentFilters;
-    expect(Array.isArray(intentFilters)).toBe(true);
-
-    const hasTorrentIntent = intentFilters.some((filter: { data?: Array<{ mimeType?: string }> }) =>
-      Array.isArray(filter.data) && filter.data.some((d) => d.mimeType === 'application/x-bittorrent')
-    );
-
-    expect(hasTorrentIntent).toBe(true);
   });
 });

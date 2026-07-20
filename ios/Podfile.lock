@@ -196,16 +196,12 @@ PODS:
     - ExpoModulesCore
   - ExpoKeepAwake (57.0.1):
     - ExpoModulesCore
-  - ExpoLinearGradient (57.0.1):
-    - ExpoModulesCore
   - ExpoLinking (57.0.3):
     - ExpoModulesCore
   - ExpoLocalization (57.0.1):
     - ExpoModulesCore
   - ExpoLogBox (57.0.1):
     - React-Core
-  - ExpoMailComposer (57.0.1):
-    - ExpoModulesCore
   - ExpoModulesCore (57.0.6):
     - ExpoModulesJSI
     - hermes-engine
@@ -2499,11 +2495,9 @@ DEPENDENCIES:
   - ExpoGlassEffect (from `../node_modules/expo-glass-effect/ios`)
   - ExpoHaptics (from `../node_modules/expo-haptics/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
-  - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - "ExpoLogBox (from `../node_modules/@expo/log-box`)"
-  - ExpoMailComposer (from `../node_modules/expo-mail-composer/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core/ExpoModulesCore.podspec`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-jsi/apple`)
   - ExpoModulesWorklets (from `../node_modules/expo-modules-core/ExpoModulesWorklets.podspec`)
@@ -2635,16 +2629,12 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-haptics/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
-  ExpoLinearGradient:
-    :path: "../node_modules/expo-linear-gradient/ios"
   ExpoLinking:
     :path: "../node_modules/expo-linking/ios"
   ExpoLocalization:
     :path: "../node_modules/expo-localization/ios"
   ExpoLogBox:
     :path: "../node_modules/@expo/log-box"
-  ExpoMailComposer:
-    :path: "../node_modules/expo-mail-composer/ios"
   ExpoModulesCore:
     :podspec: "../node_modules/expo-modules-core/ExpoModulesCore.podspec"
   ExpoModulesJSI:
@@ -2853,11 +2843,9 @@ SPEC CHECKSUMS:
   ExpoGlassEffect: 4b62afb489e6b84357701737ce002137c9d5fdbc
   ExpoHaptics: 4503d2da51ff7109712ccdfe0e4939f66818183e
   ExpoKeepAwake: c26f14275017370cc8a4b7b43a0e23361f2053a5
-  ExpoLinearGradient: 903b3f5fe566c666ff78b2599add51d094483613
   ExpoLinking: b823a14b4ec436e3a6d947b72da6d4020e790515
   ExpoLocalization: 659243b03b3a3e9589793cee2f728a899e181329
   ExpoLogBox: 8a3cfa2897e088083cd49fc1ff7fdb2de4385547
-  ExpoMailComposer: 101933dc6bdb4d7a46495d1dd87420365325adb9
   ExpoModulesCore: e388e1b81af71057a2ca1e65a2b4e141f8614f68
   ExpoModulesJSI: 4b5d68bf019c251c2c8b7246aa36306dc381fe7f
   ExpoModulesWorklets: 2ba73eabbbd0470e43f8998757f4cb8abff8355b

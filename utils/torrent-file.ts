@@ -22,18 +22,14 @@ const getFileName = (url: string): string => {
 
 /**
  * Check whether an incoming URL points to a .torrent file opened from another app.
- * iOS delivers `file://` URLs (document types); Android delivers `content://` URIs.
- * content:// URIs only reach the app through the application/x-bittorrent intent
- * filter, so the extension check is best-effort there.
+ * iOS delivers `file://` URLs via document types.
  */
 export const isTorrentFileUrl = (value?: string | null): boolean => {
   if (!value) return false;
   const raw = value.trim();
   const lower = raw.toLowerCase();
-  if (lower.startsWith('file://')) {
-    return getFileName(raw).toLowerCase().endsWith(TORRENT_EXTENSION);
-  }
-  return lower.startsWith('content://');
+  if (!lower.startsWith('file://')) return false;
+  return getFileName(raw).toLowerCase().endsWith(TORRENT_EXTENSION);
 };
 
 /**

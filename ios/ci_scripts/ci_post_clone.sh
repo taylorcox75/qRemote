@@ -1,7 +1,8 @@
 #!/bin/zsh
 # Xcode Cloud post-clone hook. Runs after Apple clones the repo and before
-# dependency resolution/build. ios/ is gitignored (Expo continuous native
-# generation), so this script regenerates it fresh on every Xcode Cloud run.
+# dependency resolution/build. ios/ is committed as source of truth (bare
+# React Native) -- this script only installs JS/CocoaPods deps, it does not
+# regenerate native code.
 set -euo pipefail
 
 # Xcode Cloud VMs don't ship Node.js by default.
@@ -20,9 +21,6 @@ cd "$(dirname "$0")/../.."
 
 echo "Installing npm dependencies..."
 npm ci
-
-echo "Running expo prebuild (npm run pre)..."
-npm run pre
 
 echo "Installing CocoaPods dependencies..."
 cd ios
