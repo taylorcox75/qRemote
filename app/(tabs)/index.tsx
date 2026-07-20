@@ -21,6 +21,7 @@ import {
   Platform,
   Alert,
   LayoutAnimation,
+  InteractionManager,
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
@@ -246,18 +247,20 @@ export default function TorrentsScreen() {
       }
 
       if (variant === 'full') {
-        router.push({
-          pathname: '/torrents/add',
-          params: { magnet: magnetLink },
+        router.setParams({ magnet: undefined });
+        InteractionManager.runAfterInteractions(() => {
+          router.push({
+            pathname: '/torrents/add',
+            params: { magnet: magnetLink },
+          });
         });
-        router.replace('/');
         return;
       }
 
       setTorrentUrl(magnetLink);
       setSelectedFile(null);
       setShowAddModal(true);
-      router.replace('/');
+      router.setParams({ magnet: undefined });
     };
 
     void handleIncomingMagnet();
@@ -289,18 +292,26 @@ export default function TorrentsScreen() {
       }
 
       if (variant === 'full') {
-        router.push({
-          pathname: '/torrents/add',
-          params: { torrentFileUri: fileUri, torrentFileName: fileName },
+        router.setParams({
+          torrentFileUri: undefined,
+          torrentFileName: undefined,
         });
-        router.replace('/');
+        InteractionManager.runAfterInteractions(() => {
+          router.push({
+            pathname: '/torrents/add',
+            params: { torrentFileUri: fileUri, torrentFileName: fileName },
+          });
+        });
         return;
       }
 
       setSelectedFile({ uri: fileUri, name: fileName, mimeType: 'application/x-bittorrent' });
       setTorrentUrl('');
       setShowAddModal(true);
-      router.replace('/');
+      router.setParams({
+        torrentFileUri: undefined,
+        torrentFileName: undefined,
+      });
     };
 
     void handleIncomingTorrentFile();

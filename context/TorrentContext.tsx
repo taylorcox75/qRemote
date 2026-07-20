@@ -5,7 +5,7 @@
  * Known issues: isRecoveringFromBackground was a ref that didn't trigger re-renders (fixed to use state in Task 1.4d).
  */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, InteractionManager } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TorrentInfo, MainData, ServerState, Category } from '@/types/api';
 import { syncApi } from '@/services/api/sync';
@@ -47,6 +47,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
 
   const appStateRef = useRef(AppState.currentState);
   const lastActiveTime = useRef(Date.now());
+  const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   const [isRecoveringState, setIsRecoveringState] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
@@ -151,7 +152,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
   } = useQuery<SyncState>({
     queryKey: ['torrents'],
     queryFn: syncQueryFn,
-    refetchInterval: 2000,
+    refetchInterval: isAppActive ? 2000 : false,
     enabled: isConnected,
   });
 
@@ -191,6 +192,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       const previousAppState = appStateRef.current;
       appStateRef.current = nextAppState;
+      setIsAppActive(nextAppState === 'active');
 
       if (previousAppState === 'background' && nextAppState === 'active') {
         lastActiveTime.current = Date.now();
@@ -213,7 +215,13 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
           // Force full re-sync on foreground
           syncVersionRef.current++;
           ridRef.current = 0;
-          await queryClient.invalidateQueries({ queryKey: ['torrents'] });
+          await new Promise<void>((resolve) => {
+            InteractionManager.runAfterInteractions(() => {
+              queryClient
+                .invalidateQueries({ queryKey: ['torrents'] })
+                .finally(() => resolve());
+            });
+          });
           setIsRecoveringState(false);
         }
       } else if (nextAppState === 'background') {

@@ -1,6 +1,6 @@
 import '@/i18n';
-import { Stack, useRouter } from 'expo-router';
-import { Dimensions, Linking, View } from 'react-native';
+import { Stack, useRootNavigationState, useRouter } from 'expo-router';
+import { Dimensions, InteractionManager, Linking, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useRef } from 'react';
@@ -25,11 +25,19 @@ const { width } = Dimensions.get('window');
 function StackNavigator() {
   const { colors } = useTheme();
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
   const lastHandledMagnetRef = useRef<{ value: string; at: number } | null>(null);
   const lastHandledTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
+  const pendingInitialUrlRef = useRef<string | null>(null);
+  const initialUrlCheckedRef = useRef(false);
 
   useEffect(() => {
-    const handleIncomingUrl = (incomingUrl?: string | null) => {
+    const dispatchDeepLink = (incomingUrl?: string | null) => {
+      if (!rootNavigationState?.key) {
+        pendingInitialUrlRef.current = incomingUrl ?? null;
+        return;
+      }
+
       const magnetLink = extractMagnetLink(incomingUrl);
       if (magnetLink) {
         const now = Date.now();
@@ -42,9 +50,11 @@ function StackNavigator() {
         }
         lastHandledMagnetRef.current = { value: magnetLink, at: now };
 
-        router.push({
-          pathname: '/',
-          params: { magnet: magnetLink },
+        InteractionManager.runAfterInteractions(() => {
+          router.replace({
+            pathname: '/',
+            params: { magnet: magnetLink },
+          });
         });
         return;
       }
@@ -62,28 +72,39 @@ function StackNavigator() {
       }
       lastHandledTorrentFileRef.current = { value: torrentFile.uri, at: now };
 
-      router.push({
-        pathname: '/',
-        params: { torrentFileUri: torrentFile.uri, torrentFileName: torrentFile.name },
+      InteractionManager.runAfterInteractions(() => {
+        router.replace({
+          pathname: '/',
+          params: { torrentFileUri: torrentFile.uri, torrentFileName: torrentFile.name },
+        });
       });
     };
 
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      handleIncomingUrl(url);
+      dispatchDeepLink(url);
     });
 
-    Linking.getInitialURL()
-      .then((url) => {
-        handleIncomingUrl(url);
-      })
-      .catch(() => {
-        // No initial URL — safe to ignore.
-      });
+    if (!initialUrlCheckedRef.current) {
+      initialUrlCheckedRef.current = true;
+      Linking.getInitialURL()
+        .then((url) => {
+          dispatchDeepLink(url);
+        })
+        .catch(() => {
+          // No initial URL — safe to ignore.
+        });
+    }
+
+    if (pendingInitialUrlRef.current) {
+      const pendingUrl = pendingInitialUrlRef.current;
+      pendingInitialUrlRef.current = null;
+      dispatchDeepLink(pendingUrl);
+    }
 
     return () => {
       subscription.remove();
     };
-  }, [router]);
+  }, [rootNavigationState?.key, router]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

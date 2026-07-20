@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, InteractionManager } from 'react-native';
 import { searchApi } from '@/services/api/search';
 import {
   SearchJobStatus,
@@ -79,8 +79,10 @@ export function useSearchJob(): UseSearchJobResult {
   const [jobId, setJobId] = useState<number | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   // Track active job in a ref so unmount cleanup always sees the latest value.
   const activeJobRef = useRef<number | null>(null);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const queryKey = jobId !== null ? ['search', 'job', jobId] : ['search', 'job', 'idle'];
 
@@ -95,6 +97,7 @@ export function useSearchJob(): UseSearchJobResult {
     enabled: isConnected && jobId !== null,
     // Stop polling once the server reports the job is Stopped.
     refetchInterval: (query) => {
+      if (!isAppActive) return false;
       const latest = query.state.data;
       if (!latest) return POLL_INTERVAL_MS;
       return latest.status === 'Running' ? POLL_INTERVAL_MS : false;
@@ -224,9 +227,13 @@ export function useSearchJob(): UseSearchJobResult {
   // below picks it up and reconnects — but only when it's actually needed.
   useEffect(() => {
     const handle = (next: AppStateStatus) => {
+      appStateRef.current = next;
+      setIsAppActive(next === 'active');
       if (next === 'active' && activeJobRef.current !== null) {
-        queryClient.invalidateQueries({
-          queryKey: ['search', 'job', activeJobRef.current],
+        InteractionManager.runAfterInteractions(() => {
+          queryClient.invalidateQueries({
+            queryKey: ['search', 'job', activeJobRef.current],
+          });
         });
       }
     };
