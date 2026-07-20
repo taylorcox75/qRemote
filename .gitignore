@@ -42,8 +42,19 @@ coverage/
 # generated native folders
 /android
 
-# /ios is generated (Expo continuous native generation) but Xcode Cloud's
-# ci_scripts hook must be committed for Apple's build service to see it
-# (the hook itself regenerates the rest of /ios via `npm run pre`)
+# /ios is generated (Expo continuous native generation), but Xcode Cloud
+# validates the project/scheme against what's pushed to the repo before it
+# will let you create a workflow ("scheme may only exist locally" error) --
+# so the actual project + scheme need to be committed too, alongside the
+# ci_scripts hook that keeps them fresh on every Xcode Cloud run via
+# `npm run pre`. Pods/ and build/ stay regenerated (see ios/.gitignore).
 /ios/*
 !/ios/ci_scripts
+!/ios/qRemote.xcodeproj
+!/ios/qRemote.xcworkspace
+!/ios/qRemote
+!/ios/Podfile
+!/ios/Podfile.lock
+!/ios/Podfile.properties.json
+!/ios/.xcode.env
+!/ios/.gitignore
