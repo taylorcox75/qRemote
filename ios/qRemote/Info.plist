@@ -35,7 +35,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
+	<string>3.8.1</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -56,34 +56,9 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<string>81</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>airmail</string>
-		<string>message</string>
-		<string>bluemail</string>
-		<string>canary</string>
-		<string>edisonmail</string>
-		<string>szn-email</string>
-		<string>fastmail</string>
-		<string>x-gmxmail-netid-v1</string>
-		<string>googlegmail</string>
-		<string>mailrumail</string>
-		<string>ms-outlook</string>
-		<string>protonmail</string>
-		<string>ctxmail</string>
-		<string>readdle-spark</string>
-		<string>superhuman</string>
-		<string>telekommail</string>
-		<string>tutanota</string>
-		<string>x-webdemail-netid-v1</string>
-		<string>ymail</string>
-		<string>yandexmail</string>
-		<string>appcenter-f45b4c0b-75c9-2d01-7ab6-41f6a6015be2</string>
-		<string>mymail-mailto</string>
-	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>12.0</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -109,23 +84,6 @@
 	</array>
 	<key>RCTNewArchEnabled</key>
 	<true/>
-	<key>UIApplicationSceneManifest</key>
-	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key>
-		<false/>
-		<key>UISceneConfigurations</key>
-		<dict>
-			<key>UIWindowSceneSessionRoleApplication</key>
-			<array>
-				<dict>
-					<key>UISceneConfigurationName</key>
-					<string>Default Configuration</string>
-					<key>UISceneDelegateClassName</key>
-					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
-				</dict>
-			</array>
-		</dict>
-	</dict>
 	<key>UILaunchStoryboardName</key>
 	<string>SplashScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

@@ -1,20 +1,26 @@
 import { Tabs } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function TabsLayout() {
   const { t } = useTranslation();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
+  // Use paddingTop from insets instead of wrapping Tabs in SafeAreaView.
+  // SafeAreaView around the tab navigator can break after dismissing a root
+  // stack modal (e.g. Add/Edit Server), pushing the tab bar off-screen so
+  // main tabs look like full-screen settings pages.
   return (
-    <SafeAreaView
+    <View
       style={{
         flex: 1,
+        paddingTop: insets.top,
         backgroundColor: colors.background,
       }}
-      edges={['top']}
     >
       <Tabs
         screenOptions={{
@@ -31,9 +37,9 @@ export default function TabsLayout() {
         }}
       >
         <Tabs.Screen
-          name="index"
+          name="(torrents)"
           options={{
-            title: 'Torrents',
+            title: t('screens.torrents.tabTitle'),
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'list' : 'list-outline'} size={24} color={color} />
             ),
@@ -42,7 +48,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="transfer"
           options={{
-            title: 'Transfer',
+            title: t('screens.transfer.title'),
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'speedometer' : 'speedometer-outline'} size={24} color={color} />
             ),
@@ -60,7 +66,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="settings"
           options={{
-            title: 'Settings',
+            title: t('screens.settings.title'),
             tabBarIcon: ({ color, focused }) => (
               <Ionicons name={focused ? 'settings' : 'settings-outline'} size={24} color={color} />
             ),
@@ -73,7 +79,6 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
-    </SafeAreaView>
+    </View>
   );
 }
-

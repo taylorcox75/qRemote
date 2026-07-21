@@ -1,8 +1,8 @@
 /**
- * index.tsx — Main torrents list screen (home tab).
+ * index.tsx — Main torrents list screen (Torrents tab).
+ * Nested under (tabs)/(torrents)/ with torrent detail so the tab bar stays visible.
  *
  * Key exports: TorrentsScreen (default)
- * Known issues: Alert.prompt used in TorrentCard (iOS-only, deferred to Task 2.2).
  */
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
@@ -19,9 +19,9 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   LayoutAnimation,
   InteractionManager,
+  GestureResponderEvent,
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ import { TorrentCard } from '@/components/TorrentCard';
 import { SkeletonTorrentCard } from '@/components/SkeletonLoader';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { InputModal } from '@/components/InputModal';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
@@ -95,6 +96,9 @@ export default function TorrentsScreen() {
   const [expandedCardFields, setExpandedCardFields] = useState<Record<ExpandedCardField, boolean>>(
     DEFAULT_PREFERENCES.expandedCardFields
   );
+  const [expandedCardGridColumns, setExpandedCardGridColumns] = useState<3 | 4 | 5>(
+    DEFAULT_PREFERENCES.expandedCardGridColumns
+  );
   // Category/tag filter state (null = all categories, '' = uncategorized)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [tagFilters, setTagFilters] = useState<string[]>([]);
@@ -107,12 +111,26 @@ export default function TorrentsScreen() {
   // Action menu state
   const [selectedTorrent, setSelectedTorrent] = useState<TorrentInfo | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [listDeleteConfirm, setListDeleteConfirm] = useState<{
+    title: string;
+    message: string;
+    hashes: string[];
+    swipeableRef?: Swipeable | null;
+  } | null>(null);
   const {
     actionMenuItems,
     dlLimitModalVisible,
     setDlLimitModalVisible,
     handleSetDownloadLimit,
     dlLimitDefaultValue,
+    ulLimitModalVisible,
+    setUlLimitModalVisible,
+    handleSetUploadLimit,
+    ulLimitDefaultValue,
+    deleteConfirmVisible,
+    setDeleteConfirmVisible,
+    handleConfirmDelete,
   } = useTorrentActions(selectedTorrent);
 
   // Scroll animation refs
@@ -146,6 +164,11 @@ export default function TorrentsScreen() {
               ...prefs.expandedCardFields,
             });
           }
+          setExpandedCardGridColumns(
+            prefs.expandedCardGridColumns === 3 || prefs.expandedCardGridColumns === 5
+              ? prefs.expandedCardGridColumns
+              : 4,
+          );
         } catch {
           // ignore
         }
@@ -182,6 +205,11 @@ export default function TorrentsScreen() {
             ...prefs.expandedCardFields,
           });
         }
+        setExpandedCardGridColumns(
+          prefs.expandedCardGridColumns === 3 || prefs.expandedCardGridColumns === 5
+            ? prefs.expandedCardGridColumns
+            : 4,
+        );
       } catch (error) {
         // Use defaults if loading fails
       }
@@ -474,50 +502,37 @@ export default function TorrentsScreen() {
   const handleBulkDelete = () => {
     if (selectedHashes.size === 0) return;
     const count = selectedHashes.size;
-    Alert.alert(
-      t('alerts.deleteTorrents', { count }),
-      t('alerts.deleteConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('torrentDetail.torrentOnly'),
-          onPress: async () => {
-            setBulkLoading(true);
-            try {
-              await torrentsApi.deleteTorrents(Array.from(selectedHashes), false);
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              refresh();
-              setSelectedHashes(new Set());
-              setSelectMode(false);
-              showToast(t('toast.torrentsDeleted_other', { count }), 'success');
-            } catch (error: unknown) {
-              showToast(getErrorMessage(error), 'error');
-            } finally {
-              setBulkLoading(false);
-            }
-          },
-        },
-        {
-          text: t('torrentDetail.withFiles'),
-          style: 'destructive',
-          onPress: async () => {
-            setBulkLoading(true);
-            try {
-              await torrentsApi.deleteTorrents(Array.from(selectedHashes), true);
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              refresh();
-              setSelectedHashes(new Set());
-              setSelectMode(false);
-              showToast(t('toast.torrentsDeleted_other', { count }), 'success');
-            } catch (error: unknown) {
-              showToast(getErrorMessage(error), 'error');
-            } finally {
-              setBulkLoading(false);
-            }
-          },
-        },
-      ]
-    );
+    haptics.warning();
+    setListDeleteConfirm({
+      title: t('alerts.deleteTorrents', { count }),
+      message: t('alerts.deleteConfirm'),
+      hashes: Array.from(selectedHashes),
+    });
+  };
+
+  const handleConfirmListDelete = async (deleteFiles: boolean) => {
+    if (!listDeleteConfirm) return;
+    const { hashes, swipeableRef } = listDeleteConfirm;
+    const count = hashes.length;
+    setListDeleteConfirm(null);
+    setBulkLoading(true);
+    try {
+      await torrentsApi.deleteTorrents(hashes, deleteFiles);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      refresh();
+      if (count > 1 || selectMode) {
+        setSelectedHashes(new Set());
+        setSelectMode(false);
+        showToast(t('toast.torrentsDeleted_other', { count }), 'success');
+      } else {
+        showToast(t('toast.torrentDeleted'), 'success');
+      }
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
+    } finally {
+      setBulkLoading(false);
+      swipeableRef?.close();
+    }
   };
 
   // Shared wrapper for the long-press bulk menu actions: mirrors the
@@ -732,46 +747,14 @@ export default function TorrentsScreen() {
   }, [refresh, showToast, t]);
 
   const handleSwipeDelete = useCallback((torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
-    haptics.medium();
-    Alert.alert(
-      t('common.delete'),
-      t('torrentDetail.deleteConfirm', { name: torrent.name }),
-      [
-        { text: t('common.cancel'), style: 'cancel', onPress: () => swipeableRef?.close() },
-        {
-          text: t('torrentDetail.torrentOnly'),
-          onPress: async () => {
-            try {
-              await torrentsApi.deleteTorrents([torrent.hash], false);
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              refresh();
-              showToast(t('toast.torrentDeleted'), 'success');
-            } catch (err: unknown) {
-              const msg = err instanceof Error ? err.message : '';
-              showToast(msg || t('errors.failedToDelete'), 'error');
-            }
-            swipeableRef?.close();
-          },
-        },
-        {
-          text: t('torrentDetail.withFiles'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await torrentsApi.deleteTorrents([torrent.hash], true);
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              refresh();
-              showToast(t('toast.torrentDeleted'), 'success');
-            } catch (err: unknown) {
-              const msg = err instanceof Error ? err.message : '';
-              showToast(msg || t('errors.failedToDelete'), 'error');
-            }
-            swipeableRef?.close();
-          },
-        },
-      ],
-    );
-  }, [refresh, showToast, t]);
+    haptics.warning();
+    setListDeleteConfirm({
+      title: t('common.delete'),
+      message: t('alerts.deleteName', { name: torrent.name }),
+      hashes: [torrent.hash],
+      swipeableRef,
+    });
+  }, [t]);
 
   const handleSwipeForceStart = useCallback(async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
     haptics.medium();
@@ -1487,7 +1470,7 @@ export default function TorrentsScreen() {
                             router.push(`/torrent/${item.hash}`);
                           }
                         }}
-                        onLongPress={() => {
+                        onLongPress={(event?: GestureResponderEvent) => {
                           haptics.medium();
                           if (selectMode) {
                             // Bulk menu for the current selection; a long-press
@@ -1496,12 +1479,30 @@ export default function TorrentsScreen() {
                             setBulkMenuVisible(true);
                           } else {
                             setSelectedTorrent(item);
+                            setMenuAnchor(
+                              event
+                                ? { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY }
+                                : null
+                            );
+                            setMenuVisible(true);
+                          }
+                        }}
+                        onMenuPress={(anchor) => {
+                          haptics.medium();
+                          if (selectMode) {
+                            // Mirror long-press bulk behavior in select mode.
+                            if (selectedHashes.size === 0) toggleSelection(item.hash);
+                            setBulkMenuVisible(true);
+                          } else {
+                            setSelectedTorrent(item);
+                            setMenuAnchor(anchor);
                             setMenuVisible(true);
                           }
                         }}
                         onPauseResume={() => handleCardPauseResume(item)}
                         compact={cardViewMode === 'compact'}
                         expandedCardFields={expandedCardFields}
+                        gridColumns={expandedCardGridColumns}
                       />
                     </View>
                   </View>
@@ -1696,8 +1697,12 @@ export default function TorrentsScreen() {
 
         <ActionMenu
           visible={menuVisible}
-          onClose={() => setMenuVisible(false)}
+          onClose={() => {
+            setMenuVisible(false);
+            setMenuAnchor(null);
+          }}
           items={actionMenuItems}
+          anchor={menuAnchor ?? undefined}
         />
 
         <InputModal
@@ -1712,6 +1717,48 @@ export default function TorrentsScreen() {
           onConfirm={(value) => {
             setDlLimitModalVisible(false);
             handleSetDownloadLimit(value);
+          }}
+        />
+
+        <InputModal
+          visible={ulLimitModalVisible}
+          title={t('torrentDetail.setUploadLimit')}
+          message={t('screens.torrents.enterLimitKbs')}
+          placeholder="0"
+          defaultValue={ulLimitDefaultValue}
+          keyboardType="numeric"
+          allowEmpty
+          onCancel={() => setUlLimitModalVisible(false)}
+          onConfirm={(value) => {
+            setUlLimitModalVisible(false);
+            handleSetUploadLimit(value);
+          }}
+        />
+
+        <ConfirmModal
+          visible={deleteConfirmVisible}
+          title={t('common.delete')}
+          message={selectedTorrent ? t('alerts.deleteName', { name: selectedTorrent.name }) : undefined}
+          buttons={[
+            { label: t('alerts.torrentOnly'), onPress: () => handleConfirmDelete(false) },
+            { label: t('alerts.withFiles'), onPress: () => handleConfirmDelete(true), destructive: true },
+          ]}
+          cancelLabel={t('common.cancel')}
+          onCancel={() => setDeleteConfirmVisible(false)}
+        />
+
+        <ConfirmModal
+          visible={!!listDeleteConfirm}
+          title={listDeleteConfirm?.title ?? t('common.delete')}
+          message={listDeleteConfirm?.message}
+          buttons={[
+            { label: t('alerts.torrentOnly'), onPress: () => handleConfirmListDelete(false) },
+            { label: t('alerts.withFiles'), onPress: () => handleConfirmListDelete(true), destructive: true },
+          ]}
+          cancelLabel={t('common.cancel')}
+          onCancel={() => {
+            listDeleteConfirm?.swipeableRef?.close();
+            setListDeleteConfirm(null);
           }}
         />
       </View>

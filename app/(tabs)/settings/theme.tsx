@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -71,7 +70,7 @@ export default function ThemeSettingsScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity
@@ -325,7 +324,7 @@ export default function ThemeSettingsScreen() {
           onClose={() => setColorPickerVisible(false)}
         />
         </ScrollView>
-      </SafeAreaView>
+      </View>
 
       <OptionPicker
         visible={themeModePickerVisible}

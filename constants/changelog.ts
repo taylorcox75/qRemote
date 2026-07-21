@@ -12,6 +12,30 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.1',
+    date: '2026-07-20',
+    changes: [
+      'Refreshed torrent cards: each card now shows a tinted state badge, a colored accent border in the torrent’s state color, an inline circular pause/play button next to the progress bar, and a visible menu button',
+      'The torrent action menu now opens as a compact popover next to where you tap instead of a bottom sheet',
+      'Tightened up the compact torrent card: less padding, shorter cards, and stats (percent, ETA, speeds, ratio) on one line under the name',
+      'The detailed card’s extra fields returned to the classic layout with labels above values in a compact grid',
+      'Cleaned up the detailed torrent card: roomier padding, a configurable stats grid (3/4/5 columns, default 4) under the progress bar, and the same always-on compact stats line (percent, ETA, speeds, ratio, size) above it',
+      'Detailed Card Fields no longer offers toggles for progress, ETA, speeds, ratio, or status — those stay on the always-on header',
+      'Torrent detail now shows DL/UL speed, ETA, Ratio, Uploaded, Seeds, Peers, and Availability in a 4-column grid under the progress bar, with Downloaded/Size on their own full-width line so sizes aren’t truncated; Seeds/Peers open the peer list',
+      'Torrent detail hero now includes a state badge + pause control, DL/UL speed sparklines, piece map, tracker health dots, copy magnet/hash + reannounce actions, amount-left/time-active chips, last-updated time, and tappable share limits',
+      'Reworked the default seeding, upload-only, and up+down state colors: seeding is a dark green, upload-only a brighter green, and simultaneous up+down uses the primary blue, tuned for both light and dark mode',
+      'Added Set Upload Limit to the torrent action menu (same KiB/s input as download limit)',
+      'Replaced the native delete confirmation alert in the torrent action menu with a themed dialog (Torrent Only / With Files / Cancel)',
+      'Fixed the bottom tab bar sometimes disappearing on main tabs after opening Add/Edit Server or other stack screens (looked like a settings sub-page)',
+      'Settings sub-pages (Appearance, Theme, Servers, etc.) now keep the bottom tab bar visible instead of opening as full-screen root routes',
+      'Torrent detail, files, and manage-trackers now keep the bottom tab bar visible (same as Settings)',
+      'Polished the redesign: slightly richer state-badge tint, elevated action popovers and confirm dialogs (real shadow + hairline border), and light haptics on menu/confirm presses',
+      'Torrent detail delete now uses the same themed confirm dialog as the list action menu',
+      'Swipe-to-delete and bulk multi-select delete also use the themed confirm dialog',
+      'Tab bar labels (Torrents, Transfer, Settings, Search) now follow the app language',
+    ],
+  },
+  {
     version: '3.7.14',
     date: '2026-07-18',
     changes: [

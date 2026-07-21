@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { TorrentInfo } from '@/types/api';
 import { torrentsApi } from '@/services/api/torrents';
@@ -22,6 +21,8 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
 
   const [loading, setLoading] = useState(false);
   const [dlLimitModalVisible, setDlLimitModalVisible] = useState(false);
+  const [ulLimitModalVisible, setUlLimitModalVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
   const ensureConnection = useCallback(async (): Promise<boolean> => {
     if (!isConnected || !currentServer) {
@@ -120,41 +121,24 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
 
   const handleDelete = useCallback(() => {
     if (!torrent) return;
-    Alert.alert(
-      t('common.delete'),
-      t('alerts.deleteName', { name: torrent.name }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('alerts.torrentOnly'),
-          onPress: async () => {
-            try {
-              await torrentsApi.deleteTorrents([torrent.hash], false);
-              sync().catch(() => {});
-              showToast(t('toast.torrentDeleted'), 'success');
-            } catch (error: unknown) {
-              const msg = error instanceof Error ? error.message : '';
-              showToast(msg || t('errors.failedToDelete'), 'error');
-            }
-          },
-        },
-        {
-          text: t('alerts.withFiles'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await torrentsApi.deleteTorrents([torrent.hash], true);
-              sync().catch(() => {});
-              showToast(t('toast.torrentDeleted'), 'success');
-            } catch (error: unknown) {
-              const msg = error instanceof Error ? error.message : '';
-              showToast(msg || t('errors.failedToDelete'), 'error');
-            }
-          },
-        },
-      ],
-    );
-  }, [torrent, sync, showToast, t]);
+    setDeleteConfirmVisible(true);
+  }, [torrent]);
+
+  const handleConfirmDelete = useCallback(
+    async (deleteFiles: boolean) => {
+      if (!torrent) return;
+      setDeleteConfirmVisible(false);
+      try {
+        await torrentsApi.deleteTorrents([torrent.hash], deleteFiles);
+        sync().catch(() => {});
+        showToast(t('toast.torrentDeleted'), 'success');
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : '';
+        showToast(msg || t('errors.failedToDelete'), 'error');
+      }
+    },
+    [torrent, sync, showToast, t],
+  );
 
   const handleMaxPriority = useCallback(async () => {
     if (!torrent) return;
@@ -186,6 +170,30 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
           limitKB === 0
             ? t('toast.downloadLimitSet', { value: t('common.unlimited') })
             : t('toast.dlLimitSetKb', { value: limitKB }),
+          'success',
+        );
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : '';
+        showToast(msg || t('errors.generic'), 'error');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [torrent, sync, showToast, t]);
+
+  const handleSetUploadLimit = useCallback((value: string) => {
+    if (!torrent) return;
+    (async () => {
+      try {
+        setLoading(true);
+        const limitKB = parseFloat(value) || 0;
+        const limitBytes = limitKB * 1024;
+        await torrentsApi.setTorrentUploadLimit([torrent.hash], limitBytes);
+        sync().catch(() => {});
+        showToast(
+          limitKB === 0
+            ? t('toast.uploadLimitSet', { value: t('common.unlimited') })
+            : t('toast.ulLimitSetKb', { value: limitKB }),
           'success',
         );
       } catch (error: unknown) {
@@ -255,6 +263,11 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
         onPress: () => setDlLimitModalVisible(true),
       },
       {
+        label: t('actions.setUlLimit'),
+        icon: 'cloud-upload',
+        onPress: () => setUlLimitModalVisible(true),
+      },
+      {
         label: t('actions.verifyData'),
         icon: 'checkmark-circle',
         onPress: handleVerifyData,
@@ -300,11 +313,18 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     handleReannounce,
     handleCopyMagnet,
     handleDelete,
+    handleConfirmDelete,
     handleMaxPriority,
     handleSetDownloadLimit,
+    handleSetUploadLimit,
     handleToggleGlobalSpeedLimit,
     dlLimitModalVisible,
     setDlLimitModalVisible,
     dlLimitDefaultValue: torrent && torrent.dl_limit > 0 ? String(torrent.dl_limit / 1024) : '0',
+    ulLimitModalVisible,
+    setUlLimitModalVisible,
+    ulLimitDefaultValue: torrent && torrent.up_limit > 0 ? String(torrent.up_limit / 1024) : '0',
+    deleteConfirmVisible,
+    setDeleteConfirmVisible,
   };
 }

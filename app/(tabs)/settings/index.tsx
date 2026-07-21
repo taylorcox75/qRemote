@@ -1,9 +1,10 @@
 /**
- * settings.tsx — Top-level settings navigation hub.
+ * settings/index.tsx — Top-level settings navigation hub.
  *
  * Key exports: SettingsScreen (default)
  * Displays connection status and navigation rows to sub-screens.
- * Sub-screens live in app/settings/*.tsx.
+ * Sub-screens live alongside this file under app/(tabs)/settings/ so the
+ * bottom tab bar stays visible while browsing settings.
  */
 import React, { useEffect, useRef } from 'react';
 import {

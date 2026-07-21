@@ -165,7 +165,7 @@ export default function ManageTrackersScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}

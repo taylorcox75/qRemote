@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -6,11 +6,10 @@ import { TorrentInfo } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
 import { haptics } from '@/utils/haptics';
-import { getStateColor, getStateLabel, hasEta, isTorrentComplete } from '@/utils/torrent-state';
+import { getStateColor, getStateLabel, hasEta } from '@/utils/torrent-state';
 import { formatSpeed, formatSize, formatTime, formatProgress, formatAvailability } from '@/utils/format';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
-import { typography } from '@/constants/typography';
 import { ExpandedCardField, DEFAULT_PREFERENCES } from '@/types/preferences';
 
 interface TorrentCardProps {
@@ -18,22 +17,28 @@ interface TorrentCardProps {
   onPress: () => void;
   onLongPress?: () => void;
   onPauseResume?: () => void;
+  onMenuPress?: (anchor: { x: number; y: number }) => void;
   compact?: boolean;
   expandedCardFields?: Record<ExpandedCardField, boolean>;
+  /** Columns in the detailed-card stats grid (3 | 4 | 5). Defaults to 4. */
+  gridColumns?: 3 | 4 | 5;
 }
 
+// Detailed-card cell: small secondary label stacked above the value.
+// Short fields sit in a wrapping N-per-row grid; long fields (tags, tracker,
+// savePath) take a full-width label/value row with middle truncation.
 function DetailRow({
   label,
   value,
   truncate = false,
-  column = 'left',
   fullWidth = false,
+  columns = 4,
 }: {
   label: string;
   value: string;
   truncate?: boolean;
-  column?: 'left' | 'right';
   fullWidth?: boolean;
+  columns?: 3 | 4 | 5;
 }) {
   const { colors } = useTheme();
 
@@ -53,7 +58,7 @@ function DetailRow({
   }
 
   return (
-    <View style={[detailRowStyles.cell, column === 'right' && detailRowStyles.cellRight]}>
+    <View style={[detailRowStyles.cell, { width: COLUMN_WIDTH[columns] }]}>
       <Text style={[detailRowStyles.cellLabel, { color: colors.textSecondary }]} numberOfLines={1}>
         {label}
       </Text>
@@ -64,50 +69,18 @@ function DetailRow({
   );
 }
 
-// Renders two label/value cells together on a single row, immune to the
-// surrounding grid's flex-wrap ordering — used for pairs (e.g. date + time)
-// that must never split across rows regardless of preceding item parity.
-function PairRow({
-  label,
-  value,
-  label2,
-  value2,
-}: {
-  label: string;
-  value: string;
-  label2: string;
-  value2: string;
-}) {
-  const { colors } = useTheme();
-
-  return (
-    <View style={detailRowStyles.pairRow}>
-      <View style={detailRowStyles.cell}>
-        <Text style={[detailRowStyles.cellLabel, { color: colors.textSecondary }]} numberOfLines={1}>
-          {label}
-        </Text>
-        <Text style={[detailRowStyles.cellValue, { color: colors.text }]} numberOfLines={1}>
-          {value}
-        </Text>
-      </View>
-      <View style={[detailRowStyles.cell, detailRowStyles.cellRight]}>
-        <Text style={[detailRowStyles.cellLabel, { color: colors.textSecondary }]} numberOfLines={1}>
-          {label2}
-        </Text>
-        <Text style={[detailRowStyles.cellValue, { color: colors.text }]} numberOfLines={1}>
-          {value2}
-        </Text>
-      </View>
-    </View>
-  );
-}
+const COLUMN_WIDTH: Record<3 | 4 | 5, `${number}%`> = {
+  3: '33.33%',
+  4: '25%',
+  5: '20%',
+};
 
 const detailRowStyles = StyleSheet.create({
   fullRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 2,
+    paddingVertical: spacing.xs,
     width: '100%',
   },
   fullLabel: {
@@ -122,32 +95,18 @@ const detailRowStyles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-  pairRow: {
-    flexDirection: 'row',
-    width: '100%',
-  },
   cell: {
-    width: '50%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 2,
-    paddingRight: 6,
-  },
-  cellRight: {
-    paddingRight: 0,
-    paddingLeft: 6,
-    justifyContent: 'flex-end',
+    paddingVertical: spacing.xs,
+    paddingRight: 4,
   },
   cellLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
-    marginRight: 4,
-    flexShrink: 0,
+    marginBottom: 2,
   },
   cellValue: {
-    fontSize: 12,
-    fontWeight: '400',
-    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
 
@@ -156,11 +115,22 @@ function TorrentCardInner({
   onPress,
   onLongPress,
   onPauseResume,
+  onMenuPress,
   compact = true,
   expandedCardFields,
+  gridColumns = 4,
 }: TorrentCardProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const menuButtonRef = useRef<React.ComponentRef<typeof TouchableOpacity>>(null);
+
+  const handleMenuPress = () => {
+    if (!onMenuPress) return;
+    // Anchor the popover to the button's bottom-left corner (frozen contract).
+    menuButtonRef.current?.measureInWindow((x, y, _width, height) => {
+      onMenuPress({ x, y: y + height });
+    });
+  };
 
   const fields: Record<ExpandedCardField, boolean> = {
     ...DEFAULT_PREFERENCES.expandedCardFields,
@@ -184,39 +154,28 @@ function TorrentCardInner({
   const totalSize = torrent.total_size > 0 ? torrent.total_size : torrent.size || 0;
   const downloaded = torrent.completed || 0;
   const etaVisible = hasEta(torrent.eta, torrent.progress ?? 0);
-  const seeding = isTorrentComplete(torrent.progress ?? 0);
 
-  const speedParts: string[] = [];
-  if (dlspeed > 0) speedParts.push(`${formatSpeed(dlspeed)} ↓`);
-  if (upspeed > 0) speedParts.push(`${formatSpeed(upspeed)} ↑`);
-  const speedText = speedParts.length > 0 ? speedParts.join('  ') : null;
-
-  // Build statusLine to include percent+ETA/ratio inline. Once a torrent is
-  // seeding, ETA is meaningless (see hasEta) and ratio becomes the relevant metric.
+  // Always-on stats line (compact + detailed): percent, ETA (when meaningful),
+  // up/down speeds, ratio last. Not part of the toggleable field grid.
   const statusLine = [
-    stateLabel,
-    speedText,
     formatProgress(torrent.progress, 0),
     etaVisible ? formatTime(torrent.eta) : null,
-    !etaVisible && seeding ? `${t('torrentDetail.ratio')}: ${(torrent.ratio ?? 0).toFixed(2)}` : null,
+    upspeed > 0 ? `${formatSpeed(upspeed)} ↑` : null,
+    dlspeed > 0 ? `${formatSpeed(dlspeed)} ↓` : null,
+    `${(torrent.ratio ?? 0).toFixed(2)} ${t('⇅')}`,
   ].filter(Boolean).join('  ·  ');
 
-  // Build two-column detail items: short fields get 50% width, long ones span full width.
-  // Column parity is tracked only across short items so full-width rows don't disrupt pairing.
+  // Build detail items: short fields become stacked label-over-value cells in
+  // a wrapping N-per-row grid; long ones span a full-width truncated row.
   const detailItems: Array<{
     key: string;
     label: string;
     value: string;
     fullWidth?: boolean;
     truncate?: boolean;
-    column?: 'left' | 'right';
-    pair?: boolean;
-    label2?: string;
-    value2?: string;
   }> = [];
 
   if (!compact) {
-    let shortCount = 0;
     const addItem = (
       key: string,
       label: string,
@@ -224,21 +183,11 @@ function TorrentCardInner({
       fullWidth = false,
       truncate = false,
     ) => {
-      if (fullWidth) {
-        detailItems.push({ key, label, value, fullWidth, truncate });
-      } else {
-        detailItems.push({ key, label, value, column: shortCount++ % 2 === 0 ? 'left' : 'right' });
-      }
+      detailItems.push({ key, label, value, fullWidth, truncate });
     };
 
-    if (show('status')) addItem('status', t('screens.settings.expandedCardFieldsList.status'), stateLabel);
-    if (show('progress')) addItem('progress', t('screens.settings.expandedCardFieldsList.progress'), formatProgress(torrent.progress));
-    if (show('dlSpeed')) addItem('dlSpeed', t('screens.settings.expandedCardFieldsList.dlSpeed'), dlspeed > 0 ? formatSpeed(dlspeed) : '—');
-    if (show('ulSpeed')) addItem('ulSpeed', t('screens.settings.expandedCardFieldsList.ulSpeed'), upspeed > 0 ? formatSpeed(upspeed) : '—');
-    if (show('eta') && etaVisible) addItem('eta', t('screens.settings.expandedCardFieldsList.eta'), formatTime(torrent.eta));
     if (show('seeds')) addItem('seeds', t('screens.settings.expandedCardFieldsList.seeds'), `${torrent.num_seeds} / ${torrent.num_complete}`);
     if (show('peers')) addItem('peers', t('screens.settings.expandedCardFieldsList.peers'), `${torrent.num_leechs} / ${torrent.num_incomplete}`);
-    if (show('ratio')) addItem('ratio', t('screens.settings.expandedCardFieldsList.ratio'), torrent.ratio != null ? torrent.ratio.toFixed(2) : '—');
     if (show('ratioLimit')) addItem('ratioLimit', t('screens.settings.expandedCardFieldsList.ratioLimit'), torrent.ratio_limit != null && torrent.ratio_limit >= 0 ? torrent.ratio_limit.toFixed(2) : '∞');
     if (show('maxRatio')) addItem('maxRatio', t('screens.settings.expandedCardFieldsList.maxRatio'), torrent.max_ratio != null && torrent.max_ratio >= 0 ? torrent.max_ratio.toFixed(2) : '∞');
     if (show('uploaded')) addItem('uploaded', t('screens.settings.expandedCardFieldsList.uploaded'), formatSize(torrent.uploaded));
@@ -246,19 +195,10 @@ function TorrentCardInner({
     if (show('popularity') && torrent.popularity != null) addItem('popularity', t('screens.settings.expandedCardFieldsList.popularity'), torrent.popularity.toFixed(2));
     if (show('seedingTime')) addItem('seedingTime', t('screens.settings.expandedCardFieldsList.seedingTime'), torrent.seeding_time > 0 ? formatTime(torrent.seeding_time) : '—');
     if (show('addedOn')) {
-      // Date + time rendered as a self-contained left/right pair on one row —
-      // does not consume a shortCount slot, so it never splits across rows
-      // and doesn't disrupt column parity for fields that follow it.
       const added = new Date(torrent.added_on * 1000);
       const addedValid = torrent.added_on > 0 && !isNaN(added.getTime());
-      detailItems.push({
-        key: 'addedOn',
-        pair: true,
-        label: t('screens.settings.expandedCardFieldsList.addedOn'),
-        value: addedValid ? added.toLocaleDateString() : '—',
-        label2: t('screens.settings.expandedCardFieldsList.addedTime'),
-        value2: addedValid ? added.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
-      });
+      addItem('addedOn', t('screens.settings.expandedCardFieldsList.addedOn'), addedValid ? added.toLocaleDateString() : '—');
+      addItem('addedTime', t('screens.settings.expandedCardFieldsList.addedTime'), addedValid ? added.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
     }
     if (show('tags') && !!torrent.tags) addItem('tags', t('screens.settings.expandedCardFieldsList.tags'), torrent.tags, true);
     if (show('category') && !!torrent.category) addItem('category', t('screens.settings.expandedCardFieldsList.category'), torrent.category);
@@ -271,73 +211,95 @@ function TorrentCardInner({
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.7}
-      style={[styles.card, { backgroundColor: colors.surface }, isPaused && styles.cardPaused]}
+      style={[
+        styles.card,
+        !compact && styles.cardDetailed,
+        {
+          backgroundColor: colors.surface,
+          borderLeftColor: stateColor,
+        },
+        isPaused && styles.cardPaused,
+      ]}
     >
-      {/* Line 1: Torrent name */}
-      <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
-        {torrent.name}
-      </Text>
-
-      {/* Line 2: ● State · speed · percent · ETA + pause button */}
-      <View style={styles.statusRow}>
-        <View style={[styles.stateDot, { backgroundColor: stateColor }]} />
-        <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
-          {statusLine}
+      {/* Line 1: Torrent name + tinted state badge + three-dot menu */}
+      <View style={styles.headerRow}>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
+          {torrent.name}
         </Text>
-        {onPauseResume && (
+        <View style={styles.badge}>
+          {/* Tint layer: state color at low opacity behind fully-opaque text.
+              getStateColor returns mixed formats (hex/rgb/rgba), so the tint is
+              layered via View opacity instead of parsing/recomposing the color. */}
+          <View
+            style={[StyleSheet.absoluteFill, { backgroundColor: stateColor, opacity: 0.28 }]}
+          />
+          {/* Theme text color, not the state color — state-colored text on its
+              own tint can be unreadable for low-contrast states. */}
+          <Text style={[styles.badgeText, { color: colors.text }]} numberOfLines={1}>
+            {stateLabel}
+          </Text>
+        </View>
+        {onMenuPress && (
           <TouchableOpacity
-            onPress={(e) => { e.stopPropagation?.(); haptics.medium(); onPauseResume(); }}
+            ref={menuButtonRef}
+            onPress={(e) => { e.stopPropagation?.(); handleMenuPress(); }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={styles.pauseButton}
+            style={styles.menuButton}
             activeOpacity={0.6}
-            accessibilityLabel={isPaused ? t('actions.resume') : t('actions.pause')}
+            accessibilityLabel={t('actions.torrentMenu')}
           >
-            <Ionicons
-              name={isPaused ? 'play-circle-outline' : 'pause-circle-outline'}
-              size={22}
-              color={isPaused ? colors.success : colors.textSecondary}
-            />
+            <Ionicons name="ellipsis-vertical" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Full-width progress bar — no siblings */}
-      <View style={styles.progressBar}>
-        <AnimatedProgressBar
-          progress={Math.min(100, Math.max(0, progress))}
-          color={stateColor}
-          height={4}
-        />
+      {/* Always-on: percent · ETA · up speed · down speed · ratio */}
+      <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
+        {statusLine}
+      </Text>
+
+      {/* Progress bar + filled circular pause/play button */}
+      <View style={styles.progressRow}>
+        <View style={styles.progressBar}>
+          <AnimatedProgressBar
+            progress={Math.min(100, Math.max(0, progress))}
+            color={stateColor}
+            height={compact ? 4 : 5}
+          />
+        </View>
+        {onPauseResume && (
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); haptics.medium(); onPauseResume(); }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={[styles.pauseCircle, !compact && styles.pauseCircleDetailed, { backgroundColor: stateColor }]}
+            activeOpacity={0.7}
+            accessibilityLabel={isPaused ? t('actions.resume') : t('actions.pause')}
+          >
+            {/* White-on-state-color matches the bulkAction buttons' precedent. */}
+            <Ionicons name={isPaused ? 'play' : 'pause'} size={compact ? 13 : 14} color="#ffffff" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Line 4: Downloaded / Total */}
+      {/* Always-on: Downloaded / Total */}
       <Text style={[styles.sizeText, { color: colors.textSecondary }]}>
         {formatSize(downloaded)} / {formatSize(totalSize)}
       </Text>
 
-      {/* Expanded detail section — two-column grid for short fields, full-width for long ones */}
+      {/* Expanded detail section — stacked label-over-value cells, N per row;
+          full-width truncated rows for long fields */}
       {detailItems.length > 0 && (
-        <View style={[styles.detailGrid, { borderTopColor: colors.surfaceOutline }]}>
-          {detailItems.map((item) =>
-            item.pair ? (
-              <PairRow
-                key={item.key}
-                label={item.label}
-                value={item.value}
-                label2={item.label2 ?? ''}
-                value2={item.value2 ?? ''}
-              />
-            ) : (
-              <DetailRow
-                key={item.key}
-                label={item.label}
-                value={item.value}
-                column={item.column}
-                fullWidth={item.fullWidth}
-                truncate={item.truncate}
-              />
-            ),
-          )}
+        <View style={styles.detailGrid}>
+          {detailItems.map((item) => (
+            <DetailRow
+              key={item.key}
+              label={item.label}
+              value={item.value}
+              fullWidth={item.fullWidth}
+              truncate={item.truncate}
+              columns={gridColumns}
+            />
+          ))}
         </View>
       )}
     </TouchableOpacity>
@@ -351,6 +313,7 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.torrent.progress === next.torrent.progress &&
     prev.torrent.dlspeed === next.torrent.dlspeed &&
     prev.torrent.upspeed === next.torrent.upspeed &&
+    prev.torrent.eta === next.torrent.eta &&
     prev.torrent.name === next.torrent.name &&
     prev.torrent.num_seeds === next.torrent.num_seeds &&
     prev.torrent.num_leechs === next.torrent.num_leechs &&
@@ -366,64 +329,102 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.torrent.seeding_time === next.torrent.seeding_time &&
     prev.torrent.dl_limit === next.torrent.dl_limit &&
     prev.torrent.up_limit === next.torrent.up_limit &&
+    prev.torrent.completed === next.torrent.completed &&
+    prev.torrent.size === next.torrent.size &&
+    prev.torrent.total_size === next.torrent.total_size &&
     prev.onPress === next.onPress &&
     prev.onLongPress === next.onLongPress &&
     prev.onPauseResume === next.onPauseResume &&
+    prev.onMenuPress === next.onMenuPress &&
     prev.compact === next.compact &&
-    prev.expandedCardFields === next.expandedCardFields
+    prev.expandedCardFields === next.expandedCardFields &&
+    prev.gridColumns === next.gridColumns
   );
 });
 
 const styles = StyleSheet.create({
   card: {
     borderRadius: borderRadius.medium,
-    marginBottom: spacing.sm,
-    marginHorizontal: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    borderLeftWidth: 1.5,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm - 2,
     ...shadows.card,
   },
-  cardPaused: {
-    opacity: 0.6,
+  cardDetailed: {
+    borderRadius: borderRadius.large,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
-  name: {
-    ...typography.headline,
+  cardPaused: {
+    opacity: 0.75,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: 2,
   },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  stateDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '400',
+  name: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 18,
+    paddingBottom: 2,
     flex: 1,
   },
-  pauseButton: {
+  badge: {
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    marginLeft: spacing.sm,
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  menuButton: {
+    marginLeft: spacing.xs,
+    marginTop: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '400',
+    marginTop: 1,
+    marginBottom: 1,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 0,
+  },
+  progressBar: {
+    flex: 1,
+  },
+  pauseCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     marginLeft: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  progressBar: {
-    width: '100%',
-    marginBottom: 4,
+  pauseCircleDetailed: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
   },
   sizeText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '400',
   },
   detailGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

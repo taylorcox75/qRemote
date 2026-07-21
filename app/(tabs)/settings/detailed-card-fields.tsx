@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 're
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { storageService } from '@/services/storage';
 import { AppPreferences, ExpandedCardField, DEFAULT_PREFERENCES } from '@/types/preferences';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -13,19 +13,13 @@ import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 
 const FIELD_ORDER: ExpandedCardField[] = [
-  'dlSpeed',
-  'ulSpeed',
-  'eta',
-  'status',
   'seeds',
   'peers',
-  'ratio',
   'ratioLimit',
   'maxRatio',
   'uploaded',
   'availability',
   'popularity',
-  'progress',
   'addedOn',
   'seedingTime',
   'tags',
@@ -33,6 +27,10 @@ const FIELD_ORDER: ExpandedCardField[] = [
   'tracker',
   'savePath',
 ];
+
+function resolveGridColumns(value: unknown): 3 | 4 | 5 {
+  return value === 3 || value === 5 ? value : 4;
+}
 
 export default function DetailedCardFieldsScreen() {
   const { t } = useTranslation();
@@ -42,6 +40,19 @@ export default function DetailedCardFieldsScreen() {
   const [fields, setFields] = useState<Record<ExpandedCardField, boolean>>(
     DEFAULT_PREFERENCES.expandedCardFields
   );
+  const [gridColumns, setGridColumns] = useState<3 | 4 | 5>(
+    DEFAULT_PREFERENCES.expandedCardGridColumns
+  );
+  const [gridPickerVisible, setGridPickerVisible] = useState(false);
+
+  const gridOptions: OptionPickerItem[] = useMemo(
+    () => [
+      { label: t('screens.settings.detailedCardGridColumns3'), value: '3', icon: 'grid-outline' },
+      { label: t('screens.settings.detailedCardGridColumns4'), value: '4', icon: 'grid-outline' },
+      { label: t('screens.settings.detailedCardGridColumns5'), value: '5', icon: 'grid-outline' },
+    ],
+    [t],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -50,8 +61,10 @@ export default function DetailedCardFieldsScreen() {
           const prefs = await storageService.getPreferences();
           const stored = (prefs.expandedCardFields as Partial<Record<ExpandedCardField, boolean>>) || {};
           setFields({ ...DEFAULT_PREFERENCES.expandedCardFields, ...stored });
+          setGridColumns(resolveGridColumns(prefs.expandedCardGridColumns));
         } catch {
           setFields(DEFAULT_PREFERENCES.expandedCardFields);
+          setGridColumns(DEFAULT_PREFERENCES.expandedCardGridColumns);
         }
       };
       load();
@@ -75,15 +88,21 @@ export default function DetailedCardFieldsScreen() {
     });
   }, []);
 
+  const saveGridColumns = async (value: string) => {
+    const columns = resolveGridColumns(Number(value));
+    setGridColumns(columns);
+    setGridPickerVisible(false);
+    await savePreference('expandedCardGridColumns', columns);
+  };
+
   const fieldMeta = useMemo(() => {
-    const map: Record<ExpandedCardField, { icon: React.ComponentProps<typeof Ionicons>['name']; labelKey: string }> = {
-      dlSpeed: { icon: 'download-outline', labelKey: 'screens.settings.expandedCardFieldsList.dlSpeed' },
-      ulSpeed: { icon: 'arrow-up-outline', labelKey: 'screens.settings.expandedCardFieldsList.ulSpeed' },
-      eta: { icon: 'time-outline', labelKey: 'screens.settings.expandedCardFieldsList.eta' },
-      status: { icon: 'ellipse-outline', labelKey: 'screens.settings.expandedCardFieldsList.status' },
+    // Core stats (progress, ETA, speeds, ratio, status) live on the always-on
+    // header line / badge and are intentionally absent from this picker.
+    const map: Partial<
+      Record<ExpandedCardField, { icon: React.ComponentProps<typeof Ionicons>['name']; labelKey: string }>
+    > = {
       seeds: { icon: 'leaf-outline', labelKey: 'screens.settings.expandedCardFieldsList.seeds' },
       peers: { icon: 'people-outline', labelKey: 'screens.settings.expandedCardFieldsList.peers' },
-      ratio: { icon: 'swap-horizontal-outline', labelKey: 'screens.settings.expandedCardFieldsList.ratio' },
       ratioLimit: { icon: 'git-compare-outline', labelKey: 'screens.settings.expandedCardFieldsList.ratioLimit' },
       maxRatio: { icon: 'trending-up-outline', labelKey: 'screens.settings.expandedCardFieldsList.maxRatio' },
       uploaded: { icon: 'cloud-upload-outline', labelKey: 'screens.settings.expandedCardFieldsList.uploaded' },
@@ -95,7 +114,6 @@ export default function DetailedCardFieldsScreen() {
       seedingTime: { icon: 'hourglass-outline', labelKey: 'screens.settings.expandedCardFieldsList.seedingTime' },
       tags: { icon: 'pricetag-outline', labelKey: 'screens.settings.expandedCardFieldsList.tags' },
       category: { icon: 'folder-open-outline', labelKey: 'screens.settings.expandedCardFieldsList.category' },
-      progress: { icon: 'pie-chart-outline', labelKey: 'screens.settings.expandedCardFieldsList.progress' },
     };
     return map;
   }, []);
@@ -103,7 +121,7 @@ export default function DetailedCardFieldsScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -117,6 +135,35 @@ export default function DetailedCardFieldsScreen() {
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.detailedCardGridColumns').toUpperCase()}
+            </Text>
+            <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
+              {t('screens.settings.detailedCardGridColumnsDescription')}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => setGridPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="grid-outline" size={22} color={colors.primary} />
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.detailedCardGridColumns')}
+                  </Text>
+                </View>
+                <View style={styles.pickerValue}>
+                  <Text style={[styles.pickerText, { color: colors.text }]}>
+                    {t(`screens.settings.detailedCardGridColumns${gridColumns}`)}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.expandedCardFields')}
             </Text>
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
@@ -125,6 +172,7 @@ export default function DetailedCardFieldsScreen() {
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               {FIELD_ORDER.map((field, idx) => {
                 const meta = fieldMeta[field];
+                if (!meta) return null;
                 const value = !!fields[field];
                 const isLast = idx === FIELD_ORDER.length - 1;
                 return (
@@ -150,7 +198,16 @@ export default function DetailedCardFieldsScreen() {
             </View>
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
+
+      <OptionPicker
+        visible={gridPickerVisible}
+        title={t('screens.settings.detailedCardGridColumns')}
+        options={gridOptions}
+        selectedValue={String(gridColumns)}
+        onSelect={saveGridColumns}
+        onClose={() => setGridPickerVisible(false)}
+      />
     </>
   );
 }
@@ -182,5 +239,7 @@ const styles = StyleSheet.create({
   },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
   settingLabel: { fontSize: 16, fontWeight: '500' },
+  pickerValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pickerText: { fontSize: 15, fontWeight: '500' },
   separator: { height: 1, marginLeft: 50 },
 });
