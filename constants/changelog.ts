@@ -19,6 +19,9 @@ export const CHANGELOG: ChangelogRelease[] = [
       'Fixed magnet and .torrent links not opening the add-torrent dialog when tapped from another app while qRemote was fully closed (cold launch)',
       'Fixed .torrent files opened this way sometimes failing to add because the incoming file became unreadable while the app was still starting up',
       'Moved toast notifications on the Torrents tab down below the search bar so they no longer cover it',
+      'Fixed the torrent action menu flashing as it closed after you picked an item',
+      'Fixed torrent cards not updating their category, tags, tracker, save path or peer counts until the torrent next changed speed — changes made from the app appeared to do nothing on paused or seeding torrents',
+      'Adding or editing a server no longer makes iOS offer to save the password to your keychain — qRemote already stores it securely on device',
     ],
   },
   {
