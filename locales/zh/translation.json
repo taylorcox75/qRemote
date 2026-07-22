@@ -872,7 +872,9 @@
     "failedToSaveColor": "保存颜色失败",
     "failedToSaveServer": "保存服务器失败",
     "failedToCopyDebug": "复制调试信息失败",
-    "failedToLoadServer": "加载服务器失败"
+    "failedToLoadServer": "加载服务器失败",
+    "crashTitle": "出现了问题",
+    "crashMessage": "qRemote 遇到了意外错误。您的服务器和设置未受影响。"
   },
   "states": {
     "dlAndUl": "DL + UL",
