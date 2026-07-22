@@ -541,7 +541,7 @@ App Version: ${APP_VERSION}`;
                   secureTextEntry
                   autoCapitalize="none"
                   autoCorrect={false}
-                  textContentType="password"
+                  textContentType="none"
                   autoComplete="off"
                   passwordRules=""
                 />
@@ -615,7 +615,7 @@ App Version: ${APP_VERSION}`;
                       secureTextEntry
                       autoCapitalize="none"
                       autoCorrect={false}
-                      textContentType="password"
+                      textContentType="none"
                       autoComplete="off"
                       passwordRules=""
                     />
