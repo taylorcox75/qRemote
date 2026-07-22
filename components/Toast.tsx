@@ -14,9 +14,12 @@ interface ToastProps {
   type?: ToastType;
   duration?: number;
   onHide?: () => void;
+  /** Overrides the default safe-area-relative position — for screens whose
+   *  own header content (search bar, buttons) would otherwise sit under it. */
+  topOffsetOverride?: number;
 }
 
-export function Toast({ message, type = 'info', duration = 3000, onHide }: ToastProps) {
+export function Toast({ message, type = 'info', duration = 3000, onHide, topOffsetOverride }: ToastProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -93,7 +96,7 @@ export function Toast({ message, type = 'info', duration = 3000, onHide }: Toast
     }
   };
 
-  const topOffset = safeTop + 8;
+  const topOffset = topOffsetOverride ?? safeTop + 8;
 
   const toastContent = (
     <Animated.View

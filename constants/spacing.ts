@@ -17,6 +17,7 @@ export const spacing = {
  * Border radius constants for consistent rounded corners
  */
 export const borderRadius = {
+  xsmall: 6,    // Chips, badges, small buttons
   small: 8,    // Chips, badges, small buttons
   medium: 12,  // Cards, inputs, buttons (most common)
   large: 16,   // Modals, sheets

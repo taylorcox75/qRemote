@@ -50,8 +50,8 @@ export default function AddTorrentFullScreen() {
     torrentFileUri?: string | string[];
     torrentFileName?: string | string[];
   }>();
-  const lastAppliedMagnetRef = useRef<string | null>(null);
-  const lastAppliedTorrentFileRef = useRef<string | null>(null);
+  const lastAppliedMagnetRef = useRef<{ value: string; at: number } | null>(null);
+  const lastAppliedTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
 
   const [fieldVisibility, setFieldVisibility] = useState<Record<AddTorrentDialogField, boolean>>(
     DEFAULT_PREFERENCES.addTorrentDialogueFields
@@ -236,9 +236,17 @@ export default function AddTorrentFullScreen() {
     const rawMagnet = Array.isArray(params.magnet) ? params.magnet[0] : params.magnet;
     const magnetLink = extractMagnetLink(rawMagnet);
     if (!magnetLink) return;
-    if (lastAppliedMagnetRef.current === magnetLink) return;
 
-    lastAppliedMagnetRef.current = magnetLink;
+    const now = Date.now();
+    if (
+      lastAppliedMagnetRef.current &&
+      lastAppliedMagnetRef.current.value === magnetLink &&
+      now - lastAppliedMagnetRef.current.at < 1500
+    ) {
+      return;
+    }
+
+    lastAppliedMagnetRef.current = { value: magnetLink, at: now };
     setTorrentUrl(magnetLink);
     setSelectedFile(null);
   }, [params.magnet]);
@@ -246,9 +254,17 @@ export default function AddTorrentFullScreen() {
   useEffect(() => {
     const fileUri = Array.isArray(params.torrentFileUri) ? params.torrentFileUri[0] : params.torrentFileUri;
     if (!fileUri) return;
-    if (lastAppliedTorrentFileRef.current === fileUri) return;
 
-    lastAppliedTorrentFileRef.current = fileUri;
+    const now = Date.now();
+    if (
+      lastAppliedTorrentFileRef.current &&
+      lastAppliedTorrentFileRef.current.value === fileUri &&
+      now - lastAppliedTorrentFileRef.current.at < 1500
+    ) {
+      return;
+    }
+
+    lastAppliedTorrentFileRef.current = { value: fileUri, at: now };
     const rawName = Array.isArray(params.torrentFileName) ? params.torrentFileName[0] : params.torrentFileName;
     setSelectedFile({ uri: fileUri, name: rawName || 'download.torrent', mimeType: 'application/x-bittorrent' });
     setTorrentUrl('');

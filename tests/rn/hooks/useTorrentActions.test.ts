@@ -1,5 +1,4 @@
 import { renderHook, act } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useTorrentActions } from '@/hooks/useTorrentActions';
 import { useServer } from '@/context/ServerContext';
@@ -27,6 +26,7 @@ jest.mock('@/services/api/torrents', () => ({
     deleteTorrents: jest.fn(),
     setMaximalPriority: jest.fn(),
     setTorrentDownloadLimit: jest.fn(),
+    setTorrentUploadLimit: jest.fn(),
   },
 }));
 jest.mock('expo-clipboard', () => ({
@@ -41,6 +41,7 @@ const baseTorrent: TorrentInfo = {
   name: 'Test Torrent',
   state: 'downloading',
   dl_limit: 0,
+  up_limit: 0,
   magnet_uri: 'magnet:?xt=urn:btih:abc123',
 } as TorrentInfo;
 
@@ -78,6 +79,7 @@ describe('useTorrentActions', () => {
     const { result } = await renderHook(() => useTorrentActions(null));
     expect(result.current.actionMenuItems).toEqual([]);
     expect(result.current.dlLimitDefaultValue).toBe('0');
+    expect(result.current.ulLimitDefaultValue).toBe('0');
   });
 
   it('computes dlLimitDefaultValue from dl_limit', async () => {
@@ -87,10 +89,19 @@ describe('useTorrentActions', () => {
     expect(result.current.dlLimitDefaultValue).toBe('2');
   });
 
-  it('builds 9 action menu items for a non-paused torrent', async () => {
+  it('computes ulLimitDefaultValue from up_limit', async () => {
+    const { result } = await renderHook(() =>
+      useTorrentActions({ ...baseTorrent, up_limit: 4096 } as TorrentInfo),
+    );
+    expect(result.current.ulLimitDefaultValue).toBe('4');
+  });
+
+  it('builds 10 action menu items for a non-paused torrent', async () => {
     const { result } = await renderHook(() => useTorrentActions(baseTorrent));
-    expect(result.current.actionMenuItems).toHaveLength(9);
+    expect(result.current.actionMenuItems).toHaveLength(10);
     expect(result.current.actionMenuItems[0].label).toBe('actions.pause');
+    expect(result.current.actionMenuItems[4].label).toBe('actions.setDlLimit');
+    expect(result.current.actionMenuItems[5].label).toBe('actions.setUlLimit');
   });
 
   it('shows resume label when torrent is paused', async () => {
@@ -264,53 +275,54 @@ describe('useTorrentActions', () => {
   });
 
   describe('handleDelete', () => {
-    it('opens an Alert with delete options and handles torrent-only delete', async () => {
-      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
-        const torrentOnly = buttons?.find((b) => b.text === 'alerts.torrentOnly');
-        torrentOnly?.onPress?.();
-      });
+    it('opens delete confirm modal and handles torrent-only delete', async () => {
       const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+      expect(result.current.deleteConfirmVisible).toBe(false);
       await act(async () => {
         result.current.handleDelete();
       });
+      expect(result.current.deleteConfirmVisible).toBe(true);
+      await act(async () => {
+        await result.current.handleConfirmDelete(false);
+      });
+      expect(result.current.deleteConfirmVisible).toBe(false);
       expect(torrentsApi.deleteTorrents).toHaveBeenCalledWith(['abc123'], false);
       expect(showToast).toHaveBeenCalledWith('toast.torrentDeleted', 'success');
-      alertSpy.mockRestore();
     });
 
     it('handles delete with files', async () => {
-      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
-        const withFiles = buttons?.find((b) => b.text === 'alerts.withFiles');
-        withFiles?.onPress?.();
-      });
       const { result } = await renderHook(() => useTorrentActions(baseTorrent));
       await act(async () => {
         result.current.handleDelete();
       });
+      await act(async () => {
+        await result.current.handleConfirmDelete(true);
+      });
       expect(torrentsApi.deleteTorrents).toHaveBeenCalledWith(['abc123'], true);
-      alertSpy.mockRestore();
     });
 
     it('shows error toast when delete fails', async () => {
       jest.mocked(torrentsApi.deleteTorrents).mockRejectedValue(new Error('del fail'));
-      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
-        const torrentOnly = buttons?.find((b) => b.text === 'alerts.torrentOnly');
-        torrentOnly?.onPress?.();
-      });
       const { result } = await renderHook(() => useTorrentActions(baseTorrent));
       await act(async () => {
         result.current.handleDelete();
       });
+      await act(async () => {
+        await result.current.handleConfirmDelete(false);
+      });
       expect(showToast).toHaveBeenCalledWith('del fail', 'error');
-      alertSpy.mockRestore();
     });
 
     it('does nothing when torrent is null', async () => {
-      const alertSpy = jest.spyOn(Alert, 'alert');
       const { result } = await renderHook(() => useTorrentActions(null));
-      result.current.handleDelete();
-      expect(alertSpy).not.toHaveBeenCalled();
-      alertSpy.mockRestore();
+      await act(async () => {
+        result.current.handleDelete();
+      });
+      expect(result.current.deleteConfirmVisible).toBe(false);
+      await act(async () => {
+        await result.current.handleConfirmDelete(false);
+      });
+      expect(torrentsApi.deleteTorrents).not.toHaveBeenCalled();
     });
   });
 
@@ -375,6 +387,47 @@ describe('useTorrentActions', () => {
     });
   });
 
+  describe('handleSetUploadLimit', () => {
+    it('sets a positive limit in bytes and shows toast', async () => {
+      const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+      await act(async () => {
+        result.current.handleSetUploadLimit('100');
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(torrentsApi.setTorrentUploadLimit).toHaveBeenCalledWith(['abc123'], 100 * 1024);
+    });
+
+    it('treats unparsable/zero value as unlimited', async () => {
+      const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+      await act(async () => {
+        result.current.handleSetUploadLimit('abc');
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(torrentsApi.setTorrentUploadLimit).toHaveBeenCalledWith(['abc123'], 0);
+    });
+
+    it('does nothing when torrent is null', async () => {
+      const { result } = await renderHook(() => useTorrentActions(null));
+      await act(async () => {
+        result.current.handleSetUploadLimit('100');
+      });
+      expect(torrentsApi.setTorrentUploadLimit).not.toHaveBeenCalled();
+    });
+
+    it('shows error toast on failure', async () => {
+      jest.mocked(torrentsApi.setTorrentUploadLimit).mockRejectedValue(new Error('ul limit fail'));
+      const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+      await act(async () => {
+        result.current.handleSetUploadLimit('50');
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(showToast).toHaveBeenCalledWith('ul limit fail', 'error');
+    });
+  });
+
   describe('handleToggleGlobalSpeedLimit', () => {
     it('toggles and refreshes transfer info', async () => {
       const { result } = await renderHook(() => useTorrentActions(baseTorrent));
@@ -416,5 +469,14 @@ describe('useTorrentActions', () => {
       result.current.setDlLimitModalVisible(true);
     });
     expect(result.current.dlLimitModalVisible).toBe(true);
+  });
+
+  it('exposes ulLimitModalVisible state and setter', async () => {
+    const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+    expect(result.current.ulLimitModalVisible).toBe(false);
+    await act(async () => {
+      result.current.setUlLimitModalVisible(true);
+    });
+    expect(result.current.ulLimitModalVisible).toBe(true);
   });
 });

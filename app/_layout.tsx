@@ -18,9 +18,20 @@ import { apiClient } from '@/services/api/client';
 import { setHapticsEnabled } from '@/utils/haptics';
 import { setDebugMode as setConnectivityDebugMode } from '@/services/connectivity-log';
 import { extractMagnetLink } from '@/utils/magnet';
-import { extractTorrentFile } from '@/utils/torrent-file';
+import { extractTorrentFile, IncomingTorrentFile } from '@/utils/torrent-file';
+import { persistIncomingTorrentFile } from '@/services/incoming-file';
 
 const { width } = Dimensions.get('window');
+
+// Keep (tabs) as the stack anchor so pushing server/add routes (and
+// deep-linking to them) never wipes the tab navigator out of history —
+// without this, dismissing a modal or going back can leave the user on a
+// full-screen route with no bottom tab bar. Settings and torrent detail
+// live under (tabs) so the tab bar stays visible there.
+export const unstable_settings = {
+  initialRouteName: '(tabs)',
+  anchor: '(tabs)',
+};
 
 function StackNavigator() {
   const { colors } = useTheme();
@@ -28,7 +39,9 @@ function StackNavigator() {
   const rootNavigationState = useRootNavigationState();
   const lastHandledMagnetRef = useRef<{ value: string; at: number } | null>(null);
   const lastHandledTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
-  const pendingInitialUrlRef = useRef<string | null>(null);
+  const pendingDeepLinkRef = useRef<
+    { type: 'magnet'; value: string } | { type: 'torrentFile'; value: IncomingTorrentFile } | null
+  >(null);
   const initialUrlCheckedRef = useRef(false);
   // Mirror nav-readiness into a ref so the async getInitialURL callback (which
   // closes over the mount-time effect scope) sees the current value instead of
@@ -38,12 +51,25 @@ function StackNavigator() {
   rootNavReadyRef.current = !!rootNavigationState?.key;
 
   useEffect(() => {
-    const dispatchDeepLink = (incomingUrl?: string | null) => {
-      if (!rootNavReadyRef.current) {
-        pendingInitialUrlRef.current = incomingUrl ?? null;
-        return;
-      }
+    const navigateToMagnet = (magnetLink: string) => {
+      InteractionManager.runAfterInteractions(() => {
+        router.replace({
+          pathname: '/',
+          params: { magnet: magnetLink },
+        });
+      });
+    };
 
+    const navigateToTorrentFile = (torrentFile: IncomingTorrentFile) => {
+      InteractionManager.runAfterInteractions(() => {
+        router.replace({
+          pathname: '/',
+          params: { torrentFileUri: torrentFile.uri, torrentFileName: torrentFile.name },
+        });
+      });
+    };
+
+    const dispatchDeepLink = async (incomingUrl?: string | null) => {
       const magnetLink = extractMagnetLink(incomingUrl);
       if (magnetLink) {
         const now = Date.now();
@@ -56,55 +82,60 @@ function StackNavigator() {
         }
         lastHandledMagnetRef.current = { value: magnetLink, at: now };
 
-        InteractionManager.runAfterInteractions(() => {
-          router.replace({
-            pathname: '/',
-            params: { magnet: magnetLink },
-          });
-        });
+        if (!rootNavReadyRef.current) {
+          pendingDeepLinkRef.current = { type: 'magnet', value: magnetLink };
+          return;
+        }
+        navigateToMagnet(magnetLink);
         return;
       }
 
-      const torrentFile = extractTorrentFile(incomingUrl);
-      if (!torrentFile) return;
+      const rawTorrentFile = extractTorrentFile(incomingUrl);
+      if (!rawTorrentFile) return;
 
       const now = Date.now();
       if (
         lastHandledTorrentFileRef.current &&
-        lastHandledTorrentFileRef.current.value === torrentFile.uri &&
+        lastHandledTorrentFileRef.current.value === rawTorrentFile.uri &&
         now - lastHandledTorrentFileRef.current.at < 1500
       ) {
         return;
       }
-      lastHandledTorrentFileRef.current = { value: torrentFile.uri, at: now };
+      lastHandledTorrentFileRef.current = { value: rawTorrentFile.uri, at: now };
 
-      InteractionManager.runAfterInteractions(() => {
-        router.replace({
-          pathname: '/',
-          params: { torrentFileUri: torrentFile.uri, torrentFileName: torrentFile.name },
-        });
-      });
+      // Copy into app-owned cache immediately, before waiting on navigation
+      // readiness — see persistIncomingTorrentFile for why the source URI
+      // can't be trusted to survive that wait.
+      const torrentFile = await persistIncomingTorrentFile(rawTorrentFile);
+
+      if (!rootNavReadyRef.current) {
+        pendingDeepLinkRef.current = { type: 'torrentFile', value: torrentFile };
+        return;
+      }
+      navigateToTorrentFile(torrentFile);
     };
 
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      dispatchDeepLink(url);
+      void dispatchDeepLink(url);
     });
 
     if (!initialUrlCheckedRef.current) {
       initialUrlCheckedRef.current = true;
       Linking.getInitialURL()
-        .then((url) => {
-          dispatchDeepLink(url);
-        })
+        .then((url) => dispatchDeepLink(url))
         .catch(() => {
           // No initial URL — safe to ignore.
         });
     }
 
-    if (pendingInitialUrlRef.current) {
-      const pendingUrl = pendingInitialUrlRef.current;
-      pendingInitialUrlRef.current = null;
-      dispatchDeepLink(pendingUrl);
+    if (pendingDeepLinkRef.current) {
+      const pending = pendingDeepLinkRef.current;
+      pendingDeepLinkRef.current = null;
+      if (pending.type === 'magnet') {
+        navigateToMagnet(pending.value);
+      } else {
+        navigateToTorrentFile(pending.value);
+      }
     }
 
     return () => {

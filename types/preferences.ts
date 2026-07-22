@@ -131,6 +131,9 @@ export interface AppPreferences {
   /** Per-field visibility for the expanded (detailed) torrent card */
   expandedCardFields: Record<ExpandedCardField, boolean>;
 
+  /** Number of columns in the detailed torrent card stats grid */
+  expandedCardGridColumns: 3 | 4 | 5;
+
   /** Last selected search plugin ("all", "enabled", or a plugin name) */
   lastSearchPlugin?: string;
 
@@ -191,7 +194,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
     dlSpeed: true,
     ulSpeed: true,
     eta: true,
-    status: true,
+    status: false,
     seeds: true,
     peers: true,
     ratio: true,
@@ -208,6 +211,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
     category: true,
     progress: false,
   },
+  expandedCardGridColumns: 4,
   lastSearchPlugin: 'all',
   lastSearchCategory: 'all',
   lastCategoryFilter: null,

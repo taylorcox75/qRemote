@@ -1,33 +1,55 @@
 # AGENTS.md
 
 ## Project Overview
-qRemote is a React Native (Expo SDK 57) mobile app for remotely controlling
-qBittorrent servers via the WebUI API v2. Runs on iOS and Android via Expo Go.
+qRemote is an iOS-only React Native (Expo SDK 57) app for remotely controlling
+qBittorrent servers via the WebUI API v2. Android support was dropped
+entirely — there is no `android/` platform, no Android build target, and no
+plan to re-add one without being asked. **iOS is a bare React Native
+project** — see "iOS Native Workflow" below before touching anything under
+`ios/`.
 
 ## Dev Commands
-- `npm start` — Start Expo dev server (Expo Go)
-- `npm run ios` — iOS simulator
-- `npm run android` — Android emulator
+- `npm run xcode` — Fresh-clone-safe: `npm install` → `pod install` → opens `ios/qRemote.xcworkspace` in Xcode. Safe to re-run any time (e.g. after pulling native/dependency changes); build/run from Xcode (Cmd+R) once it's open.
+- `npm start` — Start Metro for the dev-client build (`expo start --dev-client`; NOT `--go` — this app is bare with custom native code, so plain Expo Go can't run it correctly).
+
+## iOS Native Workflow (bare React Native — read this before editing `ios/`)
+- `ios/` is **committed source of truth**, not generated. `expo prebuild` must
+  never be run — there is no `npm run pre` anymore, and running prebuild by
+  hand would silently clobber hand-maintained native files (`AppDelegate.swift`,
+  `Info.plist`, entitlements, project settings).
+- Build/run iOS via **Xcode** (`npm run xcode` opens the workspace; press Run) or
+  `xcodebuild` for CLI/CI. For JS fast-refresh against a dev-client build, run
+  `npm start` (Metro) alongside.
+- Native iOS changes (Info.plist, entitlements, AppDelegate, build settings)
+  are made **directly in Xcode / the files under `ios/qRemote/`**, not through
+  Expo config plugins. `app.config.js`'s `ios.infoPlist` block is reference-only
+  documentation now (see the comment above it) — it is not applied to the app.
+- **Expo SDK upgrades (57 → 58…) are manual**: there's no `expo prebuild` to
+  resync the native template. Diff the new SDK's template against
+  `ios/qRemote/` by hand and port relevant changes.
+- Xcode Cloud CI (`ios/ci_scripts/ci_post_clone.sh`) reflects this: it runs
+  `npm ci` + `pod install`, no prebuild step.
 
 ### Verification (COMMIT TIME ONLY — never mid-task)
 Do NOT run typecheck, tests, or lint after individual edits or "to be safe" while working — on this hardware (Raspberry Pi) every run is expensive and the user has explicitly said not to. Run the checks ONCE, as a batch, only when getting ready to commit:
 - `npx tsc --noEmit` — typecheck (currently clean; incremental via `.tsbuildinfo`, ~25s warm / ~85s cold)
-- `npm test` — Jest (ts-jest), 241 tests across 14 suites. When only one module changed, `npm test -- tests/utils/<name>.test.ts` runs a single suite (~18s vs minutes)
+- `npm test` — Jest (ts-jest) under `tests/`. When only one module changed, `npm test -- tests/utils/<name>.test.ts` runs a single suite (~18s vs minutes)
 - `npm run lint` — the warning baseline (~149, all pre-existing) is expected noise. Zero *errors* is the bar.
 - `npm run format` — Prettier
 
 ### File Index (complete map — trust it, don't re-explore; only open the files you're changing)
 
 **Screens (`app/`, Expo Router):**
-- `app/(tabs)/index.tsx` — Torrents list: filters/sort/swipe actions, collapsing header (scroll pattern copied in search.tsx)
+- `app/(tabs)/(torrents)/` — nested stack under Torrents tab (keeps tab bar visible): `index` list + `torrent/[hash]`, `torrent/files`, `torrent/manage-trackers`. Route group `(torrents)` is omitted from URLs → `/`, `/torrent/[hash]`, etc.
 - `app/(tabs)/search.tsx` — Search tab: job polling UI, plugin/category/indexer filter chip rows, client-side sort, collapsing header
-- `app/(tabs)/transfer.tsx` / `app/(tabs)/settings.tsx` / `app/(tabs)/logs.tsx` — transfer stats, settings hub, connectivity logs
-- `app/(tabs)/_layout.tsx` — tab bar; `app/_layout.tsx` — root providers/theme/deep-link handling
-- `app/settings/` — sub-screens, names = content: `about`, `add-torrent-dialogue`, `advanced`, `appearance`, `detailed-card-fields`, `notifications`, `servers`, `theme`, `torrent-defaults`, `whats-new`
-- `app/torrent/[hash].tsx` — torrent detail (single source; old TorrentDetails.tsx component was deleted); `app/torrent/files.tsx` — file list/priorities; `app/torrent/manage-trackers.tsx` — tracker add/edit/remove
-- `app/torrents/add.tsx` — add-torrent flow (magnet/.torrent, options)
-- `app/search/plugins.tsx` — search plugin install/enable/uninstall
+- `app/(tabs)/transfer.tsx` / `app/(tabs)/logs.tsx` — transfer stats, connectivity logs (`logs` is `href: null` — reachable from Settings, not a tab)
+- `app/(tabs)/settings/` — nested stack under Settings tab (keeps tab bar visible): `index` hub + sub-screens `about`, `add-torrent-dialogue`, `advanced`, `appearance`, `detailed-card-fields`, `notifications`, `servers`, `theme`, `torrent-defaults`, `whats-new`. URLs are `/settings`, `/settings/theme`, etc.
+- `app/(tabs)/_layout.tsx` — tab bar; `app/_layout.tsx` — root providers/theme/deep-link handling; root stack anchors on `(tabs)` and only hosts non-tab routes (server modals, add-torrent, search plugins)
+- `app/torrents/add.tsx` — add-torrent flow (magnet/.torrent, options); root stack (no tab bar)
+- `app/search/plugins.tsx` — search plugin install/enable/uninstall (`app/search/_layout.tsx` stack); root stack (no tab bar)
 - `app/server/add.tsx`, `app/server/[id].tsx` — server add/edit; presented as native modal sheets → they mount `<ModalToast/>` locally (see ToastContext)
+
+**Do not recreate** the old top-level `app/settings/` or `app/torrent/` trees — those were moved under `(tabs)` so the tab bar stays visible. Same for the former `app/(tabs)/index.tsx` / `app/(tabs)/settings.tsx` hub files.
 
 **Contexts (`context/`):**
 - `ServerContext.tsx` — connection lifecycle; `checkAndReconnect()` ALWAYS does a full re-login (no session-validity probe) and de-dupes concurrent calls via a shared in-flight promise. qBittorrent ties search jobs to the session — never call it eagerly on foreground/AppState events, only reactively after a request actually fails
@@ -37,8 +59,8 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
 - `ThemeContext.tsx` — `useTheme()`, `colors` object, user color overrides; `ApiVersionContext.tsx` — detected qBittorrent API version → feature gating via `utils/apiVersion.ts`
 
 **Components (`components/`, all PascalCase function components taking a `…Props` interface):**
-- Modals/pickers: `ActionMenu`, `InputModal` (preferred over `Alert.prompt`), `OptionPicker`, `MultiSelectPicker`, `CategoryModal`, `TagsModal`, `ColorPicker`
-- Torrent/search UI: `TorrentCard` (React.memo with custom comparator — keep it in sync when adding rendered fields), `SearchResultRow` (+internal ActionPill), `FilterChip`, `EmptyState`, `SkeletonLoader` (+`SkeletonTorrentCard`)
+- Modals/pickers: `ActionMenu` (anchored popover), `ConfirmModal` (themed confirm — prefer over `Alert.alert`), `InputModal` (preferred over `Alert.prompt`), `OptionPicker`, `MultiSelectPicker`, `CategoryModal`, `TagsModal`, `ColorPicker`
+- Torrent/search UI: `TorrentCard` (React.memo with custom comparator — keep it in sync when adding rendered fields), `SearchResultRow` (+internal ActionPill), `FilterChip`, `EmptyState`, `SkeletonLoader` (+`SkeletonTorrentCard`), `PieceMap` (piece-state bar used on torrent detail)
 - Visuals: `SpeedGraph`, `CircularProgress`, `AnimatedProgressBar`, `AnimatedButton`, `Confetti`
 - Chrome/diagnostics: `FocusAwareStatusBar`, `SettingRow`, `QuickConnectPanel`, `LogViewer`, `DebugRow`, `SuperDebugPanel` (connection diagnostics steps)
 
@@ -55,7 +77,7 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
 
 **Hooks (`hooks/`):**
 - `useSearchJob.ts` — search job lifecycle: start/stop/delete, 2s status+results polling, cleanup on unmount
-- `useTorrentActions.ts` — builds the per-torrent action menu (pause/resume/delete/etc.) used by list + detail
+- `useTorrentActions.ts` — builds the per-torrent action menu (pause/resume/delete/etc.) used by list + detail; delete uses `deleteConfirmVisible` + caller-mounted `ConfirmModal` (not `Alert.alert`)
 - `useReactiveReconnect.ts` — feeds query errors into ServerContext reconnect (`isReconnectableError`)
 - `useSpeedTracker.ts` / `useSpeedHistory.ts` — sampling for SpeedGraph
 
@@ -64,18 +86,19 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
 
 **i18n:** `i18n/index.ts` initializes react-i18next; each locale is ONE file `locales/{en,es,zh,fr,de,ru}/translation.json` containing all namespaces: `common`, `states`, `screens`, `placeholders`, `actions`, `alerts`, `server`, `torrentDetail`, `filters`, `sort`, `toast`, `errors`. Keys look like `t('actions.pause')`.
 
-**Types/constants:** `types/api.ts` (all qBittorrent API shapes, `TorrentInfo`, `ServerConfig`), `types/preferences.ts` (typed prefs + defaults); `constants/`: `changelog.ts` (in-app "What's New" — see Changelog discipline), `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts` (shared style tokens — use these, don't invent ad-hoc spacing)
+**Types/constants:** `types/api.ts` (all qBittorrent API shapes, `TorrentInfo`, `ServerConfig`), `types/preferences.ts` (typed prefs + defaults — includes `expandedCardGridColumns: 3|4|5`, default **4**); `constants/`: `changelog.ts` (in-app "What's New" — see Changelog discipline), `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts` (shared style tokens — use these, don't invent ad-hoc spacing)
 
 ### Task Recipes (exact touch-lists for recurring changes — follow, don't rediscover)
 - **Add/change a user-facing string:** add the key to ALL SIX `locales/*/translation.json` (really translate — the parity test rejects lazily-copied English ≥16 chars), use via `t('ns.key')`. Verify with `npm test` (parity test will name any file you missed).
-- **Add a preference:** typed shape + default in `types/preferences.ts` → read/write via `storageService` (`services/storage.ts`) → UI in the relevant `app/settings/*` screen using `SettingRow` + `OptionPicker`/switch → i18n the label (recipe above). NEVER rename existing keys.
+- **Add a preference:** typed shape + default in `types/preferences.ts` → read/write via `storageService` (`services/storage.ts`) → UI in the relevant `app/(tabs)/settings/*` screen using `SettingRow` + `OptionPicker`/switch → i18n the label (recipe above). NEVER rename existing keys.
 - **Add a qBittorrent API call:** method on the matching `services/api/*.ts` object (follow its neighbors' style) → response/param types in `types/api.ts` → if availability depends on qBittorrent version, gate via `ApiFeatures` in `utils/apiVersion.ts`.
-- **Add a torrent action:** API method (above) → menu item in `hooks/useTorrentActions.ts` → strings in `actions`/`toast` namespaces.
-- **Add a settings sub-screen:** create `app/settings/<name>.tsx` (copy structure of a sibling — the route registers itself, `_layout.tsx` needs no edit), link from `app/(tabs)/settings.tsx`.
+- **Add a torrent action:** API method (above) → menu item in `hooks/useTorrentActions.ts` → strings in `actions`/`toast` namespaces. Destructive confirms that need a themed dialog: expose visibility state from the hook and mount `ConfirmModal` in the screen (see torrents list + detail).
+- **Add a settings sub-screen:** create `app/(tabs)/settings/<name>.tsx` (copy structure of a sibling — the route registers itself, `_layout.tsx` needs no edit), link from `app/(tabs)/settings/index.tsx`.
+- **Keep tab bar on a push screen:** put the screen under `app/(tabs)/(torrents)/` or `app/(tabs)/settings/` (nested Stack), not under the root `app/` stack. Root stack = no tab bar (modals / full-screen flows only).
 - **User-facing change of any kind:** finish with the Changelog discipline step (Critical Rule 8).
 
 ## Architecture
-- **Routing:** Expo Router file-based routing in `app/`. The `(tabs)` directory uses parentheses because Expo Router requires this syntax for route groups — it is a framework convention, not a naming choice. The parens cannot be removed.
+- **Routing:** Expo Router file-based routing in `app/`. Parentheses `(groupname)` mark route groups — they organize files but are **omitted from URLs**. The tab bar lives in `app/(tabs)/_layout.tsx`. Screens that must keep the tab bar visible (torrent detail, settings sub-pages) live in nested Stacks under those tabs — never as siblings of `(tabs)` on the root stack. Root stack (`app/_layout.tsx`) anchors on `(tabs)` so dismissing server modals / add-torrent does not wipe the tab navigator.
 - **State:** React Context + TanStack Query (ThemeContext, ServerContext, TorrentContext, TransferContext, ToastContext)
 - **Data sync:** TanStack Query with `refetchInterval` (2-3s), rid-based incremental sync for torrents via custom queryFn
 - **Storage:** AsyncStorage for preferences, SecureStore for passwords
@@ -86,7 +109,7 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
 
 ## Critical Rules
 1. NEVER hardcode colors — always use `useTheme()` and `colors.*`
-2. Prefer `InputModal` over `Alert.prompt` for user text input. `Alert.prompt` is iOS-only, which is acceptable for the current iOS-first focus, but `InputModal` is already available and provides a consistent UX.
+2. Prefer `InputModal` over `Alert.prompt` for user text input. Prefer `ConfirmModal` over `Alert.alert` for themed confirmations (delete, destructive choices). Native alerts ignore the app theme.
 3. NEVER rename keys in the `colors` object (ThemeContext) — users store color overrides keyed by these names in AsyncStorage. Renaming silently breaks their customizations.
 4. NEVER rename preference keys — there is no migration system. Old keys become orphaned.
 5. All user-facing strings must use i18n: `const { t } = useTranslation()` then `t('key')`.
@@ -102,10 +125,12 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
    **Ignore semver instinct.** You never decide major/minor/patch — the only version edit you ever make is a single patch bump, and only in the EQUAL case. A new feature does NOT mean a minor bump. When in doubt, you are almost always in the DIFFER case → just append a line, touch nothing else.
 
    *Worked example:* `package.json` is `3.3.0`, top changelog entry is `3.3.1` → they DIFFER → append your line to `3.3.1`'s `changes[]`. (A wrong fix would be creating a `3.4.0` entry — don't.)
+
+   **Native version fields don't auto-sync anymore.** Now that iOS is bare (see "iOS Native Workflow"), `expo prebuild` no longer runs, so nothing propagates `package.json`'s `version` into the native app. Whenever `package.json`'s `version` is bumped as part of a release (the human-driven step in 8.2 above), `MARKETING_VERSION` must also be bumped by hand in **both** the Debug and Release configs of `ios/qRemote.xcodeproj/project.pbxproj` (or via Xcode's qRemote target → General tab → Version field) to match. `CURRENT_PROJECT_VERSION` (the build number, both configs) should be bumped too, on every new build/TestFlight submission, independent of the marketing version. `ios/qRemote/Info.plist`'s `CFBundleShortVersionString`/`CFBundleVersion` reference these via `$(MARKETING_VERSION)`/`$(CURRENT_PROJECT_VERSION)` and need no separate edit.
 9. ~~Search feature flag~~ — retired in v3.7.0. In-app search ships publicly; `constants/features.ts` and the `FEATURES.search` gate were removed entirely. Do not reintroduce a feature-flag system for it without being asked.
 
 ## Dead Code
-All dead code files and unused client fields have been removed (Task 3.5 complete). Precedent: `components/TorrentDetails.tsx` was deleted after its markup was consolidated into `app/torrent/[hash].tsx`, which is now the single torrent-detail screen — when replacing a component with a route-level screen (or vice versa), delete the superseded file in the same change rather than leaving it as unreferenced dead code.
+All dead code files and unused client fields have been removed (Task 3.5 complete). Precedent: `components/TorrentDetails.tsx` was deleted after its markup was consolidated into `app/(tabs)/(torrents)/torrent/[hash].tsx`, which is now the single torrent-detail screen — when replacing a component with a route-level screen (or vice versa), delete the superseded file in the same change rather than leaving it as unreferenced dead code. Same rule for the settings/torrent move under `(tabs)`: do not leave parallel `app/settings/` or `app/torrent/` copies.
 
 ## Known Bugs
 None currently tracked. Do not trust a static bug list — run `npx tsc --noEmit` and `npm test`, and read the actual code before assuming a defect exists. (All previously documented bugs were fixed in v3.1.0; see `constants/changelog.ts`.)
@@ -120,9 +145,9 @@ None currently tracked. Do not trust a static bug list — run `npx tsc --noEmit
 - Layout files: `_layout.tsx` with the underscore prefix is Expo Router syntax for layout routes. Cannot be renamed.
 
 ## Verification / Environment
-- This is an iOS-first app. iOS-only APIs (`ActionSheetIOS`, `Alert.prompt`, etc.) are acceptable. Android parity is a future concern.
+- This is an iOS-only app (Android support was removed entirely). iOS-only APIs (`ActionSheetIOS`, `Alert.prompt`, etc.) are acceptable without gating.
 - `expo-*` packages are approved for use even if they require `expo-dev-client` (e.g. `expo-symbols`). Third-party native modules (`react-native-ios-context-menu`, `lottie-react-native`) still require explicit approval before adding.
-- The app cannot be launched in a headless/cloud agent environment (requires Expo Go / dev client on a device or simulator). When you can't run the app, verify with `npx tsc --noEmit` and `npm test`.
+- The app cannot be launched in a headless/cloud agent environment (requires a device/simulator via Xcode, or Expo Go/dev client). When you can't run the app, verify with `npx tsc --noEmit` and `npm test`.
 
 ## Cursor Cloud specific instructions
 - Primary verification here is the trio already documented above (Verification section): `npx tsc --noEmit`, `npm test`, `npm run lint`. Test/lint counts drift upward over time — the bar is exit 0, tests all passing, and lint 0 *errors* (warnings are baseline noise). No device/simulator is available.

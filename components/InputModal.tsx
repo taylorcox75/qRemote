@@ -68,7 +68,16 @@ export function InputModal({
       onRequestClose={handleCancel}
     >
       <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-        <View style={[styles.modal, { backgroundColor: colors.surface, ...shadows.large }]}>
+        <View
+          style={[
+            styles.modal,
+            shadows.medium,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.surfaceOutline,
+            },
+          ]}
+        >
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
           {message && <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>}
           <TextInput
@@ -117,6 +126,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     borderRadius: borderRadius.large,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.lg,
     width: '80%',
     maxWidth: 400,
