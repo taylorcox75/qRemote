@@ -122,14 +122,20 @@ export default function TransferScreen() {
         return next;
       });
       try {
-        await connectToServer(server);
+        // connectToServer resolves false (rather than throwing) when qBittorrent
+        // answers the login with "Fails." — i.e. bad credentials. Without this
+        // branch the most common failure of all produces no feedback at all.
+        const connected = await connectToServer(server);
+        if (!connected) {
+          setConnectErrors((prev) => ({ ...prev, [server.id]: t('errors.checkCredentials') }));
+        }
       } catch (err: unknown) {
         setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
       } finally {
         setConnectingId(null);
       }
     },
-    [connectToServer],
+    [connectToServer, t],
   );
 
   const [settingLimit, setSettingLimit] = useState(false);

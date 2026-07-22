@@ -23,6 +23,9 @@ export const CHANGELOG: ChangelogRelease[] = [
       'Fixed torrent cards not updating their category, tags, tracker, save path or peer counts until the torrent next changed speed — changes made from the app appeared to do nothing on paused or seeding torrents',
       'Unexpected errors now show a recovery screen with a Try Again button instead of leaving a blank screen you could only escape by force-quitting',
       'The iOS local network permission prompt now explains that qRemote uses your network to reach your qBittorrent server',
+      'Fixed deleting a server writing your other servers’ reverse-proxy passwords into unprotected app storage — those passwords are meant to live only in the iOS keychain',
+      'Tapping a saved server on the not-connected screen now tells you when the username or password is wrong, instead of just spinning and returning you to the same screen',
+      'Fixed your entire server list appearing to be empty if even one saved password could not be read from the keychain',
     ],
   },
   {

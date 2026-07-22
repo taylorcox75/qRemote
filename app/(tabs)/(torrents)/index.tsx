@@ -692,7 +692,14 @@ export default function TorrentsScreen() {
         return next;
       });
       try {
-        await connectToServer(server);
+        // connectToServer resolves false (rather than throwing) when qBittorrent
+        // answers the login with "Fails." — i.e. bad credentials. Without this
+        // branch the most common failure of all produces no feedback at all.
+        const connected = await connectToServer(server);
+        if (!connected) {
+          setConnectErrors((prev) => ({ ...prev, [server.id]: t('errors.checkCredentials') }));
+          haptics.error();
+        }
       } catch (err: unknown) {
         setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
         haptics.error();
@@ -700,7 +707,7 @@ export default function TorrentsScreen() {
         setConnectingId(null);
       }
     },
-    [connectToServer],
+    [connectToServer, t],
   );
 
   const handlePickFile = async () => {
