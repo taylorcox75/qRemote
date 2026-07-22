@@ -608,6 +608,15 @@ App Version: ${APP_VERSION}`;
                   secureTextEntry
                   autoCapitalize="none"
                   autoCorrect={false}
+                  // "none", not "password": "password" is the explicit iOS AutoFill
+                  // opt-in and also makes iOS offer to *fill* this field from the
+                  // keychain. qRemote stores the password in SecureStore itself.
+                  //
+                  // This does NOT stop the "Save Password?" prompt on save. Verified
+                  // on simulator (iOS 26): iOS treats username + secureTextEntry as a
+                  // login form and offers to save on dismiss regardless of
+                  // textContentType. "oneTimeCode" was tried and did not suppress it
+                  // either -- do not re-try it. See .audit/FINDINGS.md F9.
                   textContentType="none"
                   autoComplete="off"
                   passwordRules=""
@@ -682,6 +691,9 @@ App Version: ${APP_VERSION}`;
                       secureTextEntry
                       autoCapitalize="none"
                       autoCorrect={false}
+                      // "none" for the same reason as the server password field
+                      // above -- and with the same caveat: it does not stop the iOS
+                      // "Save Password?" prompt. See .audit/FINDINGS.md F9.
                       textContentType="none"
                       autoComplete="off"
                       passwordRules=""
