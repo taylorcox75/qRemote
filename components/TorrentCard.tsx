@@ -332,6 +332,17 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.torrent.completed === next.torrent.completed &&
     prev.torrent.size === next.torrent.size &&
     prev.torrent.total_size === next.torrent.total_size &&
+    // Detailed-card fields. These change rarely and independently of the
+    // transfer stats above, so omitting one leaves the card showing a stale
+    // value indefinitely on any torrent that isn't actively moving data.
+    // Every torrent.* field read in this file must appear in this comparator.
+    prev.torrent.category === next.torrent.category &&
+    prev.torrent.tags === next.torrent.tags &&
+    prev.torrent.tracker === next.torrent.tracker &&
+    prev.torrent.save_path === next.torrent.save_path &&
+    prev.torrent.added_on === next.torrent.added_on &&
+    prev.torrent.num_complete === next.torrent.num_complete &&
+    prev.torrent.num_incomplete === next.torrent.num_incomplete &&
     prev.onPress === next.onPress &&
     prev.onLongPress === next.onLongPress &&
     prev.onPauseResume === next.onPauseResume &&
