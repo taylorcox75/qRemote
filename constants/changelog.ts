@@ -21,7 +21,6 @@ export const CHANGELOG: ChangelogRelease[] = [
       'Moved toast notifications on the Torrents tab down below the search bar so they no longer cover it',
       'Fixed the torrent action menu flashing as it closed after you picked an item',
       'Fixed torrent cards not updating their category, tags, tracker, save path or peer counts until the torrent next changed speed — changes made from the app appeared to do nothing on paused or seeding torrents',
-      'Adding or editing a server no longer makes iOS offer to save the password to your keychain — qRemote already stores it securely on device',
     ],
   },
   {
