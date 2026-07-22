@@ -1884,8 +1884,11 @@ export default function TorrentsScreen() {
         <ActionMenu
           visible={menuVisible}
           onClose={() => {
+            // Keep the anchor through the Modal's fade-out. Clearing it here
+            // re-renders ActionMenu's bottom-sheet branch in place of the
+            // popover while the dismiss animation is still running. Both open
+            // paths set a fresh anchor before showing the menu again.
             setMenuVisible(false);
-            setMenuAnchor(null);
           }}
           items={actionMenuItems}
           anchor={menuAnchor ?? undefined}
