@@ -21,6 +21,8 @@ export const CHANGELOG: ChangelogRelease[] = [
       'Moved toast notifications on the Torrents tab down below the search bar so they no longer cover it',
       'Fixed the torrent action menu flashing as it closed after you picked an item',
       'Fixed torrent cards not updating their category, tags, tracker, save path or peer counts until the torrent next changed speed — changes made from the app appeared to do nothing on paused or seeding torrents',
+      'Unexpected errors now show a recovery screen with a Try Again button instead of leaving a blank screen you could only escape by force-quitting',
+      'The iOS local network permission prompt now explains that qRemote uses your network to reach your qBittorrent server',
     ],
   },
   {
