@@ -63,7 +63,7 @@ import { torrentHasAnyTag, UNTAGGED_FILTER } from '@/utils/tags';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
-  const { showToast } = useToast();
+  const { showToast, setToastTopOffset } = useToast();
   const router = useRouter();
   const {
     torrents,
@@ -144,6 +144,19 @@ export default function TorrentsScreen() {
 
   // Track last known default filter so we only sync when user changes it in Settings
   const lastDefaultFilterRef = useRef<string | null>(null);
+
+  // This screen's search/sort/add header overlays the top of the list (see
+  // headerContainer/listContent below) rather than taking up its own layout
+  // space, so the toast's default safe-area offset lands on top of it. Push
+  // the toast down past the header — a bit further than listContent's own
+  // paddingTop so it clears the header with room to spare — while this tab
+  // is focused.
+  useFocusEffect(
+    useCallback(() => {
+      setToastTopOffset(styles.listContent.paddingTop + spacing.xxl);
+      return () => setToastTopOffset(null);
+    }, [setToastTopOffset]),
+  );
 
   // Check for filter + card view mode preference changes on screen focus
   useFocusEffect(

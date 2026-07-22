@@ -17,6 +17,8 @@ export const CHANGELOG: ChangelogRelease[] = [
     changes: [
       'Fixed the "Pause on Add" setting not actually taking effect on qBittorrent 5.0+ servers — it was written to a preference key that a newer qBittorrent no longer recognizes, so the toggle silently reverted whenever the screen reloaded',
       'Fixed magnet and .torrent links not opening the add-torrent dialog when tapped from another app while qRemote was fully closed (cold launch)',
+      'Fixed .torrent files opened this way sometimes failing to add because the incoming file became unreadable while the app was still starting up',
+      'Moved toast notifications on the Torrents tab down below the search bar so they no longer cover it',
     ],
   },
   {

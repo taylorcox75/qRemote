@@ -16,6 +16,11 @@ interface ToastContextType {
   hideToast: () => void;
   /** Internal — ModalToast mounts register here so the global toast yields. */
   registerModalHost: () => () => void;
+  /** Screens with a tall custom header (search bar, buttons overlaying the
+   *  top safe area) call this while focused so the global toast renders
+   *  below that header instead of at the default safe-area offset. Pass
+   *  `null` to go back to the default. */
+  setToastTopOffset: (offset: number | null) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -29,10 +34,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   // (one in the sheet's layer, a ghost copy behind it, both visible during
   // an interactive sheet dismissal).
   const [modalHostCount, setModalHostCount] = useState(0);
+  const [topOffsetOverride, setTopOffsetOverride] = useState<number | null>(null);
 
   const registerModalHost = useCallback(() => {
     setModalHostCount((n) => n + 1);
     return () => setModalHostCount((n) => Math.max(0, n - 1));
+  }, []);
+
+  const setToastTopOffset = useCallback((offset: number | null) => {
+    setTopOffsetOverride(offset);
   }, []);
 
   // Load toast duration preference
@@ -68,8 +78,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue = useMemo(
-    () => ({ showToast, toast, hideToast, registerModalHost }),
-    [showToast, toast, hideToast, registerModalHost],
+    () => ({ showToast, toast, hideToast, registerModalHost, setToastTopOffset }),
+    [showToast, toast, hideToast, registerModalHost, setToastTopOffset],
   );
 
   // On iOS, yield to a mounted ModalToast host: rendering both would show
@@ -96,6 +106,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           type={toast.type}
           duration={toast.duration}
           onHide={hideToast}
+          topOffsetOverride={topOffsetOverride ?? undefined}
         />
       )}
     </ToastContext.Provider>
