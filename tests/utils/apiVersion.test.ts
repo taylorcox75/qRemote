@@ -1,4 +1,4 @@
-import { parseApiVersion, getApiFeatures } from '@/utils/apiVersion';
+import { parseApiVersion, getApiFeatures, getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
 
 describe('parseApiVersion', () => {
   it('parses a standard major.minor.patch string', () => {
@@ -33,6 +33,7 @@ describe('getApiFeatures', () => {
       supportsInactiveSeedingLimit: true,
       supportsSetCookies: true,
       supportsSearchDownloadTorrent: true,
+      useAddStoppedEnabledPreference: true,
     });
   });
 
@@ -47,6 +48,7 @@ describe('getApiFeatures', () => {
     expect(features.supportsInactiveSeedingLimit).toBe(false);
     expect(features.supportsSetCookies).toBe(false);
     expect(features.supportsSearchDownloadTorrent).toBe(false);
+    expect(features.useAddStoppedEnabledPreference).toBe(false);
     // ratio limit fields only require 2.8+
     expect(features.hasRatioLimitFields).toBe(true);
   });
@@ -63,6 +65,7 @@ describe('getApiFeatures', () => {
     expect(features.supportsInactiveSeedingLimit).toBe(true);
     expect(features.supportsSetCookies).toBe(true);
     expect(features.supportsSearchDownloadTorrent).toBe(true);
+    expect(features.useAddStoppedEnabledPreference).toBe(true);
   });
 
   it('enables v5 features above major version 2 (e.g. 3.0.0)', () => {
@@ -78,5 +81,15 @@ describe('getApiFeatures', () => {
     const features = getApiFeatures('1.9.0');
     expect(features.useStartStopEndpoints).toBe(false);
     expect(features.hasRatioLimitFields).toBe(false);
+  });
+});
+
+describe('getPauseOnAddPreferenceKey', () => {
+  it('uses the renamed key on qBit 5.0+ (WebAPI >= 2.11)', () => {
+    expect(getPauseOnAddPreferenceKey(getApiFeatures('2.11.0'))).toBe('add_stopped_enabled');
+  });
+
+  it('uses the legacy key on qBit 4.x (WebAPI < 2.11)', () => {
+    expect(getPauseOnAddPreferenceKey(getApiFeatures('2.9.0'))).toBe('start_paused_enabled');
   });
 });

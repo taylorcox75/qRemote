@@ -12,6 +12,14 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.7.15',
+    date: '2026-07-21',
+    changes: [
+      'Fixed the "Pause on Add" setting not actually taking effect on qBittorrent 5.0+ servers — it was written to a preference key that a newer qBittorrent no longer recognizes, so the toggle silently reverted whenever the screen reloaded',
+      'Fixed magnet and .torrent links not opening the add-torrent dialog when tapped from another app while qRemote was fully closed (cold launch)',
+    ],
+  },
+  {
     version: '3.7.14',
     date: '2026-07-18',
     changes: [
@@ -139,7 +147,9 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '3.1.1',
     date: '2026-05-26',
-    changes: ['Improved authentication to support qBittorrent 5.x 204 + Set-Cookie login responses'],
+    changes: [
+      'Improved authentication to support qBittorrent 5.x 204 + Set-Cookie login responses',
+    ],
   },
   {
     version: '3.1.0',
@@ -210,9 +220,7 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '2.0.2',
     date: '2025-02-26',
-    changes: [
-      'Fixed default save path updates not being applied on the qBittorrent server',
-    ],
+    changes: ['Fixed default save path updates not being applied on the qBittorrent server'],
   },
   {
     version: '2.0.1',
@@ -278,10 +286,7 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '1.0.6',
     date: '2024-12-16',
-    changes: [
-      'Fixed popup and Android localhost issues',
-      'General stability improvements',
-    ],
+    changes: ['Fixed popup and Android localhost issues', 'General stability improvements'],
   },
   {
     version: '1.0.5',

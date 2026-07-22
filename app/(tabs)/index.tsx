@@ -42,9 +42,11 @@ import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
 import { torrentsApi } from '@/services/api/torrents';
 import { applicationApi } from '@/services/api/application';
+import { apiClient } from '@/services/api/client';
 import { storageService } from '@/services/storage';
 import { ExpandedCardField, DEFAULT_PREFERENCES } from '@/types/preferences';
 import { ServerManager } from '@/services/server-manager';
+import { getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
 import { haptics } from '@/utils/haptics';
 import { shadows } from '@/constants/shadows';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -63,7 +65,16 @@ export default function TorrentsScreen() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const router = useRouter();
-  const { torrents, categories, tags, isLoading, error, refresh, isRecoveringFromBackground, initialLoadComplete } = useTorrents();
+  const {
+    torrents,
+    categories,
+    tags,
+    isLoading,
+    error,
+    refresh,
+    isRecoveringFromBackground,
+    initialLoadComplete,
+  } = useTorrents();
   const { isConnected, currentServer, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
   const params = useLocalSearchParams<{
@@ -77,7 +88,11 @@ export default function TorrentsScreen() {
   const [filter, setFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [torrentUrl, setTorrentUrl] = useState('');
-  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string; mimeType?: string } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{
+    uri: string;
+    name: string;
+    mimeType?: string;
+  } | null>(null);
   const [addingTorrent, setAddingTorrent] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
@@ -88,12 +103,14 @@ export default function TorrentsScreen() {
   // applied in one addTags/removeTags call when the picker closes.
   const [bulkTagMode, setBulkTagMode] = useState<'add' | 'remove' | null>(null);
   const [bulkTagDraft, setBulkTagDraft] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'>('added_on');
+  const [sortBy, setSortBy] = useState<
+    'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'
+  >('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
   const [expandedCardFields, setExpandedCardFields] = useState<Record<ExpandedCardField, boolean>>(
-    DEFAULT_PREFERENCES.expandedCardFields
+    DEFAULT_PREFERENCES.expandedCardFields,
   );
   // Category/tag filter state (null = all categories, '' = uncategorized)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -135,7 +152,10 @@ export default function TorrentsScreen() {
         try {
           const prefs = await storageService.getPreferences();
           const newDefault = prefs.defaultFilter || 'all';
-          if (lastDefaultFilterRef.current !== null && lastDefaultFilterRef.current !== newDefault) {
+          if (
+            lastDefaultFilterRef.current !== null &&
+            lastDefaultFilterRef.current !== newDefault
+          ) {
             setFilter(newDefault);
           }
           lastDefaultFilterRef.current = newDefault;
@@ -151,7 +171,7 @@ export default function TorrentsScreen() {
         }
       };
       loadPreferences();
-    }, [])
+    }, []),
   );
 
   // Load default sort/filter preferences only on app launch (once)
@@ -197,7 +217,8 @@ export default function TorrentsScreen() {
       (async () => {
         try {
           const serverPrefs = await applicationApi.getPreferences();
-          const serverVal = !!(serverPrefs as Record<string, unknown>).start_paused_enabled;
+          const pauseOnAddKey = getPauseOnAddPreferenceKey(apiClient.getApiFeatures());
+          const serverVal = !!(serverPrefs as Record<string, unknown>)[pauseOnAddKey];
           const localPrefs = await storageService.getPreferences();
           if (localPrefs.pauseOnAdd !== serverVal) {
             await storageService.savePreferences({ ...localPrefs, pauseOnAdd: serverVal });
@@ -267,9 +288,13 @@ export default function TorrentsScreen() {
   }, [params.magnet, router]);
 
   useEffect(() => {
-    const fileUri = Array.isArray(params.torrentFileUri) ? params.torrentFileUri[0] : params.torrentFileUri;
+    const fileUri = Array.isArray(params.torrentFileUri)
+      ? params.torrentFileUri[0]
+      : params.torrentFileUri;
     if (!fileUri) return;
-    const rawName = Array.isArray(params.torrentFileName) ? params.torrentFileName[0] : params.torrentFileName;
+    const rawName = Array.isArray(params.torrentFileName)
+      ? params.torrentFileName[0]
+      : params.torrentFileName;
     const fileName = rawName || 'download.torrent';
 
     const now = Date.now();
@@ -331,7 +356,12 @@ export default function TorrentsScreen() {
           case 'completed':
             return torrent.state === 'uploading' && torrent.progress === 1;
           case 'paused':
-            return torrent.state === 'pausedDL' || torrent.state === 'pausedUP' || torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
+            return (
+              torrent.state === 'pausedDL' ||
+              torrent.state === 'pausedUP' ||
+              torrent.state === 'stoppedDL' ||
+              torrent.state === 'stoppedUP'
+            );
           case 'active':
             return torrent.dlspeed > 0 || torrent.upspeed > 0;
           case 'stuck':
@@ -339,7 +369,11 @@ export default function TorrentsScreen() {
             if (torrent.state === 'stalledUP' && torrent.progress >= 1) {
               return false; // Seeding is not stuck
             }
-            return torrent.state === 'stalledDL' || torrent.state === 'stalledUP' || torrent.state === 'metaDL';
+            return (
+              torrent.state === 'stalledDL' ||
+              torrent.state === 'stalledUP' ||
+              torrent.state === 'metaDL'
+            );
           default:
             return true;
         }
@@ -349,7 +383,7 @@ export default function TorrentsScreen() {
     // Category filter: null = all, '' = uncategorized (no category set)
     if (categoryFilter !== null) {
       filtered = filtered.filter((torrent) =>
-        categoryFilter === '' ? !torrent.category : torrent.category === categoryFilter
+        categoryFilter === '' ? !torrent.category : torrent.category === categoryFilter,
       );
     }
 
@@ -362,15 +396,14 @@ export default function TorrentsScreen() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (torrent) =>
-          torrent.name.toLowerCase().includes(query) ||
-          torrent.hash.toLowerCase().includes(query)
+          torrent.name.toLowerCase().includes(query) || torrent.hash.toLowerCase().includes(query),
       );
     }
 
     // Sort torrents - efficient O(n log n) with native sort
     filtered.sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortBy) {
         case 'name':
           comparison = a.name.localeCompare(b.name);
@@ -396,7 +429,7 @@ export default function TorrentsScreen() {
         default:
           return 0;
       }
-      
+
       // Apply sort direction
       return sortDirection === 'asc' ? comparison : -comparison;
     });
@@ -474,50 +507,46 @@ export default function TorrentsScreen() {
   const handleBulkDelete = () => {
     if (selectedHashes.size === 0) return;
     const count = selectedHashes.size;
-    Alert.alert(
-      t('alerts.deleteTorrents', { count }),
-      t('alerts.deleteConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('torrentDetail.torrentOnly'),
-          onPress: async () => {
-            setBulkLoading(true);
-            try {
-              await torrentsApi.deleteTorrents(Array.from(selectedHashes), false);
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              refresh();
-              setSelectedHashes(new Set());
-              setSelectMode(false);
-              showToast(t('toast.torrentsDeleted_other', { count }), 'success');
-            } catch (error: unknown) {
-              showToast(getErrorMessage(error), 'error');
-            } finally {
-              setBulkLoading(false);
-            }
-          },
+    Alert.alert(t('alerts.deleteTorrents', { count }), t('alerts.deleteConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('torrentDetail.torrentOnly'),
+        onPress: async () => {
+          setBulkLoading(true);
+          try {
+            await torrentsApi.deleteTorrents(Array.from(selectedHashes), false);
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            refresh();
+            setSelectedHashes(new Set());
+            setSelectMode(false);
+            showToast(t('toast.torrentsDeleted_other', { count }), 'success');
+          } catch (error: unknown) {
+            showToast(getErrorMessage(error), 'error');
+          } finally {
+            setBulkLoading(false);
+          }
         },
-        {
-          text: t('torrentDetail.withFiles'),
-          style: 'destructive',
-          onPress: async () => {
-            setBulkLoading(true);
-            try {
-              await torrentsApi.deleteTorrents(Array.from(selectedHashes), true);
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              refresh();
-              setSelectedHashes(new Set());
-              setSelectMode(false);
-              showToast(t('toast.torrentsDeleted_other', { count }), 'success');
-            } catch (error: unknown) {
-              showToast(getErrorMessage(error), 'error');
-            } finally {
-              setBulkLoading(false);
-            }
-          },
+      },
+      {
+        text: t('torrentDetail.withFiles'),
+        style: 'destructive',
+        onPress: async () => {
+          setBulkLoading(true);
+          try {
+            await torrentsApi.deleteTorrents(Array.from(selectedHashes), true);
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            refresh();
+            setSelectedHashes(new Set());
+            setSelectMode(false);
+            showToast(t('toast.torrentsDeleted_other', { count }), 'success');
+          } catch (error: unknown) {
+            showToast(getErrorMessage(error), 'error');
+          } finally {
+            setBulkLoading(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   // Shared wrapper for the long-press bulk menu actions: mirrors the
@@ -554,7 +583,7 @@ export default function TorrentsScreen() {
     void runBulkAction((hashes) =>
       mode === 'add'
         ? torrentsApi.addTorrentTags(hashes, draft)
-        : torrentsApi.removeTorrentTags(hashes, draft)
+        : torrentsApi.removeTorrentTags(hashes, draft),
     );
   };
 
@@ -592,7 +621,12 @@ export default function TorrentsScreen() {
       icon: 'megaphone-outline',
       onPress: () => void runBulkAction((hashes) => torrentsApi.reannounceTorrents(hashes)),
     },
-    { label: t('common.delete'), icon: 'trash-outline', onPress: handleBulkDelete, destructive: true },
+    {
+      label: t('common.delete'),
+      icon: 'trash-outline',
+      onPress: handleBulkDelete,
+      destructive: true,
+    },
   ];
 
   // ─── Server quick-connect state (used in not-connected early return) ────────
@@ -605,24 +639,37 @@ export default function TorrentsScreen() {
     if (!isConnected && !currentServer) {
       setServersLoaded(false);
       ServerManager.getServers()
-        .then((s) => { setSavedServers(s); setServersLoaded(true); })
-        .catch(() => { setSavedServers([]); setServersLoaded(true); });
+        .then((s) => {
+          setSavedServers(s);
+          setServersLoaded(true);
+        })
+        .catch(() => {
+          setSavedServers([]);
+          setServersLoaded(true);
+        });
     }
   }, [isConnected, currentServer]);
 
-  const handleQuickConnect = useCallback(async (server: ServerConfig) => {
-    haptics.medium();
-    setConnectingId(server.id);
-    setConnectErrors((prev) => { const next = { ...prev }; delete next[server.id]; return next; });
-    try {
-      await connectToServer(server);
-    } catch (err: unknown) {
-      setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
-      haptics.error();
-    } finally {
-      setConnectingId(null);
-    }
-  }, [connectToServer]);
+  const handleQuickConnect = useCallback(
+    async (server: ServerConfig) => {
+      haptics.medium();
+      setConnectingId(server.id);
+      setConnectErrors((prev) => {
+        const next = { ...prev };
+        delete next[server.id];
+        return next;
+      });
+      try {
+        await connectToServer(server);
+      } catch (err: unknown) {
+        setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
+        haptics.error();
+      } finally {
+        setConnectingId(null);
+      }
+    },
+    [connectToServer],
+  );
 
   const handlePickFile = async () => {
     try {
@@ -633,13 +680,13 @@ export default function TorrentsScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
-        
+
         // Validate it's a .torrent file by checking the extension
         if (!file.name.toLowerCase().endsWith('.torrent')) {
           showToast(t('errors.selectTorrentFile'), 'error');
           return;
         }
-        
+
         setSelectedFile({
           uri: file.uri,
           name: file.name,
@@ -694,49 +741,63 @@ export default function TorrentsScreen() {
   };
 
   // Swipe action handlers (call APIs directly, parameterized by torrent)
-  const handleSwipePauseResume = useCallback(async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
-    haptics.medium();
-    const isPaused =
-      torrent.state === 'pausedDL' || torrent.state === 'pausedUP' ||
-      torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
-    try {
-      if (isPaused) {
-        await torrentsApi.resumeTorrents([torrent.hash]);
-      } else {
-        await torrentsApi.pauseTorrents([torrent.hash]);
+  const handleSwipePauseResume = useCallback(
+    async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+      haptics.medium();
+      const isPaused =
+        torrent.state === 'pausedDL' ||
+        torrent.state === 'pausedUP' ||
+        torrent.state === 'stoppedDL' ||
+        torrent.state === 'stoppedUP';
+      try {
+        if (isPaused) {
+          await torrentsApi.resumeTorrents([torrent.hash]);
+        } else {
+          await torrentsApi.pauseTorrents([torrent.hash]);
+        }
+        refresh();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : '';
+        showToast(
+          msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')),
+          'error',
+        );
       }
-      refresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
-      showToast(msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
-    }
-    swipeableRef?.close();
-  }, [refresh, showToast, t]);
+      swipeableRef?.close();
+    },
+    [refresh, showToast, t],
+  );
 
-  const handleCardPauseResume = useCallback(async (torrent: TorrentInfo) => {
-    haptics.medium();
-    const isPaused =
-      torrent.state === 'pausedDL' || torrent.state === 'pausedUP' ||
-      torrent.state === 'stoppedDL' || torrent.state === 'stoppedUP';
-    try {
-      if (isPaused) {
-        await torrentsApi.resumeTorrents([torrent.hash]);
-      } else {
-        await torrentsApi.pauseTorrents([torrent.hash]);
+  const handleCardPauseResume = useCallback(
+    async (torrent: TorrentInfo) => {
+      haptics.medium();
+      const isPaused =
+        torrent.state === 'pausedDL' ||
+        torrent.state === 'pausedUP' ||
+        torrent.state === 'stoppedDL' ||
+        torrent.state === 'stoppedUP';
+      try {
+        if (isPaused) {
+          await torrentsApi.resumeTorrents([torrent.hash]);
+        } else {
+          await torrentsApi.pauseTorrents([torrent.hash]);
+        }
+        refresh();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : '';
+        showToast(
+          msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')),
+          'error',
+        );
       }
-      refresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
-      showToast(msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
-    }
-  }, [refresh, showToast, t]);
+    },
+    [refresh, showToast, t],
+  );
 
-  const handleSwipeDelete = useCallback((torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
-    haptics.medium();
-    Alert.alert(
-      t('common.delete'),
-      t('torrentDetail.deleteConfirm', { name: torrent.name }),
-      [
+  const handleSwipeDelete = useCallback(
+    (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+      haptics.medium();
+      Alert.alert(t('common.delete'), t('torrentDetail.deleteConfirm', { name: torrent.name }), [
         { text: t('common.cancel'), style: 'cancel', onPress: () => swipeableRef?.close() },
         {
           text: t('torrentDetail.torrentOnly'),
@@ -769,21 +830,25 @@ export default function TorrentsScreen() {
             swipeableRef?.close();
           },
         },
-      ],
-    );
-  }, [refresh, showToast, t]);
+      ]);
+    },
+    [refresh, showToast, t],
+  );
 
-  const handleSwipeForceStart = useCallback(async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
-    haptics.medium();
-    try {
-      await torrentsApi.setForceStart([torrent.hash], true);
-      refresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
-      showToast(msg || t('errors.generic'), 'error');
-    }
-    swipeableRef?.close();
-  }, [refresh, showToast, t]);
+  const handleSwipeForceStart = useCallback(
+    async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+      haptics.medium();
+      try {
+        await torrentsApi.setForceStart([torrent.hash], true);
+        refresh();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : '';
+        showToast(msg || t('errors.generic'), 'error');
+      }
+      swipeableRef?.close();
+    },
+    [refresh, showToast, t],
+  );
 
   // Scroll handler — header show/hide only
   const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
@@ -821,7 +886,9 @@ export default function TorrentsScreen() {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
-      }).start(() => { isAnimating.current = false; });
+      }).start(() => {
+        isAnimating.current = false;
+      });
     } else if (scrollDifference > minMovement && isHeaderVisible.current) {
       isAnimating.current = true;
       isHeaderVisible.current = false;
@@ -829,7 +896,9 @@ export default function TorrentsScreen() {
         toValue: -200,
         duration: 200,
         useNativeDriver: true,
-      }).start(() => { isAnimating.current = false; });
+      }).start(() => {
+        isAnimating.current = false;
+      });
     }
 
     lastScrollY.current = currentScrollY;
@@ -845,7 +914,11 @@ export default function TorrentsScreen() {
     setTagFilters([]);
     try {
       const prefs = await storageService.getPreferences();
-      await storageService.savePreferences({ ...prefs, lastCategoryFilter: null, lastTagFilters: [] });
+      await storageService.savePreferences({
+        ...prefs,
+        lastCategoryFilter: null,
+        lastTagFilters: [],
+      });
     } catch {
       // best-effort
     }
@@ -872,7 +945,11 @@ export default function TorrentsScreen() {
   // tagPickerOptions so the bulk Add Tags picker never offers the sentinel.
   const tagFilterPickerOptions = useMemo<MultiSelectPickerItem[]>(() => {
     return [
-      { label: t('filters.untagged'), value: UNTAGGED_FILTER, icon: 'remove-circle-outline' as const },
+      {
+        label: t('filters.untagged'),
+        value: UNTAGGED_FILTER,
+        icon: 'remove-circle-outline' as const,
+      },
       ...tagPickerOptions,
     ];
   }, [tagPickerOptions, t]);
@@ -1010,10 +1087,9 @@ export default function TorrentsScreen() {
             },
           ]}
         >
-          <View style={[styles.searchCard, { backgroundColor: "transparent" }]}>
+          <View style={[styles.searchCard, { backgroundColor: 'transparent' }]}>
             {/* Search bar with Sort button */}
             <View style={styles.searchRow}>
-
               {/* LEFT: Sort button — fixed 42×42 */}
               {!selectMode && (
                 <TouchableOpacity
@@ -1082,11 +1158,10 @@ export default function TorrentsScreen() {
                   <Ionicons name="add" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
-
             </View>
 
             {/* Filter row */}
-            <View style={[styles.filterRow, { backgroundColor:"transparent" }]}>
+            <View style={[styles.filterRow, { backgroundColor: 'transparent' }]}>
               {/* Scrollable filter options */}
               <ScrollView
                 horizontal
@@ -1094,120 +1169,138 @@ export default function TorrentsScreen() {
                 contentContainerStyle={styles.filterRowContainer}
                 style={styles.filterScrollView}
               >
-              {/* Checkbox that scrolls with filters */}
-              <TouchableOpacity
-                style={styles.selectCheckbox}
-                onPress={() => {
-                  if (selectMode) {
-                    selectedHashes.size === filteredTorrents.length
-                      ? clearSelection()
-                      : selectAll();
-                  } else {
-                    toggleSelectMode();
-                  }
-                }}
-                activeOpacity={0.7}
-                accessibilityLabel={
-                  selectMode
-                    ? (selectedHashes.size === filteredTorrents.length
+                {/* Checkbox that scrolls with filters */}
+                <TouchableOpacity
+                  style={styles.selectCheckbox}
+                  onPress={() => {
+                    if (selectMode) {
+                      selectedHashes.size === filteredTorrents.length
+                        ? clearSelection()
+                        : selectAll();
+                    } else {
+                      toggleSelectMode();
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityLabel={
+                    selectMode
+                      ? selectedHashes.size === filteredTorrents.length
                         ? t('screens.torrents.deselectAll')
-                        : t('screens.torrents.selectAll'))
-                    : t('screens.torrents.selectMode')
-                }
-              >
-                <Ionicons 
-                  name={
-                    selectMode 
-                      ? (selectedHashes.size === filteredTorrents.length ? 'checkbox' : 'square-outline')
-                      : 'square-outline'
-                  } 
-                  size={24} 
-                  color={
-                    selectMode && selectedHashes.size === filteredTorrents.length 
-                      ? colors.primary 
-                      : colors.textSecondary
-                  } 
-                />
-              </TouchableOpacity>
+                        : t('screens.torrents.selectAll')
+                      : t('screens.torrents.selectMode')
+                  }
+                >
+                  <Ionicons
+                    name={
+                      selectMode
+                        ? selectedHashes.size === filteredTorrents.length
+                          ? 'checkbox'
+                          : 'square-outline'
+                        : 'square-outline'
+                    }
+                    size={24}
+                    color={
+                      selectMode && selectedHashes.size === filteredTorrents.length
+                        ? colors.primary
+                        : colors.textSecondary
+                    }
+                  />
+                </TouchableOpacity>
 
-              {!selectMode &&
-                filterOptions.map((item) => (
-                  <FilterChip
-                    key={item.key}
-                    label={t(item.labelKey)}
-                    icon={item.icon}
-                    active={filter === item.key}
-                    onPress={() => {
-                      haptics.light();
-                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                      if (filter === item.key) {
-                        // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
-                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-                        if (item.key === 'downloading') setSortBy('dlspeed');
-                        else if (item.key === 'uploading') setSortBy('upspeed');
-                      } else {
-                        setFilter(item.key);
-                        if (item.key === 'downloading') setSortBy('dlspeed');
-                        else if (item.key === 'uploading') setSortBy('upspeed');
+                {!selectMode &&
+                  filterOptions.map((item) => (
+                    <FilterChip
+                      key={item.key}
+                      label={t(item.labelKey)}
+                      icon={item.icon}
+                      active={filter === item.key}
+                      onPress={() => {
+                        haptics.light();
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        if (filter === item.key) {
+                          // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
+                          setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                          if (item.key === 'downloading') setSortBy('dlspeed');
+                          else if (item.key === 'uploading') setSortBy('upspeed');
+                        } else {
+                          setFilter(item.key);
+                          if (item.key === 'downloading') setSortBy('dlspeed');
+                          else if (item.key === 'uploading') setSortBy('upspeed');
+                        }
+                      }}
+                    />
+                  ))}
+
+                {!selectMode && (
+                  <>
+                    {/* Visual separator */}
+                    <View
+                      style={[
+                        styles.filterChipSeparator,
+                        { backgroundColor: colors.surfaceOutline },
+                      ]}
+                    />
+
+                    {/* Category filter chip */}
+                    <FilterChip
+                      icon="folder-outline"
+                      active={categoryFilter !== null}
+                      onPress={() => {
+                        haptics.light();
+                        setShowCategoryPicker(true);
+                      }}
+                      accessibilityLabel={t('filters.category')}
+                      label={
+                        categoryFilter === null
+                          ? t('filters.category')
+                          : categoryFilter === ''
+                            ? t('filters.uncategorized')
+                            : categoryFilter
                       }
-                    }}
-                  />
-                ))}
-                
-              {!selectMode && (
-                <>
-                  {/* Visual separator */}
-                  <View style={[styles.filterChipSeparator, { backgroundColor: colors.surfaceOutline }]} />
+                    />
 
-                  {/* Category filter chip */}
+                    {/* Tags filter chip */}
+                    <FilterChip
+                      icon="pricetag-outline"
+                      active={tagFilters.length > 0}
+                      onPress={() => {
+                        haptics.light();
+                        setShowTagPicker(true);
+                      }}
+                      accessibilityLabel={t('filters.tags')}
+                      label={
+                        tagFilters.length > 0
+                          ? t('filters.tagsCount', { count: tagFilters.length })
+                          : t('filters.tags')
+                      }
+                    />
+                  </>
+                )}
+
+                {selectMode && (
                   <FilterChip
-                    icon="folder-outline"
-                    active={categoryFilter !== null}
-                    onPress={() => { haptics.light(); setShowCategoryPicker(true); }}
-                    accessibilityLabel={t('filters.category')}
-                    label={
-                      categoryFilter === null
-                        ? t('filters.category')
-                        : categoryFilter === ''
-                          ? t('filters.uncategorized')
-                          : categoryFilter
-                    }
+                    icon="close"
+                    active
+                    activeColor={colors.error}
+                    onPress={toggleSelectMode}
+                    label={t('common.close')}
+                    style={{ marginLeft: 8 }}
                   />
-
-                  {/* Tags filter chip */}
-                  <FilterChip
-                    icon="pricetag-outline"
-                    active={tagFilters.length > 0}
-                    onPress={() => { haptics.light(); setShowTagPicker(true); }}
-                    accessibilityLabel={t('filters.tags')}
-                    label={
-                      tagFilters.length > 0
-                        ? t('filters.tagsCount', { count: tagFilters.length })
-                        : t('filters.tags')
-                    }
-                  />
-                </>
-              )}
-
-              {selectMode && (
-                <FilterChip
-                  icon="close"
-                  active
-                  activeColor={colors.error}
-                  onPress={toggleSelectMode}
-                  label={t('common.close')}
-                  style={{ marginLeft: 8 }}
-                />
-              )}
+                )}
               </ScrollView>
             </View>
-            
+
             {/* Sort options dropdown - positioned near search bar */}
             {showSortMenu && !selectMode && (
-              <View style={[styles.sortDropdown, { 
-                backgroundColor: isDark ? colors.surface : colors.background,
-                borderColor: colors.surfaceOutline 
-              }]}>
+              <View
+                style={[
+                  styles.sortDropdown,
+                  {
+                    backgroundColor: isDark ? colors.surface : colors.background,
+                    borderColor: colors.surfaceOutline,
+                  },
+                ]}
+              >
                 {sortOptions.map((option) => (
                   <TouchableOpacity
                     key={option.key}
@@ -1224,7 +1317,7 @@ export default function TorrentsScreen() {
                         setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                       } else {
                         // Set new sort option with default direction (desc for most, asc for name)
-                      setSortBy(option.key);
+                        setSortBy(option.key);
                         setSortDirection(option.key === 'name' ? 'asc' : 'desc');
                       }
                       setShowSortMenu(false);
@@ -1234,13 +1327,28 @@ export default function TorrentsScreen() {
                     <Ionicons
                       name={option.icon}
                       size={18}
-                      color={sortBy === option.key ? (isDark ? colors.primary : '#FFFFFF') : (isDark ? colors.textSecondary : colors.text)}
+                      color={
+                        sortBy === option.key
+                          ? isDark
+                            ? colors.primary
+                            : '#FFFFFF'
+                          : isDark
+                            ? colors.textSecondary
+                            : colors.text
+                      }
                     />
                     <Text
                       style={[
                         styles.sortOptionText,
                         {
-                          color: sortBy === option.key ? (isDark ? colors.primary : '#FFFFFF') : (isDark ? colors.textSecondary : colors.text),
+                          color:
+                            sortBy === option.key
+                              ? isDark
+                                ? colors.primary
+                                : '#FFFFFF'
+                              : isDark
+                                ? colors.textSecondary
+                                : colors.text,
                           fontWeight: sortBy === option.key ? '600' : '400',
                         },
                       ]}
@@ -1248,10 +1356,18 @@ export default function TorrentsScreen() {
                       {t(option.labelKey)}
                     </Text>
                     {sortBy === option.key && (
-                      <Ionicons 
-                        name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} 
-                        size={18} 
-                        color={sortBy === option.key ? (isDark ? colors.primary : '#FFFFFF') : (isDark ? colors.textSecondary : colors.text)}
+                      <Ionicons
+                        name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
+                        size={18}
+                        color={
+                          sortBy === option.key
+                            ? isDark
+                              ? colors.primary
+                              : '#FFFFFF'
+                            : isDark
+                              ? colors.textSecondary
+                              : colors.text
+                        }
                       />
                     )}
                   </TouchableOpacity>
@@ -1309,16 +1425,22 @@ export default function TorrentsScreen() {
 
         {filteredTorrents.length === 0 ? (
           <View style={[styles.center, { backgroundColor: colors.background }]}>
-            <Ionicons 
-              name={(filter === 'all' && !hasSecondaryFilter) ? 'cloud-download-outline' : 'funnel-outline'} 
-              size={64} 
-              color={colors.textSecondary} 
+            <Ionicons
+              name={
+                filter === 'all' && !hasSecondaryFilter
+                  ? 'cloud-download-outline'
+                  : 'funnel-outline'
+              }
+              size={64}
+              color={colors.textSecondary}
             />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {(filter === 'all' && !hasSecondaryFilter) ? t('screens.torrents.noTorrents') : t('screens.torrents.noResults')}
+              {filter === 'all' && !hasSecondaryFilter
+                ? t('screens.torrents.noTorrents')
+                : t('screens.torrents.noResults')}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              {(filter === 'all' && !hasSecondaryFilter)
+              {filter === 'all' && !hasSecondaryFilter
                 ? t('screens.torrents.addMagnetSubtitle')
                 : categoryFilter !== null && tagFilters.length === 0 && filter === 'all'
                   ? t('screens.torrents.noCategoryResults')
@@ -1328,7 +1450,7 @@ export default function TorrentsScreen() {
                       ? t('screens.torrents.noStuckResults')
                       : t('screens.torrents.noFilterResults', { filter })}
             </Text>
-            {(filter === 'all' && !hasSecondaryFilter) ? (
+            {filter === 'all' && !hasSecondaryFilter ? (
               <TouchableOpacity
                 style={[styles.emptyButton, { backgroundColor: colors.primary }]}
                 onPress={() => {
@@ -1342,10 +1464,19 @@ export default function TorrentsScreen() {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[styles.emptyButton, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceOutline }]}
+                style={[
+                  styles.emptyButton,
+                  {
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.surfaceOutline,
+                  },
+                ]}
                 onPress={() => void clearAllFilters()}
               >
-                <Text style={[styles.emptyButtonText, { color: colors.text }]}>{t('screens.torrents.clearAllFilters')}</Text>
+                <Text style={[styles.emptyButtonText, { color: colors.text }]}>
+                  {t('screens.torrents.clearAllFilters')}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1356,8 +1487,10 @@ export default function TorrentsScreen() {
             style={{ backgroundColor: colors.background }}
             renderItem={({ item }) => {
               const itemIsPaused =
-                item.state === 'pausedDL' || item.state === 'pausedUP' ||
-                item.state === 'stoppedDL' || item.state === 'stoppedUP';
+                item.state === 'pausedDL' ||
+                item.state === 'pausedUP' ||
+                item.state === 'stoppedDL' ||
+                item.state === 'stoppedUP';
 
               let swipeRef: Swipeable | null = null;
 
@@ -1385,8 +1518,14 @@ export default function TorrentsScreen() {
                       ]}
                       onPress={() => handleSwipePauseResume(item, swipeRef)}
                     >
-                      <Animated.View style={[styles.swipeActionContent, { transform: [{ scale: pauseScale }] }]}>
-                        <Ionicons name={itemIsPaused ? 'play' : 'pause'} size={22} color="#FFFFFF" />
+                      <Animated.View
+                        style={[styles.swipeActionContent, { transform: [{ scale: pauseScale }] }]}
+                      >
+                        <Ionicons
+                          name={itemIsPaused ? 'play' : 'pause'}
+                          size={22}
+                          color="#FFFFFF"
+                        />
                         <Text style={styles.swipeActionText}>
                           {itemIsPaused ? t('actions.resume') : t('actions.pause')}
                         </Text>
@@ -1396,7 +1535,9 @@ export default function TorrentsScreen() {
                       style={[styles.swipeAction, { backgroundColor: colors.error }]}
                       onPress={() => handleSwipeDelete(item, swipeRef)}
                     >
-                      <Animated.View style={[styles.swipeActionContent, { transform: [{ scale: deleteScale }] }]}>
+                      <Animated.View
+                        style={[styles.swipeActionContent, { transform: [{ scale: deleteScale }] }]}
+                      >
                         <Ionicons name="trash" size={22} color="#FFFFFF" />
                         <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
                       </Animated.View>
@@ -1430,7 +1571,9 @@ export default function TorrentsScreen() {
 
               return (
                 <Swipeable
-                  ref={(ref) => { swipeRef = ref; }}
+                  ref={(ref) => {
+                    swipeRef = ref;
+                  }}
                   friction={2}
                   rightThreshold={60}
                   leftThreshold={60}
@@ -1473,7 +1616,9 @@ export default function TorrentsScreen() {
                         <Ionicons
                           name={selectedHashes.has(item.hash) ? 'checkbox' : 'square-outline'}
                           size={24}
-                          color={selectedHashes.has(item.hash) ? colors.primary : colors.textSecondary}
+                          color={
+                            selectedHashes.has(item.hash) ? colors.primary : colors.textSecondary
+                          }
                         />
                       </TouchableOpacity>
                     )}
@@ -1509,7 +1654,11 @@ export default function TorrentsScreen() {
               );
             }}
             refreshControl={
-              <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={colors.primary} />
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={refresh}
+                tintColor={colors.primary}
+              />
             }
             contentContainerStyle={styles.listContent}
             onScroll={handleScroll}
@@ -1522,7 +1671,12 @@ export default function TorrentsScreen() {
         )}
 
         {selectMode && selectedHashes.size > 0 && (
-          <View style={[styles.bulkActionsBar, { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline }]}>
+          <View
+            style={[
+              styles.bulkActionsBar,
+              { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
+            ]}
+          >
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: colors.success }]}
               onPress={handleBulkResume}
@@ -1566,130 +1720,144 @@ export default function TorrentsScreen() {
                 activeOpacity={1}
                 onPress={() => setShowAddModal(false)}
               >
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={(e) => e.stopPropagation()}
-                style={[styles.modalContent, { backgroundColor: colors.surface }]}
-              >
-                <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: colors.text }]}>{t('screens.torrents.addTorrent')}</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowAddModal(false);
-                      setTorrentUrl('');
-                      setSelectedFile(null);
-                    }}
-                    accessibilityLabel={t('common.close')}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons name="close" size={24} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
-                  {t('screens.torrents.urlOrMagnet')}
-                </Text>
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      backgroundColor: colors.background,
-                      color: colors.text,
-                    },
-                  ]}
-                  value={torrentUrl}
-                  onChangeText={(text) => {
-                    setTorrentUrl(text);
-                    if (text.trim() && selectedFile) {
-                      setSelectedFile(null); // Clear file when URL is entered
-                    }
-                  }}
-                  placeholder={t('placeholders.magnetLink')}
-                  placeholderTextColor={colors.textSecondary}
-                  multiline
-                  numberOfLines={3}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textAlignVertical="top"
-                  editable={!selectedFile}
-                />
-
-                <View style={styles.divider}>
-                  <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
-                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>{t('common.or')}</Text>
-                  <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
-                </View>
-
                 <TouchableOpacity
-                  style={[
-                    styles.filePickerButton,
-                    {
-                      backgroundColor: selectedFile ? colors.success : colors.background,
-                      borderColor: selectedFile ? colors.success : colors.surfaceOutline,
-                    },
-                  ]}
-                  onPress={handlePickFile}
-                  disabled={!!torrentUrl.trim()}
+                  activeOpacity={1}
+                  onPress={(e) => e.stopPropagation()}
+                  style={[styles.modalContent, { backgroundColor: colors.surface }]}
                 >
-                  <Ionicons 
-                    name={selectedFile ? 'checkmark-circle' : 'document'} 
-                    size={20} 
-                    color={selectedFile ? '#FFFFFF' : colors.text} 
-                  />
-                  <Text style={[
-                    styles.filePickerText, 
-                    { 
-                      color: selectedFile ? '#FFFFFF' : colors.text,
-                      fontWeight: selectedFile ? '600' : '400',
-                    }
-                  ]}>
-                    {selectedFile ? selectedFile.name : t('screens.torrents.selectTorrentFile')}
-                  </Text>
-                  {selectedFile && (
+                  <View style={styles.modalHeader}>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>
+                      {t('screens.torrents.addTorrent')}
+                    </Text>
                     <TouchableOpacity
-                      onPress={() => setSelectedFile(null)}
-                      style={styles.clearFileButton}
-                      accessibilityLabel={t('common.remove')}
+                      onPress={() => {
+                        setShowAddModal(false);
+                        setTorrentUrl('');
+                        setSelectedFile(null);
+                      }}
+                      accessibilityLabel={t('common.close')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <Ionicons name="close-circle" size={20} color="#FFFFFF" />
+                      <Ionicons name="close" size={24} color={colors.textSecondary} />
                     </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
+                  </View>
 
-                <View style={styles.modalButtons}>
-                  <TouchableOpacity
+                  <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
+                    {t('screens.torrents.urlOrMagnet')}
+                  </Text>
+                  <TextInput
                     style={[
-                      styles.modalButton,
-                      styles.modalButtonCancel,
-                      { backgroundColor: colors.background },
+                      styles.modalInput,
+                      {
+                        backgroundColor: colors.background,
+                        color: colors.text,
+                      },
                     ]}
-                    onPress={() => {
-                      setTorrentUrl('');
-                      setSelectedFile(null);
-                      setShowAddModal(false);
+                    value={torrentUrl}
+                    onChangeText={(text) => {
+                      setTorrentUrl(text);
+                      if (text.trim() && selectedFile) {
+                        setSelectedFile(null); // Clear file when URL is entered
+                      }
                     }}
-                  >
-                    <Text style={[styles.modalButtonText, { color: colors.text }]}>{t('common.cancel')}</Text>
-                  </TouchableOpacity>
+                    placeholder={t('placeholders.magnetLink')}
+                    placeholderTextColor={colors.textSecondary}
+                    multiline
+                    numberOfLines={3}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textAlignVertical="top"
+                    editable={!selectedFile}
+                  />
+
+                  <View style={styles.divider}>
+                    <View
+                      style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]}
+                    />
+                    <Text style={[styles.dividerText, { color: colors.textSecondary }]}>
+                      {t('common.or')}
+                    </Text>
+                    <View
+                      style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]}
+                    />
+                  </View>
+
                   <TouchableOpacity
                     style={[
-                      styles.modalButton,
-                      styles.modalButtonAdd,
-                      { backgroundColor: colors.primary },
-                      addingTorrent && { opacity: 0.6 },
+                      styles.filePickerButton,
+                      {
+                        backgroundColor: selectedFile ? colors.success : colors.background,
+                        borderColor: selectedFile ? colors.success : colors.surfaceOutline,
+                      },
                     ]}
-                    onPress={handleSubmitTorrent}
-                    disabled={addingTorrent}
+                    onPress={handlePickFile}
+                    disabled={!!torrentUrl.trim()}
                   >
-                    {addingTorrent ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>{t('common.add')}</Text>
+                    <Ionicons
+                      name={selectedFile ? 'checkmark-circle' : 'document'}
+                      size={20}
+                      color={selectedFile ? '#FFFFFF' : colors.text}
+                    />
+                    <Text
+                      style={[
+                        styles.filePickerText,
+                        {
+                          color: selectedFile ? '#FFFFFF' : colors.text,
+                          fontWeight: selectedFile ? '600' : '400',
+                        },
+                      ]}
+                    >
+                      {selectedFile ? selectedFile.name : t('screens.torrents.selectTorrentFile')}
+                    </Text>
+                    {selectedFile && (
+                      <TouchableOpacity
+                        onPress={() => setSelectedFile(null)}
+                        style={styles.clearFileButton}
+                        accessibilityLabel={t('common.remove')}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#FFFFFF" />
+                      </TouchableOpacity>
                     )}
                   </TouchableOpacity>
-                </View>
+
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.modalButton,
+                        styles.modalButtonCancel,
+                        { backgroundColor: colors.background },
+                      ]}
+                      onPress={() => {
+                        setTorrentUrl('');
+                        setSelectedFile(null);
+                        setShowAddModal(false);
+                      }}
+                    >
+                      <Text style={[styles.modalButtonText, { color: colors.text }]}>
+                        {t('common.cancel')}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.modalButton,
+                        styles.modalButtonAdd,
+                        { backgroundColor: colors.primary },
+                        addingTorrent && { opacity: 0.6 },
+                      ]}
+                      onPress={handleSubmitTorrent}
+                      disabled={addingTorrent}
+                    >
+                      {addingTorrent ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                          {t('common.add')}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
             </KeyboardAvoidingView>
           </View>
         </Modal>
@@ -1888,7 +2056,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-
   },
   searchCard: {
     borderRadius: borderRadius.medium,

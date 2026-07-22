@@ -22,9 +22,11 @@ import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { InputModal } from '@/components/InputModal';
 import { storageService } from '@/services/storage';
 import { applicationApi } from '@/services/api/application';
+import { apiClient } from '@/services/api/client';
 import { categoriesApi } from '@/services/api/categories';
 import { tagsApi } from '@/services/api/tags';
 import { AppPreferences, SortField } from '@/types/preferences';
+import { getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
@@ -37,7 +39,9 @@ export default function TorrentDefaultsScreen() {
   const { categories, tags } = useTorrents();
   const { showToast } = useToast();
 
-  const [defaultSortBy, setDefaultSortBy] = useState<'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'>('added_on');
+  const [defaultSortBy, setDefaultSortBy] = useState<
+    'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'
+  >('added_on');
   const [defaultSortDirection, setDefaultSortDirection] = useState<'asc' | 'desc'>('desc');
   const [defaultFilter, setDefaultFilter] = useState<string>('all');
   const [pauseOnAdd, setPauseOnAdd] = useState(false);
@@ -81,7 +85,7 @@ export default function TorrentDefaultsScreen() {
       if (isConnected) {
         loadDefaultSavePath();
       }
-    }, [isConnected])
+    }, [isConnected]),
   );
 
   const loadPreferences = async () => {
@@ -94,9 +98,10 @@ export default function TorrentDefaultsScreen() {
       setDefaultSortDirection(prefs.defaultSortDirection || 'desc');
       setDefaultFilter(prefs.defaultFilter || 'all');
       // Server is source of truth for pauseOnAdd — local pref is just a cache
+      const pauseOnAddKey = getPauseOnAddPreferenceKey(apiClient.getApiFeatures());
       const serverPauseOnAdd = serverPrefs
-        ? !!(serverPrefs as Record<string, unknown>).start_paused_enabled
-        : (prefs.pauseOnAdd === true);
+        ? !!(serverPrefs as Record<string, unknown>)[pauseOnAddKey]
+        : prefs.pauseOnAdd === true;
       setPauseOnAdd(serverPauseOnAdd);
       // Keep local cache in sync with what we just read
       if (serverPrefs && prefs.pauseOnAdd !== serverPauseOnAdd) {
@@ -124,7 +129,10 @@ export default function TorrentDefaultsScreen() {
     }
   };
 
-  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
+  const savePreference = async <K extends keyof AppPreferences>(
+    key: K,
+    value: AppPreferences[K],
+  ) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -169,28 +177,47 @@ export default function TorrentDefaultsScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        edges={['top']}
+      >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.torrentList')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t('screens.settings.torrentList')}
+          </Text>
           <View style={styles.headerButton} />
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Sorting & Filtering */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.torrentList').toUpperCase()}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.torrentList').toUpperCase()}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.defaultSortBy')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.defaultSortBy')}
+                  </Text>
                 </View>
-                <TouchableOpacity style={styles.pickerButton} onPress={() => setSortByPickerVisible(true)} activeOpacity={0.7}>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setSortByPickerVisible(true)}
+                  activeOpacity={0.7}
+                >
                   <Text style={[styles.pickerText, { color: colors.text }]}>
-                    {sortByOptions.find(opt => opt.value === defaultSortBy)?.label || t('sort.dateAdded')}
+                    {sortByOptions.find((opt) => opt.value === defaultSortBy)?.label ||
+                      t('sort.dateAdded')}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -199,7 +226,9 @@ export default function TorrentDefaultsScreen() {
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.defaultSortDirection')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.defaultSortDirection')}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.pickerButton}
@@ -216,7 +245,9 @@ export default function TorrentDefaultsScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.pickerText, { color: colors.text, marginLeft: 8 }]}>
-                    {defaultSortDirection === 'asc' ? t('screens.settings.ascending') : t('screens.settings.descending')}
+                    {defaultSortDirection === 'asc'
+                      ? t('screens.settings.ascending')
+                      : t('screens.settings.descending')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -224,11 +255,18 @@ export default function TorrentDefaultsScreen() {
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="funnel-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.defaultFilter')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.defaultFilter')}
+                  </Text>
                 </View>
-                <TouchableOpacity style={styles.pickerButton} onPress={() => setFilterPickerVisible(true)} activeOpacity={0.7}>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setFilterPickerVisible(true)}
+                  activeOpacity={0.7}
+                >
                   <Text style={[styles.pickerText, { color: colors.text }]}>
-                    {filterOptions.find(opt => opt.value === defaultFilter)?.label || defaultFilter}
+                    {filterOptions.find((opt) => opt.value === defaultFilter)?.label ||
+                      defaultFilter}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -238,12 +276,16 @@ export default function TorrentDefaultsScreen() {
 
           {/* Torrent Behavior */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.torrentBehavior').toUpperCase()}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.torrentBehavior').toUpperCase()}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="pause-circle-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.pauseOnAdd')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.pauseOnAdd')}
+                  </Text>
                 </View>
                 <Switch
                   value={pauseOnAdd}
@@ -251,7 +293,8 @@ export default function TorrentDefaultsScreen() {
                     setPauseOnAdd(value); // optimistic UI update
                     try {
                       // Write to server — this is the source of truth
-                      await applicationApi.setPreferences({ start_paused_enabled: value });
+                      const pauseOnAddKey = getPauseOnAddPreferenceKey(apiClient.getApiFeatures());
+                      await applicationApi.setPreferences({ [pauseOnAddKey]: value });
                       // Also update local cache
                       await savePreference('pauseOnAdd', value);
                     } catch {
@@ -268,8 +311,17 @@ export default function TorrentDefaultsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="folder-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.defaultSavePath')}</Text>
-                    {defaultSavePath ? <Text style={[styles.settingHint, { color: colors.textSecondary }]} numberOfLines={1}>{defaultSavePath}</Text> : null}
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.defaultSavePath')}
+                    </Text>
+                    {defaultSavePath ? (
+                      <Text
+                        style={[styles.settingHint, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {defaultSavePath}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
                 <TouchableOpacity
@@ -284,11 +336,16 @@ export default function TorrentDefaultsScreen() {
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="pricetag-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.autoCategorizeByTracker')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.autoCategorizeByTracker')}
+                  </Text>
                 </View>
                 <Switch
                   value={autoCategorizeByTracker}
-                  onValueChange={(value) => { setAutoCategorizeByTracker(value); savePreference('autoCategorizeByTracker', value); }}
+                  onValueChange={(value) => {
+                    setAutoCategorizeByTracker(value);
+                    savePreference('autoCategorizeByTracker', value);
+                  }}
                   trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                   ios_backgroundColor={colors.surfaceOutline}
                 />
@@ -298,8 +355,12 @@ export default function TorrentDefaultsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="layers-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.firstLastPiecePriority')}</Text>
-                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.firstLastPiecePriorityHint')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.firstLastPiecePriority')}
+                    </Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                      {t('screens.settings.firstLastPiecePriorityHint')}
+                    </Text>
                   </View>
                 </View>
                 <Switch
@@ -320,43 +381,91 @@ export default function TorrentDefaultsScreen() {
           {isConnected && (
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}>{t('screens.settings.categories').toUpperCase()}</Text>
+                <Text
+                  style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}
+                >
+                  {t('screens.settings.categories').toUpperCase()}
+                </Text>
                 <TouchableOpacity
                   onPress={() => setShowAddCategory(!showAddCategory)}
-                  accessibilityLabel={showAddCategory ? t('common.cancel') : t('screens.settings.addCategory')}
+                  accessibilityLabel={
+                    showAddCategory ? t('common.cancel') : t('screens.settings.addCategory')
+                  }
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name={showAddCategory ? 'close-circle' : 'add-circle'} size={24} color={colors.primary} />
+                  <Ionicons
+                    name={showAddCategory ? 'close-circle' : 'add-circle'}
+                    size={24}
+                    color={colors.primary}
+                  />
                 </TouchableOpacity>
               </View>
-              <View style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}>
+              <View
+                style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}
+              >
                 {showAddCategory && (
                   <View style={styles.addForm}>
                     <TextInput
-                      style={[styles.formInput, { backgroundColor: colors.background, borderColor: colors.surfaceOutline, color: colors.text }]}
+                      style={[
+                        styles.formInput,
+                        {
+                          backgroundColor: colors.background,
+                          borderColor: colors.surfaceOutline,
+                          color: colors.text,
+                        },
+                      ]}
                       placeholder={t('screens.settings.categoryName')}
                       placeholderTextColor={colors.textSecondary}
                       value={categoryName}
                       onChangeText={setCategoryName}
                     />
                     <TextInput
-                      style={[styles.formInput, { backgroundColor: colors.background, borderColor: colors.surfaceOutline, color: colors.text }]}
+                      style={[
+                        styles.formInput,
+                        {
+                          backgroundColor: colors.background,
+                          borderColor: colors.surfaceOutline,
+                          color: colors.text,
+                        },
+                      ]}
                       placeholder={t('screens.settings.savePathOptional')}
                       placeholderTextColor={colors.textSecondary}
                       value={categorySavePath}
                       onChangeText={setCategorySavePath}
                     />
-                    <TouchableOpacity style={[styles.formButton, { backgroundColor: colors.primary }]} onPress={handleAddCategory}>
+                    <TouchableOpacity
+                      style={[styles.formButton, { backgroundColor: colors.primary }]}
+                      onPress={handleAddCategory}
+                    >
                       <Text style={styles.formButtonText}>{t('screens.settings.addCategory')}</Text>
                     </TouchableOpacity>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline, marginTop: 16, marginLeft: 0 }]} />
+                    <View
+                      style={[
+                        styles.separator,
+                        { backgroundColor: colors.surfaceOutline, marginTop: 16, marginLeft: 0 },
+                      ]}
+                    />
                   </View>
                 )}
                 {Object.keys(categories).length === 0 && !showAddCategory ? (
                   <View style={styles.emptyStateSmall}>
-                    <Ionicons name="folder-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
-                    <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>{t('screens.settings.noCategories')}</Text>
-                    <Text style={[styles.emptyTextSmall, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>{t('screens.settings.noCategoriesHint')}</Text>
+                    <Ionicons
+                      name="folder-outline"
+                      size={32}
+                      color={colors.textSecondary}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>
+                      {t('screens.settings.noCategories')}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.emptyTextSmall,
+                        { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
+                      ]}
+                    >
+                      {t('screens.settings.noCategoriesHint')}
+                    </Text>
                   </View>
                 ) : (
                   Object.entries(categories).map(([name, category], index) => (
@@ -366,9 +475,14 @@ export default function TorrentDefaultsScreen() {
                           <View style={styles.listItemLeft}>
                             <Ionicons name="folder-outline" size={20} color={colors.primary} />
                             <View style={styles.listItemText}>
-                              <Text style={[styles.listItemTitle, { color: colors.text }]}>{name}</Text>
+                              <Text style={[styles.listItemTitle, { color: colors.text }]}>
+                                {name}
+                              </Text>
                               {category.savePath && (
-                                <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                                <Text
+                                  style={[styles.listItemSubtitle, { color: colors.textSecondary }]}
+                                  numberOfLines={1}
+                                >
                                   {category.savePath}
                                 </Text>
                               )}
@@ -393,7 +507,7 @@ export default function TorrentDefaultsScreen() {
                                       }
                                     },
                                   },
-                                ]
+                                ],
                               );
                             }}
                             accessibilityLabel={t('common.delete')}
@@ -403,7 +517,11 @@ export default function TorrentDefaultsScreen() {
                           </TouchableOpacity>
                         </View>
                       </View>
-                      {index < Object.keys(categories).length - 1 && <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />}
+                      {index < Object.keys(categories).length - 1 && (
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                      )}
                     </View>
                   ))
                 )}
@@ -415,65 +533,108 @@ export default function TorrentDefaultsScreen() {
           {isConnected && (
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}>{t('screens.settings.tags').toUpperCase()}</Text>
+                <Text
+                  style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}
+                >
+                  {t('screens.settings.tags').toUpperCase()}
+                </Text>
                 <TouchableOpacity
                   onPress={() => setShowAddTag(!showAddTag)}
-                  accessibilityLabel={showAddTag ? t('common.cancel') : t('screens.settings.createTag')}
+                  accessibilityLabel={
+                    showAddTag ? t('common.cancel') : t('screens.settings.createTag')
+                  }
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name={showAddTag ? 'close-circle' : 'add-circle'} size={24} color={colors.primary} />
+                  <Ionicons
+                    name={showAddTag ? 'close-circle' : 'add-circle'}
+                    size={24}
+                    color={colors.primary}
+                  />
                 </TouchableOpacity>
               </View>
-              <View style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}>
+              <View
+                style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}
+              >
                 {showAddTag && (
                   <View style={styles.addForm}>
                     <TextInput
-                      style={[styles.formInput, { backgroundColor: colors.background, borderColor: colors.surfaceOutline, color: colors.text }]}
+                      style={[
+                        styles.formInput,
+                        {
+                          backgroundColor: colors.background,
+                          borderColor: colors.surfaceOutline,
+                          color: colors.text,
+                        },
+                      ]}
                       placeholder={t('screens.settings.tagName')}
                       placeholderTextColor={colors.textSecondary}
                       value={tagName}
                       onChangeText={setTagName}
                     />
-                    <TouchableOpacity style={[styles.formButton, { backgroundColor: colors.primary }]} onPress={handleAddTag}>
+                    <TouchableOpacity
+                      style={[styles.formButton, { backgroundColor: colors.primary }]}
+                      onPress={handleAddTag}
+                    >
                       <Text style={styles.formButtonText}>{t('screens.settings.createTag')}</Text>
                     </TouchableOpacity>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline, marginTop: 16, marginLeft: 0 }]} />
+                    <View
+                      style={[
+                        styles.separator,
+                        { backgroundColor: colors.surfaceOutline, marginTop: 16, marginLeft: 0 },
+                      ]}
+                    />
                   </View>
                 )}
                 {tags.length === 0 && !showAddTag ? (
                   <View style={styles.emptyStateSmall}>
-                    <Ionicons name="pricetag-outline" size={32} color={colors.textSecondary} style={{ marginBottom: 8 }} />
-                    <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>{t('screens.settings.noTags')}</Text>
-                    <Text style={[styles.emptyTextSmall, { color: colors.textSecondary, fontSize: 12, marginTop: 4 }]}>{t('screens.settings.noTagsHint')}</Text>
+                    <Ionicons
+                      name="pricetag-outline"
+                      size={32}
+                      color={colors.textSecondary}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>
+                      {t('screens.settings.noTags')}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.emptyTextSmall,
+                        { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
+                      ]}
+                    >
+                      {t('screens.settings.noTagsHint')}
+                    </Text>
                   </View>
                 ) : (
                   <View style={styles.tagsWrap}>
                     {tags.map((tag) => {
                       const confirmDeleteTag = () => {
-                        Alert.alert(
-                          t('alerts.deleteTag', { tag }),
-                          t('alerts.deleteTagMessage'),
-                          [
-                            { text: t('common.cancel'), style: 'cancel' },
-                            {
-                              text: t('common.delete'),
-                              style: 'destructive',
-                              onPress: async () => {
-                                try {
-                                  await tagsApi.deleteTags([tag]);
-                                  showToast(t('toast.tagDeleted', { tag }), 'success');
-                                } catch {
-                                  showToast(t('errors.failedToDeleteTag'), 'error');
-                                }
-                              },
+                        Alert.alert(t('alerts.deleteTag', { tag }), t('alerts.deleteTagMessage'), [
+                          { text: t('common.cancel'), style: 'cancel' },
+                          {
+                            text: t('common.delete'),
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await tagsApi.deleteTags([tag]);
+                                showToast(t('toast.tagDeleted', { tag }), 'success');
+                              } catch {
+                                showToast(t('errors.failedToDeleteTag'), 'error');
+                              }
                             },
-                          ]
-                        );
+                          },
+                        ]);
                       };
                       return (
                         <TouchableOpacity
                           key={tag}
-                          style={[styles.tagChip, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}
+                          style={[
+                            styles.tagChip,
+                            {
+                              backgroundColor: colors.background,
+                              borderColor: colors.surfaceOutline,
+                            },
+                          ]}
                           onLongPress={confirmDeleteTag}
                         >
                           <Ionicons name="pricetag-outline" size={14} color={colors.primary} />
@@ -582,7 +743,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingHint: { fontSize: 12, marginTop: 1 },
   separator: { height: 1, marginLeft: 50 },

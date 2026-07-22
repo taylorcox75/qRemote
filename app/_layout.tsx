@@ -30,10 +30,16 @@ function StackNavigator() {
   const lastHandledTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
   const pendingInitialUrlRef = useRef<string | null>(null);
   const initialUrlCheckedRef = useRef(false);
+  // Mirror nav-readiness into a ref so the async getInitialURL callback (which
+  // closes over the mount-time effect scope) sees the current value instead of
+  // a stale `undefined` — otherwise a cold-launch magnet/.torrent open is
+  // silently queued and never dispatched.
+  const rootNavReadyRef = useRef(false);
+  rootNavReadyRef.current = !!rootNavigationState?.key;
 
   useEffect(() => {
     const dispatchDeepLink = (incomingUrl?: string | null) => {
-      if (!rootNavigationState?.key) {
+      if (!rootNavReadyRef.current) {
         pendingInitialUrlRef.current = incomingUrl ?? null;
         return;
       }

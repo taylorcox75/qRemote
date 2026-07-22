@@ -20,6 +20,11 @@ export interface ApiFeatures {
   supportsSetCookies: boolean;
   /** search/downloadTorrent endpoint exists (WebAPI ≥ 2.11.0 / qBit 5.0). */
   supportsSearchDownloadTorrent: boolean;
+  /**
+   * app/preferences uses the "add_stopped_enabled" key (qBit 5.0+ / WebAPI ≥ 2.11.0).
+   * When false, use the legacy "start_paused_enabled" key (v4.x).
+   */
+  useAddStoppedEnabledPreference: boolean;
 }
 
 export function parseApiVersion(raw: string): ParsedVersion | null {
@@ -48,6 +53,7 @@ const V5_FEATURES: ApiFeatures = {
   supportsInactiveSeedingLimit: true,
   supportsSetCookies: true,
   supportsSearchDownloadTorrent: true,
+  useAddStoppedEnabledPreference: true,
 };
 
 export function getApiFeatures(apiVersion: string | null): ApiFeatures {
@@ -63,5 +69,13 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     supportsInactiveSeedingLimit: isV5,
     supportsSetCookies: isV5,
     supportsSearchDownloadTorrent: isV5,
+    useAddStoppedEnabledPreference: isV5,
   };
+}
+
+/** Preference key for "start torrents in a stopped/paused state" — renamed in qBit 5.0. */
+export function getPauseOnAddPreferenceKey(
+  features: ApiFeatures,
+): 'add_stopped_enabled' | 'start_paused_enabled' {
+  return features.useAddStoppedEnabledPreference ? 'add_stopped_enabled' : 'start_paused_enabled';
 }
