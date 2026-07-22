@@ -75,10 +75,25 @@ export const storageService = {
       const servers: Omit<ServerConfig, 'password'>[] = JSON.parse(data);
       
       // Retrieve passwords from SecureStore, normalize host (strip protocol from legacy data)
+      // Each secret is read in its own try/catch: SecureStore throws (rather than
+      // resolving null) when an item can't be decrypted — e.g. after a device
+      // restore or a keychain migration. Letting that reject would take down the
+      // whole Promise.all and drop the caller into the outer catch, so a single
+      // unreadable password would make *every* saved server disappear from the UI.
+      // Degrading to an empty password keeps the server listed; the connect
+      // attempt then fails with a credential error the user can actually act on.
+      const readSecret = async (key: string): Promise<string> => {
+        try {
+          return (await SecureStore.getItemAsync(key)) || '';
+        } catch {
+          return '';
+        }
+      };
+
       const serversWithPasswords = await Promise.all(
         servers.map(async (server) => {
-          const password = await SecureStore.getItemAsync(`server_password_${server.id}`) || '';
-          const basicAuthPassword = await SecureStore.getItemAsync(`server_basic_auth_password_${server.id}`) || '';
+          const password = await readSecret(`server_password_${server.id}`);
+          const basicAuthPassword = await readSecret(`server_basic_auth_password_${server.id}`);
           return {
             ...server,
             password,
@@ -110,7 +125,15 @@ export const storageService = {
     const servers = await this.getServers();
     const filtered = servers.filter((s) => s.id !== id);
     
-    await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(filtered.map(s => ({ ...s, password: '' }))));
+    // getServers() rehydrates BOTH secrets from SecureStore, so every field that
+    // holds a credential has to be blanked again before this goes back into
+    // AsyncStorage — see saveServer above, which does the same. Missing
+    // basicAuthPassword here leaked the proxy password of every surviving server
+    // into unencrypted storage on each delete.
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.SERVERS,
+      JSON.stringify(filtered.map(s => ({ ...s, password: '', basicAuthPassword: '' })))
+    );
     
     // Remove passwords from SecureStore
     await SecureStore.deleteItemAsync(`server_password_${id}`);

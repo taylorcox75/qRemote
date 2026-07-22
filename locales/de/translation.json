@@ -872,7 +872,9 @@
     "failedToSaveColor": "Farbe konnte nicht gespeichert werden",
     "failedToSaveServer": "Server konnte nicht gespeichert werden",
     "failedToCopyDebug": "Debug-Infos konnten nicht kopiert werden",
-    "failedToLoadServer": "Server konnte nicht geladen werden"
+    "failedToLoadServer": "Server konnte nicht geladen werden",
+    "crashTitle": "Etwas ist schiefgelaufen",
+    "crashMessage": "In qRemote ist ein unerwarteter Fehler aufgetreten. Ihre Server und Einstellungen sind unversehrt."
   },
   "states": {
     "dlAndUl": "DL + UL",

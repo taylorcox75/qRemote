@@ -19,9 +19,11 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useServer } from '@/context/ServerContext';
+import { useToast } from '@/context/ToastContext';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { APP_VERSION } from '@/utils/version';
+import { getErrorMessage } from '@/utils/error';
 import { hasFallback } from '@/utils/server';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -58,6 +60,7 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { currentServer, isConnected, activeEndpoint, disconnect } = useServer();
+  const { showToast } = useToast();
   const { isDark, colors } = useTheme();
   const disconnectBadgeBackground = colorThemeManager.hexToRgba(
     colorThemeManager.rgbaToHex(colors.error),
@@ -80,7 +83,14 @@ export default function SettingsScreen() {
   }, [isConnected]);
 
   const handleDisconnect = async () => {
-    await disconnect();
+    // Swallowing a rejection here would leave the row showing "connected" with
+    // no explanation. The success path needs no toast -- the connection row
+    // updates itself -- but a failure has to surface.
+    try {
+      await disconnect();
+    } catch (error) {
+      showToast(getErrorMessage(error), 'error');
+    }
   };
 
   return (

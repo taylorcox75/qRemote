@@ -25,6 +25,14 @@ export interface ApiFeatures {
    * When false, use the legacy "start_paused_enabled" key (v4.x).
    */
   useAddStoppedEnabledPreference: boolean;
+  /**
+   * torrents/add takes the "stopped" form field (qBit 5.0+ / WebAPI ≥ 2.11.0).
+   * When false, use the legacy "paused" field (v4.x). Distinct from
+   * useAddStoppedEnabledPreference, which covers the app/preferences KEY of the
+   * same name — these are two separate renames that happen to share a version
+   * boundary, and only the preference one was handled previously.
+   */
+  useStoppedAddParam: boolean;
 }
 
 export function parseApiVersion(raw: string): ParsedVersion | null {
@@ -54,6 +62,7 @@ const V5_FEATURES: ApiFeatures = {
   supportsSetCookies: true,
   supportsSearchDownloadTorrent: true,
   useAddStoppedEnabledPreference: true,
+  useStoppedAddParam: true,
 };
 
 export function getApiFeatures(apiVersion: string | null): ApiFeatures {
@@ -70,6 +79,7 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     supportsSetCookies: isV5,
     supportsSearchDownloadTorrent: isV5,
     useAddStoppedEnabledPreference: isV5,
+    useStoppedAddParam: isV5,
   };
 }
 

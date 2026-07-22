@@ -872,7 +872,9 @@
     "failedToSaveColor": "Échec de l'enregistrement de la couleur",
     "failedToSaveServer": "Échec de l'enregistrement du serveur",
     "failedToCopyDebug": "Échec de la copie des infos de débogage",
-    "failedToLoadServer": "Échec du chargement du serveur"
+    "failedToLoadServer": "Échec du chargement du serveur",
+    "crashTitle": "Une erreur est survenue",
+    "crashMessage": "qRemote a rencontré une erreur inattendue. Vos serveurs et réglages sont intacts."
   },
   "states": {
     "dlAndUl": "DL + UL",

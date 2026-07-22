@@ -18,6 +18,7 @@ import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { ServerManager } from '@/services/server-manager';
 import { storageService } from '@/services/storage';
 import { ServerConfig } from '@/types/api';
@@ -155,6 +156,9 @@ export default function ServersSettingsScreen() {
   const [servers, setServers] = useState<ServerConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoConnectLastServer, setAutoConnectLastServer] = useState(false);
+  // Deleting a server also drops its password from the keychain and cannot be
+  // undone, so it goes through ConfirmModal like every other destructive action.
+  const [pendingDelete, setPendingDelete] = useState<ServerConfig | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -314,7 +318,7 @@ export default function ServersSettingsScreen() {
                     onPress={() => handleEditServer(server)}
                     onConnect={() => handleConnect(server)}
                     onDisconnect={() => disconnect()}
-                    onDelete={() => handleDeleteServer(server)}
+                    onDelete={() => setPendingDelete(server)}
                     isLast={index === servers.length - 1}
                   />
                 ))
@@ -325,6 +329,29 @@ export default function ServersSettingsScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </View>
+
+      <ConfirmModal
+        visible={!!pendingDelete}
+        title={t('server.deleteServer')}
+        message={
+          pendingDelete
+            ? t('server.deleteServerConfirm', { name: pendingDelete.name })
+            : undefined
+        }
+        buttons={[
+          {
+            label: t('common.delete'),
+            destructive: true,
+            onPress: () => {
+              const target = pendingDelete;
+              setPendingDelete(null);
+              if (target) void handleDeleteServer(target);
+            },
+          },
+        ]}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setPendingDelete(null)}
+      />
     </>
   );
 }

@@ -872,7 +872,9 @@
     "failedToSaveColor": "Error al guardar el color",
     "failedToSaveServer": "Error al guardar el servidor",
     "failedToCopyDebug": "Error al copiar la información de depuración",
-    "failedToLoadServer": "Error al cargar el servidor"
+    "failedToLoadServer": "Error al cargar el servidor",
+    "crashTitle": "Algo ha salido mal",
+    "crashMessage": "qRemote ha encontrado un error inesperado. Tus servidores y ajustes están a salvo."
   },
   "states": {
     "dlAndUl": "DL + UL",

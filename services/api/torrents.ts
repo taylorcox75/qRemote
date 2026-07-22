@@ -222,7 +222,14 @@ export const torrentsApi = {
         formData.append('skip_checking', String(options.skip_checking));
       }
       if (options.stopped !== undefined) {
-        formData.append('stopped', String(options.stopped));
+        // qBit 5.0 renamed this form field from "paused" to "stopped". An
+        // unrecognised field is silently ignored by the server, so on a 4.x
+        // server the "add stopped" toggle would look like it worked and the
+        // torrent would start downloading anyway.
+        const stoppedField = apiClient.getApiFeatures().useStoppedAddParam
+          ? 'stopped'
+          : 'paused';
+        formData.append(stoppedField, String(options.stopped));
       }
       if (options.root_folder !== undefined) {
         formData.append('root_folder', String(options.root_folder));
@@ -296,7 +303,14 @@ export const torrentsApi = {
         formData.append('skip_checking', String(options.skip_checking));
       }
       if (options.stopped !== undefined) {
-        formData.append('stopped', String(options.stopped));
+        // qBit 5.0 renamed this form field from "paused" to "stopped". An
+        // unrecognised field is silently ignored by the server, so on a 4.x
+        // server the "add stopped" toggle would look like it worked and the
+        // torrent would start downloading anyway.
+        const stoppedField = apiClient.getApiFeatures().useStoppedAddParam
+          ? 'stopped'
+          : 'paused';
+        formData.append(stoppedField, String(options.stopped));
       }
       if (options.root_folder !== undefined) {
         formData.append('root_folder', String(options.root_folder));

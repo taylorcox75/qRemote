@@ -47,7 +47,11 @@ export function ActionMenu({ visible, onClose, items, anchor }: ActionMenuProps)
   const [popoverHeight, setPopoverHeight] = useState<number | null>(null);
 
   useEffect(() => {
-    // Re-measure whenever the menu reopens or moves to a new anchor.
+    // Re-measure whenever the menu reopens or moves to a new anchor. Skip the
+    // closing transition: the Modal stays mounted for its fade-out, so clearing
+    // the measured height on the way out drops the popover to opacity 0 and then
+    // re-reveals it after onLayout — a visible flash mid-dismiss.
+    if (!visible) return;
     setPopoverHeight(null);
   }, [visible, anchor?.x, anchor?.y]);
 

@@ -892,6 +892,8 @@
     "failedToSaveColor": "Failed to save color",
     "failedToSaveServer": "Failed to save server",
     "failedToCopyDebug": "Failed to copy debug info",
-    "failedToLoadServer": "Failed to load server"
+    "failedToLoadServer": "Failed to load server",
+    "crashTitle": "Something went wrong",
+    "crashMessage": "qRemote ran into an unexpected error. Your servers and settings are safe."
   }
 }
