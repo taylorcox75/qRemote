@@ -1,11 +1,3 @@
-const mockPlatform: { OS: string } = { OS: 'ios' };
-
-jest.mock('react-native', () => ({
-  get Platform() {
-    return mockPlatform;
-  },
-}));
-
 const copyAsync = jest.fn();
 const makeDirectoryAsync = jest.fn();
 
@@ -19,7 +11,6 @@ import { persistIncomingTorrentFile } from '@/services/incoming-file';
 
 describe('persistIncomingTorrentFile', () => {
   beforeEach(() => {
-    mockPlatform.OS = 'ios';
     copyAsync.mockReset().mockResolvedValue(undefined);
     makeDirectoryAsync.mockReset().mockResolvedValue(undefined);
   });
@@ -50,17 +41,7 @@ describe('persistIncomingTorrentFile', () => {
     expect(result.uri).toMatch(/^file:\/\/\/cache\/incoming-torrents\/\d+-My_Movie_Pack_\.torrent$/);
   });
 
-  it('returns the original file unchanged on Android (content:// has no security-scope issue)', async () => {
-    mockPlatform.OS = 'android';
-
-    const file = { uri: 'content://downloads/ubuntu.torrent', name: 'ubuntu.torrent' };
-    const result = await persistIncomingTorrentFile(file);
-
-    expect(result).toBe(file);
-    expect(copyAsync).not.toHaveBeenCalled();
-  });
-
-  it('returns the original file unchanged for non-file:// URIs even on iOS', async () => {
+  it('returns the original file unchanged for non-file:// URIs', async () => {
     const file = { uri: 'content://some/provider/1', name: 'download.torrent' };
     const result = await persistIncomingTorrentFile(file);
 

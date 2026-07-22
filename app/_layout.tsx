@@ -23,6 +23,16 @@ import { persistIncomingTorrentFile } from '@/services/incoming-file';
 
 const { width } = Dimensions.get('window');
 
+// Keep (tabs) as the stack anchor so pushing server/add routes (and
+// deep-linking to them) never wipes the tab navigator out of history —
+// without this, dismissing a modal or going back can leave the user on a
+// full-screen route with no bottom tab bar. Settings and torrent detail
+// live under (tabs) so the tab bar stays visible there.
+export const unstable_settings = {
+  initialRouteName: '(tabs)',
+  anchor: '(tabs)',
+};
+
 function StackNavigator() {
   const { colors } = useTheme();
   const router = useRouter();

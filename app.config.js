@@ -14,6 +14,12 @@ module.exports = {
       resizeMode: 'contain',
       backgroundColor: '#0A0A0A',
     },
+    // NOTE: iOS is a bare React Native project (see AGENTS.md) -- `expo prebuild`
+    // no longer runs for iOS, so `ios.infoPlist` below is reference-only and NOT
+    // applied to the app. The authoritative copies are the committed
+    // ios/qRemote/Info.plist and ios/qRemote/qRemote.entitlements; edit those
+    // directly in Xcode and keep this block in sync by hand for documentation.
+    // `bundleIdentifier`/`appStoreUrl` still matter (read by EAS submit/tooling).
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.qRemote.app',
@@ -69,39 +75,6 @@ module.exports = {
         ],
       },
     },
-    android: {
-      adaptiveIcon: {
-        foregroundImage: './assets/adaptive-icon.png',
-        backgroundColor: '#0A0A0A',
-      },
-      edgeToEdgeEnabled: true,
-      predictiveBackGestureEnabled: false,
-      package: 'com.qRemote.app',
-      usesCleartextTraffic: true,
-      intentFilters: [
-        {
-          action: 'VIEW',
-          autoVerify: false,
-          data: [
-            {
-              scheme: 'magnet',
-            },
-          ],
-          category: ['BROWSABLE', 'DEFAULT'],
-        },
-        // Open .torrent files shared from other apps (issue #88)
-        {
-          action: 'VIEW',
-          autoVerify: false,
-          data: [
-            {
-              mimeType: 'application/x-bittorrent',
-            },
-          ],
-          category: ['DEFAULT'],
-        },
-      ],
-    },
     web: {
       favicon: './assets/favicon.png',
     },
@@ -109,12 +82,9 @@ module.exports = {
       'expo-router',
       'expo-font',
       'expo-localization',
-      'expo-mail-composer',
       'expo-secure-store',
       'expo-sharing',
       'expo-status-bar',
-      // Temporary: Xcode 27 requires UIScene lifecycle; remove when Expo 57 ships it.
-      './plugins/withIosSceneLifecycle',
     ],
     extra: {
       router: {},
