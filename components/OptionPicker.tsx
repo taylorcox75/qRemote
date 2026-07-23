@@ -13,6 +13,7 @@ import {
   Modal,
   Dimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -100,9 +101,9 @@ export function OptionPicker({
               const bottomPadding = Math.max(insets.bottom, 16) + 8;
               const currentTop = menuPosition.y;
               const menuBottom = currentTop + height;
-              
+
               let adjustedY = currentTop;
-              
+
               // Center vertically if possible, but keep within bounds
               if (menuBottom > screenHeight - bottomPadding) {
                 adjustedY = screenHeight - height - bottomPadding;
@@ -110,13 +111,16 @@ export function OptionPicker({
               if (adjustedY < topPadding) {
                 adjustedY = topPadding;
               }
-              
+
               // Center horizontally
               const screenWidth = Dimensions.get('window').width;
               const menuWidth = 280;
               const adjustedX = (screenWidth - menuWidth) / 2;
-              
-              if (Math.abs(adjustedY - currentTop) > 5 || Math.abs(adjustedX - menuPosition.x) > 5) {
+
+              if (
+                Math.abs(adjustedY - currentTop) > 5 ||
+                Math.abs(adjustedX - menuPosition.x) > 5
+              ) {
                 hasAdjustedPosition.current = true;
                 setMenuPosition({ x: adjustedX, y: adjustedY });
               }
@@ -146,49 +150,54 @@ export function OptionPicker({
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          
+
           {/* Options */}
-          {options.map((option, index) => (
-            <React.Fragment key={option.value}>
-              <TouchableOpacity
-                style={[
-                  styles.menuOption,
-                  selectedValue === option.value && { backgroundColor: colors.surfaceOutline },
-                ]}
-                onPress={() => handleSelect(option.value)}
-                activeOpacity={0.7}
-                accessibilityRole={menuItemRole}
-                accessibilityLabel={option.label}
-                accessibilityState={{ selected: selectedValue === option.value }}
-              >
-                {option.icon && (
-                  <Ionicons
-                    name={option.icon!}
-                    size={20}
-                    color={colors.primary}
-                    style={styles.menuIcon}
-                  />
-                )}
-                <Text
+          <ScrollView
+            style={styles.optionsScroll}
+            contentContainerStyle={styles.optionsScrollContent}
+          >
+            {options.map((option, index) => (
+              <React.Fragment key={option.value}>
+                <TouchableOpacity
                   style={[
-                    styles.menuOptionText,
-                    {
-                      color: colors.text,
-                      fontWeight: selectedValue === option.value ? '600' : '400',
-                    },
+                    styles.menuOption,
+                    selectedValue === option.value && { backgroundColor: colors.surfaceOutline },
                   ]}
+                  onPress={() => handleSelect(option.value)}
+                  activeOpacity={0.7}
+                  accessibilityRole={menuItemRole}
+                  accessibilityLabel={option.label}
+                  accessibilityState={{ selected: selectedValue === option.value }}
                 >
-                  {option.label}
-                </Text>
-                {selectedValue === option.value && (
-                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  {option.icon && (
+                    <Ionicons
+                      name={option.icon!}
+                      size={20}
+                      color={colors.primary}
+                      style={styles.menuIcon}
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.menuOptionText,
+                      {
+                        color: colors.text,
+                        fontWeight: selectedValue === option.value ? '600' : '400',
+                      },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  {selectedValue === option.value && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+                {index < options.length - 1 && (
+                  <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} />
                 )}
-              </TouchableOpacity>
-              {index < options.length - 1 && (
-                <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} />
-              )}
-            </React.Fragment>
-          ))}
+              </React.Fragment>
+            ))}
+          </ScrollView>
         </View>
       </TouchableOpacity>
     </Modal>
@@ -223,6 +232,12 @@ const styles = StyleSheet.create({
     ...typography.h3,
     fontSize: 18,
   },
+  optionsScroll: {
+    maxHeight: 380,
+  },
+  optionsScrollContent: {
+    paddingBottom: spacing.sm,
+  },
   menuOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -243,4 +258,3 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
   },
 });
-

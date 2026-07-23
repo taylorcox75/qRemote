@@ -89,11 +89,9 @@ export default function TorrentsScreen() {
   const [filter, setFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [torrentUrl, setTorrentUrl] = useState('');
-  const [selectedFile, setSelectedFile] = useState<{
-    uri: string;
-    name: string;
-    mimeType?: string;
-  } | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<
+    { uri: string; name: string; mimeType?: string }[]
+  >([]);
   const [addingTorrent, setAddingTorrent] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedHashes, setSelectedHashes] = useState<Set<string>>(new Set());
@@ -114,7 +112,7 @@ export default function TorrentsScreen() {
     DEFAULT_PREFERENCES.expandedCardFields,
   );
   const [expandedCardGridColumns, setExpandedCardGridColumns] = useState<3 | 4 | 5>(
-    DEFAULT_PREFERENCES.expandedCardGridColumns
+    DEFAULT_PREFERENCES.expandedCardGridColumns,
   );
   // Category/tag filter state (null = all categories, '' = uncategorized)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -320,7 +318,6 @@ export default function TorrentsScreen() {
       }
 
       setTorrentUrl(magnetLink);
-      setSelectedFile(null);
       setShowAddModal(true);
       router.setParams({ magnet: undefined });
     };
@@ -371,8 +368,10 @@ export default function TorrentsScreen() {
         return;
       }
 
-      setSelectedFile({ uri: fileUri, name: fileName, mimeType: 'application/x-bittorrent' });
-      setTorrentUrl('');
+      setSelectedFiles((prev) => [
+        ...prev,
+        { uri: fileUri, name: fileName, mimeType: 'application/x-bittorrent' },
+      ]);
       setShowAddModal(true);
       router.setParams({
         torrentFileUri: undefined,
@@ -715,31 +714,41 @@ export default function TorrentsScreen() {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['application/x-bittorrent', 'application/octet-stream', '*/*'],
         copyToCacheDirectory: true,
+        multiple: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const file = result.assets[0];
-
-        // Validate it's a .torrent file by checking the extension
-        if (!file.name.toLowerCase().endsWith('.torrent')) {
+        // Validate they're .torrent files by checking the extension
+        const invalid = result.assets.some((file) => !file.name.toLowerCase().endsWith('.torrent'));
+        if (invalid) {
           showToast(t('errors.selectTorrentFile'), 'error');
           return;
         }
 
-        setSelectedFile({
-          uri: file.uri,
-          name: file.name,
-        });
-        setTorrentUrl(''); // Clear URL input when file is selected
-        showToast(t('screens.torrents.fileSelected', { name: file.name }), 'success');
+        const files = result.assets.map((file) => ({ uri: file.uri, name: file.name }));
+        setSelectedFiles((prev) => [...prev, ...files]);
+        if (files.length === 1) {
+          showToast(t('screens.torrents.fileSelected', { name: files[0].name }), 'success');
+        } else {
+          showToast(t('screens.torrents.filesSelected', { count: files.length }), 'success');
+        }
       }
     } catch (error: unknown) {
       showToast(getErrorMessage(error), 'error');
     }
   };
 
+  const handleRemoveSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmitTorrent = async () => {
-    if (!torrentUrl.trim() && !selectedFile) {
+    const urls = torrentUrl
+      .split('\n')
+      .map((url) => url.trim())
+      .filter(Boolean);
+
+    if (urls.length === 0 && selectedFiles.length === 0) {
       showToast(t('errors.enterUrlOrMagnet'), 'error');
       return;
     }
@@ -758,19 +767,22 @@ export default function TorrentsScreen() {
         firstLastPiecePrio: Number(prefs.defaultPriority) > 0,
       };
 
-      if (selectedFile) {
-        await torrentsApi.addTorrentFile(selectedFile, addOptions);
-      } else {
-        await torrentsApi.addTorrent(torrentUrl.trim(), addOptions);
+      const tasks: Promise<void>[] = [];
+      if (selectedFiles.length > 0) {
+        tasks.push(torrentsApi.addTorrentFile(selectedFiles, addOptions));
       }
+      if (urls.length > 0) {
+        tasks.push(torrentsApi.addTorrent(urls, addOptions));
+      }
+      await Promise.all(tasks);
 
       haptics.success();
       setTorrentUrl('');
-      setSelectedFile(null);
+      setSelectedFiles([]);
       setShowAddModal(false);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       refresh();
-      showToast(t('toast.torrentAdded'), 'success');
+      showToast(t('toast.torrentAdded', { count: urls.length + selectedFiles.length }), 'success');
     } catch (error: unknown) {
       haptics.error();
       showToast(getErrorMessage(error), 'error');
@@ -833,15 +845,18 @@ export default function TorrentsScreen() {
     [refresh, showToast, t],
   );
 
-  const handleSwipeDelete = useCallback((torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
-    haptics.warning();
-    setListDeleteConfirm({
-      title: t('common.delete'),
-      message: t('alerts.deleteName', { name: torrent.name }),
-      hashes: [torrent.hash],
-      swipeableRef,
-    });
-  }, [t]);
+  const handleSwipeDelete = useCallback(
+    (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+      haptics.warning();
+      setListDeleteConfirm({
+        title: t('common.delete'),
+        message: t('alerts.deleteName', { name: torrent.name }),
+        hashes: [torrent.hash],
+        swipeableRef,
+      });
+    },
+    [t],
+  );
 
   const handleSwipeForceStart = useCallback(
     async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
@@ -1652,7 +1667,7 @@ export default function TorrentsScreen() {
                             setMenuAnchor(
                               event
                                 ? { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY }
-                                : null
+                                : null,
                             );
                             setMenuVisible(true);
                           }
@@ -1759,7 +1774,7 @@ export default function TorrentsScreen() {
                       onPress={() => {
                         setShowAddModal(false);
                         setTorrentUrl('');
-                        setSelectedFile(null);
+                        setSelectedFiles([]);
                       }}
                       accessibilityLabel={t('common.close')}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -1780,12 +1795,7 @@ export default function TorrentsScreen() {
                       },
                     ]}
                     value={torrentUrl}
-                    onChangeText={(text) => {
-                      setTorrentUrl(text);
-                      if (text.trim() && selectedFile) {
-                        setSelectedFile(null); // Clear file when URL is entered
-                      }
-                    }}
+                    onChangeText={setTorrentUrl}
                     placeholder={t('placeholders.magnetLink')}
                     placeholderTextColor={colors.textSecondary}
                     multiline
@@ -1793,8 +1803,10 @@ export default function TorrentsScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     textAlignVertical="top"
-                    editable={!selectedFile}
                   />
+                  <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
+                    {t('screens.torrents.magnetMultiHint')}
+                  </Text>
 
                   <View style={styles.divider}>
                     <View
@@ -1808,42 +1820,65 @@ export default function TorrentsScreen() {
                     />
                   </View>
 
+                  {selectedFiles.length > 0 && (
+                    <View
+                      style={[
+                        styles.fileListContainer,
+                        { borderColor: colors.success, backgroundColor: colors.background },
+                      ]}
+                    >
+                      <ScrollView style={styles.fileListScroll} nestedScrollEnabled>
+                        {selectedFiles.map((file, index) => (
+                          <View
+                            key={`${file.uri}-${index}`}
+                            style={[
+                              styles.fileListRow,
+                              index > 0 && {
+                                borderTopColor: colors.surfaceOutline,
+                                borderTopWidth: 1,
+                              },
+                            ]}
+                          >
+                            <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                            <Text
+                              style={[styles.fileListRowText, { color: colors.text }]}
+                              numberOfLines={1}
+                            >
+                              {file.name}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => handleRemoveSelectedFile(index)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              accessibilityLabel={t('common.remove')}
+                            >
+                              <Ionicons
+                                name="close-circle"
+                                size={18}
+                                color={colors.textSecondary}
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
                   <TouchableOpacity
                     style={[
                       styles.filePickerButton,
                       {
-                        backgroundColor: selectedFile ? colors.success : colors.background,
-                        borderColor: selectedFile ? colors.success : colors.surfaceOutline,
+                        backgroundColor: colors.background,
+                        borderColor: colors.surfaceOutline,
                       },
                     ]}
                     onPress={handlePickFile}
-                    disabled={!!torrentUrl.trim()}
                   >
-                    <Ionicons
-                      name={selectedFile ? 'checkmark-circle' : 'document'}
-                      size={20}
-                      color={selectedFile ? '#FFFFFF' : colors.text}
-                    />
-                    <Text
-                      style={[
-                        styles.filePickerText,
-                        {
-                          color: selectedFile ? '#FFFFFF' : colors.text,
-                          fontWeight: selectedFile ? '600' : '400',
-                        },
-                      ]}
-                    >
-                      {selectedFile ? selectedFile.name : t('screens.torrents.selectTorrentFile')}
+                    <Ionicons name="document" size={20} color={colors.text} />
+                    <Text style={[styles.filePickerText, { color: colors.text }]}>
+                      {selectedFiles.length > 0
+                        ? t('screens.torrents.addMoreFiles')
+                        : t('screens.torrents.selectTorrentFile')}
                     </Text>
-                    {selectedFile && (
-                      <TouchableOpacity
-                        onPress={() => setSelectedFile(null)}
-                        style={styles.clearFileButton}
-                        accessibilityLabel={t('common.remove')}
-                      >
-                        <Ionicons name="close-circle" size={20} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    )}
                   </TouchableOpacity>
 
                   <View style={styles.modalButtons}>
@@ -1855,7 +1890,7 @@ export default function TorrentsScreen() {
                       ]}
                       onPress={() => {
                         setTorrentUrl('');
-                        setSelectedFile(null);
+                        setSelectedFiles([]);
                         setShowAddModal(false);
                       }}
                     >
@@ -1934,10 +1969,16 @@ export default function TorrentsScreen() {
         <ConfirmModal
           visible={deleteConfirmVisible}
           title={t('common.delete')}
-          message={selectedTorrent ? t('alerts.deleteName', { name: selectedTorrent.name }) : undefined}
+          message={
+            selectedTorrent ? t('alerts.deleteName', { name: selectedTorrent.name }) : undefined
+          }
           buttons={[
             { label: t('alerts.torrentOnly'), onPress: () => handleConfirmDelete(false) },
-            { label: t('alerts.withFiles'), onPress: () => handleConfirmDelete(true), destructive: true },
+            {
+              label: t('alerts.withFiles'),
+              onPress: () => handleConfirmDelete(true),
+              destructive: true,
+            },
           ]}
           cancelLabel={t('common.cancel')}
           onCancel={() => setDeleteConfirmVisible(false)}
@@ -1949,7 +1990,11 @@ export default function TorrentsScreen() {
           message={listDeleteConfirm?.message}
           buttons={[
             { label: t('alerts.torrentOnly'), onPress: () => handleConfirmListDelete(false) },
-            { label: t('alerts.withFiles'), onPress: () => handleConfirmListDelete(true), destructive: true },
+            {
+              label: t('alerts.withFiles'),
+              onPress: () => handleConfirmListDelete(true),
+              destructive: true,
+            },
           ]}
           cancelLabel={t('common.cancel')}
           onCancel={() => {
@@ -2297,6 +2342,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...typography.small,
     minHeight: 80,
+    marginBottom: spacing.xs,
+  },
+  modalHint: {
+    ...typography.small,
+    fontSize: 12,
     marginBottom: spacing.md,
   },
   divider: {
@@ -2325,8 +2375,23 @@ const styles = StyleSheet.create({
     flex: 1,
     ...typography.body,
   },
-  clearFileButton: {
-    padding: spacing.xs,
+  fileListContainer: {
+    borderWidth: 1,
+    borderRadius: borderRadius.large,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  fileListScroll: { maxHeight: 160 },
+  fileListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  fileListRowText: {
+    flex: 1,
+    ...typography.body,
   },
   modalButtons: {
     flexDirection: 'row',

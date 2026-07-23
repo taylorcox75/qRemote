@@ -259,10 +259,31 @@ describe('apiClient', () => {
       expect(() => capturedResponseInterceptorError!(err)).toThrow('Rate limited by server.');
     });
 
-    it('normalizes 409 to queueing error', () => {
-      const err = makeErr({ response: { status: 409 } });
+    it('normalizes 409 on a priority endpoint to a queueing error', () => {
+      const err = makeErr({
+        config: { baseURL: 'http://example.com', url: '/api/v2/torrents/topPrio' },
+        response: { status: 409 },
+      });
       expect(() => capturedResponseInterceptorError!(err)).toThrow(
         'Torrent queueing must be enabled in qBittorrent to change priorities.'
+      );
+    });
+
+    it('normalizes 409 on a non-priority endpoint (e.g. duplicate torrent add) using the response body', () => {
+      const err = makeErr({
+        config: { baseURL: 'http://example.com', url: '/api/v2/torrents/add' },
+        response: { status: 409, data: 'Torrent already exists' },
+      });
+      expect(() => capturedResponseInterceptorError!(err)).toThrow('Torrent already exists');
+    });
+
+    it('normalizes 409 on a non-priority endpoint with no body to a generic duplicate/conflict message', () => {
+      const err = makeErr({
+        config: { baseURL: 'http://example.com', url: '/api/v2/torrents/add' },
+        response: { status: 409 },
+      });
+      expect(() => capturedResponseInterceptorError!(err)).toThrow(
+        'This torrent already exists or could not be added.'
       );
     });
 
