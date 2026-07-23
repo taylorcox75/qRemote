@@ -31,7 +31,7 @@ export const torrentsApi = {
     reverse?: boolean,
     limit?: number,
     offset?: number,
-    hashes?: string[]
+    hashes?: string[],
   ): Promise<TorrentInfo[]> {
     const params: Record<string, string | number | boolean> = {};
 
@@ -45,11 +45,11 @@ export const torrentsApi = {
     if (hashes && hashes.length > 0) params.hashes = hashes.join('|');
 
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/info`, params);
-    
+
     if (Array.isArray(response)) {
       return response as TorrentInfo[];
     }
-    
+
     return [];
   },
 
@@ -57,7 +57,9 @@ export const torrentsApi = {
    * Get torrent generic properties
    */
   async getTorrentProperties(hash: string): Promise<TorrentProperties> {
-    return await apiClient.get(`/api/${API_VERSION}/torrents/properties`, { hash }) as TorrentProperties;
+    return (await apiClient.get(`/api/${API_VERSION}/torrents/properties`, {
+      hash,
+    })) as TorrentProperties;
   },
 
   /**
@@ -92,14 +94,18 @@ export const torrentsApi = {
    * Get torrent pieces' states
    */
   async getTorrentPiecesStates(hash: string): Promise<TorrentPieceState> {
-    return await apiClient.get(`/api/${API_VERSION}/torrents/pieceStates`, { hash }) as TorrentPieceState;
+    return (await apiClient.get(`/api/${API_VERSION}/torrents/pieceStates`, {
+      hash,
+    })) as TorrentPieceState;
   },
 
   /**
    * Get torrent pieces' hashes
    */
   async getTorrentPiecesHashes(hash: string): Promise<TorrentPieceHash> {
-    return await apiClient.get(`/api/${API_VERSION}/torrents/pieceHashes`, { hash }) as TorrentPieceHash;
+    return (await apiClient.get(`/api/${API_VERSION}/torrents/pieceHashes`, {
+      hash,
+    })) as TorrentPieceHash;
   },
 
   /**
@@ -199,17 +205,14 @@ export const torrentsApi = {
       sequentialDownload?: boolean;
       firstLastPiecePrio?: boolean;
       autoTMM?: boolean;
-    }
+    },
   ): Promise<void> {
     const formData = new FormData();
-    
-    if (Array.isArray(urls)) {
-      urls.forEach((url) => {
-        formData.append('urls', url);
-      });
-    } else {
-      formData.append('urls', urls);
-    }
+
+    // qBittorrent's API takes a single "urls" field with entries separated by
+    // newlines — repeating the "urls" form field per URL (as this used to do)
+    // only ever registers one of them server-side and silently drops the rest.
+    formData.append('urls', Array.isArray(urls) ? urls.join('\n') : urls);
 
     if (options) {
       if (options.savepath) formData.append('savepath', options.savepath);
@@ -226,9 +229,7 @@ export const torrentsApi = {
         // unrecognised field is silently ignored by the server, so on a 4.x
         // server the "add stopped" toggle would look like it worked and the
         // torrent would start downloading anyway.
-        const stoppedField = apiClient.getApiFeatures().useStoppedAddParam
-          ? 'stopped'
-          : 'paused';
+        const stoppedField = apiClient.getApiFeatures().useStoppedAddParam ? 'stopped' : 'paused';
         formData.append(stoppedField, String(options.stopped));
       }
       if (options.root_folder !== undefined) {
@@ -265,7 +266,7 @@ export const torrentsApi = {
    * Add torrent file
    */
   async addTorrentFile(
-    file: { uri: string; name: string; type?: string },
+    files: { uri: string; name: string; type?: string } | { uri: string; name: string; type?: string }[],
     options?: {
       savepath?: string;
       category?: string;
@@ -281,16 +282,19 @@ export const torrentsApi = {
       sequentialDownload?: boolean;
       firstLastPiecePrio?: boolean;
       autoTMM?: boolean;
-    }
+    },
   ): Promise<void> {
     const formData = new FormData();
-    
-    // Add the torrent file
-    // @ts-expect-error React Native FormData accepts { uri, type, name } objects for file uploads
-    formData.append('torrents', {
-      uri: file.uri,
-      type: file.type || 'application/x-bittorrent',
-      name: file.name,
+
+    // qBittorrent accepts multiple "torrents" file fields in a single
+    // multipart request — append one per selected file.
+    (Array.isArray(files) ? files : [files]).forEach((file) => {
+      // @ts-expect-error React Native FormData accepts { uri, type, name } objects for file uploads
+      formData.append('torrents', {
+        uri: file.uri,
+        type: file.type || 'application/x-bittorrent',
+        name: file.name,
+      });
     });
 
     if (options) {
@@ -307,9 +311,7 @@ export const torrentsApi = {
         // unrecognised field is silently ignored by the server, so on a 4.x
         // server the "add stopped" toggle would look like it worked and the
         // torrent would start downloading anyway.
-        const stoppedField = apiClient.getApiFeatures().useStoppedAddParam
-          ? 'stopped'
-          : 'paused';
+        const stoppedField = apiClient.getApiFeatures().useStoppedAddParam ? 'stopped' : 'paused';
         formData.append(stoppedField, String(options.stopped));
       }
       if (options.root_folder !== undefined) {
@@ -456,7 +458,7 @@ export const torrentsApi = {
   async setTorrentShareLimits(
     hashes: string[],
     ratioLimit?: number,
-    seedingTimeLimit?: number
+    seedingTimeLimit?: number,
   ): Promise<void> {
     const params: Record<string, string | number | boolean> = {
       hashes: hashes.join('|'),
@@ -610,4 +612,3 @@ export const torrentsApi = {
     });
   },
 };
-

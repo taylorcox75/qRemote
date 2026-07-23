@@ -54,12 +54,14 @@ export default function AddTorrentFullScreen() {
   const lastAppliedTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
 
   const [fieldVisibility, setFieldVisibility] = useState<Record<AddTorrentDialogField, boolean>>(
-    DEFAULT_PREFERENCES.addTorrentDialogueFields
+    DEFAULT_PREFERENCES.addTorrentDialogueFields,
   );
 
   // Source
   const [torrentUrl, setTorrentUrl] = useState('');
-  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string; mimeType?: string } | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<
+    { uri: string; name: string; mimeType?: string }[]
+  >([]);
 
   // Options
   const [savePath, setSavePath] = useState('');
@@ -98,10 +100,17 @@ export default function AddTorrentFullScreen() {
         try {
           const prefs = await storageService.getPreferences();
           const stored = (prefs.addTorrentDialogueFields as Partial<typeof fieldVisibility>) || {};
-          const normalized = { ...DEFAULT_PREFERENCES.addTorrentDialogueFields, ...stored, source: true };
+          const normalized = {
+            ...DEFAULT_PREFERENCES.addTorrentDialogueFields,
+            ...stored,
+            source: true,
+          };
           setFieldVisibility(normalized);
           if (stored.source === false) {
-            await storageService.savePreferences({ ...prefs, addTorrentDialogueFields: normalized });
+            await storageService.savePreferences({
+              ...prefs,
+              addTorrentDialogueFields: normalized,
+            });
           }
           setSavePath(prefs.defaultSavePath || '');
           setStopped(!!prefs.pauseOnAdd);
@@ -110,7 +119,7 @@ export default function AddTorrentFullScreen() {
         }
       };
       load();
-    }, [])
+    }, []),
   );
 
   const categoryOptions: OptionPickerItem[] = useMemo(() => {
@@ -119,7 +128,11 @@ export default function AddTorrentFullScreen() {
       ...Object.keys(categories)
         .sort((a, b) => a.localeCompare(b))
         .map((name) => ({ label: name, value: name, icon: 'folder-outline' as const })),
-      { label: t('screens.addTorrent.createNewCategory'), value: '__create__', icon: 'add-circle-outline' },
+      {
+        label: t('screens.addTorrent.createNewCategory'),
+        value: '__create__',
+        icon: 'add-circle-outline',
+      },
     ];
     return items;
   }, [categories, t]);
@@ -136,26 +149,35 @@ export default function AddTorrentFullScreen() {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['application/x-bittorrent', 'application/octet-stream', '*/*'],
         copyToCacheDirectory: true,
-        multiple: false,
+        multiple: true,
       });
       if (result.canceled) return;
-      const file = result.assets?.[0];
-      if (!file?.uri) return;
-      setSelectedFile({ uri: file.uri, name: file.name || 'torrent.torrent', mimeType: file.mimeType });
-      setTorrentUrl('');
+      const files = (result.assets || [])
+        .filter((file) => !!file?.uri)
+        .map((file) => ({
+          uri: file.uri,
+          name: file.name || 'torrent.torrent',
+          mimeType: file.mimeType,
+        }));
+      if (!files.length) return;
+      setSelectedFiles((prev) => [...prev, ...files]);
     } catch {
       showToast(t('errors.failedToPickFile'), 'error');
     }
   }, [showToast, t]);
 
+  const handleRemoveFile = useCallback((index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const applyCategorySavePath = useCallback(
     (newCategory: string) => {
-      const newPath = newCategory ? (categories?.[newCategory]?.savePath || '') : '';
+      const newPath = newCategory ? categories?.[newCategory]?.savePath || '' : '';
       if (newPath) {
         setSavePath(newPath);
       }
     },
-    [categories]
+    [categories],
   );
 
   const buildOptions = (): AddTorrentOptions & AddTorrentFileOptions => {
@@ -198,7 +220,11 @@ export default function AddTorrentFullScreen() {
       showToast(t('toast.notConnected'), 'error');
       return;
     }
-    const sourceOk = (!!torrentUrl.trim() || !!selectedFile) && fieldVisibility.source;
+    const urls = torrentUrl
+      .split('\n')
+      .map((url) => url.trim())
+      .filter(Boolean);
+    const sourceOk = (urls.length > 0 || selectedFiles.length > 0) && fieldVisibility.source;
     if (!sourceOk) {
       showToast(t('errors.enterUrlOrMagnet'), 'error');
       return;
@@ -207,22 +233,36 @@ export default function AddTorrentFullScreen() {
     setAdding(true);
     try {
       const opts = buildOptions();
-      if (selectedFile) {
-        await torrentsApi.addTorrentFile(
-          { uri: selectedFile.uri, name: selectedFile.name, type: selectedFile.mimeType },
-          opts
+      const tasks: Promise<void>[] = [];
+      if (selectedFiles.length > 0) {
+        tasks.push(
+          torrentsApi.addTorrentFile(
+            selectedFiles.map((file) => ({ uri: file.uri, name: file.name, type: file.mimeType })),
+            opts,
+          ),
         );
-      } else {
-        await torrentsApi.addTorrent(torrentUrl.trim(), opts);
       }
-      showToast(t('toast.torrentAdded'), 'success');
+      if (urls.length > 0) {
+        tasks.push(torrentsApi.addTorrent(urls, opts));
+      }
+      await Promise.all(tasks);
+      showToast(t('toast.torrentAdded', { count: urls.length + selectedFiles.length }), 'success');
       router.back();
     } catch {
       showToast(t('errors.failedToAdd'), 'error');
     } finally {
       setAdding(false);
     }
-  }, [buildOptions, fieldVisibility.source, isConnected, router, selectedFile, showToast, t, torrentUrl]);
+  }, [
+    buildOptions,
+    fieldVisibility.source,
+    isConnected,
+    router,
+    selectedFiles,
+    showToast,
+    t,
+    torrentUrl,
+  ]);
 
   const selectedTagsLabel = useMemo(() => {
     if (!tagValues.length) return t('screens.addTorrent.none');
@@ -248,11 +288,12 @@ export default function AddTorrentFullScreen() {
 
     lastAppliedMagnetRef.current = { value: magnetLink, at: now };
     setTorrentUrl(magnetLink);
-    setSelectedFile(null);
   }, [params.magnet]);
 
   useEffect(() => {
-    const fileUri = Array.isArray(params.torrentFileUri) ? params.torrentFileUri[0] : params.torrentFileUri;
+    const fileUri = Array.isArray(params.torrentFileUri)
+      ? params.torrentFileUri[0]
+      : params.torrentFileUri;
     if (!fileUri) return;
 
     const now = Date.now();
@@ -265,27 +306,47 @@ export default function AddTorrentFullScreen() {
     }
 
     lastAppliedTorrentFileRef.current = { value: fileUri, at: now };
-    const rawName = Array.isArray(params.torrentFileName) ? params.torrentFileName[0] : params.torrentFileName;
-    setSelectedFile({ uri: fileUri, name: rawName || 'download.torrent', mimeType: 'application/x-bittorrent' });
-    setTorrentUrl('');
+    const rawName = Array.isArray(params.torrentFileName)
+      ? params.torrentFileName[0]
+      : params.torrentFileName;
+    setSelectedFiles((prev) => [
+      ...prev,
+      { uri: fileUri, name: rawName || 'download.torrent', mimeType: 'application/x-bittorrent' },
+    ]);
   }, [params.torrentFileUri, params.torrentFileName]);
 
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        edges={['top']}
+      >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.torrents.addTorrent')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t('screens.torrents.addTorrent')}
+          </Text>
           <View style={styles.headerButton} />
         </View>
 
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, spacing.lg) + 24 }]}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: Math.max(insets.bottom, spacing.lg) + 24 },
+            ]}
             keyboardShouldPersistTaps="handled"
           >
             {showField('source') && (
@@ -295,17 +356,20 @@ export default function AddTorrentFullScreen() {
                 </Text>
                 <View style={[styles.card, { backgroundColor: colors.surface }]}>
                   <View style={styles.block}>
-                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.torrents.urlOrMagnet')}</Text>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>
+                      {t('screens.torrents.urlOrMagnet')}
+                    </Text>
                     <TextInput
                       style={[
                         styles.textArea,
-                        { backgroundColor: colors.background, color: colors.text, borderColor: colors.surfaceOutline },
+                        {
+                          backgroundColor: colors.background,
+                          color: colors.text,
+                          borderColor: colors.surfaceOutline,
+                        },
                       ]}
                       value={torrentUrl}
-                      onChangeText={(text) => {
-                        setTorrentUrl(text);
-                        if (text.trim() && selectedFile) setSelectedFile(null);
-                      }}
+                      onChangeText={setTorrentUrl}
                       placeholder={t('placeholders.magnetLink')}
                       placeholderTextColor={colors.textSecondary}
                       multiline
@@ -313,54 +377,79 @@ export default function AddTorrentFullScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                       textAlignVertical="top"
-                      editable={!selectedFile}
                     />
+                    <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                      {t('screens.torrents.magnetMultiHint')}
+                    </Text>
                   </View>
 
-                  <View style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]} />
+                  <View
+                    style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
+                  />
 
                   <View style={styles.block}>
-                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.addTorrent.torrentFile')}</Text>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>
+                      {t('screens.addTorrent.torrentFile')}
+                    </Text>
+                    {selectedFiles.length > 0 && (
+                      <View
+                        style={[
+                          styles.fileListContainer,
+                          { borderColor: colors.success, backgroundColor: colors.background },
+                        ]}
+                      >
+                        <ScrollView style={styles.fileListScroll} nestedScrollEnabled>
+                          {selectedFiles.map((file, index) => (
+                            <View
+                              key={`${file.uri}-${index}`}
+                              style={[
+                                styles.fileListRow,
+                                index > 0 && {
+                                  borderTopColor: colors.surfaceOutline,
+                                  borderTopWidth: 1,
+                                },
+                              ]}
+                            >
+                              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                              <Text
+                                style={[styles.fileListRowText, { color: colors.text }]}
+                                numberOfLines={1}
+                              >
+                                {file.name}
+                              </Text>
+                              <TouchableOpacity
+                                onPress={() => handleRemoveFile(index)}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                accessibilityLabel={t('common.remove')}
+                              >
+                                <Ionicons
+                                  name="close-circle"
+                                  size={18}
+                                  color={colors.textSecondary}
+                                />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
                     <TouchableOpacity
                       style={[
                         styles.pickerButton,
                         {
-                          backgroundColor: selectedFile ? colors.success : colors.background,
-                          borderColor: selectedFile ? colors.success : colors.surfaceOutline,
-                          opacity: torrentUrl.trim() ? 0.6 : 1,
+                          backgroundColor: colors.background,
+                          borderColor: colors.surfaceOutline,
                         },
                       ]}
                       onPress={handlePickFile}
                       activeOpacity={0.7}
-                      disabled={!!torrentUrl.trim()}
                     >
-                      <Ionicons
-                        name={selectedFile ? 'checkmark-circle' : 'document'}
-                        size={20}
-                        color={selectedFile ? '#FFFFFF' : colors.text}
-                      />
-                      <Text
-                        style={[
-                          styles.pickerText,
-                          {
-                            color: selectedFile ? '#FFFFFF' : colors.text,
-                            fontWeight: selectedFile ? '600' : '400',
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {selectedFile ? selectedFile.name : t('screens.torrents.selectTorrentFile')}
+                      <Ionicons name="document" size={20} color={colors.text} />
+                      <Text style={[styles.pickerText, { color: colors.text }]} numberOfLines={1}>
+                        {selectedFiles.length > 0
+                          ? t('screens.torrents.addMoreFiles')
+                          : t('screens.torrents.selectTorrentFile')}
                       </Text>
-                      {selectedFile && (
-                        <TouchableOpacity
-                          onPress={() => setSelectedFile(null)}
-                          style={styles.clearIconButton}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          accessibilityLabel={t('common.remove')}
-                        >
-                          <Ionicons name="close-circle" size={20} color="#FFFFFF" />
-                        </TouchableOpacity>
-                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -378,7 +467,9 @@ export default function AddTorrentFullScreen() {
                       <View style={styles.settingRow}>
                         <View style={styles.settingLeft}>
                           <Ionicons name="folder-open-outline" size={22} color={colors.primary} />
-                          <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.addTorrent.category')}</Text>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.addTorrent.category')}
+                          </Text>
                         </View>
                         <TouchableOpacity
                           style={styles.pickerInline}
@@ -391,18 +482,26 @@ export default function AddTorrentFullScreen() {
                           <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                         </TouchableOpacity>
                       </View>
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
                   {showField('savePath') && (
                     <>
                       <View style={styles.block}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.addTorrent.savePath')}</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>
+                          {t('screens.addTorrent.savePath')}
+                        </Text>
                         <TextInput
                           style={[
                             styles.input,
-                            { backgroundColor: colors.background, color: colors.text, borderColor: colors.surfaceOutline },
+                            {
+                              backgroundColor: colors.background,
+                              color: colors.text,
+                              borderColor: colors.surfaceOutline,
+                            },
                           ]}
                           value={savePath}
                           onChangeText={setSavePath}
@@ -412,7 +511,11 @@ export default function AddTorrentFullScreen() {
                           autoCorrect={false}
                         />
                       </View>
-                      {showField('tags') && <View style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]} />}
+                      {showField('tags') && (
+                        <View
+                          style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                      )}
                     </>
                   )}
 
@@ -420,7 +523,9 @@ export default function AddTorrentFullScreen() {
                     <View style={styles.settingRow}>
                       <View style={styles.settingLeft}>
                         <Ionicons name="pricetag-outline" size={22} color={colors.primary} />
-                        <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.addTorrent.tags')}</Text>
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>
+                          {t('screens.addTorrent.tags')}
+                        </Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                         <TouchableOpacity
@@ -436,7 +541,9 @@ export default function AddTorrentFullScreen() {
                           onPress={() => setTagsPickerVisible(true)}
                           activeOpacity={0.7}
                         >
-                          <Text style={[styles.pickerInlineText, { color: colors.text }]}>{selectedTagsLabel}</Text>
+                          <Text style={[styles.pickerInlineText, { color: colors.text }]}>
+                            {selectedTagsLabel}
+                          </Text>
                           <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                         </TouchableOpacity>
                       </View>
@@ -461,11 +568,17 @@ export default function AddTorrentFullScreen() {
                   {showField('rename') && (
                     <>
                       <View style={styles.block}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.addTorrent.rename')}</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>
+                          {t('screens.addTorrent.rename')}
+                        </Text>
                         <TextInput
                           style={[
                             styles.input,
-                            { backgroundColor: colors.background, color: colors.text, borderColor: colors.surfaceOutline },
+                            {
+                              backgroundColor: colors.background,
+                              color: colors.text,
+                              borderColor: colors.surfaceOutline,
+                            },
                           ]}
                           value={rename}
                           onChangeText={setRename}
@@ -473,7 +586,9 @@ export default function AddTorrentFullScreen() {
                           placeholderTextColor={colors.textSecondary}
                         />
                       </View>
-                      <View style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
@@ -482,7 +597,9 @@ export default function AddTorrentFullScreen() {
                       <View style={styles.settingRow}>
                         <View style={styles.settingLeft}>
                           <Ionicons name="pause-circle-outline" size={22} color={colors.primary} />
-                          <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.addTorrent.startPaused')}</Text>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.addTorrent.startPaused')}
+                          </Text>
                         </View>
                         <Switch
                           value={stopped}
@@ -491,7 +608,9 @@ export default function AddTorrentFullScreen() {
                           ios_backgroundColor={colors.surfaceOutline}
                         />
                       </View>
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
@@ -499,7 +618,11 @@ export default function AddTorrentFullScreen() {
                     <>
                       <View style={styles.settingRow}>
                         <View style={styles.settingLeft}>
-                          <Ionicons name="checkmark-done-outline" size={22} color={colors.primary} />
+                          <Ionicons
+                            name="checkmark-done-outline"
+                            size={22}
+                            color={colors.primary}
+                          />
                           <Text style={[styles.settingLabel, { color: colors.text }]}>
                             {t('screens.addTorrent.skipChecking')}
                           </Text>
@@ -511,7 +634,9 @@ export default function AddTorrentFullScreen() {
                           ios_backgroundColor={colors.surfaceOutline}
                         />
                       </View>
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
@@ -520,7 +645,9 @@ export default function AddTorrentFullScreen() {
                       <View style={styles.settingRow}>
                         <View style={styles.settingLeft}>
                           <Ionicons name="folder-outline" size={22} color={colors.primary} />
-                          <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.addTorrent.createRootFolder')}</Text>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.addTorrent.createRootFolder')}
+                          </Text>
                         </View>
                         <Switch
                           value={rootFolder}
@@ -529,7 +656,9 @@ export default function AddTorrentFullScreen() {
                           ios_backgroundColor={colors.surfaceOutline}
                         />
                       </View>
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
@@ -538,7 +667,9 @@ export default function AddTorrentFullScreen() {
                       <View style={styles.settingRow}>
                         <View style={styles.settingLeft}>
                           <Ionicons name="sync-outline" size={22} color={colors.primary} />
-                          <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.addTorrent.autoTMM')}</Text>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.addTorrent.autoTMM')}
+                          </Text>
                         </View>
                         <Switch
                           value={autoTMM}
@@ -547,7 +678,9 @@ export default function AddTorrentFullScreen() {
                           ios_backgroundColor={colors.surfaceOutline}
                         />
                       </View>
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
@@ -567,7 +700,9 @@ export default function AddTorrentFullScreen() {
                           ios_backgroundColor={colors.surfaceOutline}
                         />
                       </View>
-                      <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
@@ -604,11 +739,17 @@ export default function AddTorrentFullScreen() {
                   {showField('dlLimit') && (
                     <>
                       <View style={styles.block}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.addTorrent.dlLimit')}</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>
+                          {t('screens.addTorrent.dlLimit')}
+                        </Text>
                         <TextInput
                           style={[
                             styles.input,
-                            { backgroundColor: colors.background, color: colors.text, borderColor: colors.surfaceOutline },
+                            {
+                              backgroundColor: colors.background,
+                              color: colors.text,
+                              borderColor: colors.surfaceOutline,
+                            },
                           ]}
                           value={dlLimit}
                           onChangeText={setDlLimit}
@@ -617,18 +758,26 @@ export default function AddTorrentFullScreen() {
                           placeholderTextColor={colors.textSecondary}
                         />
                       </View>
-                      <View style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
                   {showField('upLimit') && (
                     <>
                       <View style={styles.block}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.addTorrent.upLimit')}</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>
+                          {t('screens.addTorrent.upLimit')}
+                        </Text>
                         <TextInput
                           style={[
                             styles.input,
-                            { backgroundColor: colors.background, color: colors.text, borderColor: colors.surfaceOutline },
+                            {
+                              backgroundColor: colors.background,
+                              color: colors.text,
+                              borderColor: colors.surfaceOutline,
+                            },
                           ]}
                           value={upLimit}
                           onChangeText={setUpLimit}
@@ -637,18 +786,26 @@ export default function AddTorrentFullScreen() {
                           placeholderTextColor={colors.textSecondary}
                         />
                       </View>
-                      <View style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
                   {showField('ratioLimit') && (
                     <>
                       <View style={styles.block}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.addTorrent.ratioLimit')}</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>
+                          {t('screens.addTorrent.ratioLimit')}
+                        </Text>
                         <TextInput
                           style={[
                             styles.input,
-                            { backgroundColor: colors.background, color: colors.text, borderColor: colors.surfaceOutline },
+                            {
+                              backgroundColor: colors.background,
+                              color: colors.text,
+                              borderColor: colors.surfaceOutline,
+                            },
                           ]}
                           value={ratioLimit}
                           onChangeText={setRatioLimit}
@@ -657,18 +814,26 @@ export default function AddTorrentFullScreen() {
                           placeholderTextColor={colors.textSecondary}
                         />
                       </View>
-                      <View style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
                   {showField('seedingTimeLimit') && (
                     <>
                       <View style={styles.block}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.addTorrent.seedingTimeLimit')}</Text>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>
+                          {t('screens.addTorrent.seedingTimeLimit')}
+                        </Text>
                         <TextInput
                           style={[
                             styles.input,
-                            { backgroundColor: colors.background, color: colors.text, borderColor: colors.surfaceOutline },
+                            {
+                              backgroundColor: colors.background,
+                              color: colors.text,
+                              borderColor: colors.surfaceOutline,
+                            },
                           ]}
                           value={seedingTimeLimit}
                           onChangeText={setSeedingTimeLimit}
@@ -677,17 +842,25 @@ export default function AddTorrentFullScreen() {
                           placeholderTextColor={colors.textSecondary}
                         />
                       </View>
-                      <View style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]} />
+                      <View
+                        style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
+                      />
                     </>
                   )}
 
                   {showField('cookie') && (
                     <View style={styles.block}>
-                      <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.addTorrent.cookie')}</Text>
+                      <Text style={[styles.label, { color: colors.textSecondary }]}>
+                        {t('screens.addTorrent.cookie')}
+                      </Text>
                       <TextInput
                         style={[
                           styles.input,
-                          { backgroundColor: colors.background, color: colors.text, borderColor: colors.surfaceOutline },
+                          {
+                            backgroundColor: colors.background,
+                            color: colors.text,
+                            borderColor: colors.surfaceOutline,
+                          },
                         ]}
                         value={cookie}
                         onChangeText={setCookie}
@@ -713,7 +886,11 @@ export default function AddTorrentFullScreen() {
                 disabled={adding}
                 activeOpacity={0.8}
               >
-                {adding ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>{t('common.add')}</Text>}
+                {adding ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>{t('common.add')}</Text>
+                )}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -856,6 +1033,22 @@ const styles = StyleSheet.create({
     minHeight: 86,
     ...typography.secondary,
   },
+  hint: { ...typography.small, fontSize: 12 },
+
+  fileListContainer: {
+    borderWidth: 0.5,
+    borderRadius: borderRadius.small,
+    overflow: 'hidden',
+  },
+  fileListScroll: { maxHeight: 160 },
+  fileListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  fileListRowText: { ...typography.bodyMedium, flex: 1 },
 
   pickerButton: {
     flexDirection: 'row',
@@ -867,7 +1060,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
   },
   pickerText: { ...typography.bodyMedium, flex: 1 },
-  clearIconButton: { marginLeft: spacing.xs },
 
   settingRow: {
     flexDirection: 'row',
@@ -876,7 +1068,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   pickerInline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, maxWidth: 220 },
   pickerInlineText: { fontSize: 15, fontWeight: '500' },

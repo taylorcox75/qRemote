@@ -141,10 +141,21 @@ class ApiClient {
           throw new Error(`Rate limited by server.${waitMsg}`.trim());
         }
 
-        // Queueing disabled for priority endpoints
+        // 409 means different things on different endpoints — queueing
+        // disabled on the priority-reorder endpoints, but e.g. a duplicate
+        // torrent on /torrents/add. Only show the queueing message for the
+        // endpoints that actually mean that.
         if (status === 409) {
-          clogWarn('HTTP', `409 Conflict — ${reqUrl}`);
-          throw new Error('Torrent queueing must be enabled in qBittorrent to change priorities.');
+          const isPriorityEndpoint = /\/torrents\/(top|bottom|increase|decrease)Prio$/.test(
+            error.config?.url || ''
+          );
+          if (isPriorityEndpoint) {
+            clogWarn('HTTP', `409 Conflict — ${reqUrl}`);
+            throw new Error('Torrent queueing must be enabled in qBittorrent to change priorities.');
+          }
+          const message = error.response?.data?.toString().trim();
+          clogWarn('HTTP', `409 Conflict — ${reqUrl}: ${message || '(no body)'}`);
+          throw new Error(message || 'This torrent already exists or could not be added.');
         }
         
         // Handle 404 Not Found errors
