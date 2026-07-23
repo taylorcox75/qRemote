@@ -12,7 +12,14 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.8.3',
+    version: '3.8.22',
+    date: '2026-07-23',
+    changes: [
+    'Dependencies updated',
+    ],
+  },
+  {
+    version: '3.8.21',
     date: '2026-07-23',
     changes: [
       'Add Torrent now supports multiple magnet links (put each on its own line) and multiple .torrent files at once — and you can mix magnets and files in the same add — in both the quick dialog and the full add-torrent screen',
