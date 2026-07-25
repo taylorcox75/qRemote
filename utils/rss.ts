@@ -58,14 +58,16 @@ export function flattenRssTree(tree: RssItemsResponse): FlattenedRssTree {
 
 /**
  * Turns a media title (e.g. from a Plex Watchlist article) into a minimal
- * search query, the way Sonarr/Radarr build release-search terms: strip the
- * parenthesized release year and any other parenthetical/bracketed
- * qualifier, and collapse whitespace. Indexers rarely index the year
- * verbatim in that exact "(YYYY)" form, so keeping it only narrows matches
- * without ever helping find one.
+ * search query, the way Sonarr/Radarr build release-search terms:
+ * "Title (YYYY)" -> "Title YYYY" — the year is kept (it helps narrow
+ * matches) but unwrapped from parens/brackets, since indexers essentially
+ * never index the year with the parens still on it. Any other
+ * parenthetical/bracketed qualifier (e.g. "(Remastered)", "[Extended Cut]")
+ * is stripped entirely, then whitespace is collapsed.
  */
 export function toSearchQuery(title: string): string {
   return title
+    .replace(/[([](\d{4})[)\]]/g, '$1')
     .replace(/\s*[([][^)\]]*[)\]]\s*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

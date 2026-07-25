@@ -98,20 +98,20 @@ describe('flattenRssTree', () => {
 });
 
 describe('toSearchQuery', () => {
-  it('strips a trailing parenthesized release year', () => {
-    expect(toSearchQuery('RBG (2018)')).toBe('RBG');
+  it('unwraps a trailing parenthesized release year, keeping the year', () => {
+    expect(toSearchQuery('RBG (2018)')).toBe('RBG 2018');
   });
 
-  it('strips a bracketed year too', () => {
-    expect(toSearchQuery('RBG [2018]')).toBe('RBG');
+  it('unwraps a bracketed year too', () => {
+    expect(toSearchQuery('RBG [2018]')).toBe('RBG 2018');
   });
 
   it('strips a parenthetical qualifier that is not a year', () => {
     expect(toSearchQuery("Ocean's Eleven (Remastered)")).toBe("Ocean's Eleven");
   });
 
-  it('strips multiple parenthetical groups', () => {
-    expect(toSearchQuery('The Movie (2018) (Extended Cut)')).toBe('The Movie');
+  it('keeps the year but strips a second, non-year parenthetical group', () => {
+    expect(toSearchQuery('The Movie (2018) (Extended Cut)')).toBe('The Movie 2018');
   });
 
   it('leaves a title with no parentheses unchanged', () => {
@@ -119,6 +119,6 @@ describe('toSearchQuery', () => {
   });
 
   it('collapses internal whitespace left behind after stripping', () => {
-    expect(toSearchQuery('Title  (2018)  Subtitle')).toBe('Title Subtitle');
+    expect(toSearchQuery('Title  (2018)  Subtitle')).toBe('Title 2018 Subtitle');
   });
 });
