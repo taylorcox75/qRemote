@@ -94,7 +94,6 @@ export default function RssFeedsScreen() {
     folders,
     feeds,
     isLoading,
-    isFetching,
     refresh,
     addFolder,
     addFeed,
@@ -105,6 +104,7 @@ export default function RssFeedsScreen() {
   } = useRssFeeds();
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => new Set());
+  const [refreshing, setRefreshing] = useState(false);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
@@ -123,6 +123,15 @@ export default function RssFeedsScreen() {
       return next;
     });
   }, []);
+
+  const handlePullToRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   const expandFolder = useCallback((path: string) => {
     if (!path) return;
@@ -527,8 +536,8 @@ export default function RssFeedsScreen() {
             }
             refreshControl={
               <RefreshControl
-                refreshing={isFetching}
-                onRefresh={refresh}
+                refreshing={refreshing}
+                onRefresh={() => void handlePullToRefresh()}
                 tintColor={colors.primary}
               />
             }
