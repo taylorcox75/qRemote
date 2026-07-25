@@ -201,7 +201,7 @@ export default function RssRulesScreen() {
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/settings/rss-rule')}
+              onPress={() => router.push('/rss/rule')}
               activeOpacity={0.8}
             >
               <Ionicons name="add" size={18} color="#FFFFFF" />
@@ -231,7 +231,7 @@ export default function RssRulesScreen() {
                   isBusy={busyName === name}
                   isLast={index === ruleList.length - 1}
                   onToggle={() => handleToggleEnabled(name, rule)}
-                  onPress={() => router.push({ pathname: '/settings/rss-rule', params: { name } })}
+                  onPress={() => router.push({ pathname: '/rss/rule', params: { name } })}
                   onLongPress={() => openMenu(name)}
                   colors={colors}
                 />

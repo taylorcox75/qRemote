@@ -290,7 +290,7 @@ export default function RssFeedsScreen() {
 
   const handleOpenFeed = useCallback(
     (path: string) => {
-      router.push({ pathname: '/settings/rss-feed', params: { path: encodeURIComponent(path) } });
+      router.push({ pathname: '/rss/feed', params: { path: encodeURIComponent(path) } });
     },
     [router],
   );
@@ -426,19 +426,12 @@ export default function RssFeedsScreen() {
         edges={['top']}
       >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-            accessibilityLabel={t('common.back')}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+          <View style={styles.headerButton} />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t('screens.rss.feedsTitle')}
           </Text>
           <TouchableOpacity
-            onPress={() => router.push('/settings/rss-rules')}
+            onPress={() => router.push('/rss/rules')}
             style={styles.headerButton}
             activeOpacity={0.7}
             accessibilityLabel={t('screens.rss.rulesTitle')}

@@ -2,7 +2,7 @@
  * feed.tsx — Article list for a single RSS feed.
  *
  * Reached from the feed/folder tree screen via
- * router.push({ pathname: '/settings/rss-feed', params: { path: encodeURIComponent(itemPath) } }) —
+ * router.push({ pathname: '/rss/feed', params: { path: encodeURIComponent(itemPath) } }) —
  * qBittorrent RSS paths use `\` as a separator, which is why the target feed
  * is passed as an encoded query param rather than a `[path]` dynamic segment.
  * There's no per-feed fetch endpoint: useRssFeeds() always returns the whole
