@@ -5,7 +5,7 @@
   "scripts": {
     "start": "expo start --dev-client",
     "ios": "expo run:ios",
-    "xcode": "npm install && cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd .. && open ios/qRemote.xcworkspace",
+    "xcode": "npm install && npx expo prebuild -p ios && cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd .. && open ios/qRemote.xcworkspace",
     "web": "expo start --web",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write '**/*.{ts,tsx,js,json}'",
