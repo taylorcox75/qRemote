@@ -2,7 +2,7 @@
  * feed.tsx — Article list for a single RSS feed.
  *
  * Reached from the feed/folder tree screen via
- * router.push({ pathname: '/rss/feed', params: { path: encodeURIComponent(itemPath) } }) —
+ * router.push({ pathname: '/settings/rss-feed', params: { path: encodeURIComponent(itemPath) } }) —
  * qBittorrent RSS paths use `\` as a separator, which is why the target feed
  * is passed as an encoded query param rather than a `[path]` dynamic segment.
  * There's no per-feed fetch endpoint: useRssFeeds() always returns the whole
@@ -169,6 +169,17 @@ export default function RssFeedArticlesScreen() {
     [showToast, t],
   );
 
+  // Watchlist-style feeds (e.g. Plex Watchlist) carry a title but no
+  // torrentURL — there's nothing to add directly. Jumping to the Search tab
+  // with the title pre-filled is the actual useful action for those.
+  const handleSearchForThis = useCallback(
+    (article: RssArticle) => {
+      haptics.selection();
+      router.push({ pathname: '/(tabs)/search', params: { q: article.title } });
+    },
+    [router],
+  );
+
   const actionItems: ActionMenuItemDef[] = useMemo(() => {
     if (!selectedArticle) return [];
     const items: ActionMenuItemDef[] = [];
@@ -196,8 +207,23 @@ export default function RssFeedArticlesScreen() {
         onPress: () => void handleAddAsTorrent(selectedArticle),
       });
     }
+    if (selectedArticle.title) {
+      items.push({
+        label: t('screens.rss.searchForThis'),
+        icon: 'search-outline',
+        onPress: () => handleSearchForThis(selectedArticle),
+      });
+    }
     return items;
-  }, [selectedArticle, t, handleOpenLink, handleCopyUrl, handleShareUrl, handleAddAsTorrent]);
+  }, [
+    selectedArticle,
+    t,
+    handleOpenLink,
+    handleCopyUrl,
+    handleShareUrl,
+    handleAddAsTorrent,
+    handleSearchForThis,
+  ]);
 
   const headerTitle = feed?.title || feed?.url || t('screens.rss.feedsTitle');
 

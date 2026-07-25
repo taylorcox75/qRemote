@@ -24,7 +24,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useNavigation } from 'expo-router';
+import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -66,6 +66,7 @@ export default function SearchScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
+  const incomingParams = useLocalSearchParams<{ q?: string }>();
   const { isConnected } = useServer();
   const { features } = useApiFeatures();
   const { isDark, colors } = useTheme();
@@ -343,30 +344,47 @@ export default function SearchScreen() {
 
   // ────────────────────────────────────────────────── actions ──────────────
 
-  const handleSubmit = useCallback(async () => {
-    const pattern = query.trim();
-    if (!pattern) return;
-    if (!isConnected) {
-      showToast(t('toast.notConnected'), 'error');
-      return;
-    }
-    // Dismiss the keyboard so results have full screen space.
-    Keyboard.dismiss();
-    haptics.medium();
-    try {
-      setSelectedTrackers(new Set());
-      setIsAggregatedSource(false);
-      await start(pattern, plugin, category);
-      const prefs = await storageService.getPreferences();
-      await storageService.savePreferences({
-        ...prefs,
-        lastSearchPlugin: plugin,
-        lastSearchCategory: category,
-      });
-    } catch (err: unknown) {
-      showToast(getErrorMessage(err), 'error');
-    }
-  }, [category, isConnected, plugin, query, showToast, start, t]);
+  const runSearch = useCallback(
+    async (pattern: string) => {
+      if (!pattern) return;
+      if (!isConnected) {
+        showToast(t('toast.notConnected'), 'error');
+        return;
+      }
+      // Dismiss the keyboard so results have full screen space.
+      Keyboard.dismiss();
+      haptics.medium();
+      try {
+        setSelectedTrackers(new Set());
+        setIsAggregatedSource(false);
+        await start(pattern, plugin, category);
+        const prefs = await storageService.getPreferences();
+        await storageService.savePreferences({
+          ...prefs,
+          lastSearchPlugin: plugin,
+          lastSearchCategory: category,
+        });
+      } catch (err: unknown) {
+        showToast(getErrorMessage(err), 'error');
+      }
+    },
+    [category, isConnected, plugin, showToast, start, t],
+  );
+
+  const handleSubmit = useCallback(() => runSearch(query.trim()), [query, runSearch]);
+
+  // Cross-tab handoff: e.g. RSS article "Search for This" navigates here with
+  // ?q=<title> to pre-fill and immediately run a search. Guarded by a ref (not
+  // state) so this fires exactly once per incoming param, even though this
+  // screen stays mounted across tab switches rather than remounting.
+  const handledIncomingQuery = useRef<string | null>(null);
+  useEffect(() => {
+    const incomingQuery = incomingParams.q;
+    if (!incomingQuery || handledIncomingQuery.current === incomingQuery) return;
+    handledIncomingQuery.current = incomingQuery;
+    setQuery(incomingQuery);
+    void runSearch(incomingQuery.trim());
+  }, [incomingParams.q, runSearch]);
 
   // Route hook errors through the toast system to avoid duplicate UI.
   useEffect(() => {

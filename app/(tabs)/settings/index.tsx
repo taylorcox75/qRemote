@@ -187,7 +187,7 @@ export default function SettingsScreen() {
             <NavRow
               icon="logo-rss"
               label={t('screens.rss.feedsTitle')}
-              onPress={() => router.push('/rss')}
+              onPress={() => router.push('/settings/rss')}
               colors={colors}
             />
             <NavRow
