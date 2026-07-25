@@ -7,14 +7,7 @@
  * bottom tab bar stays visible while browsing settings.
  */
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Animated,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,7 +57,7 @@ export default function SettingsScreen() {
   const { isDark, colors } = useTheme();
   const disconnectBadgeBackground = colorThemeManager.hexToRgba(
     colorThemeManager.rgbaToHex(colors.error),
-    0.18
+    0.18,
   );
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -75,7 +68,7 @@ export default function SettingsScreen() {
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.4, duration: 1000, useNativeDriver: true }),
           Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        ])
+        ]),
       ).start();
     } else {
       pulseAnim.setValue(1);
@@ -120,11 +113,15 @@ export default function SettingsScreen() {
                         },
                       ]}
                     />
-                    <Text style={[styles.connectionTitle, { color: colors.text }]}>{currentServer.name}</Text>
+                    <Text style={[styles.connectionTitle, { color: colors.text }]}>
+                      {currentServer.name}
+                    </Text>
                   </View>
                   <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
                     {currentServer.host}
-                    {currentServer.port != null && currentServer.port > 0 ? `:${currentServer.port}` : ''}
+                    {currentServer.port != null && currentServer.port > 0
+                      ? `:${currentServer.port}`
+                      : ''}
                   </Text>
                   {isConnected && hasFallback(currentServer) && activeEndpoint && (
                     <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>

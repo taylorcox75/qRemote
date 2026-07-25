@@ -60,6 +60,7 @@ const COINCIDENTAL_MATCH_ALLOWLIST = new Set<string>([
   'placeholders.trackerUrl',
   'screens.search.placeholder',
   'screens.search.installPluginPlaceholder',
+  'screens.rss.addFeedPlaceholder',
   'screens.addTorrent.savePathPlaceholder',
   'screens.settings.defaultSavePathPlaceholder',
   // "tracker" is kept as an established loanword (not translated) throughout

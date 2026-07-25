@@ -12,11 +12,17 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.23',
+    date: '2026-07-25',
+    changes: [
+      'Add support for qBittorrent API key authentication (v5.2.0+ / WebAPI 2.14.1+) as a new server authentication method, alongside username/password and bypass',
+      'Add RSS feed and auto-download rule management, reachable from Settings',
+    ],
+  },
+  {
     version: '3.8.22',
     date: '2026-07-23',
-    changes: [
-    'Dependencies updated',
-    ],
+    changes: ['Dependencies updated'],
   },
   {
     version: '3.8.21',

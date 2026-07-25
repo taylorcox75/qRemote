@@ -2,7 +2,8 @@
  * api.ts — TypeScript interfaces for the qBittorrent WebUI API v2 data model.
  *
  * Key exports: ServerConfig, TorrentInfo, TorrentState, TorrentProperties, GlobalTransferInfo,
- *   MainData, ServerState, Category, Tracker, TorrentFile, FilePriority, LogEntry, PeerLogEntry
+ *   MainData, ServerState, Category, Tracker, TorrentFile, FilePriority, LogEntry, PeerLogEntry,
+ *   RssFeed, RssItemsResponse, RssRule, RssRulesResponse
  * Known issues: ApplicationPreferences uses Record<string, unknown> as the full preference schema is extensive.
  */
 
@@ -40,6 +41,11 @@ export interface ServerConfig {
   basicAuthUsername?: string;
   /** Proxy Basic Auth password (in-memory only; stored in SecureStore). */
   basicAuthPassword?: string;
+
+  /** When true, authenticate with a qBittorrent API key (v5.2.0+ / WebAPI 2.14.1+) instead of username/password login. */
+  useApiKey?: boolean;
+  /** qBittorrent API key, sent as `Authorization: Bearer <apiKey>` (in-memory only; stored in SecureStore). */
+  apiKey?: string;
 }
 
 export type ServerEndpointKind = 'primary' | 'fallback';
@@ -216,8 +222,8 @@ export interface GlobalTransferInfo {
   up_info_speed: number;
   up_rate_limit: number;
   use_alt_speed_limits?: boolean;
-  alt_dl_limit?: number;   // bytes/s — fetched from app/preferences, converted from kB/s
-  alt_up_limit?: number;   // bytes/s
+  alt_dl_limit?: number; // bytes/s — fetched from app/preferences, converted from kB/s
+  alt_up_limit?: number; // bytes/s
 }
 
 // Torrent Properties
@@ -343,3 +349,55 @@ export interface SearchPlugin {
   url: string;
   version: string;
 }
+
+// RSS (qBittorrent /api/v2/rss/*)
+// Available since early WebAPI v2 (well before anything else gated in this
+// file). Field shapes reconstructed from the qBittorrent WebUI API docs —
+// spot-check against a live server if a field turns out to be missing/renamed.
+export interface RssArticle {
+  id: string;
+  title: string;
+  date?: string;
+  link?: string;
+  description?: string;
+  torrentURL?: string;
+  [key: string]: unknown; // qBittorrent includes extra per-feed fields
+}
+
+export interface RssFeed {
+  uid: string;
+  url: string;
+  title?: string;
+  lastBuildDate?: string;
+  isLoading?: boolean;
+  hasError?: boolean;
+  articles?: RssArticle[];
+}
+
+/**
+ * A folder node has no `url` key — its own keys are child item names, each
+ * itself an RssFeed or a nested folder. Use isRssFeed() (utils/rss.ts) to
+ * distinguish a feed from a folder at runtime.
+ */
+export type RssTreeNode = RssFeed | { [name: string]: RssTreeNode };
+export type RssItemsResponse = { [name: string]: RssTreeNode };
+
+export interface RssRule {
+  enabled: boolean;
+  mustContain: string;
+  mustNotContain: string;
+  useRegex: boolean;
+  episodeFilter: string;
+  smartFilter: boolean;
+  previouslyMatchedEpisodes: string[];
+  affectedFeeds: string[];
+  ignoreDays: number;
+  lastMatch: string;
+  addPaused: boolean | null;
+  assignedCategory: string;
+  savePath: string;
+  torrentContentLayout: string | null;
+}
+
+export type RssRulesResponse = Record<string, RssRule>; // keyed by rule name
+export type RssMatchingArticlesResponse = Record<string, string[]>; // feed URL -> article titles
