@@ -229,7 +229,7 @@ export default function RssRuleEditorScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.background }]}
-        edges={['top']}
+        edges={[]}
       >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity

@@ -82,7 +82,7 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="(rss)"
+          name="rss"
           options={{
             title: t('screens.rss.feedsTitle'),
             href: showRssTab ? undefined : null,
