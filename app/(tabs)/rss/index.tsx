@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Clipboard from 'expo-clipboard';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { InputModal } from '@/components/InputModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
@@ -177,6 +178,21 @@ export default function RssFeedsScreen() {
       }
     },
     [markAsRead, showToast, t],
+  );
+
+  const handleCopyFeedUrl = useCallback(
+    async (path: string) => {
+      const url = feeds.find((f) => f.path === path)?.feed.url;
+      if (!url) return;
+      try {
+        await Clipboard.setStringAsync(url);
+        haptics.light();
+        showToast(t('screens.rss.linkCopiedToast'), 'success');
+      } catch {
+        // ignore — clipboard write rarely fails
+      }
+    },
+    [feeds, showToast, t],
   );
 
   const handleRefreshAll = useCallback(async () => {
@@ -345,6 +361,11 @@ export default function RssFeedsScreen() {
         onPress: () => void handleRefreshFeed(path),
       },
       {
+        label: t('screens.rss.copyLink'),
+        icon: 'copy-outline',
+        onPress: () => void handleCopyFeedUrl(path),
+      },
+      {
         label: t('screens.rss.rename'),
         icon: 'pencil-outline',
         onPress: () => setPendingInput({ kind: 'rename', path }),
@@ -366,7 +387,7 @@ export default function RssFeedsScreen() {
         onPress: () => setPendingRemove({ kind: 'feed', path }),
       },
     ];
-  }, [menuTarget, t, handleRefreshFeed, handleMarkAllRead]);
+  }, [menuTarget, t, handleRefreshFeed, handleCopyFeedUrl, handleMarkAllRead]);
 
   const inputModalConfig = useMemo(() => {
     if (!pendingInput) return null;
