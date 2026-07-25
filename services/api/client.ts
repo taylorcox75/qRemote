@@ -34,14 +34,17 @@ class ApiClient {
         if (!this.currentServer) {
           return Promise.reject(new Error('No server configured'));
         }
-        
+
         const protocol = this.currentServer.useHttps ? 'https' : 'http';
         // Defense-in-depth: strip protocol and trailing colons/slashes from host even if already sanitized
-        let host = (this.currentServer.host || '').replace(/^(https?:\/\/)/i, '').replace(/[:\/]+$/, '');
+        let host = (this.currentServer.host || '')
+          .replace(/^(https?:\/\/)/i, '')
+          .replace(/[:\/]+$/, '');
         const port = this.currentServer.port;
         const portNum = port !== undefined && port !== null ? Number(port) : undefined;
-        const portPart = portNum !== undefined && !isNaN(portNum) && portNum > 0 ? `:${portNum}` : '';
-        
+        const portPart =
+          portNum !== undefined && !isNaN(portNum) && portNum > 0 ? `:${portNum}` : '';
+
         // Handle base path - ensure it starts with / and doesn't end with /
         let basePath = this.currentServer.basePath || '/';
         if (!basePath.startsWith('/')) {
@@ -54,16 +57,23 @@ class ApiClient {
           // Remove trailing slash for non-root paths
           basePath = basePath.slice(0, -1);
         }
-        
+
         config.baseURL = `${protocol}://${host}${portPart}${basePath}`;
-        
-        clogDebug('HTTP', `${config.method?.toUpperCase() || 'REQ'} ${config.baseURL}${config.url || ''}`);
-        
-        // Add proxy Basic Auth header when configured
-        if (this.currentServer.useBasicAuth && this.currentServer.basicAuthUsername) {
+
+        clogDebug(
+          'HTTP',
+          `${config.method?.toUpperCase() || 'REQ'} ${config.baseURL}${config.url || ''}`,
+        );
+
+        // API key auth (v5.2.0+ / WebAPI 2.14.1+) takes precedence over proxy
+        // Basic Auth since both use the same Authorization header — a server
+        // configured for both is choosing API key as the more specific option.
+        if (this.currentServer.useApiKey && this.currentServer.apiKey) {
+          config.headers.Authorization = `Bearer ${this.currentServer.apiKey}`;
+        } else if (this.currentServer.useBasicAuth && this.currentServer.basicAuthUsername) {
           config.headers.Authorization = basicAuthHeader(
             this.currentServer.basicAuthUsername,
-            this.currentServer.basicAuthPassword ?? ''
+            this.currentServer.basicAuthPassword ?? '',
           );
         }
 
@@ -71,18 +81,18 @@ class ApiClient {
         if (this.cookies) {
           config.headers.Cookie = this.cookies;
         }
-        
+
         // Add Referer header for qBittorrent 5.x compatibility
         config.headers.Referer = config.baseURL + '/';
-        
+
         // Add Origin header for CORS/authentication
         config.headers.Origin = `${protocol}://${host}${portPart}`;
-        
+
         return config;
       },
       (error) => {
         return Promise.reject(error);
-      }
+      },
     );
 
     // Response interceptor to capture cookies and handle errors
@@ -91,20 +101,22 @@ class ApiClient {
         // Extract cookies from response headers
         // React Native/Axios may lowercase headers, so check all variations
         const headers = response.headers || {};
-        const setCookieHeader = 
-          headers['set-cookie'] || 
-          headers['Set-Cookie'] || 
+        const setCookieHeader =
+          headers['set-cookie'] ||
+          headers['Set-Cookie'] ||
           headers['SET-COOKIE'] ||
           // Also check if headers object has a get method (some implementations)
           (typeof headers.get === 'function' ? headers.get('set-cookie') : null);
-        
+
         if (setCookieHeader) {
           if (Array.isArray(setCookieHeader)) {
             // Join multiple cookies with semicolon and space
             // Also extract CSRF token if present in cookies
-            this.cookies = setCookieHeader.map(cookie => {
-              return cookie.split(';')[0].trim();
-            }).join('; ');
+            this.cookies = setCookieHeader
+              .map((cookie) => {
+                return cookie.split(';')[0].trim();
+              })
+              .join('; ');
           } else {
             this.cookies = setCookieHeader.split(';')[0].trim();
           }
@@ -147,24 +159,28 @@ class ApiClient {
         // endpoints that actually mean that.
         if (status === 409) {
           const isPriorityEndpoint = /\/torrents\/(top|bottom|increase|decrease)Prio$/.test(
-            error.config?.url || ''
+            error.config?.url || '',
           );
           if (isPriorityEndpoint) {
             clogWarn('HTTP', `409 Conflict — ${reqUrl}`);
-            throw new Error('Torrent queueing must be enabled in qBittorrent to change priorities.');
+            throw new Error(
+              'Torrent queueing must be enabled in qBittorrent to change priorities.',
+            );
           }
           const message = error.response?.data?.toString().trim();
           clogWarn('HTTP', `409 Conflict — ${reqUrl}: ${message || '(no body)'}`);
           throw new Error(message || 'This torrent already exists or could not be added.');
         }
-        
+
         // Handle 404 Not Found errors
         if (status === 404) {
           const fullUrl = `${error.config?.baseURL}${error.config?.url}`;
           clogWarn('HTTP', `404 Not Found — ${fullUrl}`);
-          throw new Error(`Endpoint not found: ${fullUrl}. Please check your qBittorrent version and API compatibility.`);
+          throw new Error(
+            `Endpoint not found: ${fullUrl}. Please check your qBittorrent version and API compatibility.`,
+          );
         }
-        
+
         // Handle network errors
         if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
           clogError('HTTP', `Network error (${error.code}) — ${reqUrl}`);
@@ -172,17 +188,18 @@ class ApiClient {
         }
 
         // Handle other errors
-        const message = error.response?.data?.toString() || error.message || 'An unknown error occurred';
-        clogError('HTTP', `${status ? 'HTTP ' + status : error.code || 'Unknown'} — ${reqUrl}: ${message}`);
+        const message =
+          error.response?.data?.toString() || error.message || 'An unknown error occurred';
+        clogError(
+          'HTTP',
+          `${status ? 'HTTP ' + status : error.code || 'Unknown'} — ${reqUrl}: ${message}`,
+        );
         throw new Error(message);
-      }
+      },
     );
   }
 
-  updateSettings(config: {
-    connectionTimeout?: number;
-    retryAttempts?: number;
-  }) {
+  updateSettings(config: { connectionTimeout?: number; retryAttempts?: number }) {
     if (config.connectionTimeout !== undefined) {
       this.client.defaults.timeout = config.connectionTimeout;
     }
@@ -248,7 +265,11 @@ class ApiClient {
     return response.data;
   }
 
-  async postUrlEncoded(url: string, data: Record<string, string | number | boolean>, signal?: AbortSignal): Promise<unknown> {
+  async postUrlEncoded(
+    url: string,
+    data: Record<string, string | number | boolean>,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
     // Check server is configured (interceptor will also check, but fail early with better error)
     if (!this.currentServer) {
       throw new Error('No server configured. Please connect to a server first.');
@@ -299,7 +320,11 @@ class ApiClient {
     throw lastError;
   }
 
-  async get(url: string, params?: Record<string, string | number | boolean>, signal?: AbortSignal): Promise<unknown> {
+  async get(
+    url: string,
+    params?: Record<string, string | number | boolean>,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
     if (!this.currentServer) {
       throw new Error('No server configured');
     }
@@ -321,4 +346,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
-

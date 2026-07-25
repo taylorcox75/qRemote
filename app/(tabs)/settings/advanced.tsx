@@ -48,7 +48,7 @@ export default function AdvancedSettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPreferences();
-    }, [])
+    }, []),
   );
 
   const loadPreferences = async () => {
@@ -63,7 +63,10 @@ export default function AdvancedSettingsScreen() {
     }
   };
 
-  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
+  const savePreference = async <K extends keyof AppPreferences>(
+    key: K,
+    value: AppPreferences[K],
+  ) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -78,7 +81,7 @@ export default function AdvancedSettingsScreen() {
       const servers = await ServerManager.getServers();
       const exportData = {
         preferences: prefs,
-        servers: servers.map(s => ({
+        servers: servers.map((s) => ({
           id: s.id,
           name: s.name,
           host: s.host,
@@ -145,7 +148,7 @@ export default function AdvancedSettingsScreen() {
       await storageService.savePreferences(importData.preferences);
 
       const existingServers = await ServerManager.getServers();
-      const existingServerIds = new Set(existingServers.map(s => s.id));
+      const existingServerIds = new Set(existingServers.map((s) => s.id));
 
       for (const serverData of importData.servers) {
         if (!existingServerIds.has(serverData.id)) {
@@ -166,26 +169,22 @@ export default function AdvancedSettingsScreen() {
   };
 
   const handleShutdown = () => {
-    Alert.alert(
-      t('screens.settings.shutdownQbittorrent'),
-      t('alerts.shutdownConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('screens.settings.shutdownQbittorrent'),
-          style: 'destructive',
-          onPress: async () => {
-            haptics.heavy();
-            try {
-              await applicationApi.shutdown();
-              showToast(t('toast.shutdownInitiated'), 'success');
-            } catch {
-              showToast(t('errors.failedToShutdown'), 'error');
-            }
-          },
+    Alert.alert(t('screens.settings.shutdownQbittorrent'), t('alerts.shutdownConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('screens.settings.shutdownQbittorrent'),
+        style: 'destructive',
+        onPress: async () => {
+          haptics.heavy();
+          try {
+            await applicationApi.shutdown();
+            showToast(t('toast.shutdownInitiated'), 'success');
+          } catch {
+            showToast(t('errors.failedToShutdown'), 'error');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -193,28 +192,44 @@ export default function AdvancedSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.advanced')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t('screens.settings.advanced')}
+          </Text>
           <View style={styles.headerButton} />
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Connection */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.serverManagement').toUpperCase()}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.serverManagement').toUpperCase()}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="timer-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.connectionTimeout')}</Text>
-                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.milliseconds')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.connectionTimeout')}
+                    </Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                      {t('screens.settings.milliseconds')}
+                    </Text>
                   </View>
                 </View>
                 <TextInput
-                  style={[styles.settingInput, { borderColor: colors.textSecondary, color: colors.text }]}
+                  style={[
+                    styles.settingInput,
+                    { borderColor: colors.textSecondary, color: colors.text },
+                  ]}
                   value={connectionTimeout.toString()}
                   onChangeText={(text) => {
                     const num = parseInt(text, 10);
@@ -233,12 +248,19 @@ export default function AdvancedSettingsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="hourglass-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.apiTimeout')}</Text>
-                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.milliseconds')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.apiTimeout')}
+                    </Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                      {t('screens.settings.milliseconds')}
+                    </Text>
                   </View>
                 </View>
                 <TextInput
-                  style={[styles.settingInput, { borderColor: colors.textSecondary, color: colors.text }]}
+                  style={[
+                    styles.settingInput,
+                    { borderColor: colors.textSecondary, color: colors.text },
+                  ]}
                   value={apiTimeout.toString()}
                   onChangeText={(text) => {
                     const num = parseInt(text, 10);
@@ -256,12 +278,19 @@ export default function AdvancedSettingsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="repeat-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.retryAttempts')}</Text>
-                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.retryAttemptsHint')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.retryAttempts')}
+                    </Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                      {t('screens.settings.retryAttemptsHint')}
+                    </Text>
                   </View>
                 </View>
                 <TextInput
-                  style={[styles.settingInput, { borderColor: colors.textSecondary, color: colors.text }]}
+                  style={[
+                    styles.settingInput,
+                    { borderColor: colors.textSecondary, color: colors.text },
+                  ]}
                   value={retryAttempts.toString()}
                   onChangeText={(text) => {
                     const num = parseInt(text, 10);
@@ -280,12 +309,16 @@ export default function AdvancedSettingsScreen() {
 
           {/* Debug */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.debug')}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.debug')}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="bug-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.debugMode')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.debugMode')}
+                  </Text>
                 </View>
                 <Switch
                   value={debugMode}
@@ -306,7 +339,9 @@ export default function AdvancedSettingsScreen() {
               >
                 <View style={styles.settingLeft}>
                   <Ionicons name="document-text-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.viewLogs')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.viewLogs')}
+                  </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -315,12 +350,16 @@ export default function AdvancedSettingsScreen() {
 
           {/* Backup & Restore */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.backupRestore').toUpperCase()}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.backupRestore').toUpperCase()}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity style={styles.settingRow} onPress={exportSettings}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="download-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.exportSettings')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.exportSettings')}
+                  </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -328,7 +367,9 @@ export default function AdvancedSettingsScreen() {
               <TouchableOpacity style={styles.settingRow} onPress={importSettings}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="cloud-upload-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.importSettings')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.importSettings')}
+                  </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -338,14 +379,20 @@ export default function AdvancedSettingsScreen() {
           {/* Danger Zone */}
           {isConnected && (
             <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.error }]}>{t('screens.settings.dangerZone').toUpperCase()}</Text>
+              <Text style={[styles.sectionHeader, { color: colors.error }]}>
+                {t('screens.settings.dangerZone').toUpperCase()}
+              </Text>
               <View style={[styles.card, { backgroundColor: colors.surface }]}>
                 <TouchableOpacity style={styles.dangerRow} onPress={handleShutdown}>
                   <View style={styles.dangerLeft}>
                     <Ionicons name="power-outline" size={22} color={colors.error} />
                     <View>
-                      <Text style={[styles.dangerLabel, { color: colors.error }]}>{t('screens.settings.shutdownQbittorrent')}</Text>
-                      <Text style={[styles.dangerHint, { color: colors.textSecondary }]}>{t('screens.settings.shutdownHint')}</Text>
+                      <Text style={[styles.dangerLabel, { color: colors.error }]}>
+                        {t('screens.settings.shutdownQbittorrent')}
+                      </Text>
+                      <Text style={[styles.dangerHint, { color: colors.textSecondary }]}>
+                        {t('screens.settings.shutdownHint')}
+                      </Text>
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -385,7 +432,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingHint: { fontSize: 12, marginTop: 1 },
   separator: { height: 1, marginLeft: 50 },

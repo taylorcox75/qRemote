@@ -75,60 +75,79 @@ export default function AddServerScreen() {
     const hadProtocol = /^https?:\/\//i.test(originalHost);
     const strippedProtocol = hadProtocol ? originalHost.match(/^(https?:\/\/)/i)?.[0] : null;
     const cleanHost = stripProtocol(originalHost);
-    
+
     const protocol = useHttps ? 'https' : 'http';
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     const portPart = portNum && portNum > 0 ? `:${portNum}` : '';
     const baseUrl = `${protocol}://${cleanHost}${portPart}`;
-    
+
     // Detect issues
     const warnings: Array<{ type: 'error' | 'warning' | 'info'; message: string }> = [];
-    
+
     // Port in host
     const portInHost = cleanHost.match(/:(\d+)/);
     if (portInHost) {
-      warnings.push({ type: 'warning', message: `Port ":${portInHost[1]}" detected in host. Move it to the Port field.` });
+      warnings.push({
+        type: 'warning',
+        message: `Port ":${portInHost[1]}" detected in host. Move it to the Port field.`,
+      });
     }
-    
+
     // Path in host
     const pathMatch = cleanHost.match(/\/(.+)/);
     if (pathMatch) {
       warnings.push({ type: 'warning', message: `Path "/${pathMatch[1]}" detected in host.` });
     }
-    
+
     // Protocol stripped
     if (strippedProtocol) {
-      warnings.push({ type: 'info', message: `"${strippedProtocol}" removed. Use the HTTPS toggle instead.` });
+      warnings.push({
+        type: 'info',
+        message: `"${strippedProtocol}" removed. Use the HTTPS toggle instead.`,
+      });
     }
-    
+
     // Localhost
     if (/^(localhost|127\.0\.0\.1)$/i.test(cleanHost.split(':')[0].split('/')[0])) {
-      warnings.push({ type: 'error', message: "Localhost won't work on mobile. Use your server's network IP." });
+      warnings.push({
+        type: 'error',
+        message: "Localhost won't work on mobile. Use your server's network IP.",
+      });
     }
-    
+
     // DDNS without port
-    const ddnsPatterns = /\.(ddns\.net|duckdns\.org|no-ip\.com|dynu\.com|freedns\.afraid\.org|hopto\.org|zapto\.org|sytes\.net)$/i;
+    const ddnsPatterns =
+      /\.(ddns\.net|duckdns\.org|no-ip\.com|dynu\.com|freedns\.afraid\.org|hopto\.org|zapto\.org|sytes\.net)$/i;
     if (ddnsPatterns.test(cleanHost) && !portNum) {
-      warnings.push({ type: 'info', message: "DDNS detected without port. Most need port 8080 unless using a reverse proxy." });
+      warnings.push({
+        type: 'info',
+        message: 'DDNS detected without port. Most need port 8080 unless using a reverse proxy.',
+      });
     }
-    
+
     // IP without port
     const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(cleanHost.split(':')[0]);
     if (isIP && !portNum) {
-      warnings.push({ type: 'info', message: "IP address without port. Usually needs port 8080." });
+      warnings.push({ type: 'info', message: 'IP address without port. Usually needs port 8080.' });
     }
-    
+
     // HTTPS on private IP
     const isPrivateIP = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(cleanHost);
     if (useHttps && isPrivateIP) {
-      warnings.push({ type: 'warning', message: "HTTPS on local IP may fail without a valid certificate." });
+      warnings.push({
+        type: 'warning',
+        message: 'HTTPS on local IP may fail without a valid certificate.',
+      });
     }
-    
+
     // Missing credentials
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      warnings.push({ type: 'error', message: "Username and password required (or enable Bypass Authentication)." });
+      warnings.push({
+        type: 'error',
+        message: 'Username and password required (or enable Bypass Authentication).',
+      });
     }
-    
+
     return {
       originalHost,
       cleanHost,
@@ -141,8 +160,8 @@ export default function AddServerScreen() {
       loginEndpoint: `${baseUrl}/api/v2/auth/login`,
       versionEndpoint: `${baseUrl}/api/v2/app/version`,
       warnings,
-      hasErrors: warnings.some(w => w.type === 'error'),
-      hasWarnings: warnings.some(w => w.type === 'warning'),
+      hasErrors: warnings.some((w) => w.type === 'error'),
+      hasWarnings: warnings.some((w) => w.type === 'warning'),
     };
   }, [host, port, useHttps, bypassAuth, username, password]);
 
@@ -159,7 +178,7 @@ Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}
 Login Endpoint: ${debugInfo.loginEndpoint}
 Version Endpoint: ${debugInfo.versionEndpoint}
 
-${debugInfo.warnings.length > 0 ? 'Warnings/Issues:\n' + debugInfo.warnings.map(w => `- [${w.type.toUpperCase()}] ${w.message}`).join('\n') : 'No warnings detected.'}
+${debugInfo.warnings.length > 0 ? 'Warnings/Issues:\n' + debugInfo.warnings.map((w) => `- [${w.type.toUpperCase()}] ${w.message}`).join('\n') : 'No warnings detected.'}
 
 App Version: ${APP_VERSION}`;
 
@@ -195,19 +214,22 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
-    const portNum = (port.trim() ? parseInt(port, 10) : undefined);
+    const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       showToast(t('errors.validPort'), 'error');
       return;
     }
 
-    const fallbackPortNum = (fallbackPort.trim() ? parseInt(fallbackPort, 10) : undefined);
+    const fallbackPortNum = fallbackPort.trim() ? parseInt(fallbackPort, 10) : undefined;
     if (useFallback) {
       if (!fallbackHost.trim()) {
         showToast(t('errors.fillFallbackHost'), 'error');
         return;
       }
-      if (fallbackPortNum !== undefined && (isNaN(fallbackPortNum) || fallbackPortNum < 1 || fallbackPortNum > 65535)) {
+      if (
+        fallbackPortNum !== undefined &&
+        (isNaN(fallbackPortNum) || fallbackPortNum < 1 || fallbackPortNum > 65535)
+      ) {
         showToast(t('errors.validPort'), 'error');
         return;
       }
@@ -215,11 +237,11 @@ App Version: ${APP_VERSION}`;
 
     try {
       setLoading(true);
-      
+
       // Check if this will be the first server
       const existingServers = await ServerManager.getServers();
       const isFirstServer = existingServers.length === 0;
-      
+
       const server: ServerConfig = {
         id: Date.now().toString(),
         name: name.trim(),
@@ -241,7 +263,7 @@ App Version: ${APP_VERSION}`;
 
       await ServerManager.saveServer(server);
       showToast(t('toast.serverSaved'), 'success');
-      
+
       // If this is the first server, auto-connect
       if (isFirstServer) {
         try {
@@ -250,10 +272,13 @@ App Version: ${APP_VERSION}`;
             showToast(t('toast.connectionFailedCheck'), 'warning');
           }
         } catch (error: unknown) {
-          showToast(t('errors.connectionFailedManual', { error: getErrorMessage(error) }), 'warning');
+          showToast(
+            t('errors.connectionFailedManual', { error: getErrorMessage(error) }),
+            'warning',
+          );
         }
       }
-      
+
       router.back();
     } catch (error) {
       showToast(t('errors.failedToSaveServer'), 'error');
@@ -278,19 +303,22 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
-    const portNum = (port.trim() ? parseInt(port, 10) : undefined);
+    const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       showToast(t('errors.validPort'), 'error');
       return;
     }
 
-    const fallbackPortNum = (fallbackPort.trim() ? parseInt(fallbackPort, 10) : undefined);
+    const fallbackPortNum = fallbackPort.trim() ? parseInt(fallbackPort, 10) : undefined;
     if (useFallback) {
       if (!fallbackHost.trim()) {
         showToast(t('errors.fillFallbackHost'), 'error');
         return;
       }
-      if (fallbackPortNum !== undefined && (isNaN(fallbackPortNum) || fallbackPortNum < 1 || fallbackPortNum > 65535)) {
+      if (
+        fallbackPortNum !== undefined &&
+        (isNaN(fallbackPortNum) || fallbackPortNum < 1 || fallbackPortNum > 65535)
+      ) {
         showToast(t('errors.validPort'), 'error');
         return;
       }
@@ -299,7 +327,7 @@ App Version: ${APP_VERSION}`;
     try {
       setTesting(true);
       testAbortController.current = new AbortController();
-      
+
       const server: ServerConfig = {
         id: 'test-' + Date.now().toString(),
         name: name.trim(),
@@ -336,7 +364,9 @@ App Version: ${APP_VERSION}`;
         showToast(result.error || t('errors.connectionTestFailed'), 'error');
       }
     } catch (error: unknown) {
-      const isCancelled = (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) ||
+      const isCancelled =
+        (error instanceof Error &&
+          (error.name === 'AbortError' || error.name === 'CanceledError')) ||
         getErrorMessage(error).includes('cancel');
       if (!isCancelled) {
         showToast(getErrorMessage(error), 'error');
@@ -348,16 +378,19 @@ App Version: ${APP_VERSION}`;
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top']}
+    >
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButtonLeft}>
-            <Text 
+            <Text
               style={[styles.headerButtonText, { color: colors.primary }]}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -365,22 +398,22 @@ App Version: ${APP_VERSION}`;
               {t('common.cancel')}
             </Text>
           </TouchableOpacity>
-          <Text 
+          <Text
             style={[styles.headerTitle, { color: colors.text }]}
             numberOfLines={1}
             adjustsFontSizeToFit
           >
             {t('screens.settings.addServer')}
           </Text>
-          <TouchableOpacity 
-            onPress={handleSave} 
+          <TouchableOpacity
+            onPress={handleSave}
             style={styles.headerButtonRight}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text 
+              <Text
                 style={[styles.headerButtonText, { color: colors.primary, fontWeight: '600' }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
@@ -391,17 +424,24 @@ App Version: ${APP_VERSION}`;
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
           {/* Server Info Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.serverInfo')}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('server.serverInfo')}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.inputRow}>
-                <Ionicons name="server-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                <Ionicons
+                  name="server-outline"
+                  size={20}
+                  color={colors.primary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   value={name}
@@ -413,7 +453,12 @@ App Version: ${APP_VERSION}`;
               </View>
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.inputRow}>
-                <Ionicons name="globe-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                <Ionicons
+                  name="globe-outline"
+                  size={20}
+                  color={colors.primary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   value={host}
@@ -430,12 +475,21 @@ App Version: ${APP_VERSION}`;
                   accessibilityLabel={t('common.moreInfo')}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.inputRow}>
-                <Ionicons name="link-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                <Ionicons
+                  name="link-outline"
+                  size={20}
+                  color={colors.primary}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   value={port}
@@ -450,7 +504,11 @@ App Version: ${APP_VERSION}`;
                   accessibilityLabel={t('common.moreInfo')}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -458,9 +516,15 @@ App Version: ${APP_VERSION}`;
 
           {/* Fallback URL Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.fallbackUrl')}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('server.fallbackUrl')}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <SettingRow icon="swap-horizontal-outline" label={t('server.useFallback')} hint={t('server.useFallbackHint')}>
+              <SettingRow
+                icon="swap-horizontal-outline"
+                label={t('server.useFallback')}
+                hint={t('server.useFallbackHint')}
+              >
                 <Switch
                   value={useFallback}
                   onValueChange={setUseFallback}
@@ -472,7 +536,12 @@ App Version: ${APP_VERSION}`;
                 <>
                   <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                   <View style={styles.inputRow}>
-                    <Ionicons name="globe-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <Ionicons
+                      name="globe-outline"
+                      size={20}
+                      color={colors.primary}
+                      style={styles.inputIcon}
+                    />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
                       value={fallbackHost}
@@ -486,7 +555,12 @@ App Version: ${APP_VERSION}`;
                   </View>
                   <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                   <View style={styles.inputRow}>
-                    <Ionicons name="link-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <Ionicons
+                      name="link-outline"
+                      size={20}
+                      color={colors.primary}
+                      style={styles.inputIcon}
+                    />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
                       value={fallbackPort}
@@ -513,47 +587,59 @@ App Version: ${APP_VERSION}`;
           {/* Authentication Section */}
           {!bypassAuth && (
             <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.authentication')}</Text>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {t('server.authentication')}
+              </Text>
               <View style={[styles.card, { backgroundColor: colors.surface }]}>
                 <View style={styles.inputRow}>
-                  <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholder={t('placeholders.username')}
-                  placeholderTextColor={colors.textSecondary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="none"
-                  autoComplete="off"
-                />
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color={colors.primary}
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    value={username}
+                    onChangeText={setUsername}
+                    placeholder={t('placeholders.username')}
+                    placeholderTextColor={colors.textSecondary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="none"
+                    autoComplete="off"
+                  />
                 </View>
                 <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                 <View style={styles.inputRow}>
-                  <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder={t('placeholders.password')}
-                  placeholderTextColor={colors.textSecondary}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  // "none", not "password": "password" is the explicit iOS AutoFill
-                  // opt-in and also makes iOS offer to *fill* this field from the
-                  // keychain. qRemote stores the password in SecureStore itself.
-                  //
-                  // This does NOT stop the "Save Password?" prompt on save. Verified
-                  // on simulator (iOS 26): iOS treats username + secureTextEntry as a
-                  // login form and offers to save on dismiss regardless of
-                  // textContentType. "oneTimeCode" was tried and did not suppress it
-                  // either -- do not re-try it. See .audit/FINDINGS.md F9.
-                  textContentType="none"
-                  autoComplete="off"
-                  passwordRules=""
-                />
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color={colors.primary}
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder={t('placeholders.password')}
+                    placeholderTextColor={colors.textSecondary}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    // "none", not "password": "password" is the explicit iOS AutoFill
+                    // opt-in and also makes iOS offer to *fill* this field from the
+                    // keychain. qRemote stores the password in SecureStore itself.
+                    //
+                    // This does NOT stop the "Save Password?" prompt on save. Verified
+                    // on simulator (iOS 26): iOS treats username + secureTextEntry as a
+                    // login form and offers to save on dismiss regardless of
+                    // textContentType. "oneTimeCode" was tried and did not suppress it
+                    // either -- do not re-try it. See .audit/FINDINGS.md F9.
+                    textContentType="none"
+                    autoComplete="off"
+                    passwordRules=""
+                  />
                 </View>
               </View>
             </View>
@@ -561,7 +647,9 @@ App Version: ${APP_VERSION}`;
 
           {/* Security Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.security')}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('server.security')}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <SettingRow icon="shield-checkmark-outline" label={t('server.useHttps')}>
                 <Switch
@@ -572,7 +660,11 @@ App Version: ${APP_VERSION}`;
                 />
               </SettingRow>
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <SettingRow icon="lock-open-outline" label={t('server.bypassAuth')} hint={t('server.bypassAuthHint')}>
+              <SettingRow
+                icon="lock-open-outline"
+                label={t('server.bypassAuth')}
+                hint={t('server.bypassAuthHint')}
+              >
                 <Switch
                   value={bypassAuth}
                   onValueChange={setBypassAuth}
@@ -585,9 +677,15 @@ App Version: ${APP_VERSION}`;
 
           {/* Proxy Authentication Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.proxyAuthentication')}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('server.proxyAuthentication')}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <SettingRow icon="globe-outline" label={t('server.useBasicAuth')} hint={t('server.useBasicAuthHint')}>
+              <SettingRow
+                icon="globe-outline"
+                label={t('server.useBasicAuth')}
+                hint={t('server.useBasicAuthHint')}
+              >
                 <Switch
                   value={useBasicAuth}
                   onValueChange={setUseBasicAuth}
@@ -599,7 +697,12 @@ App Version: ${APP_VERSION}`;
                 <>
                   <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                   <View style={styles.inputRow}>
-                    <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <Ionicons
+                      name="person-outline"
+                      size={20}
+                      color={colors.primary}
+                      style={styles.inputIcon}
+                    />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
                       value={basicAuthUsername}
@@ -614,7 +717,12 @@ App Version: ${APP_VERSION}`;
                   </View>
                   <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                   <View style={styles.inputRow}>
-                    <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={20}
+                      color={colors.primary}
+                      style={styles.inputIcon}
+                    />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
                       value={basicAuthPassword}
@@ -639,13 +747,17 @@ App Version: ${APP_VERSION}`;
 
           {/* Test Connection */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('server.connectionTest')}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('server.connectionTest')}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               {testing ? (
                 <View style={styles.testingContainer}>
                   <View style={styles.testingContent}>
                     <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.testingText, { color: colors.text }]}>{t('server.testingConnection')}</Text>
+                    <Text style={[styles.testingText, { color: colors.text }]}>
+                      {t('server.testingConnection')}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     style={[styles.cancelButton, { backgroundColor: colors.error }]}
@@ -660,11 +772,16 @@ App Version: ${APP_VERSION}`;
                   onPress={handleTest}
                   disabled={loading}
                 >
-                  <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={20}
+                    color="#FFFFFF"
+                    style={{ marginRight: 8 }}
+                  />
                   <Text style={styles.testButtonText}>{t('server.testConnection')}</Text>
                 </TouchableOpacity>
               )}
-              
+
               {/* Debug Toggle */}
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <SettingRow icon="bug-outline" label={t('screens.settings.debugMode')}>
@@ -685,7 +802,7 @@ App Version: ${APP_VERSION}`;
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   DEBUG INFO {debugInfo.hasErrors ? '⚠' : debugInfo.hasWarnings ? '!' : '✓'}
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={copyDebugInfo}
                   style={styles.copyButton}
                   accessibilityLabel="Copy debug info to clipboard"
@@ -701,10 +818,15 @@ App Version: ${APP_VERSION}`;
 
                 {/* Breakdown */}
                 <DebugRow label={t('server.debugProtocol')} value={`${debugInfo.protocol}://`} />
-                <DebugRow label={t('server.debugHost')} value={debugInfo.cleanHost || t('server.debugEmpty')} />
+                <DebugRow
+                  label={t('server.debugHost')}
+                  value={debugInfo.cleanHost || t('server.debugEmpty')}
+                />
                 <DebugRow
                   label={t('server.debugPort')}
-                  value={debugInfo.portNum ? String(debugInfo.portNum) : t('server.debugDefaultPort')}
+                  value={
+                    debugInfo.portNum ? String(debugInfo.portNum) : t('server.debugDefaultPort')
+                  }
                 />
 
                 <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
@@ -718,26 +840,41 @@ App Version: ${APP_VERSION}`;
                 />
 
                 <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                
+
                 {/* Warnings */}
                 {debugInfo.warnings.length > 0 && (
                   <View style={styles.debugWarnings}>
                     {debugInfo.warnings.map((w, i) => (
-                      <View 
-                        key={i} 
+                      <View
+                        key={i}
                         style={[
                           styles.debugWarningRow,
-                          { backgroundColor: w.type === 'error' ? colors.error + '20' : 
-                                             w.type === 'warning' ? colors.warning + '20' : 
-                                             colors.primary + '15' }
+                          {
+                            backgroundColor:
+                              w.type === 'error'
+                                ? colors.error + '20'
+                                : w.type === 'warning'
+                                  ? colors.warning + '20'
+                                  : colors.primary + '15',
+                          },
                         ]}
                       >
-                        <Ionicons 
-                          name={w.type === 'error' ? 'alert-circle' : 
-                                w.type === 'warning' ? 'warning' : 'information-circle'} 
-                          size={16} 
-                          color={w.type === 'error' ? colors.error : 
-                                 w.type === 'warning' ? colors.warning : colors.primary} 
+                        <Ionicons
+                          name={
+                            w.type === 'error'
+                              ? 'alert-circle'
+                              : w.type === 'warning'
+                                ? 'warning'
+                                : 'information-circle'
+                          }
+                          size={16}
+                          color={
+                            w.type === 'error'
+                              ? colors.error
+                              : w.type === 'warning'
+                                ? colors.warning
+                                : colors.primary
+                          }
                         />
                         <Text style={[styles.debugWarningText, { color: colors.text }]}>
                           {w.message}
@@ -746,9 +883,11 @@ App Version: ${APP_VERSION}`;
                     ))}
                   </View>
                 )}
-                
+
                 {debugInfo.warnings.length === 0 && (
-                  <View style={[styles.debugWarningRow, { backgroundColor: colors.success + '20' }]}>
+                  <View
+                    style={[styles.debugWarningRow, { backgroundColor: colors.success + '20' }]}
+                  >
                     <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                     <Text style={[styles.debugWarningText, { color: colors.text }]}>
                       Configuration looks good!
@@ -775,7 +914,7 @@ App Version: ${APP_VERSION}`;
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-      
+
       {/* Host Tooltip Modal */}
       <Modal
         visible={showHostTooltip}
@@ -783,15 +922,17 @@ App Version: ${APP_VERSION}`;
         animationType="fade"
         onRequestClose={() => setShowHostTooltip(false)}
       >
-        <TouchableOpacity 
-          style={styles.tooltipOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.tooltipOverlay}
+          activeOpacity={1}
           onPress={() => setShowHostTooltip(false)}
         >
           <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.tooltipHeader}>
               <Ionicons name="globe-outline" size={24} color={colors.primary} />
-              <Text style={[styles.tooltipTitle, { color: colors.text }]}>{t('server.hostAddress')}</Text>
+              <Text style={[styles.tooltipTitle, { color: colors.text }]}>
+                {t('server.hostAddress')}
+              </Text>
             </View>
             <Text style={[styles.tooltipText, { color: colors.text }]}>
               Enter your server's address without http:// or https://
@@ -800,11 +941,9 @@ App Version: ${APP_VERSION}`;
               Examples:
             </Text>
             <Text style={[styles.tooltipExample, { color: colors.textSecondary }]}>
-              • 192.168.1.100{'\n'}
-              • qbittorrent.example.com{'\n'}
-              • example.com/qbt
+              • 192.168.1.100{'\n'}• qbittorrent.example.com{'\n'}• example.com/qbt
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.tooltipButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowHostTooltip(false)}
             >
@@ -821,9 +960,9 @@ App Version: ${APP_VERSION}`;
         animationType="fade"
         onRequestClose={() => setShowPortTooltip(false)}
       >
-        <TouchableOpacity 
-          style={styles.tooltipOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.tooltipOverlay}
+          activeOpacity={1}
           onPress={() => setShowPortTooltip(false)}
         >
           <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
@@ -838,13 +977,12 @@ App Version: ${APP_VERSION}`;
               Leave blank if you're using:
             </Text>
             <Text style={[styles.tooltipExample, { color: colors.textSecondary }]}>
-              • A domain name (example.com){'\n'}
-              • A reverse proxy{'\n'}
+              • A domain name (example.com){'\n'}• A reverse proxy{'\n'}
             </Text>
             <Text style={[styles.tooltipText, { color: colors.text, marginTop: 12 }]}>
               Common qBittorrent port: 8080
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.tooltipButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowPortTooltip(false)}
             >
@@ -1048,4 +1186,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-

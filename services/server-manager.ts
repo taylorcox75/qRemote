@@ -80,7 +80,10 @@ export class ServerManager {
     const currentServer = apiClient.getServer();
     if (currentServer?.id === id) {
       // Disconnect from this server
-      clogInfo('CONN', `Deleting currently-connected server ${currentServer.host}:${currentServer.port || 'default'} — clearing API client`);
+      clogInfo(
+        'CONN',
+        `Deleting currently-connected server ${currentServer.host}:${currentServer.port || 'default'} — clearing API client`,
+      );
       apiClient.setServer(null);
       await storageService.setCurrentServerId(null);
     }
@@ -109,8 +112,12 @@ export class ServerManager {
       }
 
       const fallbackResolved = resolveServerEndpoint(server, 'fallback');
-      const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
-      clogWarn('CONN', `Primary endpoint failed (${primaryMessage}); trying fallback ${fallbackResolved.host}:${fallbackResolved.port || 'default'}`);
+      const primaryMessage =
+        primaryError instanceof Error ? primaryError.message : String(primaryError);
+      clogWarn(
+        'CONN',
+        `Primary endpoint failed (${primaryMessage}); trying fallback ${fallbackResolved.host}:${fallbackResolved.port || 'default'}`,
+      );
 
       try {
         const success = await this.connectToEndpoint(server, fallbackResolved, 'fallback');
@@ -120,7 +127,8 @@ export class ServerManager {
         }
         return false;
       } catch (fallbackError: unknown) {
-        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        const fallbackMessage =
+          fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
         clogError('CONN', `Fallback endpoint also failed: ${fallbackMessage}`);
         // Surface the fallback error since both routes failed; it's the
         // most recent and usually the most informative.
@@ -137,9 +145,12 @@ export class ServerManager {
   private static async connectToEndpoint(
     server: ServerConfig,
     resolved: ServerConfig,
-    endpoint: ServerEndpointKind
+    endpoint: ServerEndpointKind,
   ): Promise<boolean> {
-    clogInfo('CONN', `Connecting to ${resolved.host}:${resolved.port || 'default'} via ${endpoint} (bypassAuth=${resolved.bypassAuth})`);
+    clogInfo(
+      'CONN',
+      `Connecting to ${resolved.host}:${resolved.port || 'default'} via ${endpoint} (bypassAuth=${resolved.bypassAuth})`,
+    );
     apiClient.setServer(resolved);
 
     try {
@@ -148,7 +159,10 @@ export class ServerManager {
           const versionInfo = await applicationApi.getVersion();
           await storageService.setCurrentServerId(server.id);
           apiClient.setApiVersion(versionInfo.apiVersion);
-          clogInfo('CONN', `Connected successfully via ${endpoint} (bypass auth, API ${versionInfo.apiVersion})`);
+          clogInfo(
+            'CONN',
+            `Connected successfully via ${endpoint} (bypass auth, API ${versionInfo.apiVersion})`,
+          );
           return true;
         } catch (error: unknown) {
           apiClient.setServer(null);
@@ -168,7 +182,10 @@ export class ServerManager {
           const versionInfo = await applicationApi.getVersion();
           await storageService.setCurrentServerId(server.id);
           apiClient.setApiVersion(versionInfo.apiVersion);
-          clogInfo('CONN', `Connected successfully via ${endpoint} (authenticated, API ${versionInfo.apiVersion})`);
+          clogInfo(
+            'CONN',
+            `Connected successfully via ${endpoint} (authenticated, API ${versionInfo.apiVersion})`,
+          );
           return true;
         } catch (error: unknown) {
           apiClient.setServer(null);
@@ -178,7 +195,11 @@ export class ServerManager {
           if (isNetworkError(error)) {
             throw error;
           }
-          if (axiosErr?.response?.status === 403 || axiosErr?.response?.status === 401 || message.includes('Authentication')) {
+          if (
+            axiosErr?.response?.status === 403 ||
+            axiosErr?.response?.status === 401 ||
+            message.includes('Authentication')
+          ) {
             throw new Error('Authentication failed. Please check your credentials.');
           }
           throw new Error('Failed to connect to server. Please check your settings.');
@@ -213,9 +234,12 @@ export class ServerManager {
     } catch (error) {
       // Ignore logout errors
     }
-    clogInfo('CONN', previousServer
-      ? `Disconnecting from ${previousServer.host}:${previousServer.port || 'default'} (user requested)`
-      : 'Disconnect requested (no server was connected)');
+    clogInfo(
+      'CONN',
+      previousServer
+        ? `Disconnecting from ${previousServer.host}:${previousServer.port || 'default'} (user requested)`
+        : 'Disconnect requested (no server was connected)',
+    );
     apiClient.setServer(null);
     await storageService.setCurrentServerId(null);
   }
@@ -237,7 +261,10 @@ export class ServerManager {
    * results are returned alongside the top-level success flag, which is true
    * when *either* endpoint succeeds.
    */
-  static async testConnection(server: ServerConfig, signal?: AbortSignal): Promise<ConnectionTestResult> {
+  static async testConnection(
+    server: ServerConfig,
+    signal?: AbortSignal,
+  ): Promise<ConnectionTestResult> {
     if (!hasFallback(server)) {
       // Simple primary-only path — preserves the original shape for callers
       // that don't need per-endpoint detail.
@@ -254,7 +281,7 @@ export class ServerManager {
     const success = primary.success || fallback.success;
     return {
       success,
-      error: success ? undefined : (fallback.error || primary.error),
+      error: success ? undefined : fallback.error || primary.error,
       primary,
       fallback,
     };
@@ -265,7 +292,10 @@ export class ServerManager {
    * EndpointTestResult shape. Cancellation propagates so the caller can stop
    * the whole test sequence in flight.
    */
-  private static async testEndpoint(resolved: ServerConfig, signal?: AbortSignal): Promise<EndpointTestResult> {
+  private static async testEndpoint(
+    resolved: ServerConfig,
+    signal?: AbortSignal,
+  ): Promise<EndpointTestResult> {
     const previousServer = apiClient.getServer();
     clogInfo('CONN', `testEndpoint to ${resolved.host}:${resolved.port || 'default'}`);
 
@@ -277,7 +307,10 @@ export class ServerManager {
           const loginResult = await authApi.login(resolved.username, resolved.password, signal);
           if (loginResult.status !== 'Ok') {
             clogWarn('CONN', 'testEndpoint: auth failed');
-            return { success: false, error: 'Authentication failed. Please check your username and password.' };
+            return {
+              success: false,
+              error: 'Authentication failed. Please check your username and password.',
+            };
           }
         }
 
@@ -293,22 +326,42 @@ export class ServerManager {
         const message = error instanceof Error ? error.message : String(error);
         const axiosErr = error instanceof AxiosError ? error : undefined;
 
-        if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
+        if (
+          error instanceof Error &&
+          (error.name === 'AbortError' || error.name === 'CanceledError')
+        ) {
           throw error;
         }
-        if (axiosErr?.code === 'ERR_CANCELED' || message === 'Test cancelled' || message.includes('cancel')) {
+        if (
+          axiosErr?.code === 'ERR_CANCELED' ||
+          message === 'Test cancelled' ||
+          message.includes('cancel')
+        ) {
           throw error;
         }
 
-        if (axiosErr?.response?.status === 403 || axiosErr?.response?.status === 401 || message.includes('Authentication')) {
-          clogWarn('CONN', `testEndpoint failed: auth error (${axiosErr?.response?.status || message})`);
+        if (
+          axiosErr?.response?.status === 403 ||
+          axiosErr?.response?.status === 401 ||
+          message.includes('Authentication')
+        ) {
+          clogWarn(
+            'CONN',
+            `testEndpoint failed: auth error (${axiosErr?.response?.status || message})`,
+          );
           return { success: false, error: 'Authentication failed. Please check your credentials.' };
         } else if (isNetworkError(error)) {
           clogError('CONN', `testEndpoint failed: network error (${axiosErr?.code || message})`);
-          return { success: false, error: 'Connection failed. Please check your server address and network connection.' };
+          return {
+            success: false,
+            error: 'Connection failed. Please check your server address and network connection.',
+          };
         } else {
           clogError('CONN', `testEndpoint failed: ${message}`);
-          return { success: false, error: message || 'Connection test failed. Please check your settings.' };
+          return {
+            success: false,
+            error: message || 'Connection test failed. Please check your settings.',
+          };
         }
       } finally {
         apiClient.setServer(previousServer);
@@ -316,7 +369,10 @@ export class ServerManager {
     } catch (error: unknown) {
       apiClient.setServer(previousServer);
       const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
+      if (
+        error instanceof Error &&
+        (error.name === 'AbortError' || error.name === 'CanceledError')
+      ) {
         throw error;
       }
       if (error instanceof AxiosError && error.code === 'ERR_CANCELED') {
@@ -325,8 +381,10 @@ export class ServerManager {
       if (message === 'Test cancelled' || message.includes('cancel')) {
         throw error;
       }
-      return { success: false, error: message || 'Connection test failed. Please check your settings.' };
+      return {
+        success: false,
+        error: message || 'Connection test failed. Please check your settings.',
+      };
     }
   }
 }
-

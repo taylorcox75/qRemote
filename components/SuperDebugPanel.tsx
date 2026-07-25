@@ -168,7 +168,10 @@ export function SuperDebugPanel({
   // -------------------------------------------------------------------------
 
   const sanitizeHost = (h: string): string =>
-    h.trim().replace(/^(https?:\/\/)/i, '').replace(/[:\/]+$/, '');
+    h
+      .trim()
+      .replace(/^(https?:\/\/)/i, '')
+      .replace(/[:\/]+$/, '');
 
   const buildUrl = useCallback((): string => {
     const protocol = useHttps ? 'https' : 'http';
@@ -186,13 +189,19 @@ export function SuperDebugPanel({
     const bytes: number[] = [];
     for (let i = 0; i < input.length; i++) {
       const code = input.charCodeAt(i);
-      if (code < 0x80) { bytes.push(code); }
-      else if (code < 0x800) { bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f)); }
-      else { bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f)); }
+      if (code < 0x80) {
+        bytes.push(code);
+      } else if (code < 0x800) {
+        bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+      } else {
+        bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+      }
     }
     let b64 = '';
     for (let i = 0; i < bytes.length; i += 3) {
-      const b0 = bytes[i], b1 = bytes[i + 1] ?? 0, b2 = bytes[i + 2] ?? 0;
+      const b0 = bytes[i],
+        b1 = bytes[i + 1] ?? 0,
+        b2 = bytes[i + 2] ?? 0;
       b64 += BASE64[b0 >> 2];
       b64 += BASE64[((b0 & 3) << 4) | (b1 >> 4)];
       b64 += i + 1 < bytes.length ? BASE64[((b1 & 15) << 2) | (b2 >> 6)] : '=';
@@ -206,10 +215,27 @@ export function SuperDebugPanel({
    * matches the config it was actually proven against. */
   const buildConfigKey = useCallback((): string => {
     return JSON.stringify({
-      host: sanitizeHost(host), port, useHttps, bypassAuth, username, password,
-      useBasicAuth, basicAuthUsername, basicAuthPassword,
+      host: sanitizeHost(host),
+      port,
+      useHttps,
+      bypassAuth,
+      username,
+      password,
+      useBasicAuth,
+      basicAuthUsername,
+      basicAuthPassword,
     });
-  }, [host, port, useHttps, bypassAuth, username, password, useBasicAuth, basicAuthUsername, basicAuthPassword]);
+  }, [
+    host,
+    port,
+    useHttps,
+    bypassAuth,
+    username,
+    password,
+    useBasicAuth,
+    basicAuthUsername,
+    basicAuthPassword,
+  ]);
 
   const addEntry = useCallback(
     (step: DiagnosticStep, message: string, status: DiagnosticStatus, detail?: string) => {
@@ -229,7 +255,12 @@ export function SuperDebugPanel({
 
   const formatTime = (ts: number): string => {
     const d = new Date(ts);
-    return d.toLocaleTimeString(undefined, { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return d.toLocaleTimeString(undefined, {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
   };
 
   const isHostEmpty = (): boolean => sanitizeHost(host).length === 0;
@@ -277,9 +308,17 @@ export function SuperDebugPanel({
         addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms`, 'success');
       } else if (response.status === 401 || response.status === 403) {
         if (useBasicAuth && response.status === 401) {
-          addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms (proxy credentials rejected or not accepted)`, 'warning');
+          addEntry(
+            'REACH',
+            `Host reachable — HTTP ${response.status} in ${latency}ms (proxy credentials rejected or not accepted)`,
+            'warning',
+          );
         } else {
-          addEntry('REACH', `Host reachable — HTTP ${response.status} in ${latency}ms (auth required, this is normal)`, 'success');
+          addEntry(
+            'REACH',
+            `Host reachable — HTTP ${response.status} in ${latency}ms (auth required, this is normal)`,
+            'success',
+          );
         }
       } else {
         addEntry('REACH', `Host responded with HTTP ${response.status} in ${latency}ms`, 'warning');
@@ -291,11 +330,23 @@ export function SuperDebugPanel({
 
       // Provide specific guidance based on error type
       if (msg.includes('Network request failed') || msg.includes('Failed to connect')) {
-        addEntry('WARN', 'The device cannot reach the server at all. Possible causes:\n  1. IP address or domain is wrong\n  2. Server is off or qBittorrent is not running\n  3. Port is incorrect (qBittorrent default: 8080)\n  4. Firewall is blocking the connection\n  5. If remote: VPN/port forwarding not configured', 'warning');
+        addEntry(
+          'WARN',
+          'The device cannot reach the server at all. Possible causes:\n  1. IP address or domain is wrong\n  2. Server is off or qBittorrent is not running\n  3. Port is incorrect (qBittorrent default: 8080)\n  4. Firewall is blocking the connection\n  5. If remote: VPN/port forwarding not configured',
+          'warning',
+        );
       } else if (msg.includes('Timed out') || msg.includes('timeout') || msg.includes('aborted')) {
-        addEntry('WARN', 'Connection timed out. The server did not respond within 15 seconds. Possible causes:\n  1. Server is behind a firewall that silently drops packets\n  2. Wrong port (packets go nowhere)\n  3. Network latency too high (weak connection)', 'warning');
+        addEntry(
+          'WARN',
+          'Connection timed out. The server did not respond within 15 seconds. Possible causes:\n  1. Server is behind a firewall that silently drops packets\n  2. Wrong port (packets go nowhere)\n  3. Network latency too high (weak connection)',
+          'warning',
+        );
       } else if (msg.includes('SSL') || msg.includes('certificate') || msg.includes('TLS')) {
-        addEntry('WARN', 'SSL/TLS error. If you do not have HTTPS set up on your server, turn off the "Use HTTPS" toggle above.', 'warning');
+        addEntry(
+          'WARN',
+          'SSL/TLS error. If you do not have HTTPS set up on your server, turn off the "Use HTTPS" toggle above.',
+          'warning',
+        );
       } else {
         addEntry('WARN', `Error detail: ${msg}`, 'warning');
       }
@@ -316,7 +367,11 @@ export function SuperDebugPanel({
     }
     const url = buildUrl();
     addEntry('INFO', `Opening in browser: ${url}`, 'info');
-    addEntry('INFO', 'If qBittorrent WebUI loads in the browser, your server is reachable from this device.', 'info');
+    addEntry(
+      'INFO',
+      'If qBittorrent WebUI loads in the browser, your server is reachable from this device.',
+      'info',
+    );
     try {
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
@@ -336,7 +391,11 @@ export function SuperDebugPanel({
     }
     const url = `${buildUrl()}/api/v2/auth/login`;
     addEntry('INFO', `Opening login endpoint: ${url}`, 'info');
-    addEntry('INFO', 'If the server is working, the browser will show "Fails." (because no credentials were sent). That confirms the API endpoint is reachable.', 'info');
+    addEntry(
+      'INFO',
+      'If the server is working, the browser will show "Fails." (because no credentials were sent). That confirms the API endpoint is reachable.',
+      'info',
+    );
     try {
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
@@ -359,7 +418,11 @@ export function SuperDebugPanel({
       return;
     }
     if (!bypassAuth && (!username.trim() || !password.trim())) {
-      addEntry('ERROR', 'Username and password are required. Fill them in above, or enable "Bypass Authentication".', 'error');
+      addEntry(
+        'ERROR',
+        'Username and password are required. Fill them in above, or enable "Bypass Authentication".',
+        'error',
+      );
       return;
     }
 
@@ -380,7 +443,11 @@ export function SuperDebugPanel({
     addEntry('INFO', `Target: ${baseUrl}`, 'info');
     addEntry('INFO', `Platform: ${Platform.OS} ${Platform.Version}`, 'info');
     addEntry('INFO', `App: ${APP_VERSION}`, 'info');
-    addEntry('INFO', `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'} | Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`, 'info');
+    addEntry(
+      'INFO',
+      `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'} | Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
+      'info',
+    );
 
     let passed = 0;
     const totalSteps = bypassAuth ? 2 : 4;
@@ -401,18 +468,34 @@ export function SuperDebugPanel({
       try {
         let reachResp: Response;
         try {
-          reachResp = await fetch(baseUrl, { method: 'HEAD', headers: diagHeaders, signal: controller.signal });
+          reachResp = await fetch(baseUrl, {
+            method: 'HEAD',
+            headers: diagHeaders,
+            signal: controller.signal,
+          });
         } catch {
           if (controller.signal.aborted) throw new Error('Timed out after 15s');
-          reachResp = await fetch(baseUrl, { method: 'GET', headers: diagHeaders, signal: controller.signal });
+          reachResp = await fetch(baseUrl, {
+            method: 'GET',
+            headers: diagHeaders,
+            signal: controller.signal,
+          });
         }
         clearTimeout(reachTimeout);
         const reachLatency = Date.now() - reachStart;
         if (reachResp.status === 401 && useBasicAuth) {
-          addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms (proxy credentials rejected — check Basic Auth username/password)`, 'warning');
+          addEntry(
+            'REACH',
+            `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms (proxy credentials rejected — check Basic Auth username/password)`,
+            'warning',
+          );
           passed++;
         } else {
-          addEntry('REACH', `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms`, 'success');
+          addEntry(
+            'REACH',
+            `Server responded — HTTP ${reachResp.status} in ${reachLatency}ms`,
+            'success',
+          );
           passed++;
         }
       } catch (err: unknown) {
@@ -423,15 +506,35 @@ export function SuperDebugPanel({
         addEntry('REACH', `FAILED — Server unreachable after ${reachLatency}ms`, 'error');
 
         if (msg.includes('Network request failed') || msg.includes('Failed to connect')) {
-          addEntry('WARN', 'Your device cannot establish a connection to this address.\n\nChecklist:\n  1. Is the IP/domain correct?\n  2. Is qBittorrent running with WebUI enabled?\n  3. Is the port correct? (default: 8080)\n  4. Is a firewall blocking the connection?\n  5. If accessing remotely: is port forwarding or VPN set up?\n  6. Try "Open WebUI" above to test in a browser.', 'warning');
-        } else if (msg.includes('Timed out') || msg.includes('timeout') || msg.includes('aborted')) {
-          addEntry('WARN', 'The server did not respond within 15 seconds.\n\nThis usually means:\n  1. A firewall is silently dropping packets\n  2. The port is wrong (nothing is listening)\n  3. The server is too slow or overloaded\n\nTry "Open WebUI" above to verify in a browser.', 'warning');
+          addEntry(
+            'WARN',
+            'Your device cannot establish a connection to this address.\n\nChecklist:\n  1. Is the IP/domain correct?\n  2. Is qBittorrent running with WebUI enabled?\n  3. Is the port correct? (default: 8080)\n  4. Is a firewall blocking the connection?\n  5. If accessing remotely: is port forwarding or VPN set up?\n  6. Try "Open WebUI" above to test in a browser.',
+            'warning',
+          );
+        } else if (
+          msg.includes('Timed out') ||
+          msg.includes('timeout') ||
+          msg.includes('aborted')
+        ) {
+          addEntry(
+            'WARN',
+            'The server did not respond within 15 seconds.\n\nThis usually means:\n  1. A firewall is silently dropping packets\n  2. The port is wrong (nothing is listening)\n  3. The server is too slow or overloaded\n\nTry "Open WebUI" above to verify in a browser.',
+            'warning',
+          );
         } else if (msg.includes('SSL') || msg.includes('certificate') || msg.includes('TLS')) {
-          addEntry('WARN', 'SSL/TLS handshake failed. If you do not have HTTPS configured on your qBittorrent server, turn off the "Use HTTPS" toggle and try again.', 'warning');
+          addEntry(
+            'WARN',
+            'SSL/TLS handshake failed. If you do not have HTTPS configured on your qBittorrent server, turn off the "Use HTTPS" toggle and try again.',
+            'warning',
+          );
         } else {
           addEntry('WARN', `Error: ${msg}`, 'warning');
         }
-        addEntry('ERROR', 'Stopping diagnostic — cannot proceed without a reachable server.', 'error');
+        addEntry(
+          'ERROR',
+          'Stopping diagnostic — cannot proceed without a reachable server.',
+          'error',
+        );
         return;
       }
 
@@ -449,25 +552,38 @@ export function SuperDebugPanel({
             {
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                ...(basicAuth ? { 'Authorization': basicAuth } : {}),
+                ...(basicAuth ? { Authorization: basicAuth } : {}),
               },
               signal: controller.signal,
             },
           );
           const loginLatency = Date.now() - loginStart;
-          const loginBody = typeof loginResp.data === 'string' ? loginResp.data : String(loginResp.data ?? '');
+          const loginBody =
+            typeof loginResp.data === 'string' ? loginResp.data : String(loginResp.data ?? '');
           const bodyTrimmed = loginBody.trim();
           const loginSetCookies = extractSetCookieValues(loginResp.headers);
           const loginCookiePresent = loginSetCookies.length > 0;
 
           if (isLoginBodyFail(bodyTrimmed)) {
-            addEntry('LOGIN', `Login REJECTED — "${bodyTrimmed}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'error');
-            addEntry('WARN', 'The server said "Fails." which means the username or password is wrong.\n\nChecklist:\n  1. Double-check your username (default: admin)\n  2. Double-check your password\n  3. Check if qBittorrent has locked you out (too many failed attempts)\n  4. Try logging in via the browser first to confirm credentials work', 'warning');
+            addEntry(
+              'LOGIN',
+              `Login REJECTED — "${bodyTrimmed}" (HTTP ${loginResp.status}, ${loginLatency}ms)`,
+              'error',
+            );
+            addEntry(
+              'WARN',
+              'The server said "Fails." which means the username or password is wrong.\n\nChecklist:\n  1. Double-check your username (default: admin)\n  2. Double-check your password\n  3. Check if qBittorrent has locked you out (too many failed attempts)\n  4. Try logging in via the browser first to confirm credentials work',
+              'warning',
+            );
             addEntry('ERROR', 'Stopping diagnostic — login failed.', 'error');
             return;
           } else if (loginResp.status === 404) {
             addEntry('LOGIN', `HTTP 404 — Login endpoint not found (${loginLatency}ms)`, 'error');
-            addEntry('WARN', 'The /api/v2/auth/login endpoint does not exist. This could mean:\n  1. qBittorrent WebUI API is disabled\n  2. A reverse proxy is not forwarding /api/ paths\n  3. An incompatible qBittorrent version', 'warning');
+            addEntry(
+              'WARN',
+              'The /api/v2/auth/login endpoint does not exist. This could mean:\n  1. qBittorrent WebUI API is disabled\n  2. A reverse proxy is not forwarding /api/ paths\n  3. An incompatible qBittorrent version',
+              'warning',
+            );
             addEntry('ERROR', 'Stopping diagnostic — API endpoint missing.', 'error');
             return;
           } else if (
@@ -480,9 +596,17 @@ export function SuperDebugPanel({
             const detail = bodyTrimmed
               ? `"${bodyTrimmed.substring(0, 40)}"`
               : 'empty body (qBittorrent 5.x style)';
-            addEntry('LOGIN', `Login successful — ${detail} (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'success');
+            addEntry(
+              'LOGIN',
+              `Login successful — ${detail} (HTTP ${loginResp.status}, ${loginLatency}ms)`,
+              'success',
+            );
           } else {
-            addEntry('LOGIN', `Unexpected response — "${bodyTrimmed.substring(0, 80)}" (HTTP ${loginResp.status}, ${loginLatency}ms)`, 'error');
+            addEntry(
+              'LOGIN',
+              `Unexpected response — "${bodyTrimmed.substring(0, 80)}" (HTTP ${loginResp.status}, ${loginLatency}ms)`,
+              'error',
+            );
             addEntry('ERROR', 'Stopping diagnostic — unexpected login response.', 'error');
             return;
           }
@@ -493,7 +617,9 @@ export function SuperDebugPanel({
           const loginHeaders = loginResp.headers as unknown as Record<string, unknown>;
           for (const key of Object.keys(loginHeaders)) {
             const value = loginHeaders[key];
-            headerLines.push(`  ${key}: ${Array.isArray(value) ? value.join('; ') : String(value)}`);
+            headerLines.push(
+              `  ${key}: ${Array.isArray(value) ? value.join('; ') : String(value)}`,
+            );
           }
           if (headerLines.length > 0) {
             addEntry('LOGIN', `Response headers:\n${headerLines.join('\n')}`, 'info');
@@ -513,21 +639,28 @@ export function SuperDebugPanel({
             const eqIdx = cookiePair.indexOf('=');
             const cookieName = cookiePair.substring(0, eqIdx);
             const cookieValue = cookiePair.substring(eqIdx + 1);
-            const truncated = cookieValue.length > 12
-              ? cookieValue.substring(0, 12) + '...'
-              : cookieValue;
+            const truncated =
+              cookieValue.length > 12 ? cookieValue.substring(0, 12) + '...' : cookieValue;
             addEntry('COOKIE', `Session cookie captured: ${cookieName}=${truncated}`, 'success');
             passed++;
           } else {
             addEntry('COOKIE', 'No set-cookie header received from server.', 'warning');
-            addEntry('WARN', 'The server genuinely did not send a session cookie for this login. This is expected if qBittorrent is configured to bypass authentication for this device\'s IP/subnet, or if this qBittorrent version/setup authenticates purely via the response body without issuing a cookie.\n\nIf the app still gets "403 Forbidden" errors after this:\n\n  1. In qBittorrent: Settings > WebUI > enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet (e.g. 192.168.1.0/24 or 100.0.0.0/8 for Tailscale)\n  3. Then enable "Bypass Authentication" in qBitRemote', 'warning');
+            addEntry(
+              'WARN',
+              'The server genuinely did not send a session cookie for this login. This is expected if qBittorrent is configured to bypass authentication for this device\'s IP/subnet, or if this qBittorrent version/setup authenticates purely via the response body without issuing a cookie.\n\nIf the app still gets "403 Forbidden" errors after this:\n\n  1. In qBittorrent: Settings > WebUI > enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet (e.g. 192.168.1.0/24 or 100.0.0.0/8 for Tailscale)\n  3. Then enable "Bypass Authentication" in qBitRemote',
+              'warning',
+            );
             passed++; // Not a hard failure — server may intentionally omit the cookie
           }
         } catch (err: unknown) {
           if (controller.signal.aborted) throw err;
           const loginLatency = Date.now() - loginStart;
           addEntry('LOGIN', `Login request FAILED after ${loginLatency}ms`, 'error');
-          addEntry('WARN', `Error: ${getErrorMessage(err)}\n\nThe server is reachable (Step 1 passed) but the login request failed. This could mean:\n  1. qBittorrent has IP-based access restrictions blocking this device\n  2. A reverse proxy is rejecting the POST request\n  3. If using Tailscale/VPN: the WebUI may only be listening on localhost (127.0.0.1) — change it to 0.0.0.0 in qBittorrent settings`, 'warning');
+          addEntry(
+            'WARN',
+            `Error: ${getErrorMessage(err)}\n\nThe server is reachable (Step 1 passed) but the login request failed. This could mean:\n  1. qBittorrent has IP-based access restrictions blocking this device\n  2. A reverse proxy is rejecting the POST request\n  3. If using Tailscale/VPN: the WebUI may only be listening on localhost (127.0.0.1) — change it to 0.0.0.0 in qBittorrent settings`,
+            'warning',
+          );
           addEntry('ERROR', 'Stopping diagnostic.', 'error');
           return;
         }
@@ -550,32 +683,62 @@ export function SuperDebugPanel({
           signal: controller.signal,
         });
         const apiLatency = Date.now() - apiStart;
-        const apiBody = typeof apiResp.data === 'string' ? apiResp.data : String(apiResp.data ?? '');
+        const apiBody =
+          typeof apiResp.data === 'string' ? apiResp.data : String(apiResp.data ?? '');
 
         if (apiResp.status === 200) {
-          addEntry('API', `qBittorrent ${apiBody.trim()} (HTTP ${apiResp.status}, ${apiLatency}ms)`, 'success');
+          addEntry(
+            'API',
+            `qBittorrent ${apiBody.trim()} (HTTP ${apiResp.status}, ${apiLatency}ms)`,
+            'success',
+          );
           passed++;
           // This proves the session (cookie/basic-auth combo) actually works
           // end-to-end — remember it so "Export Full Logs" can fetch server
           // logs using it instead of depending on the unrelated apiClient
           // singleton.
-          validatedSessionRef.current = { configKey: buildConfigKey(), baseUrl, sessionCookie, basicAuth };
+          validatedSessionRef.current = {
+            configKey: buildConfigKey(),
+            baseUrl,
+            sessionCookie,
+            basicAuth,
+          };
         } else if (apiResp.status === 403) {
           addEntry('API', `HTTP 403 Forbidden — Not authenticated (${apiLatency}ms)`, 'error');
           if (!bypassAuth && !sessionCookie) {
-            addEntry('WARN', 'Login succeeded (Step 2) but no session cookie was captured (Step 3), so this API request was rejected.\n\nSolution:\n  1. In qBittorrent: Settings > WebUI > "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet\n  3. Enable "Bypass Authentication" toggle in qBitRemote', 'warning');
+            addEntry(
+              'WARN',
+              'Login succeeded (Step 2) but no session cookie was captured (Step 3), so this API request was rejected.\n\nSolution:\n  1. In qBittorrent: Settings > WebUI > "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet\n  3. Enable "Bypass Authentication" toggle in qBitRemote',
+              'warning',
+            );
           } else if (bypassAuth) {
-            addEntry('WARN', 'Auth bypass is enabled, but the server still requires authentication.\n\nIn qBittorrent: Settings > WebUI:\n  1. Enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet to the whitelist', 'warning');
+            addEntry(
+              'WARN',
+              'Auth bypass is enabled, but the server still requires authentication.\n\nIn qBittorrent: Settings > WebUI:\n  1. Enable "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet to the whitelist',
+              'warning',
+            );
           } else {
-            addEntry('WARN', 'The session cookie was sent but the server rejected it. The cookie may have expired or is invalid. Try running the diagnostic again.', 'warning');
+            addEntry(
+              'WARN',
+              'The session cookie was sent but the server rejected it. The cookie may have expired or is invalid. Try running the diagnostic again.',
+              'warning',
+            );
           }
         } else {
-          addEntry('API', `Unexpected — HTTP ${apiResp.status}: "${apiBody.trim().substring(0, 100)}" (${apiLatency}ms)`, 'warning');
+          addEntry(
+            'API',
+            `Unexpected — HTTP ${apiResp.status}: "${apiBody.trim().substring(0, 100)}" (${apiLatency}ms)`,
+            'warning',
+          );
         }
       } catch (err: unknown) {
         if (controller.signal.aborted) throw err;
         const apiLatency = Date.now() - apiStart;
-        addEntry('API', `API request failed after ${apiLatency}ms — ${getErrorMessage(err)}`, 'error');
+        addEntry(
+          'API',
+          `API request failed after ${apiLatency}ms — ${getErrorMessage(err)}`,
+          'error',
+        );
       }
     } catch (err: unknown) {
       const errName = err instanceof Error ? err.name : '';
@@ -593,9 +756,17 @@ export function SuperDebugPanel({
       if (!controller.signal.aborted) {
         addEntry('INFO', '', 'info'); // spacer
         if (passed === totalSteps) {
-          addEntry('INFO', `All ${totalSteps} checks passed. Your server should connect normally. If the app still fails to connect, copy this report and open an issue on GitHub.`, 'success');
+          addEntry(
+            'INFO',
+            `All ${totalSteps} checks passed. Your server should connect normally. If the app still fails to connect, copy this report and open an issue on GitHub.`,
+            'success',
+          );
         } else {
-          addEntry('INFO', `${passed}/${totalSteps} checks passed. Review the issues above and try the suggested fixes.`, passed > 0 ? 'warning' : 'error');
+          addEntry(
+            'INFO',
+            `${passed}/${totalSteps} checks passed. Review the issues above and try the suggested fixes.`,
+            passed > 0 ? 'warning' : 'error',
+          );
         }
       }
       abortRef.current = null;
@@ -706,11 +877,7 @@ export function SuperDebugPanel({
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       ];
       if (log.length > 0) {
-        diagSection.push(
-          ...log.map(
-            (e) => `${formatTime(e.timestamp)} [${e.step}] ${e.message}`,
-          ),
-        );
+        diagSection.push(...log.map((e) => `${formatTime(e.timestamp)} [${e.step}] ${e.message}`));
       } else {
         diagSection.push('(no diagnostic entries — run a test first)');
       }
@@ -738,9 +905,10 @@ export function SuperDebugPanel({
       // app-wide connection lifecycle and can be null even when this exact
       // diagnostic just succeeded. Only trust it while the form still matches
       // the config it was validated against.
-      const validatedSession = validatedSessionRef.current?.configKey === buildConfigKey()
-        ? validatedSessionRef.current
-        : null;
+      const validatedSession =
+        validatedSessionRef.current?.configKey === buildConfigKey()
+          ? validatedSessionRef.current
+          : null;
 
       if (validatedSession) {
         const logHeaders: Record<string, string> = {};
@@ -753,7 +921,12 @@ export function SuperDebugPanel({
             { method: 'GET', headers: logHeaders, credentials: 'omit' },
           );
           if (!mainLogResp.ok) throw new Error(`HTTP ${mainLogResp.status}`);
-          const appLogs = (await mainLogResp.json()) as { id: number; message: string; timestamp: number; type: number }[];
+          const appLogs = (await mainLogResp.json()) as {
+            id: number;
+            message: string;
+            timestamp: number;
+            type: number;
+          }[];
 
           if (appLogs.length > 0) {
             serverLogSection.push('');
@@ -761,10 +934,17 @@ export function SuperDebugPanel({
             const sorted = [...appLogs].sort((a, b) => a.id - b.id);
             for (const entry of sorted) {
               const typeLabel =
-                entry.type === 1 ? 'NORMAL' :
-                entry.type === 2 ? 'WARNING' :
-                entry.type === 4 ? 'CRITICAL' : 'INFO';
-              const ts = new Date(entry.timestamp * 1000).toISOString().replace('T', ' ').replace('Z', '');
+                entry.type === 1
+                  ? 'NORMAL'
+                  : entry.type === 2
+                    ? 'WARNING'
+                    : entry.type === 4
+                      ? 'CRITICAL'
+                      : 'INFO';
+              const ts = new Date(entry.timestamp * 1000)
+                .toISOString()
+                .replace('T', ' ')
+                .replace('Z', '');
               serverLogSection.push(`${ts} [${typeLabel}] ${entry.message}`);
             }
           } else {
@@ -772,18 +952,29 @@ export function SuperDebugPanel({
           }
 
           try {
-            const peerLogResp = await fetch(
-              `${validatedSession.baseUrl}/api/v2/log/peers`,
-              { method: 'GET', headers: logHeaders, credentials: 'omit' },
-            );
+            const peerLogResp = await fetch(`${validatedSession.baseUrl}/api/v2/log/peers`, {
+              method: 'GET',
+              headers: logHeaders,
+              credentials: 'omit',
+            });
             if (!peerLogResp.ok) throw new Error(`HTTP ${peerLogResp.status}`);
-            const peerLogs = (await peerLogResp.json()) as { id: number; ip: string; port: number; connection: string; flags: string; client: string }[];
+            const peerLogs = (await peerLogResp.json()) as {
+              id: number;
+              ip: string;
+              port: number;
+              connection: string;
+              flags: string;
+              client: string;
+            }[];
             if (peerLogs.length > 0) {
               serverLogSection.push('');
               serverLogSection.push(`--- Peer Logs (${peerLogs.length} entries) ---`);
               const sortedPeers = [...peerLogs].sort((a, b) => a.id - b.id);
               for (const entry of sortedPeers) {
-                const ts = new Date(entry.id * 1000).toISOString().replace('T', ' ').replace('Z', '');
+                const ts = new Date(entry.id * 1000)
+                  .toISOString()
+                  .replace('T', ' ')
+                  .replace('Z', '');
                 serverLogSection.push(
                   `${ts} ${entry.ip}:${entry.port} | ${entry.client} | ${entry.connection} | flags=${entry.flags}`,
                 );
@@ -797,7 +988,9 @@ export function SuperDebugPanel({
             serverLogSection.push('(failed to fetch peer logs)');
           }
         } catch (err: unknown) {
-          serverLogSection.push(`(could not fetch server logs using this screen's validated diagnostic session: ${getErrorMessage(err)})`);
+          serverLogSection.push(
+            `(could not fetch server logs using this screen's validated diagnostic session: ${getErrorMessage(err)})`,
+          );
         }
       } else if (apiClient.getServer()) {
         try {
@@ -809,10 +1002,17 @@ export function SuperDebugPanel({
             const sorted = [...appLogs].sort((a, b) => a.id - b.id);
             for (const entry of sorted) {
               const typeLabel =
-                entry.type === 1 ? 'NORMAL' :
-                entry.type === 2 ? 'WARNING' :
-                entry.type === 4 ? 'CRITICAL' : 'INFO';
-              const ts = new Date(entry.timestamp * 1000).toISOString().replace('T', ' ').replace('Z', '');
+                entry.type === 1
+                  ? 'NORMAL'
+                  : entry.type === 2
+                    ? 'WARNING'
+                    : entry.type === 4
+                      ? 'CRITICAL'
+                      : 'INFO';
+              const ts = new Date(entry.timestamp * 1000)
+                .toISOString()
+                .replace('T', ' ')
+                .replace('Z', '');
               serverLogSection.push(`${ts} [${typeLabel}] ${entry.message}`);
             }
           } else {
@@ -827,7 +1027,10 @@ export function SuperDebugPanel({
               serverLogSection.push(`--- Peer Logs (${peerLogs.length} entries) ---`);
               const sortedPeers = [...peerLogs].sort((a, b) => a.id - b.id);
               for (const entry of sortedPeers) {
-                const ts = new Date(entry.id * 1000).toISOString().replace('T', ' ').replace('Z', '');
+                const ts = new Date(entry.id * 1000)
+                  .toISOString()
+                  .replace('T', ' ')
+                  .replace('Z', '');
                 serverLogSection.push(
                   `${ts} ${entry.ip}:${entry.port} | ${entry.client} | ${entry.connection} | flags=${entry.flags}`,
                 );
@@ -844,7 +1047,9 @@ export function SuperDebugPanel({
           serverLogSection.push(`(could not fetch server logs: ${getErrorMessage(err)})`);
         }
       } else {
-        serverLogSection.push('(not connected — run "Run Full Diagnostic" above first to include this server\'s logs in the report)');
+        serverLogSection.push(
+          '(not connected — run "Run Full Diagnostic" above first to include this server\'s logs in the report)',
+        );
       }
       serverLogSection.push('');
 
@@ -898,7 +1103,11 @@ export function SuperDebugPanel({
       } else {
         // Fallback: copy to clipboard
         await Clipboard.setStringAsync(fullReport);
-        addEntry('INFO', 'Sharing unavailable — full report copied to clipboard instead.', 'warning');
+        addEntry(
+          'INFO',
+          'Sharing unavailable — full report copied to clipboard instead.',
+          'warning',
+        );
       }
     } catch (err: unknown) {
       addEntry('ERROR', `Export failed: ${getErrorMessage(err)}`, 'error');
@@ -914,21 +1123,29 @@ export function SuperDebugPanel({
 
   const getStepColor = (status: DiagnosticStatus): string => {
     switch (status) {
-      case 'success': return colors.success;
-      case 'warning': return colors.warning;
-      case 'error': return colors.error;
+      case 'success':
+        return colors.success;
+      case 'warning':
+        return colors.warning;
+      case 'error':
+        return colors.error;
       case 'info':
-      default: return colors.primary;
+      default:
+        return colors.primary;
     }
   };
 
   const getStepIcon = (status: DiagnosticStatus): React.ComponentProps<typeof Ionicons>['name'] => {
     switch (status) {
-      case 'success': return 'checkmark-circle';
-      case 'warning': return 'warning';
-      case 'error': return 'alert-circle';
+      case 'success':
+        return 'checkmark-circle';
+      case 'warning':
+        return 'warning';
+      case 'error':
+        return 'alert-circle';
       case 'info':
-      default: return 'information-circle';
+      default:
+        return 'information-circle';
     }
   };
 
@@ -941,7 +1158,9 @@ export function SuperDebugPanel({
       {/* Section label */}
       <View style={styles.sectionLabelRow}>
         <Ionicons name="hardware-chip-outline" size={14} color={colors.textSecondary} />
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>NETWORK DIAGNOSTICS</Text>
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          NETWORK DIAGNOSTICS
+        </Text>
       </View>
 
       {/* Quick Actions */}
@@ -1046,10 +1265,7 @@ export function SuperDebugPanel({
             {log.map((entry) => (
               <View
                 key={entry.id}
-                style={[
-                  styles.logEntry,
-                  { borderLeftColor: getStepColor(entry.status) },
-                ]}
+                style={[styles.logEntry, { borderLeftColor: getStepColor(entry.status) }]}
               >
                 {entry.message.length > 0 && (
                   <>
@@ -1066,10 +1282,7 @@ export function SuperDebugPanel({
                         {formatTime(entry.timestamp)}
                       </Text>
                     </View>
-                    <Text
-                      style={[styles.logMessage, { color: colors.text }]}
-                      selectable
-                    >
+                    <Text style={[styles.logMessage, { color: colors.text }]} selectable>
                       {entry.message}
                     </Text>
                   </>

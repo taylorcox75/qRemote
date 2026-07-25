@@ -21,7 +21,7 @@ export const storageService = {
     try {
       const servers = await this.getServers();
       const existingIndex = servers.findIndex((s) => s.id === server.id);
-      
+
       let updatedServers: ServerConfig[];
       if (existingIndex >= 0) {
         updatedServers = [...servers];
@@ -31,11 +31,11 @@ export const storageService = {
       }
 
       // Store server config without password
-      const serversWithoutPasswords = updatedServers.map(s => ({
+      const serversWithoutPasswords = updatedServers.map((s) => ({
         id: s.id,
         name: s.name,
         host: stripProtocol(s.host || ''),
-        port: (s.port && s.port > 0) ? s.port : undefined,
+        port: s.port && s.port > 0 ? s.port : undefined,
         basePath: s.basePath || '/',
         username: s.username,
         password: '', // Don't store password in AsyncStorage
@@ -45,7 +45,7 @@ export const storageService = {
         // is configured; absent fields naturally mean fallback is disabled.
         useFallback: s.useFallback || false,
         fallbackHost: stripProtocol(s.fallbackHost || ''),
-        fallbackPort: (s.fallbackPort && s.fallbackPort > 0) ? s.fallbackPort : undefined,
+        fallbackPort: s.fallbackPort && s.fallbackPort > 0 ? s.fallbackPort : undefined,
         fallbackUseHttps: s.fallbackUseHttps || false,
         fallbackBasePath: s.fallbackBasePath || undefined,
         // Proxy Basic Auth (password stored separately in SecureStore)
@@ -53,12 +53,15 @@ export const storageService = {
         basicAuthUsername: s.basicAuthUsername || '',
         basicAuthPassword: '', // Don't store password in AsyncStorage
       }));
-      
+
       await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(serversWithoutPasswords));
-      
+
       // Store passwords securely
       await SecureStore.setItemAsync(`server_password_${server.id}`, server.password);
-      await SecureStore.setItemAsync(`server_basic_auth_password_${server.id}`, server.basicAuthPassword ?? '');
+      await SecureStore.setItemAsync(
+        `server_basic_auth_password_${server.id}`,
+        server.basicAuthPassword ?? '',
+      );
     } catch (error) {
       throw error;
     }
@@ -73,7 +76,7 @@ export const storageService = {
       if (!data) return [];
 
       const servers: Omit<ServerConfig, 'password'>[] = JSON.parse(data);
-      
+
       // Retrieve passwords from SecureStore, normalize host (strip protocol from legacy data)
       // Each secret is read in its own try/catch: SecureStore throws (rather than
       // resolving null) when an item can't be decrypted — e.g. after a device
@@ -99,9 +102,11 @@ export const storageService = {
             password,
             basicAuthPassword,
             host: stripProtocol(server.host || ''),
-            fallbackHost: server.fallbackHost ? stripProtocol(server.fallbackHost) : server.fallbackHost,
+            fallbackHost: server.fallbackHost
+              ? stripProtocol(server.fallbackHost)
+              : server.fallbackHost,
           };
-        })
+        }),
       );
 
       return serversWithPasswords;
@@ -124,7 +129,7 @@ export const storageService = {
   async deleteServer(id: string): Promise<void> {
     const servers = await this.getServers();
     const filtered = servers.filter((s) => s.id !== id);
-    
+
     // getServers() rehydrates BOTH secrets from SecureStore, so every field that
     // holds a credential has to be blanked again before this goes back into
     // AsyncStorage — see saveServer above, which does the same. Missing
@@ -132,13 +137,13 @@ export const storageService = {
     // into unencrypted storage on each delete.
     await AsyncStorage.setItem(
       STORAGE_KEYS.SERVERS,
-      JSON.stringify(filtered.map(s => ({ ...s, password: '', basicAuthPassword: '' })))
+      JSON.stringify(filtered.map((s) => ({ ...s, password: '', basicAuthPassword: '' }))),
     );
-    
+
     // Remove passwords from SecureStore
     await SecureStore.deleteItemAsync(`server_password_${id}`);
     await SecureStore.deleteItemAsync(`server_basic_auth_password_${id}`);
-    
+
     // If this was the current server, clear it
     const currentId = await this.getCurrentServerId();
     if (currentId === id) {
@@ -192,4 +197,3 @@ export const storageService = {
     }
   },
 };
-
