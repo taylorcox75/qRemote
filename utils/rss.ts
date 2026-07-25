@@ -4,7 +4,7 @@
  * folder nodes (plain nested objects) at any depth. Paths are joined with
  * `\` per qBittorrent's own convention (addFolder/addFeed/moveItem params).
  *
- * Key exports: isRssFeed, flattenRssTree, joinRssPath, parentRssPath, rssPathBaseName
+ * Key exports: isRssFeed, flattenRssTree, joinRssPath, parentRssPath, rssPathBaseName, toSearchQuery
  */
 import { RssFeed, RssItemsResponse, RssTreeNode } from '@/types/api';
 
@@ -54,4 +54,19 @@ export function flattenRssTree(tree: RssItemsResponse): FlattenedRssTree {
 
   walk(tree, '');
   return { folders, feeds };
+}
+
+/**
+ * Turns a media title (e.g. from a Plex Watchlist article) into a minimal
+ * search query, the way Sonarr/Radarr build release-search terms: strip the
+ * parenthesized release year and any other parenthetical/bracketed
+ * qualifier, and collapse whitespace. Indexers rarely index the year
+ * verbatim in that exact "(YYYY)" form, so keeping it only narrows matches
+ * without ever helping find one.
+ */
+export function toSearchQuery(title: string): string {
+  return title
+    .replace(/\s*[([][^)\]]*[)\]]\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

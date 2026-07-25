@@ -4,6 +4,7 @@ import {
   joinRssPath,
   parentRssPath,
   rssPathBaseName,
+  toSearchQuery,
 } from '@/utils/rss';
 import { RssFeed, RssItemsResponse } from '@/types/api';
 
@@ -93,5 +94,31 @@ describe('flattenRssTree', () => {
     const { folders, feeds } = flattenRssTree(tree);
     expect(folders).toEqual(['EmptyFolder']);
     expect(feeds).toEqual([]);
+  });
+});
+
+describe('toSearchQuery', () => {
+  it('strips a trailing parenthesized release year', () => {
+    expect(toSearchQuery('RBG (2018)')).toBe('RBG');
+  });
+
+  it('strips a bracketed year too', () => {
+    expect(toSearchQuery('RBG [2018]')).toBe('RBG');
+  });
+
+  it('strips a parenthetical qualifier that is not a year', () => {
+    expect(toSearchQuery("Ocean's Eleven (Remastered)")).toBe("Ocean's Eleven");
+  });
+
+  it('strips multiple parenthetical groups', () => {
+    expect(toSearchQuery('The Movie (2018) (Extended Cut)')).toBe('The Movie');
+  });
+
+  it('leaves a title with no parentheses unchanged', () => {
+    expect(toSearchQuery('The Wire')).toBe('The Wire');
+  });
+
+  it('collapses internal whitespace left behind after stripping', () => {
+    expect(toSearchQuery('Title  (2018)  Subtitle')).toBe('Title Subtitle');
   });
 });

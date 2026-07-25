@@ -39,6 +39,7 @@ import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
+import { toSearchQuery } from '@/utils/rss';
 
 export default function RssFeedArticlesScreen() {
   const { t } = useTranslation();
@@ -175,7 +176,7 @@ export default function RssFeedArticlesScreen() {
   const handleSearchForThis = useCallback(
     (article: RssArticle) => {
       haptics.selection();
-      router.push({ pathname: '/(tabs)/search', params: { q: article.title } });
+      router.push({ pathname: '/(tabs)/search', params: { q: toSearchQuery(article.title) } });
     },
     [router],
   );
