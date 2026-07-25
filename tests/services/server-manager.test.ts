@@ -192,6 +192,33 @@ describe('ServerManager', () => {
         'Failed to connect to server'
       );
     });
+
+    it('succeeds via API key without calling login', async () => {
+      mockApp.getVersion.mockResolvedValueOnce({ version: '5.2', apiVersion: '2.14' });
+      const result = await ServerManager.connectToServer(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }));
+      expect(result).toBe(true);
+      expect(mockAuth.login).not.toHaveBeenCalled();
+      expect(mockStorage.setCurrentServerId).toHaveBeenCalledWith('s1');
+      expect(mockApiClient.setApiVersion).toHaveBeenCalledWith('2.14');
+    });
+
+    it('surfaces a credentials error when an API key is rejected (401/403)', async () => {
+      const err = new AxiosError('forbidden');
+      err.response = { status: 401 } as never;
+      mockApp.getVersion.mockRejectedValueOnce(err);
+      await expect(
+        ServerManager.connectToServer(makeServer({ useApiKey: true, apiKey: 'qbt_badkey' }))
+      ).rejects.toThrow('Authentication failed');
+    });
+
+    it('rethrows network errors from the API-key version check', async () => {
+      const err = new AxiosError('timeout');
+      err.code = 'ERR_NETWORK';
+      mockApp.getVersion.mockRejectedValueOnce(err);
+      await expect(
+        ServerManager.connectToServer(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }))
+      ).rejects.toThrow();
+    });
   });
 
   describe('connectToServer (with fallback)', () => {
@@ -252,6 +279,13 @@ describe('ServerManager', () => {
       mockApiClient.getServer.mockReturnValue(null);
       mockAuth.logout.mockRejectedValueOnce(new Error('logout failed'));
       await expect(ServerManager.disconnect()).resolves.toBeUndefined();
+      expect(mockApiClient.setServer).toHaveBeenCalledWith(null);
+    });
+
+    it('disconnect skips logout for API-key servers (auth endpoints reject Bearer keys)', async () => {
+      mockApiClient.getServer.mockReturnValue(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }));
+      await ServerManager.disconnect();
+      expect(mockAuth.logout).not.toHaveBeenCalled();
       expect(mockApiClient.setServer).toHaveBeenCalledWith(null);
     });
 
@@ -330,6 +364,14 @@ describe('ServerManager', () => {
       abortErr.name = 'AbortError';
       mockAuth.login.mockRejectedValueOnce(abortErr);
       await expect(ServerManager.testConnection(makeServer())).rejects.toThrow('aborted');
+    });
+
+    it('skips login when useApiKey is set', async () => {
+      mockApiClient.getServer.mockReturnValue(null);
+      mockApp.getVersion.mockResolvedValueOnce({ version: '5.2', apiVersion: '2.14' });
+      const result = await ServerManager.testConnection(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }));
+      expect(result.success).toBe(true);
+      expect(mockAuth.login).not.toHaveBeenCalled();
     });
   });
 

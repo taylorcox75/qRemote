@@ -52,6 +52,9 @@ export const storageService = {
         useBasicAuth: s.useBasicAuth || false,
         basicAuthUsername: s.basicAuthUsername || '',
         basicAuthPassword: '', // Don't store password in AsyncStorage
+        // API key auth (key stored separately in SecureStore)
+        useApiKey: s.useApiKey || false,
+        apiKey: '', // Don't store API key in AsyncStorage
       }));
 
       await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(serversWithoutPasswords));
@@ -62,6 +65,7 @@ export const storageService = {
         `server_basic_auth_password_${server.id}`,
         server.basicAuthPassword ?? '',
       );
+      await SecureStore.setItemAsync(`server_api_key_${server.id}`, server.apiKey ?? '');
     } catch (error) {
       throw error;
     }
@@ -97,10 +101,12 @@ export const storageService = {
         servers.map(async (server) => {
           const password = await readSecret(`server_password_${server.id}`);
           const basicAuthPassword = await readSecret(`server_basic_auth_password_${server.id}`);
+          const apiKey = await readSecret(`server_api_key_${server.id}`);
           return {
             ...server,
             password,
             basicAuthPassword,
+            apiKey,
             host: stripProtocol(server.host || ''),
             fallbackHost: server.fallbackHost
               ? stripProtocol(server.fallbackHost)
@@ -130,19 +136,22 @@ export const storageService = {
     const servers = await this.getServers();
     const filtered = servers.filter((s) => s.id !== id);
 
-    // getServers() rehydrates BOTH secrets from SecureStore, so every field that
+    // getServers() rehydrates every secret from SecureStore, so every field that
     // holds a credential has to be blanked again before this goes back into
     // AsyncStorage — see saveServer above, which does the same. Missing
     // basicAuthPassword here leaked the proxy password of every surviving server
     // into unencrypted storage on each delete.
     await AsyncStorage.setItem(
       STORAGE_KEYS.SERVERS,
-      JSON.stringify(filtered.map((s) => ({ ...s, password: '', basicAuthPassword: '' }))),
+      JSON.stringify(
+        filtered.map((s) => ({ ...s, password: '', basicAuthPassword: '', apiKey: '' })),
+      ),
     );
 
-    // Remove passwords from SecureStore
+    // Remove secrets from SecureStore
     await SecureStore.deleteItemAsync(`server_password_${id}`);
     await SecureStore.deleteItemAsync(`server_basic_auth_password_${id}`);
+    await SecureStore.deleteItemAsync(`server_api_key_${id}`);
 
     // If this was the current server, clear it
     const currentId = await this.getCurrentServerId();

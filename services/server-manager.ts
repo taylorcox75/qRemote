@@ -7,6 +7,7 @@
 import { AxiosError } from 'axios';
 import { ServerConfig, ServerEndpointKind } from '@/types/api';
 import { hasFallback, resolveServerEndpoint } from '@/utils/server';
+import { getServerAuthMode } from '@/utils/authMode';
 import { storageService } from './storage';
 import { apiClient } from './api/client';
 import { authApi } from './api/auth';
@@ -147,29 +148,38 @@ export class ServerManager {
     resolved: ServerConfig,
     endpoint: ServerEndpointKind,
   ): Promise<boolean> {
+    const authMode = getServerAuthMode(resolved);
     clogInfo(
       'CONN',
-      `Connecting to ${resolved.host}:${resolved.port || 'default'} via ${endpoint} (bypassAuth=${resolved.bypassAuth})`,
+      `Connecting to ${resolved.host}:${resolved.port || 'default'} via ${endpoint} (authMode=${authMode})`,
     );
     apiClient.setServer(resolved);
 
     try {
-      if (resolved.bypassAuth) {
+      if (authMode !== 'password') {
         try {
           const versionInfo = await applicationApi.getVersion();
           await storageService.setCurrentServerId(server.id);
           apiClient.setApiVersion(versionInfo.apiVersion);
           clogInfo(
             'CONN',
-            `Connected successfully via ${endpoint} (bypass auth, API ${versionInfo.apiVersion})`,
+            `Connected successfully via ${endpoint} (${authMode}, API ${versionInfo.apiVersion})`,
           );
           return true;
         } catch (error: unknown) {
           apiClient.setServer(null);
           const message = error instanceof Error ? error.message : String(error);
-          clogError('CONN', `Bypass-auth connect failed (${endpoint}): ${message}`);
+          const axiosErr = error instanceof AxiosError ? error : undefined;
+          clogError('CONN', `${authMode} connect failed (${endpoint}): ${message}`);
           if (isNetworkError(error)) {
             throw error;
+          }
+          if (
+            axiosErr?.response?.status === 403 ||
+            axiosErr?.response?.status === 401 ||
+            message.includes('Authentication')
+          ) {
+            throw new Error('Authentication failed. Please check your credentials.');
           }
           throw new Error('Failed to connect to server. Please check your settings.');
         }
@@ -229,10 +239,14 @@ export class ServerManager {
    */
   static async disconnect(): Promise<void> {
     const previousServer = apiClient.getServer();
-    try {
-      await authApi.logout();
-    } catch (error) {
-      // Ignore logout errors
+    // API-key auth is stateless and the login/logout endpoints reject Bearer
+    // keys outright, so there's no session to end.
+    if (previousServer && getServerAuthMode(previousServer) !== 'apiKey') {
+      try {
+        await authApi.logout();
+      } catch (error) {
+        // Ignore logout errors
+      }
     }
     clogInfo(
       'CONN',
@@ -303,7 +317,7 @@ export class ServerManager {
       apiClient.setServer(resolved);
 
       try {
-        if (!resolved.bypassAuth) {
+        if (getServerAuthMode(resolved) === 'password') {
           const loginResult = await authApi.login(resolved.username, resolved.password, signal);
           if (loginResult.status !== 'Ok') {
             clogWarn('CONN', 'testEndpoint: auth failed');

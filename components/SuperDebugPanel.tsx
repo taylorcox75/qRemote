@@ -105,6 +105,9 @@ export interface SuperDebugPanelProps {
   username: string;
   password: string;
   bypassAuth: boolean;
+  /** Optional API key auth fields — when set, login/cookie steps are skipped and a Bearer header is sent instead. */
+  useApiKey?: boolean;
+  apiKey?: string;
   /** Optional proxy Basic Auth fields — when absent, no Authorization header is sent. */
   useBasicAuth?: boolean;
   basicAuthUsername?: string;
@@ -136,7 +139,8 @@ interface ValidatedSession {
   baseUrl: string;
   /** Full `name=value` session cookie pair (name is server-configurable, not always `SID`). */
   sessionCookie: string;
-  basicAuth: string | null;
+  /** Authorization header value proven to work (Bearer for API key, Basic for proxy auth). */
+  authHeader: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +154,8 @@ export function SuperDebugPanel({
   username,
   password,
   bypassAuth,
+  useApiKey = false,
+  apiKey = '',
   useBasicAuth = false,
   basicAuthUsername = '',
   basicAuthPassword = '',
@@ -181,8 +187,12 @@ export function SuperDebugPanel({
     return `${protocol}://${clean}${portPart}`;
   }, [host, port, useHttps]);
 
-  /** Build the Authorization header value when proxy Basic Auth is enabled. */
-  const buildBasicAuthHeader = useCallback((): string | null => {
+  /** Build the Authorization header value: API key (Bearer) takes precedence
+   * over proxy Basic Auth, mirroring services/api/client.ts's interceptor. */
+  const buildAuthHeader = useCallback((): string | null => {
+    if (useApiKey && apiKey.trim()) {
+      return `Bearer ${apiKey.trim()}`;
+    }
     if (!useBasicAuth || !basicAuthUsername.trim()) return null;
     const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
     const input = `${basicAuthUsername.trim()}:${basicAuthPassword}`;
@@ -208,7 +218,7 @@ export function SuperDebugPanel({
       b64 += i + 2 < bytes.length ? BASE64[b2 & 63] : '=';
     }
     return 'Basic ' + b64;
-  }, [useBasicAuth, basicAuthUsername, basicAuthPassword]);
+  }, [useApiKey, apiKey, useBasicAuth, basicAuthUsername, basicAuthPassword]);
 
   /** Fingerprint of everything that affects the diagnostic's outcome, so a
    * validated session is only trusted for export while the form still
@@ -221,6 +231,8 @@ export function SuperDebugPanel({
       bypassAuth,
       username,
       password,
+      useApiKey,
+      apiKey,
       useBasicAuth,
       basicAuthUsername,
       basicAuthPassword,
@@ -232,6 +244,8 @@ export function SuperDebugPanel({
     bypassAuth,
     username,
     password,
+    useApiKey,
+    apiKey,
     useBasicAuth,
     basicAuthUsername,
     basicAuthPassword,
@@ -283,9 +297,9 @@ export function SuperDebugPanel({
     const start = Date.now();
 
     try {
-      const basicAuth = buildBasicAuthHeader();
+      const authHeader = buildAuthHeader();
       const reachHeaders: Record<string, string> = {};
-      if (basicAuth) reachHeaders['Authorization'] = basicAuth;
+      if (authHeader) reachHeaders['Authorization'] = authHeader;
       let response: Response;
       try {
         response = await fetch(url, {
@@ -417,10 +431,18 @@ export function SuperDebugPanel({
       addEntry('ERROR', 'Host field is empty. Enter an IP or domain above first.', 'error');
       return;
     }
-    if (!bypassAuth && (!username.trim() || !password.trim())) {
+    if (!bypassAuth && !useApiKey && (!username.trim() || !password.trim())) {
       addEntry(
         'ERROR',
-        'Username and password are required. Fill them in above, or enable "Bypass Authentication".',
+        'Username and password are required. Fill them in above, or choose a different authentication method.',
+        'error',
+      );
+      return;
+    }
+    if (useApiKey && !apiKey.trim()) {
+      addEntry(
+        'ERROR',
+        'API key is required. Fill it in above, or choose a different authentication method.',
         'error',
       );
       return;
@@ -443,14 +465,16 @@ export function SuperDebugPanel({
     addEntry('INFO', `Target: ${baseUrl}`, 'info');
     addEntry('INFO', `Platform: ${Platform.OS} ${Platform.Version}`, 'info');
     addEntry('INFO', `App: ${APP_VERSION}`, 'info');
+    const authModeLabel = useApiKey ? 'apiKey' : bypassAuth ? 'none' : 'password';
     addEntry(
       'INFO',
-      `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Bypass: ${bypassAuth ? 'Yes' : 'No'} | Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
+      `HTTPS: ${useHttps ? 'Yes' : 'No'} | Auth Method: ${authModeLabel} | Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
       'info',
     );
 
     let passed = 0;
-    const totalSteps = bypassAuth ? 2 : 4;
+    const skipLogin = bypassAuth || useApiKey;
+    const totalSteps = skipLogin ? 2 : 4;
     let sessionCookie = '';
 
     try {
@@ -461,9 +485,9 @@ export function SuperDebugPanel({
         if (!controller.signal.aborted) controller.abort();
       }, 15000);
 
-      const basicAuth = buildBasicAuthHeader();
+      const authHeader = buildAuthHeader();
       const diagHeaders: Record<string, string> = {};
-      if (basicAuth) diagHeaders['Authorization'] = basicAuth;
+      if (authHeader) diagHeaders['Authorization'] = authHeader;
 
       try {
         let reachResp: Response;
@@ -538,8 +562,14 @@ export function SuperDebugPanel({
         return;
       }
 
-      if (bypassAuth) {
-        addEntry('INFO', 'Steps 2-3 skipped (auth bypass enabled).', 'info');
+      if (skipLogin) {
+        addEntry(
+          'INFO',
+          useApiKey
+            ? 'Steps 2-3 skipped (API key auth is stateless — no login or session cookie).'
+            : 'Steps 2-3 skipped (auth bypass enabled).',
+          'info',
+        );
       } else {
         // -- Step 2: Login ----------------------------------------------------
         addEntry('LOGIN', 'Step 2 — Can the app log in?', 'info');
@@ -552,7 +582,7 @@ export function SuperDebugPanel({
             {
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                ...(basicAuth ? { Authorization: basicAuth } : {}),
+                ...(authHeader ? { Authorization: authHeader } : {}),
               },
               signal: controller.signal,
             },
@@ -675,8 +705,8 @@ export function SuperDebugPanel({
         if (sessionCookie) {
           headers['Cookie'] = sessionCookie;
         }
-        if (basicAuth) {
-          headers['Authorization'] = basicAuth;
+        if (authHeader) {
+          headers['Authorization'] = authHeader;
         }
         const apiResp = await diagnosticHttp.get(versionUrl, {
           headers,
@@ -693,7 +723,7 @@ export function SuperDebugPanel({
             'success',
           );
           passed++;
-          // This proves the session (cookie/basic-auth combo) actually works
+          // This proves the session (cookie/auth-header combo) actually works
           // end-to-end — remember it so "Export Full Logs" can fetch server
           // logs using it instead of depending on the unrelated apiClient
           // singleton.
@@ -701,11 +731,17 @@ export function SuperDebugPanel({
             configKey: buildConfigKey(),
             baseUrl,
             sessionCookie,
-            basicAuth,
+            authHeader,
           };
         } else if (apiResp.status === 403) {
           addEntry('API', `HTTP 403 Forbidden — Not authenticated (${apiLatency}ms)`, 'error');
-          if (!bypassAuth && !sessionCookie) {
+          if (useApiKey) {
+            addEntry(
+              'WARN',
+              'API key authentication was rejected. Possible causes:\n  1. The key was mistyped or copied incorrectly\n  2. The key was rotated in qBittorrent since it was entered here\n  3. Your qBittorrent version is older than 5.2.0 / WebAPI 2.14.1 (API keys are not supported)\n\nCheck: Preferences > WebUI > API Key in qBittorrent.',
+              'warning',
+            );
+          } else if (!bypassAuth && !sessionCookie) {
             addEntry(
               'WARN',
               'Login succeeded (Step 2) but no session cookie was captured (Step 3), so this API request was rejected.\n\nSolution:\n  1. In qBittorrent: Settings > WebUI > "Bypass authentication for clients in whitelisted IP subnets"\n  2. Add your device\'s IP or subnet\n  3. Enable "Bypass Authentication" toggle in qBitRemote',
@@ -799,7 +835,7 @@ export function SuperDebugPanel({
       `Host: ${clean || '(empty)'}`,
       `Port: ${portNum || 'default (80/443)'}`,
       `HTTPS: ${useHttps ? 'Yes' : 'No'}`,
-      `Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`,
+      `Auth Method: ${useApiKey ? 'apiKey' : bypassAuth ? 'none' : 'password'}`,
       `Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
       '',
       '--- Diagnostic Log ---',
@@ -864,7 +900,7 @@ export function SuperDebugPanel({
         `Host: ${clean || '(empty)'}`,
         `Port: ${portNum || 'default (80/443)'}`,
         `HTTPS: ${useHttps ? 'Yes' : 'No'}`,
-        `Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}`,
+        `Auth Method: ${useApiKey ? 'apiKey' : bypassAuth ? 'none' : 'password'}`,
         `Basic Auth: ${useBasicAuth ? 'Yes' : 'No'}`,
         `Username: ${username ? '(set)' : '(empty)'}`,
         '',
@@ -913,7 +949,7 @@ export function SuperDebugPanel({
       if (validatedSession) {
         const logHeaders: Record<string, string> = {};
         if (validatedSession.sessionCookie) logHeaders['Cookie'] = validatedSession.sessionCookie;
-        if (validatedSession.basicAuth) logHeaders['Authorization'] = validatedSession.basicAuth;
+        if (validatedSession.authHeader) logHeaders['Authorization'] = validatedSession.authHeader;
 
         try {
           const mainLogResp = await fetch(

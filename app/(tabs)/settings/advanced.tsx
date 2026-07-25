@@ -90,6 +90,8 @@ export default function AdvancedSettingsScreen() {
           username: s.username,
           useHttps: s.useHttps,
           bypassAuth: s.bypassAuth,
+          useApiKey: s.useApiKey,
+          // apiKey intentionally excluded — re-enter after import
           useBasicAuth: s.useBasicAuth,
           basicAuthUsername: s.basicAuthUsername,
           // basicAuthPassword intentionally excluded — re-enter after import
@@ -152,7 +154,7 @@ export default function AdvancedSettingsScreen() {
 
       for (const serverData of importData.servers) {
         if (!existingServerIds.has(serverData.id)) {
-          await ServerManager.saveServer({ ...serverData, password: '' });
+          await ServerManager.saveServer({ ...serverData, password: '', apiKey: '' });
         }
       }
 

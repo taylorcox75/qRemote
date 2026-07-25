@@ -65,6 +65,7 @@ describe('storageService', () => {
       const raw = JSON.parse(mockAsyncStorage['servers']);
       expect(raw[0].password).toBe('');
       expect(raw[0].basicAuthPassword).toBe('');
+      expect(raw[0].apiKey).toBe('');
     });
 
     it('stores password securely via SecureStore', async () => {
@@ -96,6 +97,18 @@ describe('storageService', () => {
       expect(servers[0].basicAuthPassword).toBe('proxypass');
       const raw = JSON.parse(mockAsyncStorage['servers']);
       expect(raw[0].basicAuthPassword).toBe('');
+    });
+
+    it('persists the apiKey field separately, storing it in SecureStore', async () => {
+      await storageService.saveServer(
+        makeServer({ useApiKey: true, apiKey: 'qbt_abcdefghijklmnopqrstuvwx1234' })
+      );
+      const servers = await storageService.getServers();
+      expect(servers[0].useApiKey).toBe(true);
+      expect(servers[0].apiKey).toBe('qbt_abcdefghijklmnopqrstuvwx1234');
+      expect(mockSecureStore['server_api_key_s1']).toBe('qbt_abcdefghijklmnopqrstuvwx1234');
+      const raw = JSON.parse(mockAsyncStorage['servers']);
+      expect(raw[0].apiKey).toBe('');
     });
 
     it('getServers returns [] when nothing stored', async () => {
@@ -135,6 +148,21 @@ describe('storageService', () => {
       const servers = await storageService.getServers();
       expect(servers).toEqual([]);
       expect(mockSecureStore['server_password_s1']).toBeUndefined();
+    });
+
+    it('removes the apiKey secret and blanks it on surviving records', async () => {
+      await storageService.saveServer(
+        makeServer({ id: 's1', useApiKey: true, apiKey: 'qbt_deleteme12345678901234567890' })
+      );
+      await storageService.saveServer(
+        makeServer({ id: 's2', useApiKey: true, apiKey: 'qbt_keepme1234567890123456789012' })
+      );
+      await storageService.deleteServer('s1');
+      expect(mockSecureStore['server_api_key_s1']).toBeUndefined();
+      const raw = JSON.parse(mockAsyncStorage['servers']);
+      expect(raw.find((s: { id: string }) => s.id === 's2').apiKey).toBe('');
+      const servers = await storageService.getServers();
+      expect(servers.find((s) => s.id === 's2')?.apiKey).toBe('qbt_keepme1234567890123456789012');
     });
 
     it('clears currentServerId when deleting the current server', async () => {

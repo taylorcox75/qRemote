@@ -32,11 +32,13 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { SuperDebugPanel } from '@/components/SuperDebugPanel';
 import { DebugRow } from '@/components/DebugRow';
 import { SettingRow } from '@/components/SettingRow';
+import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
 import { APP_VERSION } from '@/utils/version';
 import { getErrorMessage } from '@/utils/error';
+import { ServerAuthMode, getServerAuthMode, applyServerAuthMode } from '@/utils/authMode';
 
 export default function EditServerScreen() {
   const router = useRouter();
@@ -50,8 +52,10 @@ export default function EditServerScreen() {
   const [port, setPort] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [authMode, setAuthMode] = useState<ServerAuthMode>('password');
+  const [apiKey, setApiKey] = useState('');
+  const [showAuthMethodPicker, setShowAuthMethodPicker] = useState(false);
   const [useHttps, setUseHttps] = useState(false);
-  const [bypassAuth, setBypassAuth] = useState(false);
   const [useBasicAuth, setUseBasicAuth] = useState(false);
   const [basicAuthUsername, setBasicAuthUsername] = useState('');
   const [basicAuthPassword, setBasicAuthPassword] = useState('');
@@ -71,6 +75,13 @@ export default function EditServerScreen() {
   const testAbortController = useRef<AbortController | null>(null);
   // Preserve basePath from existing servers even though we don't show it in UI
   const [preservedBasePath, setPreservedBasePath] = useState<string>('/');
+
+  const authMethodOptions: OptionPickerItem[] = [
+    { label: t('server.authMethodPassword'), value: 'password', icon: 'person-outline' },
+    { label: t('server.authMethodApiKey'), value: 'apiKey', icon: 'key-outline' },
+    { label: t('server.authMethodNone'), value: 'none', icon: 'lock-open-outline' },
+  ];
+  const authMethodLabel = authMethodOptions.find((opt) => opt.value === authMode)?.label || '';
 
   // Helper function to strip http:// or https:// prefix and trailing colons/slashes from host
   const stripProtocol = (hostString: string): string => {
@@ -149,11 +160,13 @@ export default function EditServerScreen() {
     }
 
     // Missing credentials
-    if (!bypassAuth && (!username.trim() || !password.trim())) {
+    if (authMode === 'password' && (!username.trim() || !password.trim())) {
       warnings.push({
         type: 'error',
-        message: 'Username and password required (or enable Bypass Authentication).',
+        message: 'Username and password required (or choose a different authentication method).',
       });
+    } else if (authMode === 'apiKey' && !apiKey.trim()) {
+      warnings.push({ type: 'error', message: 'API key required.' });
     }
 
     return {
@@ -171,7 +184,7 @@ export default function EditServerScreen() {
       hasErrors: warnings.some((w) => w.type === 'error'),
       hasWarnings: warnings.some((w) => w.type === 'warning'),
     };
-  }, [host, port, useHttps, bypassAuth, username, password]);
+  }, [host, port, useHttps, authMode, username, password, apiKey]);
 
   // Copy debug info to clipboard
   const copyDebugInfo = async () => {
@@ -181,7 +194,7 @@ Protocol: ${debugInfo.protocol}://
 Host: ${debugInfo.cleanHost || '(empty)'}
 Port: ${debugInfo.portNum || 'default (80/443)'}
 HTTPS: ${useHttps ? 'Yes' : 'No'}
-Auth Bypass: ${bypassAuth ? 'Yes' : 'No'}
+Auth Method: ${authMode}
 
 Login Endpoint: ${debugInfo.loginEndpoint}
 Version Endpoint: ${debugInfo.versionEndpoint}
@@ -220,8 +233,9 @@ App Version: ${APP_VERSION}`;
         setPort(hasPort ? server.port!.toString() : '');
         setUsername(server.username || '');
         setPassword(server.password || '');
+        setApiKey(server.apiKey || '');
+        setAuthMode(getServerAuthMode(server));
         setUseHttps(server.useHttps || false);
-        setBypassAuth(server.bypassAuth || false);
         setUseBasicAuth(server.useBasicAuth || false);
         setBasicAuthUsername(server.basicAuthUsername || '');
         setBasicAuthPassword(server.basicAuthPassword || '');
@@ -252,12 +266,17 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
-    if (!bypassAuth && (!username.trim() || !password.trim())) {
+    if (authMode === 'password' && (!username.trim() || !password.trim())) {
       showToast(t('errors.fillUsernamePassword'), 'error');
       return;
     }
 
-    if (useBasicAuth && !basicAuthUsername.trim()) {
+    if (authMode === 'apiKey' && !apiKey.trim()) {
+      showToast(t('errors.fillApiKey'), 'error');
+      return;
+    }
+
+    if (authMode !== 'apiKey' && useBasicAuth && !basicAuthUsername.trim()) {
       showToast(t('errors.fillBasicAuthUsername'), 'error');
       return;
     }
@@ -291,19 +310,18 @@ App Version: ${APP_VERSION}`;
         await disconnect();
       }
 
+      const useProxyBasicAuth = authMode !== 'apiKey' && useBasicAuth;
       const server: ServerConfig = {
         id: id!,
         name: name.trim(),
         host: stripProtocol(host.trim()),
         port: portNum,
         basePath: preservedBasePath, // Preserve existing basePath for backward compatibility
-        username: bypassAuth ? '' : username.trim(),
-        password: bypassAuth ? '' : password.trim(),
+        ...applyServerAuthMode(authMode, { username, password, apiKey }),
         useHttps,
-        bypassAuth,
-        useBasicAuth,
-        basicAuthUsername: useBasicAuth ? basicAuthUsername.trim() : '',
-        basicAuthPassword: useBasicAuth ? basicAuthPassword : '',
+        useBasicAuth: useProxyBasicAuth,
+        basicAuthUsername: useProxyBasicAuth ? basicAuthUsername.trim() : '',
+        basicAuthPassword: useProxyBasicAuth ? basicAuthPassword : '',
         useFallback,
         fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
         fallbackPort: useFallback ? fallbackPortNum : undefined,
@@ -346,12 +364,17 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
-    if (!bypassAuth && (!username.trim() || !password.trim())) {
+    if (authMode === 'password' && (!username.trim() || !password.trim())) {
       showToast(t('errors.fillUsernamePassword'), 'error');
       return;
     }
 
-    if (useBasicAuth && !basicAuthUsername.trim()) {
+    if (authMode === 'apiKey' && !apiKey.trim()) {
+      showToast(t('errors.fillApiKey'), 'error');
+      return;
+    }
+
+    if (authMode !== 'apiKey' && useBasicAuth && !basicAuthUsername.trim()) {
       showToast(t('errors.fillBasicAuthUsername'), 'error');
       return;
     }
@@ -381,18 +404,17 @@ App Version: ${APP_VERSION}`;
       setTesting(true);
       testAbortController.current = new AbortController();
 
+      const useProxyBasicAuth = authMode !== 'apiKey' && useBasicAuth;
       const server: ServerConfig = {
         id: id!,
         name: name.trim(),
         host: stripProtocol(host.trim()),
         port: portNum,
-        username: bypassAuth ? '' : username.trim(),
-        password: bypassAuth ? '' : password.trim(),
+        ...applyServerAuthMode(authMode, { username, password, apiKey }),
         useHttps,
-        bypassAuth,
-        useBasicAuth,
-        basicAuthUsername: useBasicAuth ? basicAuthUsername.trim() : '',
-        basicAuthPassword: useBasicAuth ? basicAuthPassword : '',
+        useBasicAuth: useProxyBasicAuth,
+        basicAuthUsername: useProxyBasicAuth ? basicAuthUsername.trim() : '',
+        basicAuthPassword: useProxyBasicAuth ? basicAuthPassword : '',
         useFallback,
         fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
         fallbackPort: useFallback ? fallbackPortNum : undefined,
@@ -642,115 +664,25 @@ App Version: ${APP_VERSION}`;
           </View>
 
           {/* Authentication Section */}
-          {!bypassAuth && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-                {t('server.authentication')}
-              </Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
-                <View style={styles.inputRow}>
-                  <Ionicons
-                    name="person-outline"
-                    size={20}
-                    color={colors.primary}
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={[styles.input, { color: colors.text }]}
-                    value={username}
-                    onChangeText={setUsername}
-                    placeholder={t('placeholders.username')}
-                    placeholderTextColor={colors.textSecondary}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    textContentType="none"
-                    autoComplete="off"
-                  />
-                </View>
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                <View style={styles.inputRow}>
-                  <Ionicons
-                    name="lock-closed-outline"
-                    size={20}
-                    color={colors.primary}
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={[styles.input, { color: colors.text }]}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder={t('placeholders.password')}
-                    placeholderTextColor={colors.textSecondary}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    // "none", not "password": "password" is the explicit iOS AutoFill
-                    // opt-in and also makes iOS offer to *fill* this field from the
-                    // keychain. qRemote stores the password in SecureStore itself.
-                    //
-                    // This does NOT stop the "Save Password?" prompt on save. Verified
-                    // on simulator (iOS 26): iOS treats username + secureTextEntry as a
-                    // login form and offers to save on dismiss regardless of
-                    // textContentType. "oneTimeCode" was tried and did not suppress it
-                    // either -- do not re-try it. See .audit/FINDINGS.md F9.
-                    textContentType="none"
-                    autoComplete="off"
-                    passwordRules=""
-                  />
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Security Section */}
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('server.security')}
+              {t('server.authentication')}
             </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <SettingRow icon="shield-checkmark-outline" label={t('server.useHttps')}>
-                <Switch
-                  value={useHttps}
-                  onValueChange={setUseHttps}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                  thumbColor="#FFFFFF"
-                />
-              </SettingRow>
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <SettingRow
-                icon="lock-open-outline"
-                label={t('server.bypassAuth')}
-                hint={t('server.bypassAuthHint')}
-              >
-                <Switch
-                  value={bypassAuth}
-                  onValueChange={setBypassAuth}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                  thumbColor="#FFFFFF"
-                />
-              </SettingRow>
-            </View>
-          </View>
-
-          {/* Proxy Authentication Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('server.proxyAuthentication')}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <SettingRow
-                icon="globe-outline"
-                label={t('server.useBasicAuth')}
-                hint={t('server.useBasicAuthHint')}
-              >
-                <Switch
-                  value={useBasicAuth}
-                  onValueChange={setUseBasicAuth}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                  thumbColor="#FFFFFF"
-                />
-              </SettingRow>
-              {useBasicAuth && (
+              <TouchableOpacity onPress={() => setShowAuthMethodPicker(true)} activeOpacity={0.7}>
+                <SettingRow icon="key-outline" label={t('server.authMethod')}>
+                  <View style={styles.authMethodValue}>
+                    <Text
+                      style={[styles.authMethodValueText, { color: colors.textSecondary }]}
+                      numberOfLines={1}
+                    >
+                      {authMethodLabel}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                  </View>
+                </SettingRow>
+              </TouchableOpacity>
+              {authMode === 'password' && (
                 <>
                   <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                   <View style={styles.inputRow}>
@@ -762,9 +694,9 @@ App Version: ${APP_VERSION}`;
                     />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
-                      value={basicAuthUsername}
-                      onChangeText={setBasicAuthUsername}
-                      placeholder={t('placeholders.proxyUsername')}
+                      value={username}
+                      onChangeText={setUsername}
+                      placeholder={t('placeholders.username')}
                       placeholderTextColor={colors.textSecondary}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -782,21 +714,164 @@ App Version: ${APP_VERSION}`;
                     />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
-                      value={basicAuthPassword}
-                      onChangeText={setBasicAuthPassword}
-                      placeholder={t('placeholders.proxyPassword')}
+                      value={password}
+                      onChangeText={setPassword}
+                      placeholder={t('placeholders.password')}
                       placeholderTextColor={colors.textSecondary}
                       secureTextEntry
                       autoCapitalize="none"
                       autoCorrect={false}
-                      // "none" for the same reason as the server password field
-                      // above -- and with the same caveat: it does not stop the iOS
-                      // "Save Password?" prompt. See .audit/FINDINGS.md F9.
+                      // "none", not "password": "password" is the explicit iOS AutoFill
+                      // opt-in and also makes iOS offer to *fill* this field from the
+                      // keychain. qRemote stores the password in SecureStore itself.
+                      //
+                      // This does NOT stop the "Save Password?" prompt on save. Verified
+                      // on simulator (iOS 26): iOS treats username + secureTextEntry as a
+                      // login form and offers to save on dismiss regardless of
+                      // textContentType. "oneTimeCode" was tried and did not suppress it
+                      // either -- do not re-try it. See .audit/FINDINGS.md F9.
                       textContentType="none"
                       autoComplete="off"
                       passwordRules=""
                     />
                   </View>
+                </>
+              )}
+              {authMode === 'apiKey' && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.inputRow}>
+                    <Ionicons
+                      name="key-outline"
+                      size={20}
+                      color={colors.primary}
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      value={apiKey}
+                      onChangeText={setApiKey}
+                      placeholder={t('placeholders.apiKey')}
+                      placeholderTextColor={colors.textSecondary}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="none"
+                      autoComplete="off"
+                      passwordRules=""
+                    />
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <Text style={[styles.hintText, { color: colors.textSecondary }]}>
+                    {t('server.apiKeyHint')}
+                  </Text>
+                </>
+              )}
+            </View>
+          </View>
+
+          {/* Security Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('server.security')}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <SettingRow icon="shield-checkmark-outline" label={t('server.useHttps')}>
+                <Switch
+                  value={useHttps}
+                  onValueChange={setUseHttps}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </SettingRow>
+            </View>
+          </View>
+
+          {/* Proxy Authentication Section */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('server.proxyAuthentication')}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              {authMode === 'apiKey' ? (
+                <View style={styles.inputRow}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                    style={styles.inputIcon}
+                  />
+                  <Text style={[styles.hintInlineText, { color: colors.textSecondary }]}>
+                    {t('server.apiKeyProxyConflict')}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <SettingRow
+                    icon="globe-outline"
+                    label={t('server.useBasicAuth')}
+                    hint={t('server.useBasicAuthHint')}
+                  >
+                    <Switch
+                      value={useBasicAuth}
+                      onValueChange={setUseBasicAuth}
+                      trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </SettingRow>
+                  {useBasicAuth && (
+                    <>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.inputRow}>
+                        <Ionicons
+                          name="person-outline"
+                          size={20}
+                          color={colors.primary}
+                          style={styles.inputIcon}
+                        />
+                        <TextInput
+                          style={[styles.input, { color: colors.text }]}
+                          value={basicAuthUsername}
+                          onChangeText={setBasicAuthUsername}
+                          placeholder={t('placeholders.proxyUsername')}
+                          placeholderTextColor={colors.textSecondary}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          textContentType="none"
+                          autoComplete="off"
+                        />
+                      </View>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.inputRow}>
+                        <Ionicons
+                          name="lock-closed-outline"
+                          size={20}
+                          color={colors.primary}
+                          style={styles.inputIcon}
+                        />
+                        <TextInput
+                          style={[styles.input, { color: colors.text }]}
+                          value={basicAuthPassword}
+                          onChangeText={setBasicAuthPassword}
+                          placeholder={t('placeholders.proxyPassword')}
+                          placeholderTextColor={colors.textSecondary}
+                          secureTextEntry
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          // "none" for the same reason as the server password field
+                          // above -- and with the same caveat: it does not stop the iOS
+                          // "Save Password?" prompt. See .audit/FINDINGS.md F9.
+                          textContentType="none"
+                          autoComplete="off"
+                          passwordRules=""
+                        />
+                      </View>
+                    </>
+                  )}
                 </>
               )}
             </View>
@@ -960,8 +1035,10 @@ App Version: ${APP_VERSION}`;
                 useHttps={useHttps}
                 username={username}
                 password={password}
-                bypassAuth={bypassAuth}
-                useBasicAuth={useBasicAuth}
+                bypassAuth={authMode === 'none'}
+                useApiKey={authMode === 'apiKey'}
+                apiKey={apiKey}
+                useBasicAuth={authMode !== 'apiKey' && useBasicAuth}
                 basicAuthUsername={basicAuthUsername}
                 basicAuthPassword={basicAuthPassword}
               />
@@ -1071,6 +1148,18 @@ App Version: ${APP_VERSION}`;
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <OptionPicker
+        visible={showAuthMethodPicker}
+        title={t('server.authMethod')}
+        options={authMethodOptions}
+        selectedValue={authMode}
+        onSelect={(value) => {
+          setAuthMode(value as ServerAuthMode);
+          setShowAuthMethodPicker(false);
+        }}
+        onClose={() => setShowAuthMethodPicker(false)}
+      />
 
       <ModalToast />
     </SafeAreaView>
@@ -1212,6 +1301,25 @@ const styles = StyleSheet.create({
   infoButton: {
     padding: 4,
     marginLeft: 8,
+  },
+  authMethodValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  authMethodValueText: {
+    fontSize: 16,
+  },
+  hintText: {
+    fontSize: 12,
+    lineHeight: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  hintInlineText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   tooltipOverlay: {
     flex: 1,
