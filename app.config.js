@@ -14,12 +14,12 @@ module.exports = {
       resizeMode: 'contain',
       backgroundColor: '#0A0A0A',
     },
-    // NOTE: iOS is a bare React Native project (see AGENTS.md) -- `expo prebuild`
-    // no longer runs for iOS, so `ios.infoPlist` below is reference-only and NOT
-    // applied to the app. The authoritative copies are the committed
-    // ios/qRemote/Info.plist and ios/qRemote/qRemote.entitlements; edit those
-    // directly in Xcode and keep this block in sync by hand for documentation.
-    // `bundleIdentifier`/`appStoreUrl` still matter (read by EAS submit/tooling).
+    // NOTE: ios/ is generated, not committed (untracked since #154). `npm run
+    // xcode` runs `expo prebuild -p ios`, which APPLIES the `ios.infoPlist`
+    // block below to the generated project — this is the authoritative place
+    // for native Info.plist configuration (see AGENTS.md "iOS Native
+    // Workflow"). Hand-edits made directly under ios/ are machine-local and
+    // can be rewritten by the next prebuild.
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.qRemote.app',
