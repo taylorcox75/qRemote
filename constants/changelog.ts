@@ -43,6 +43,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           'Delete .torrent File setting supports Never / If Added / Always (matching qBittorrent)',
           'Default Save Path is only cached locally after a successful write to the connected server',
           'Torrents sort menu opens under the sort button',
+          'Path autocomplete no longer doubles the path when picking a suggestion, and filters while typing a partial folder name (e.g. /dat)',
         ],
       },
       {

@@ -12,6 +12,16 @@ const DEBOUNCE_MS = 250;
 /** Delay clearing suggestions on blur so a tap on a row can register first. */
 const BLUR_CLEAR_MS = 150;
 
+/**
+ * qBittorrent's getDirectoryContent returns absolute paths (QDirIterator::next),
+ * not basenames. Strip to the final segment so we can filter and apply safely.
+ */
+function toBaseName(entry: string): string {
+  const trimmed = entry.replace(/\/+$/, '');
+  const idx = trimmed.lastIndexOf('/');
+  return idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
+}
+
 interface PathAutocompleteInputProps extends Omit<TextInputProps, 'value' | 'onChangeText'> {
   value: string;
   onChangeText: (text: string) => void;
@@ -20,9 +30,9 @@ interface PathAutocompleteInputProps extends Omit<TextInputProps, 'value' | 'onC
 /**
  * Drop-in TextInput replacement for absolute directory paths. When connected
  * to a qBittorrent 5.0+ server (app/getDirectoryContent, WebAPI >= 2.11), it
- * lists the contents of whatever directory precedes the text being typed and
- * suggests matches — the same mechanism the official WebUI uses (see
- * pathAutofill.js), minus native <datalist> which RN has no equivalent for.
+ * lists the parent directory of whatever is being typed and filters by the
+ * partial segment after the last `/`. The API returns absolute paths, so
+ * entries are normalized to basenames before filtering/applying.
  * Silently falls back to a plain input (no suggestions) when unsupported,
  * disconnected, or the directory doesn't exist — this is a nicety, not
  * something that should ever block or error the field.
@@ -84,7 +94,10 @@ export function PathAutocompleteInput({
         const names = await applicationApi.getDirectoryContent(parentDir, 'dirs');
         if (fetchId !== fetchIdRef.current) return;
         setSuggestions(
-          names.filter((name) => name.toLowerCase().startsWith(partial)).slice(0, SUGGESTION_LIMIT),
+          names
+            .map(toBaseName)
+            .filter((name) => name.length > 0 && name.toLowerCase().startsWith(partial))
+            .slice(0, SUGGESTION_LIMIT),
         );
       } catch {
         if (fetchId !== fetchIdRef.current) return;

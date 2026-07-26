@@ -60,8 +60,9 @@ export const applicationApi = {
   },
 
   /**
-   * List the contents (names only) of an existing absolute directory on the
-   * server, for path autocomplete (qBittorrent 5.0+ / WebAPI >= 2.11).
+   * List directory entries on the server for path autocomplete (qBittorrent 5.0+
+   * / WebAPI >= 2.11). Without withMetadata, qBittorrent returns absolute paths
+   * (not basenames) — callers should strip to the final segment before display.
    * Throws if dirPath isn't an absolute, existing directory — callers should
    * treat failures as "no suggestions" rather than surfacing an error.
    */
