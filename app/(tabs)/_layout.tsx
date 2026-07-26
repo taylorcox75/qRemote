@@ -40,7 +40,6 @@ export default function TabsLayout() {
           tabBarHideOnKeyboard: false,
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
-          tabBarLabelStyle: { color: colors.textSecondary },
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopWidth: 0.18,

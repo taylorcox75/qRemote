@@ -134,7 +134,7 @@ export default function SearchScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
-  const incomingParams = useLocalSearchParams<{ q?: string }>();
+  const incomingParams = useLocalSearchParams<{ q?: string; ts?: string }>();
   const { isConnected } = useServer();
   const { features } = useApiFeatures();
   const { isDark, colors } = useTheme();
@@ -443,17 +443,25 @@ export default function SearchScreen() {
   const handleSubmit = useCallback(() => runSearch(query.trim()), [query, runSearch]);
 
   // Cross-tab handoff: e.g. RSS article "Search for This" navigates here with
-  // ?q=<title> to pre-fill and immediately run a search. Guarded by a ref (not
-  // state) so this fires exactly once per incoming param, even though this
-  // screen stays mounted across tab switches rather than remounting.
+  // ?q=<title>&ts=<nonce> to pre-fill and immediately run a search. Guarded by
+  // a ref (not state) so each handoff fires exactly once, even though this
+  // screen stays mounted across tab switches rather than remounting. The guard
+  // keys on the `ts` nonce (when present) so re-sending the same title still
+  // re-runs the search; a bare deep link without `ts` falls back to the query
+  // itself. Params are normalized because useLocalSearchParams can yield
+  // string[] at runtime (e.g. a deep link repeating ?q=).
   const handledIncomingQuery = useRef<string | null>(null);
   useEffect(() => {
-    const incomingQuery = incomingParams.q;
-    if (!incomingQuery || handledIncomingQuery.current === incomingQuery) return;
-    handledIncomingQuery.current = incomingQuery;
+    const firstParam = (value: string | string[] | undefined): string | undefined =>
+      Array.isArray(value) ? value[0] : value;
+    const incomingQuery = firstParam(incomingParams.q);
+    if (!incomingQuery) return;
+    const handoffKey = firstParam(incomingParams.ts) ?? incomingQuery;
+    if (handledIncomingQuery.current === handoffKey) return;
+    handledIncomingQuery.current = handoffKey;
     setQuery(incomingQuery);
     void runSearch(incomingQuery.trim());
-  }, [incomingParams.q, runSearch]);
+  }, [incomingParams.q, incomingParams.ts, runSearch]);
 
   // Route hook errors through the toast system to avoid duplicate UI.
   useEffect(() => {
@@ -523,7 +531,10 @@ export default function SearchScreen() {
             );
           }
         } else {
-          await torrentsApi.addTorrent(result.fileUrl, trackerTag ? { tags: [trackerTag] } : undefined);
+          await torrentsApi.addTorrent(
+            result.fileUrl,
+            trackerTag ? { tags: [trackerTag] } : undefined,
+          );
         }
         haptics.success();
         showToast(t('screens.search.addedToast'), 'success');

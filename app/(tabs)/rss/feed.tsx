@@ -270,7 +270,12 @@ export default function RssFeedArticlesScreen() {
   const handleSearchForThis = useCallback(
     (article: RssArticle) => {
       haptics.selection();
-      router.push({ pathname: '/(tabs)/search', params: { q: toSearchQuery(article.title) } });
+      // `ts` is a nonce so the Search tab re-runs the handoff even when the
+      // same title is sent twice (the `q` param alone wouldn't change).
+      router.push({
+        pathname: '/(tabs)/search',
+        params: { q: toSearchQuery(article.title), ts: String(Date.now()) },
+      });
     },
     [router],
   );

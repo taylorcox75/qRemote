@@ -38,7 +38,8 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         title: 'Bugs Fixed',
         items: [
-          'Tab bar: active tab icon uses the accent color with a muted label for clearer hierarchy',
+          'Tab bar: active tab icon and label both use the accent color so the selected tab is clear',
+          'RSS "Search for This" re-runs the search when tapped again for the same title',
           'Category rename migrates custom sticker colors, cleans up orphan categories on partial failure, and ignores double-tap Confirm',
           'Delete .torrent File setting supports Never / If Added / Always (matching qBittorrent)',
           'Default Save Path is only cached locally after a successful write to the connected server',
@@ -48,7 +49,9 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         title: 'Maintenance',
-        items: ['Internal reliability polish for Search auto-tag polling and path-field autocomplete'],
+        items: [
+          'Internal reliability polish for Search auto-tag polling and path-field autocomplete',
+        ],
       },
     ],
   },
