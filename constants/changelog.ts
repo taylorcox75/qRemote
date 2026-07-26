@@ -20,7 +20,7 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.8.23',
+    version: '3.8.3',
     date: '2026-07-25',
     sections: [
       {
