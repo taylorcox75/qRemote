@@ -55,7 +55,9 @@ function ColorSettingRow({
             <Ionicons name="refresh" size={16} color={textColor} />
           </TouchableOpacity>
         )}
-        <View style={[styles.colorPreview, { backgroundColor: color, borderColor: outlineColor }]} />
+        <View
+          style={[styles.colorPreview, { backgroundColor: color, borderColor: outlineColor }]}
+        />
       </View>
     </TouchableOpacity>
   );
@@ -91,7 +93,9 @@ export default function CategoryTagColorsScreen() {
   const loadColors = async () => {
     try {
       const prefs = await storageService.getPreferences();
-      setDefaultCategoryColor(prefs.defaultCategoryColor || DEFAULT_PREFERENCES.defaultCategoryColor);
+      setDefaultCategoryColor(
+        prefs.defaultCategoryColor || DEFAULT_PREFERENCES.defaultCategoryColor,
+      );
       setDefaultTagColor(prefs.defaultTagColor || DEFAULT_PREFERENCES.defaultTagColor);
       setCategoryColors(prefs.categoryColors || {});
       setTagColors(prefs.tagColors || {});

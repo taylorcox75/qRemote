@@ -1,10 +1,6 @@
 import { AxiosError } from 'axios';
 import { apiClient } from './client';
-import {
-  ApplicationVersion,
-  BuildInfo,
-  ApplicationPreferences,
-} from '@/types/api';
+import { ApplicationVersion, BuildInfo, ApplicationPreferences } from '@/types/api';
 
 const API_VERSION = 'v2';
 
@@ -14,7 +10,11 @@ export const applicationApi = {
    */
   async getVersion(signal?: AbortSignal): Promise<ApplicationVersion> {
     const version = await apiClient.get(`/api/${API_VERSION}/app/version`, undefined, signal);
-    const apiVersion = await apiClient.get(`/api/${API_VERSION}/app/webapiVersion`, undefined, signal);
+    const apiVersion = await apiClient.get(
+      `/api/${API_VERSION}/app/webapiVersion`,
+      undefined,
+      signal,
+    );
     return {
       version: version as string,
       apiVersion: apiVersion as string,
@@ -25,7 +25,7 @@ export const applicationApi = {
    * Get build info
    */
   async getBuildInfo(): Promise<BuildInfo> {
-    return await apiClient.get(`/api/${API_VERSION}/app/buildInfo`) as BuildInfo;
+    return (await apiClient.get(`/api/${API_VERSION}/app/buildInfo`)) as BuildInfo;
   },
 
   /**
@@ -39,7 +39,7 @@ export const applicationApi = {
    * Get application preferences
    */
   async getPreferences(): Promise<ApplicationPreferences> {
-    return await apiClient.get(`/api/${API_VERSION}/app/preferences`) as ApplicationPreferences;
+    return (await apiClient.get(`/api/${API_VERSION}/app/preferences`)) as ApplicationPreferences;
   },
 
   /**
@@ -56,7 +56,7 @@ export const applicationApi = {
    * Get default save path
    */
   async getDefaultSavePath(): Promise<string> {
-    return await apiClient.get(`/api/${API_VERSION}/app/defaultSavePath`) as string;
+    return (await apiClient.get(`/api/${API_VERSION}/app/defaultSavePath`)) as string;
   },
 
   /**
@@ -83,7 +83,9 @@ export const applicationApi = {
    */
   async getCookies(): Promise<{ [domain: string]: string }> {
     try {
-      return await apiClient.get(`/api/${API_VERSION}/app/getCookies`) as { [domain: string]: string };
+      return (await apiClient.get(`/api/${API_VERSION}/app/getCookies`)) as {
+        [domain: string]: string;
+      };
     } catch (error: unknown) {
       if (error instanceof AxiosError && error.response?.status === 404) {
         return {};
@@ -111,4 +113,3 @@ export const applicationApi = {
     }
   },
 };
-

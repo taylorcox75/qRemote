@@ -1,5 +1,13 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  TextInput,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,13 +44,21 @@ export default function ServerSettingsAdvancedScreen() {
   const [encryptionPickerVisible, setEncryptionPickerVisible] = useState(false);
 
   const encryptionOptions: OptionPickerItem[] = [
-    { label: t('screens.settings.emailEncryptionNone'), value: 'None', icon: 'close-circle-outline' },
+    {
+      label: t('screens.settings.emailEncryptionNone'),
+      value: 'None',
+      icon: 'close-circle-outline',
+    },
     {
       label: t('screens.settings.emailEncryptionStartTls'),
       value: 'STARTTLS',
       icon: 'lock-open-outline',
     },
-    { label: t('screens.settings.emailEncryptionSmtps'), value: 'SMTPS', icon: 'lock-closed-outline' },
+    {
+      label: t('screens.settings.emailEncryptionSmtps'),
+      value: 'SMTPS',
+      icon: 'lock-closed-outline',
+    },
   ];
 
   useFocusEffect(
@@ -470,7 +486,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
   settingLabel: { fontSize: 16, fontWeight: '500', flexShrink: 1 },
   separator: { height: 1, marginLeft: 50 },
   pickerButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

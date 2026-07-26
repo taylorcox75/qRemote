@@ -409,7 +409,10 @@ function TorrentCardInner({
                     avatarColor(torrent.category)
                   }
                 />
-                <Text style={[styles.stickerText, { color: colors.textSecondary }]} numberOfLines={1}>
+                <Text
+                  style={[styles.stickerText, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
                   {torrent.category}
                 </Text>
               </View>

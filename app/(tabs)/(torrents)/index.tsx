@@ -117,7 +117,9 @@ export default function TorrentsScreen() {
   const [defaultCategoryColor, setDefaultCategoryColor] = useState<string>(
     DEFAULT_PREFERENCES.defaultCategoryColor,
   );
-  const [defaultTagColor, setDefaultTagColor] = useState<string>(DEFAULT_PREFERENCES.defaultTagColor);
+  const [defaultTagColor, setDefaultTagColor] = useState<string>(
+    DEFAULT_PREFERENCES.defaultTagColor,
+  );
   const [categoryColors, setCategoryColors] = useState<Record<string, string>>(
     DEFAULT_PREFERENCES.categoryColors,
   );

@@ -174,7 +174,11 @@ export default function TorrentDefaultsScreen() {
   ];
 
   const monitoredFolderOverrideOptions: OptionPickerItem[] = [
-    { label: t('screens.settings.monitoredFolderOverrideWatch'), value: 'watch', icon: 'eye-outline' },
+    {
+      label: t('screens.settings.monitoredFolderOverrideWatch'),
+      value: 'watch',
+      icon: 'eye-outline',
+    },
     {
       label: t('screens.settings.monitoredFolderOverrideDefault'),
       value: 'default',
@@ -188,8 +192,16 @@ export default function TorrentDefaultsScreen() {
   ];
 
   const contentLayoutOptions: OptionPickerItem[] = [
-    { label: t('screens.settings.contentLayoutOriginal'), value: 'Original', icon: 'document-outline' },
-    { label: t('screens.settings.contentLayoutSubfolder'), value: 'Subfolder', icon: 'folder-outline' },
+    {
+      label: t('screens.settings.contentLayoutOriginal'),
+      value: 'Original',
+      icon: 'document-outline',
+    },
+    {
+      label: t('screens.settings.contentLayoutSubfolder'),
+      value: 'Subfolder',
+      icon: 'folder-outline',
+    },
     {
       label: t('screens.settings.contentLayoutNoSubfolder'),
       value: 'NoSubfolder',
@@ -244,7 +256,9 @@ export default function TorrentDefaultsScreen() {
       setDefaultSortBy(prefs.defaultSortBy || 'added_on');
       setDefaultSortDirection(prefs.defaultSortDirection || 'desc');
       setDefaultFilter(prefs.defaultFilter || 'all');
-      setDefaultCategoryColor(prefs.defaultCategoryColor || DEFAULT_PREFERENCES.defaultCategoryColor);
+      setDefaultCategoryColor(
+        prefs.defaultCategoryColor || DEFAULT_PREFERENCES.defaultCategoryColor,
+      );
       setDefaultTagColor(prefs.defaultTagColor || DEFAULT_PREFERENCES.defaultTagColor);
       setCategoryColors(prefs.categoryColors || {});
       setTagColors(prefs.tagColors || {});
@@ -566,7 +580,12 @@ export default function TorrentDefaultsScreen() {
               <Text
                 style={[
                   styles.emptyTextSmall,
-                  { color: colors.textSecondary, fontSize: 12, marginTop: 2, marginLeft: spacing.xs },
+                  {
+                    color: colors.textSecondary,
+                    fontSize: 12,
+                    marginTop: 2,
+                    marginLeft: spacing.xs,
+                  },
                 ]}
               >
                 {t('screens.settings.categoriesEditHint')}
@@ -961,7 +980,10 @@ export default function TorrentDefaultsScreen() {
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.pickerText, { color: colors.text }]}>
-                      {stopConditionOptions.find((opt) => opt.value === torrentStopCondition)?.label}
+                      {
+                        stopConditionOptions.find((opt) => opt.value === torrentStopCondition)
+                          ?.label
+                      }
                     </Text>
                     <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                   </TouchableOpacity>
@@ -1534,7 +1556,9 @@ export default function TorrentDefaultsScreen() {
                 )}
               </View>
 
-              <View style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}>
+              <View
+                style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}
+              >
                 <View style={styles.settingRow}>
                   <View style={styles.settingLeft}>
                     <Ionicons name="funnel-outline" size={22} color={colors.primary} />
