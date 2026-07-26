@@ -13,6 +13,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
@@ -27,6 +30,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
+import { parseServerImport } from '@/utils/server-export';
 
 function SwipeableServerItem({
   server,
@@ -254,6 +258,59 @@ export default function ServersSettingsScreen() {
     showToast(t('toast.disconnected'), 'info');
   };
 
+  const handleExportServers = async () => {
+    try {
+      const exportFile = await ServerManager.exportServers();
+      if (exportFile.servers.length === 0) {
+        showToast(t('screens.settings.noServersConfigured'), 'info');
+        return;
+      }
+      const fileUri = `${FileSystem.cacheDirectory}qremote-servers-${exportFile.exportedAt.slice(0, 10)}.json`;
+      await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(exportFile, null, 2));
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/json',
+          UTI: 'public.json',
+          dialogTitle: t('screens.settings.exportServers'),
+        });
+      }
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
+    }
+  };
+
+  const handleImportServers = async () => {
+    let content: string;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['public.json', 'application/json', 'text/plain'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      content = await FileSystem.readAsStringAsync(result.assets[0].uri);
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
+      return;
+    }
+
+    let imported: ServerConfig[];
+    try {
+      imported = parseServerImport(content);
+    } catch {
+      showToast(t('errors.invalidServerImport'), 'error');
+      return;
+    }
+
+    try {
+      const { added, updated } = await ServerManager.importServers(imported);
+      await loadServers();
+      showToast(t('toast.serversImported', { added, updated }), 'success');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error), 'error');
+    }
+  };
+
   const handleDeleteServer = async (server: ServerConfig) => {
     try {
       const isDeletingCurrentServer = currentServer?.id === server.id;
@@ -342,6 +399,44 @@ export default function ServersSettingsScreen() {
                   ios_backgroundColor={colors.surfaceOutline}
                 />
               </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={handleExportServers}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="share-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingTextGroup}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.exportServers')}
+                    </Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                      {t('screens.settings.exportServersHint')}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={handleImportServers}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="download-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingTextGroup}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.importServers')}
+                    </Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                      {t('screens.settings.importServersHint')}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -457,6 +552,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   settingLabel: { fontSize: 16, fontWeight: '500' },
+  settingHint: { fontSize: 12, marginTop: 1 },
+  settingTextGroup: { flexShrink: 1 },
   separator: { height: 1, marginLeft: 50 },
   listItem: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   listItemContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

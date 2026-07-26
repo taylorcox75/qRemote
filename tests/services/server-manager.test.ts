@@ -133,6 +133,66 @@ describe('ServerManager', () => {
     });
   });
 
+  describe('exportServers', () => {
+    it('strips secrets from every exported server', async () => {
+      mockStorage.getServers.mockResolvedValueOnce([
+        makeServer({ basicAuthPassword: 'proxy-secret', apiKey: 'key-secret' }),
+      ]);
+      const exported = await ServerManager.exportServers();
+      expect(exported.servers).toHaveLength(1);
+      expect(exported.servers[0].password).toBe('');
+      expect(exported.servers[0].basicAuthPassword).toBe('');
+      expect(exported.servers[0].apiKey).toBe('');
+      expect(exported.servers[0]).toMatchObject({ id: 's1', host: 'example.com', port: 8080 });
+    });
+  });
+
+  describe('importServers', () => {
+    it('adds unknown servers with empty secrets', async () => {
+      mockStorage.getServers.mockResolvedValueOnce([]);
+      const imported = makeServer({ id: 'new', password: '' });
+      const result = await ServerManager.importServers([imported]);
+      expect(result).toEqual({ added: 1, updated: 0 });
+      expect(mockStorage.saveServer).toHaveBeenCalledWith(imported);
+    });
+
+    it("preserves this device's stored secrets when updating an existing server", async () => {
+      mockStorage.getServers.mockResolvedValueOnce([
+        makeServer({
+          id: 's1',
+          password: 'kept-password',
+          basicAuthPassword: 'kept-proxy',
+          apiKey: 'kept-key',
+        }),
+      ]);
+      const imported = makeServer({
+        id: 's1',
+        host: 'new-host.example.com',
+        password: '',
+        basicAuthPassword: '',
+        apiKey: '',
+      });
+      const result = await ServerManager.importServers([imported]);
+      expect(result).toEqual({ added: 0, updated: 1 });
+      expect(mockStorage.saveServer).toHaveBeenCalledWith({
+        ...imported,
+        password: 'kept-password',
+        basicAuthPassword: 'kept-proxy',
+        apiKey: 'kept-key',
+      });
+    });
+
+    it('counts a mixed import correctly', async () => {
+      mockStorage.getServers.mockResolvedValueOnce([makeServer({ id: 'existing' })]);
+      const result = await ServerManager.importServers([
+        makeServer({ id: 'existing', password: '' }),
+        makeServer({ id: 'brand-new', password: '' }),
+      ]);
+      expect(result).toEqual({ added: 1, updated: 1 });
+      expect(mockStorage.saveServer).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('connectToServer (primary only, no fallback)', () => {
     it('succeeds via authenticated login', async () => {
       mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });

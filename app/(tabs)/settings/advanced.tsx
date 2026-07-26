@@ -26,6 +26,7 @@ import { applicationApi } from '@/services/api/application';
 import { ServerManager } from '@/services/server-manager';
 import { setDebugMode as setConnectivityDebugMode } from '@/services/connectivity-log';
 import { haptics } from '@/utils/haptics';
+import { toExportedServer } from '@/utils/server-export';
 import { APP_VERSION } from '@/utils/version';
 import { AppPreferences } from '@/types/preferences';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -81,21 +82,11 @@ export default function AdvancedSettingsScreen() {
       const servers = await ServerManager.getServers();
       const exportData = {
         preferences: prefs,
-        servers: servers.map((s) => ({
-          id: s.id,
-          name: s.name,
-          host: s.host,
-          port: s.port,
-          basePath: s.basePath,
-          username: s.username,
-          useHttps: s.useHttps,
-          bypassAuth: s.bypassAuth,
-          useApiKey: s.useApiKey,
-          // apiKey intentionally excluded — re-enter after import
-          useBasicAuth: s.useBasicAuth,
-          basicAuthUsername: s.basicAuthUsername,
-          // basicAuthPassword intentionally excluded — re-enter after import
-        })),
+        // Shared with Settings → Servers → Export: strips password,
+        // basicAuthPassword, and apiKey (re-enter after import) and keeps
+        // everything else, including the fallback-endpoint fields the old
+        // hand-rolled field list silently dropped.
+        servers: servers.map(toExportedServer),
         exportDate: new Date().toISOString(),
         appVersion: APP_VERSION,
       };
@@ -154,7 +145,12 @@ export default function AdvancedSettingsScreen() {
 
       for (const serverData of importData.servers) {
         if (!existingServerIds.has(serverData.id)) {
-          await ServerManager.saveServer({ ...serverData, password: '', apiKey: '' });
+          await ServerManager.saveServer({
+            ...serverData,
+            password: '',
+            basicAuthPassword: '',
+            apiKey: '',
+          });
         }
       }
 

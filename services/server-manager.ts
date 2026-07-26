@@ -8,6 +8,7 @@ import { AxiosError } from 'axios';
 import { ServerConfig, ServerEndpointKind } from '@/types/api';
 import { hasFallback, resolveServerEndpoint } from '@/utils/server';
 import { getServerAuthMode } from '@/utils/authMode';
+import { buildServerExport, ServerExportFile } from '@/utils/server-export';
 import { storageService } from './storage';
 import { apiClient } from './api/client';
 import { authApi } from './api/auth';
@@ -89,6 +90,54 @@ export class ServerManager {
       await storageService.setCurrentServerId(null);
     }
     await storageService.deleteServer(id);
+  }
+
+  /**
+   * Build a shareable export of every saved server, with all secrets
+   * (password, proxy Basic Auth password, API key) stripped — see
+   * utils/server-export.ts.
+   */
+  static async exportServers(): Promise<ServerExportFile> {
+    const servers = await storageService.getServers();
+    return buildServerExport(servers);
+  }
+
+  /**
+   * Merge imported server configs (already parsed + validated by
+   * utils/server-export.ts parseServerImport) into the saved list.
+   *
+   * An imported entry whose id matches an existing server updates that
+   * server's connection settings but KEEPS the secrets already stored on
+   * this device — imports never carry secrets, and overwriting SecureStore
+   * with the import's empty strings would silently wipe working credentials
+   * on a re-import. New entries are added with empty secrets for the user
+   * to fill in.
+   */
+  static async importServers(
+    imported: ServerConfig[],
+  ): Promise<{ added: number; updated: number }> {
+    const existing = await storageService.getServers();
+    const existingById = new Map(existing.map((server) => [server.id, server]));
+
+    let added = 0;
+    let updated = 0;
+    for (const server of imported) {
+      const current = existingById.get(server.id);
+      if (current) {
+        await storageService.saveServer({
+          ...server,
+          password: current.password,
+          basicAuthPassword: current.basicAuthPassword,
+          apiKey: current.apiKey,
+        });
+        updated++;
+      } else {
+        await storageService.saveServer(server);
+        added++;
+      }
+    }
+    clogInfo('CONN', `Imported servers — ${added} added, ${updated} updated`);
+    return { added, updated };
   }
 
   /**
