@@ -8,7 +8,8 @@ const safeDecode = (value: string): string => {
   }
 };
 
-export const isMagnetLink = (value: string): boolean => value.trim().toLowerCase().startsWith(MAGNET_PREFIX);
+export const isMagnetLink = (value: string): boolean =>
+  value.trim().toLowerCase().startsWith(MAGNET_PREFIX);
 
 /**
  * Extract a magnet URI from an arbitrary incoming URL.

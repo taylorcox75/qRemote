@@ -1,10 +1,12 @@
 /**
- * rule.tsx — RSS auto-download rule add/edit form.
+ * rss-rule.tsx — RSS auto-download rule add/edit form.
  *
  * No `name` param → creating a new rule (defaults per qBittorrent's RssRule
  * shape). `name` present → editing; the rule name field stays editable, and
  * on save a changed name triggers renameRule() before setRule() (setRule
  * alone does not rename — see hooks/useRssRules.ts).
+ * Lives under app/(tabs)/settings/ alongside rss-rules.tsx (see that file's
+ * header comment for why — keeps back navigation inside the Settings tab).
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -227,10 +229,7 @@ export default function RssRuleEditorScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        edges={[]}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity
             onPress={() => router.back()}

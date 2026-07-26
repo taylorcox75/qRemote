@@ -38,10 +38,10 @@ export default function DetailedCardFieldsScreen() {
   const { isDark, colors } = useTheme();
 
   const [fields, setFields] = useState<Record<ExpandedCardField, boolean>>(
-    DEFAULT_PREFERENCES.expandedCardFields
+    DEFAULT_PREFERENCES.expandedCardFields,
   );
   const [gridColumns, setGridColumns] = useState<3 | 4 | 5>(
-    DEFAULT_PREFERENCES.expandedCardGridColumns
+    DEFAULT_PREFERENCES.expandedCardGridColumns,
   );
   const [gridPickerVisible, setGridPickerVisible] = useState(false);
 
@@ -59,7 +59,8 @@ export default function DetailedCardFieldsScreen() {
       const load = async () => {
         try {
           const prefs = await storageService.getPreferences();
-          const stored = (prefs.expandedCardFields as Partial<Record<ExpandedCardField, boolean>>) || {};
+          const stored =
+            (prefs.expandedCardFields as Partial<Record<ExpandedCardField, boolean>>) || {};
           setFields({ ...DEFAULT_PREFERENCES.expandedCardFields, ...stored });
           setGridColumns(resolveGridColumns(prefs.expandedCardGridColumns));
         } catch {
@@ -68,10 +69,13 @@ export default function DetailedCardFieldsScreen() {
         }
       };
       load();
-    }, [])
+    }, []),
   );
 
-  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
+  const savePreference = async <K extends keyof AppPreferences>(
+    key: K,
+    value: AppPreferences[K],
+  ) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -99,21 +103,54 @@ export default function DetailedCardFieldsScreen() {
     // Core stats (progress, ETA, speeds, ratio, status) live on the always-on
     // header line / badge and are intentionally absent from this picker.
     const map: Partial<
-      Record<ExpandedCardField, { icon: React.ComponentProps<typeof Ionicons>['name']; labelKey: string }>
+      Record<
+        ExpandedCardField,
+        { icon: React.ComponentProps<typeof Ionicons>['name']; labelKey: string }
+      >
     > = {
       seeds: { icon: 'leaf-outline', labelKey: 'screens.settings.expandedCardFieldsList.seeds' },
       peers: { icon: 'people-outline', labelKey: 'screens.settings.expandedCardFieldsList.peers' },
-      ratioLimit: { icon: 'git-compare-outline', labelKey: 'screens.settings.expandedCardFieldsList.ratioLimit' },
-      maxRatio: { icon: 'trending-up-outline', labelKey: 'screens.settings.expandedCardFieldsList.maxRatio' },
-      uploaded: { icon: 'cloud-upload-outline', labelKey: 'screens.settings.expandedCardFieldsList.uploaded' },
-      availability: { icon: 'stats-chart-outline', labelKey: 'screens.settings.expandedCardFieldsList.availability' },
-      popularity: { icon: 'flame-outline', labelKey: 'screens.settings.expandedCardFieldsList.popularity' },
-      savePath: { icon: 'folder-outline', labelKey: 'screens.settings.expandedCardFieldsList.savePath' },
-      tracker: { icon: 'globe-outline', labelKey: 'screens.settings.expandedCardFieldsList.tracker' },
-      addedOn: { icon: 'calendar-outline', labelKey: 'screens.settings.expandedCardFieldsList.addedOn' },
-      seedingTime: { icon: 'hourglass-outline', labelKey: 'screens.settings.expandedCardFieldsList.seedingTime' },
+      ratioLimit: {
+        icon: 'git-compare-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.ratioLimit',
+      },
+      maxRatio: {
+        icon: 'trending-up-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.maxRatio',
+      },
+      uploaded: {
+        icon: 'cloud-upload-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.uploaded',
+      },
+      availability: {
+        icon: 'stats-chart-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.availability',
+      },
+      popularity: {
+        icon: 'flame-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.popularity',
+      },
+      savePath: {
+        icon: 'folder-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.savePath',
+      },
+      tracker: {
+        icon: 'globe-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.tracker',
+      },
+      addedOn: {
+        icon: 'calendar-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.addedOn',
+      },
+      seedingTime: {
+        icon: 'hourglass-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.seedingTime',
+      },
       tags: { icon: 'pricetag-outline', labelKey: 'screens.settings.expandedCardFieldsList.tags' },
-      category: { icon: 'folder-open-outline', labelKey: 'screens.settings.expandedCardFieldsList.category' },
+      category: {
+        icon: 'folder-open-outline',
+        labelKey: 'screens.settings.expandedCardFieldsList.category',
+      },
     };
     return map;
   }, []);
@@ -123,7 +160,12 @@ export default function DetailedCardFieldsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
@@ -191,7 +233,11 @@ export default function DetailedCardFieldsScreen() {
                         ios_backgroundColor={colors.surfaceOutline}
                       />
                     </View>
-                    {!isLast && <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />}
+                    {!isLast && (
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                    )}
                   </React.Fragment>
                 );
               })}
@@ -237,7 +283,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   pickerValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pickerText: { fontSize: 15, fontWeight: '500' },

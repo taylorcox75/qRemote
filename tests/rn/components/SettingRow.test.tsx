@@ -19,7 +19,9 @@ describe('SettingRow', () => {
   });
 
   it('renders icon when provided', async () => {
-    const { toJSON } = await render(<SettingRow label="Icon row" icon="settings" iconColor="#f00" />);
+    const { toJSON } = await render(
+      <SettingRow label="Icon row" icon="settings" iconColor="#f00" />,
+    );
     expect(toJSON()).toBeTruthy();
   });
 
@@ -27,7 +29,7 @@ describe('SettingRow', () => {
     await render(
       <SettingRow label="Row">
         <Text>right-slot</Text>
-      </SettingRow>
+      </SettingRow>,
     );
     expect(screen.getByText('right-slot')).toBeTruthy();
   });

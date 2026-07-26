@@ -42,7 +42,7 @@ const PRESET_COLORS = [
   '#5AC8FA', // Light Blue
   '#AF52DE', // Light Purple
   '#FF6B00', // Deep Orange
-  
+
   // Darker variants
   '#003366', // Dark Blue
   '#4A148C', // Dark Purple
@@ -50,14 +50,14 @@ const PRESET_COLORS = [
   '#E65100', // Dark Orange
   '#33691E', // Dark Green
   '#01579B', // Dark Light Blue
-  
+
   // Lighter variants
   '#81C784', // Light Green
   '#64B5F6', // Light Blue
   '#BA68C8', // Light Purple
   '#FFB74D', // Light Orange
   '#90CAF9', // Very Light Blue
-  
+
   // Grays
   '#212121', // Dark Gray
   '#424242', // Medium Gray
@@ -87,7 +87,7 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
   const handleHexInput = (text: string) => {
     setHexInput(text);
     setInputError(false);
-    
+
     // Validate hex color
     const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
     if (hexPattern.test(text)) {
@@ -111,24 +111,27 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <View style={[styles.modal, { backgroundColor: colors.surface, opacity: 1 }]}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>{t('screens.settings.pickAColor')}</Text>
-            <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={t('common.close')}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {t('screens.settings.pickAColor')}
+            </Text>
+            <TouchableOpacity
+              onPress={handleClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel={t('common.close')}
+            >
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Current color preview */}
           <View style={styles.previewContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.settings.currentColor')}</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>
+              {t('screens.settings.currentColor')}
+            </Text>
             <View style={styles.colorPreview}>
               <View
                 style={[
@@ -145,7 +148,9 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
 
           {/* Hex input */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.settings.hexColor')}</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>
+              {t('screens.settings.hexColor')}
+            </Text>
             <View style={styles.hexInputRow}>
               <TextInput
                 style={[
@@ -167,21 +172,23 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
               <View
                 style={[
                   styles.hexPreview,
-                  { backgroundColor: hexInput.match(/^#[A-Fa-f0-9]{6}$/) ? hexInput : currentColor },
+                  {
+                    backgroundColor: hexInput.match(/^#[A-Fa-f0-9]{6}$/) ? hexInput : currentColor,
+                  },
                   { borderColor: colors.surfaceOutline },
                 ]}
               />
             </View>
             {inputError && (
-              <Text style={[styles.errorText, { color: colors.error }]}>
-                Invalid hex color
-              </Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>Invalid hex color</Text>
             )}
           </View>
 
           {/* Preset colors */}
           <View style={styles.presetsContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('screens.settings.presets')}</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>
+              {t('screens.settings.presets')}
+            </Text>
             <ScrollView style={styles.presetsScroll} showsVerticalScrollIndicator={false}>
               <View style={styles.presetsGrid}>
                 {PRESET_COLORS.map((color, index) => (
@@ -190,13 +197,15 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
                     style={[
                       styles.presetSwatch,
                       { backgroundColor: color },
-                      colorThemeManager.rgbaToHex(currentColor).toUpperCase() === color.toUpperCase() && styles.presetSelected,
+                      colorThemeManager.rgbaToHex(currentColor).toUpperCase() ===
+                        color.toUpperCase() && styles.presetSelected,
                       { borderColor: colors.surfaceOutline },
                     ]}
                     onPress={() => handlePresetSelect(color)}
                     accessibilityLabel={color}
                   >
-                    {colorThemeManager.rgbaToHex(currentColor).toUpperCase() === color.toUpperCase() && (
+                    {colorThemeManager.rgbaToHex(currentColor).toUpperCase() ===
+                      color.toUpperCase() && (
                       <Ionicons name="checkmark" size={20} color="#FFFFFF" />
                     )}
                   </TouchableOpacity>
@@ -307,4 +316,3 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
 });
-

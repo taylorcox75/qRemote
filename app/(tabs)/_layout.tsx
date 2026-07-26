@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
-import { useRssFeeds } from '@/hooks/useRssFeeds';
 import { applicationApi } from '@/services/api/application';
 
 export default function TabsLayout() {
@@ -14,19 +13,13 @@ export default function TabsLayout() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { isConnected } = useServer();
-  const { feeds } = useRssFeeds();
-
-  // The RSS tab only earns a spot in the bar once there's something to show:
-  // the server has RSS processing turned on AND the user has actually
-  // configured at least one feed. Otherwise it's just an empty tab.
   const preferencesQuery = useQuery({
     queryKey: ['application', 'preferences'],
     queryFn: () => applicationApi.getPreferences(),
     enabled: isConnected,
     staleTime: 30_000,
   });
-  const showRssTab =
-    isConnected && preferencesQuery.data?.rss_processing_enabled === true && feeds.length > 0;
+  const showRssTab = isConnected && preferencesQuery.data?.rss_processing_enabled === true;
 
   // Use paddingTop from insets instead of wrapping Tabs in SafeAreaView.
   // SafeAreaView around the tab navigator can break after dismissing a root
@@ -47,6 +40,7 @@ export default function TabsLayout() {
           tabBarHideOnKeyboard: false,
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
+          tabBarLabelStyle: { color: colors.textSecondary },
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopWidth: 0.18,
@@ -68,7 +62,11 @@ export default function TabsLayout() {
           options={{
             title: t('screens.transfer.title'),
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'speedometer' : 'speedometer-outline'} size={24} color={color} />
+              <Ionicons
+                name={focused ? 'speedometer' : 'speedometer-outline'}
+                size={24}
+                color={color}
+              />
             ),
           }}
         />

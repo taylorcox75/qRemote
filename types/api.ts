@@ -69,7 +69,48 @@ export interface BuildInfo {
   bitness: number;
 }
 
+/**
+ * Value for a single entry in ApplicationPreferences.scan_dirs:
+ * 0 = download into the monitored folder itself, 1 = the default save location,
+ * any other string = a custom override path ("Other...").
+ */
+export type ScanDirOverride = 0 | 1 | string;
+
 export interface ApplicationPreferences {
+  save_path?: string;
+  auto_tmm_enabled?: boolean;
+  torrent_changed_tmm_enabled?: boolean;
+  save_path_changed_tmm_enabled?: boolean;
+  category_changed_tmm_enabled?: boolean;
+  use_category_paths_in_manual_mode?: boolean;
+  torrent_content_layout?: 'Original' | 'Subfolder' | 'NoSubfolder';
+  temp_path_enabled?: boolean;
+  temp_path?: string;
+  preallocate_all?: boolean;
+  incomplete_files_ext?: boolean;
+  use_unwanted_folder?: boolean;
+  export_dir?: string;
+  export_dir_fin?: string;
+  add_to_top_of_queue?: boolean;
+  torrent_stop_condition?: 'None' | 'MetadataReceived' | 'FilesChecked';
+  merge_trackers?: boolean;
+  /** 0/1 as a boolean-ish number: whether the .torrent file is deleted after adding. */
+  auto_delete_mode?: number;
+  scan_dirs?: Record<string, ScanDirOverride>;
+  excluded_file_names_enabled?: boolean;
+  excluded_file_names?: string;
+  mail_notification_enabled?: boolean;
+  mail_notification_sender?: string;
+  mail_notification_email?: string;
+  mail_notification_smtp?: string;
+  mail_notification_encryption_type?: 'None' | 'STARTTLS' | 'SMTPS';
+  mail_notification_auth_enabled?: boolean;
+  mail_notification_username?: string;
+  mail_notification_password?: string;
+  autorun_on_torrent_added_enabled?: boolean;
+  autorun_on_torrent_added_program?: string;
+  autorun_enabled?: boolean;
+  autorun_program?: string;
   [key: string]: unknown;
 }
 

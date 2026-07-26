@@ -21,7 +21,7 @@ describe('EmptyState', () => {
   it('renders action button and fires onAction', async () => {
     const onAction = jest.fn();
     await render(
-      <EmptyState title="Empty" actionLabel="Retry" actionIcon="refresh" onAction={onAction} />
+      <EmptyState title="Empty" actionLabel="Retry" actionIcon="refresh" onAction={onAction} />,
     );
     fireEvent.press(screen.getByText('Retry'));
     expect(onAction).toHaveBeenCalledTimes(1);

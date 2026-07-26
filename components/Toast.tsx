@@ -19,13 +19,22 @@ interface ToastProps {
   topOffsetOverride?: number;
 }
 
-export function Toast({ message, type = 'info', duration = 3000, onHide, topOffsetOverride }: ToastProps) {
+export function Toast({
+  message,
+  type = 'info',
+  duration = 3000,
+  onHide,
+  topOffsetOverride,
+}: ToastProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   // Fall back to initialWindowMetrics/hardcoded values for the brief window
   // before SafeAreaProvider has measured real insets on first render.
-  const safeTop = insets.top || initialWindowMetrics?.insets.top || (Platform.OS === 'ios' ? 47 : StatusBar.currentHeight || 24);
+  const safeTop =
+    insets.top ||
+    initialWindowMetrics?.insets.top ||
+    (Platform.OS === 'ios' ? 47 : StatusBar.currentHeight || 24);
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -111,16 +120,16 @@ export function Toast({ message, type = 'info', duration = 3000, onHide, topOffs
         shadows.large,
       ]}
     >
-      <TouchableOpacity
-        style={styles.content}
-        onPress={hide}
-        activeOpacity={0.9}
-      >
+      <TouchableOpacity style={styles.content} onPress={hide} activeOpacity={0.9}>
         <Ionicons name={getIcon()} size={24} color={getColor()} />
         <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
           {message}
         </Text>
-        <TouchableOpacity onPress={hide} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={t('common.close')}>
+        <TouchableOpacity
+          onPress={hide}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel={t('common.close')}
+        >
           <Ionicons name="close" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </TouchableOpacity>
@@ -151,4 +160,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-

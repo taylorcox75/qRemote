@@ -42,13 +42,20 @@ export function EmptyState({
 
   return (
     <View style={[compact ? styles.compactContainer : styles.container, style]}>
-      {icon && <Ionicons name={icon} size={resolvedIconSize} color={iconColor ?? colors.textSecondary} />}
+      {icon && (
+        <Ionicons name={icon} size={resolvedIconSize} color={iconColor ?? colors.textSecondary} />
+      )}
       {title && (
-        <Text style={[compact ? styles.compactTitle : styles.title, { color: colors.text }]}>{title}</Text>
+        <Text style={[compact ? styles.compactTitle : styles.title, { color: colors.text }]}>
+          {title}
+        </Text>
       )}
       {subtitle && (
         <Text
-          style={[compact ? styles.compactSubtitle : styles.subtitle, { color: colors.textSecondary }]}
+          style={[
+            compact ? styles.compactSubtitle : styles.subtitle,
+            { color: colors.textSecondary },
+          ]}
         >
           {subtitle}
         </Text>

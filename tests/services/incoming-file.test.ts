@@ -38,7 +38,9 @@ describe('persistIncomingTorrentFile', () => {
       name: 'My Movie Pack!.torrent',
     });
 
-    expect(result.uri).toMatch(/^file:\/\/\/cache\/incoming-torrents\/\d+-My_Movie_Pack_\.torrent$/);
+    expect(result.uri).toMatch(
+      /^file:\/\/\/cache\/incoming-torrents\/\d+-My_Movie_Pack_\.torrent$/,
+    );
   });
 
   it('returns the original file unchanged for non-file:// URIs', async () => {

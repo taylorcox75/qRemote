@@ -55,7 +55,7 @@ export function AnimatedProgressBar({
             duration: 1000,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     } else {
       pulseAnim.setValue(1);
@@ -70,7 +70,7 @@ export function AnimatedProgressBar({
   return (
     <View style={[styles.container, { height, borderRadius: height / 2 }]}>
       <View style={[styles.background, { backgroundColor: colors.surfaceOutline }]} />
-      
+
       <Animated.View
         style={[
           styles.fill,
@@ -119,5 +119,3 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
 });
-
-

@@ -266,7 +266,8 @@ export const torrentsApi = {
    * Add torrent file
    */
   async addTorrentFile(
-    files: { uri: string; name: string; type?: string } | { uri: string; name: string; type?: string }[],
+    files:
+      { uri: string; name: string; type?: string } | { uri: string; name: string; type?: string }[],
     options?: {
       savepath?: string;
       category?: string;

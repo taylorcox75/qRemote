@@ -35,7 +35,8 @@ import { useServer } from '@/context/ServerContext';
 import { useRssFeeds } from '@/hooks/useRssFeeds';
 import { torrentsApi } from '@/services/api/torrents';
 import { RssArticle } from '@/types/api';
-import { spacing } from '@/constants/spacing';
+import { spacing, borderRadius } from '@/constants/spacing';
+import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
@@ -56,9 +57,14 @@ export default function RssFeedArticlesScreen() {
   const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<RssArticle | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | undefined>();
+
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const feed = useMemo(() => feeds.find((f) => f.path === itemPath)?.feed, [feeds, itemPath]);
-  const articles = feed?.articles ?? [];
+  const articles = useMemo(() => feed?.articles ?? [], [feed]);
 
   // ────────────────────────────────────────────────── actions ─────────────
 
@@ -115,10 +121,98 @@ export default function RssFeedArticlesScreen() {
     [itemPath, markAsRead],
   );
 
-  const handleLongPressArticle = useCallback((article: RssArticle) => {
+  const toggleSelectMode = useCallback(() => {
     haptics.medium();
-    setSelectedArticle(article);
+    setSelectMode((prev) => {
+      if (prev) setSelectedIds(new Set());
+      return !prev;
+    });
   }, []);
+
+  const toggleSelection = useCallback((id: string) => {
+    haptics.selection();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllPress = useCallback(() => {
+    if (!selectMode) {
+      haptics.medium();
+      setSelectMode(true);
+      return;
+    }
+    haptics.selection();
+    setSelectedIds((prev) =>
+      prev.size === articles.length ? new Set() : new Set(articles.map((a) => a.id)),
+    );
+  }, [selectMode, articles]);
+
+  const handleBulkAddAsTorrent = useCallback(async () => {
+    const targets = articles.filter((a) => selectedIds.has(a.id) && a.torrentURL);
+    if (targets.length === 0) {
+      showToast(t('screens.rss.noSelectedArticlesHaveTorrents'), 'error');
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        targets.map((a) => torrentsApi.addTorrent(a.torrentURL as string)),
+      );
+      const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.length - succeeded;
+      if (succeeded > 0) {
+        haptics.success();
+        showToast(t('screens.rss.articlesAddedToast', { count: succeeded }), 'success');
+      }
+      if (failed > 0) {
+        haptics.error();
+        if (succeeded === 0) {
+          const firstFailure = results.find(
+            (r): r is PromiseRejectedResult => r.status === 'rejected',
+          );
+          showToast(getErrorMessage(firstFailure?.reason), 'error');
+        }
+      }
+      setSelectMode(false);
+      setSelectedIds(new Set());
+    } finally {
+      setBulkLoading(false);
+    }
+  }, [articles, selectedIds, showToast, t]);
+
+  const handleBulkMarkRead = useCallback(async () => {
+    if (selectedIds.size === 0 || !itemPath) return;
+    setBulkLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        Array.from(selectedIds).map((id) => markAsRead(itemPath, id)),
+      );
+      const firstFailure = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+      if (firstFailure) {
+        haptics.error();
+        showToast(getErrorMessage(firstFailure.reason), 'error');
+      } else {
+        haptics.success();
+      }
+      setSelectMode(false);
+      setSelectedIds(new Set());
+    } finally {
+      setBulkLoading(false);
+    }
+  }, [selectedIds, itemPath, markAsRead, showToast]);
+
+  const handleLongPressArticle = useCallback(
+    (article: RssArticle, anchor?: { x: number; y: number }) => {
+      haptics.medium();
+      setMenuAnchor(anchor);
+      setSelectedArticle(article);
+    },
+    [],
+  );
 
   const handleOpenLink = useCallback(
     async (url: string | undefined) => {
@@ -184,6 +278,20 @@ export default function RssFeedArticlesScreen() {
   const actionItems: ActionMenuItemDef[] = useMemo(() => {
     if (!selectedArticle) return [];
     const items: ActionMenuItemDef[] = [];
+    if (selectedArticle.torrentURL) {
+      items.push({
+        label: t('screens.rss.addAsTorrent'),
+        icon: 'add-circle-outline',
+        onPress: () => void handleAddAsTorrent(selectedArticle),
+      });
+    }
+    if (selectedArticle.title) {
+      items.push({
+        label: t('screens.rss.searchForThis'),
+        icon: 'search-outline',
+        onPress: () => handleSearchForThis(selectedArticle),
+      });
+    }
     if (selectedArticle.link) {
       items.push({
         label: t('screens.rss.openLink'),
@@ -199,20 +307,6 @@ export default function RssFeedArticlesScreen() {
         label: t('screens.rss.shareLink'),
         icon: 'share-outline',
         onPress: () => void handleShareUrl(selectedArticle.link),
-      });
-    }
-    if (selectedArticle.torrentURL) {
-      items.push({
-        label: t('screens.rss.addAsTorrent'),
-        icon: 'add-circle-outline',
-        onPress: () => void handleAddAsTorrent(selectedArticle),
-      });
-    }
-    if (selectedArticle.title) {
-      items.push({
-        label: t('screens.rss.searchForThis'),
-        icon: 'search-outline',
-        onPress: () => handleSearchForThis(selectedArticle),
       });
     }
     return items;
@@ -238,30 +332,64 @@ export default function RssFeedArticlesScreen() {
     // (bold). Verify this against a live qBittorrent server before shipping.
     const isRead = Boolean(item.isRead ?? item.read);
     const dateLabel = item.date ? formatArticleDate(item.date) : '';
+    const isSelected = selectedIds.has(item.id);
 
     return (
       <TouchableOpacity
         style={[styles.row, { borderBottomColor: colors.surfaceOutline }]}
-        onPress={() => void handleRowPress(item)}
-        onLongPress={() => handleLongPressArticle(item)}
+        onPress={() => (selectMode ? toggleSelection(item.id) : void handleRowPress(item))}
+        onLongPress={(e) =>
+          selectMode
+            ? toggleSelection(item.id)
+            : handleLongPressArticle(item, { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })
+        }
         activeOpacity={0.7}
+        accessibilityLabel={
+          selectMode
+            ? isSelected
+              ? t('screens.rss.deselectArticle')
+              : t('screens.rss.selectArticle')
+            : undefined
+        }
       >
-        <Text
-          style={[isRead ? typography.body : typography.bodySemibold, { color: colors.text }]}
-          numberOfLines={2}
-        >
-          {item.title}
-        </Text>
-        {!!dateLabel && (
-          <Text style={[styles.articleDate, { color: colors.textSecondary }]}>{dateLabel}</Text>
+        {selectMode && (
+          <View style={styles.checkbox}>
+            <Ionicons
+              name={isSelected ? 'checkbox' : 'square-outline'}
+              size={22}
+              color={isSelected ? colors.primary : colors.textSecondary}
+            />
+          </View>
         )}
-        {!!item.description && (
+        <View style={styles.articleContent}>
           <Text
-            style={[styles.articleDescription, { color: colors.textSecondary }]}
+            style={[isRead ? typography.body : typography.bodySemibold, { color: colors.text }]}
             numberOfLines={2}
           >
-            {item.description}
+            {item.title}
           </Text>
+          {!!dateLabel && (
+            <Text style={[styles.articleDate, { color: colors.textSecondary }]}>{dateLabel}</Text>
+          )}
+          {!!item.description && (
+            <Text
+              style={[styles.articleDescription, { color: colors.textSecondary }]}
+              numberOfLines={2}
+            >
+              {item.description}
+            </Text>
+          )}
+        </View>
+        {!selectMode && (
+          <TouchableOpacity
+            onPress={(e) =>
+              handleLongPressArticle(item, { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })
+            }
+            hitSlop={8}
+            style={styles.menuButton}
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
         )}
       </TouchableOpacity>
     );
@@ -270,57 +398,87 @@ export default function RssFeedArticlesScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        edges={[]}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => (selectMode ? toggleSelectMode() : router.back())}
             style={styles.headerButton}
             activeOpacity={0.7}
-            accessibilityLabel={t('common.back')}
+            accessibilityLabel={selectMode ? t('common.cancel') : t('common.back')}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-            {headerTitle}
+            {selectMode
+              ? t('screens.rss.articlesSelectedCount', { count: selectedIds.size })
+              : headerTitle}
           </Text>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              onPress={() => void handleMarkAllRead()}
-              disabled={isMarkingAllRead || !itemPath}
-              style={[
-                styles.headerButton,
-                (isMarkingAllRead || !itemPath) && styles.headerButtonDisabled,
-              ]}
-              activeOpacity={0.7}
-              accessibilityLabel={t('screens.rss.markAllRead')}
-            >
-              {isMarkingAllRead ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Ionicons name="checkmark-done-outline" size={22} color={colors.text} />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => void handleRefreshFeed()}
-              disabled={isRefreshingFeed || !itemPath}
-              style={[
-                styles.headerButton,
-                (isRefreshingFeed || !itemPath) && styles.headerButtonDisabled,
-              ]}
-              activeOpacity={0.7}
-              accessibilityLabel={t('screens.rss.refresh')}
-            >
-              {isRefreshingFeed ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Ionicons name="refresh" size={22} color={colors.text} />
-              )}
-            </TouchableOpacity>
-          </View>
+          {selectMode ? (
+            <View style={styles.headerRight} />
+          ) : (
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                onPress={() => void handleMarkAllRead()}
+                disabled={isMarkingAllRead || !itemPath}
+                style={[
+                  styles.headerButton,
+                  (isMarkingAllRead || !itemPath) && styles.headerButtonDisabled,
+                ]}
+                activeOpacity={0.7}
+                accessibilityLabel={t('screens.rss.markAllRead')}
+              >
+                {isMarkingAllRead ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="checkmark-done-outline" size={22} color={colors.text} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void handleRefreshFeed()}
+                disabled={isRefreshingFeed || !itemPath}
+                style={[
+                  styles.headerButton,
+                  (isRefreshingFeed || !itemPath) && styles.headerButtonDisabled,
+                ]}
+                activeOpacity={0.7}
+                accessibilityLabel={t('screens.rss.refresh')}
+              >
+                {isRefreshingFeed ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="refresh" size={22} color={colors.text} />
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
+
+        {isConnected && !isLoading && articles.length > 0 && (
+          <TouchableOpacity
+            style={[styles.selectionRow, { borderBottomColor: colors.surfaceOutline }]}
+            onPress={handleSelectAllPress}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={
+                selectMode && selectedIds.size === articles.length ? 'checkbox' : 'square-outline'
+              }
+              size={20}
+              color={
+                selectMode && selectedIds.size === articles.length
+                  ? colors.primary
+                  : colors.textSecondary
+              }
+            />
+            <Text style={[styles.selectionLabel, { color: colors.textSecondary }]}>
+              {selectMode
+                ? selectedIds.size === articles.length
+                  ? t('screens.torrents.deselectAll')
+                  : t('screens.torrents.selectAll')
+                : t('screens.rss.selectArticles')}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {!isConnected ? (
           <EmptyState subtitle={t('toast.notConnected')} />
@@ -349,12 +507,60 @@ export default function RssFeedArticlesScreen() {
             }
           />
         )}
+
+        {selectMode && (
+          <View
+            style={[
+              styles.bulkActionsBar,
+              { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
+            ]}
+          >
+            <TouchableOpacity
+              style={[
+                styles.bulkActionButton,
+                {
+                  backgroundColor: colors.primary,
+                  opacity: selectedIds.size === 0 || bulkLoading ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => void handleBulkAddAsTorrent()}
+              disabled={selectedIds.size === 0 || bulkLoading}
+              activeOpacity={0.8}
+            >
+              {bulkLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+              )}
+              <Text style={styles.bulkActionText}>{t('screens.rss.addSelectedAsTorrents')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.bulkActionButtonSecondary,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.surfaceOutline,
+                  opacity: selectedIds.size === 0 || bulkLoading ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => void handleBulkMarkRead()}
+              disabled={selectedIds.size === 0 || bulkLoading}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-done-outline" size={20} color={colors.primary} />
+              <Text style={[styles.bulkActionText, { color: colors.primary }]}>
+                {t('screens.rss.markSelectedRead')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </SafeAreaView>
 
       <ActionMenu
         visible={selectedArticle !== null}
         onClose={() => setSelectedArticle(null)}
         items={actionItems}
+        anchor={menuAnchor}
       />
     </>
   );
@@ -405,11 +611,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: spacing.sm,
   },
-  row: {
+  selectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 0.5,
+  },
+  selectionLabel: {
+    ...typography.small,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.sm,
     paddingVertical: spacing.md,
     borderBottomWidth: 0.5,
+  },
+  checkbox: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+    marginTop: 2,
+  },
+  articleContent: {
+    flex: 1,
     gap: 4,
+    marginRight: spacing.xs,
+  },
+  menuButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
   },
   articleDate: {
     ...typography.caption,
@@ -422,5 +659,38 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  bulkActionsBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderTopWidth: 1,
+    ...shadows.medium,
+  },
+  bulkActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.large,
+  },
+  bulkActionButtonSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.large,
+    borderWidth: 0.5,
+  },
+  bulkActionText: {
+    ...typography.smallSemibold,
+    color: '#FFFFFF',
   },
 });

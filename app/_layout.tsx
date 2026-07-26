@@ -83,8 +83,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
       </Text>
       <Text style={{ fontSize: 15, color: muted, textAlign: 'center', marginBottom: 20 }}>
         {t('errors.crashMessage', {
-          defaultValue:
-            'qRemote ran into an unexpected error. Your servers and settings are safe.',
+          defaultValue: 'qRemote ran into an unexpected error. Your servers and settings are safe.',
         })}
       </Text>
       {!!error?.message && (
@@ -229,7 +228,7 @@ function StackNavigator() {
         screenOptions={{
           headerShown: false,
           gestureEnabled: true,
-          gestureResponseDistance: { 
+          gestureResponseDistance: {
             start: width / 2,
           },
           contentStyle: {
@@ -238,19 +237,19 @@ function StackNavigator() {
         }}
       >
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen 
-          name="server/add" 
-          options={{ 
+        <Stack.Screen
+          name="server/add"
+          options={{
             presentation: 'modal',
             gestureEnabled: true,
-          }} 
+          }}
         />
-        <Stack.Screen 
-          name="server/[id]" 
-          options={{ 
+        <Stack.Screen
+          name="server/[id]"
+          options={{
             presentation: 'modal',
             gestureEnabled: true,
-          }} 
+          }}
         />
       </Stack>
     </View>
@@ -263,16 +262,19 @@ export default function RootLayout() {
 
     // Apply persisted preferences to global modules at cold start so they
     // take effect immediately — before the user ever visits Settings.
-    storageService.getPreferences().then((prefs) => {
-      setHapticsEnabled(prefs.hapticFeedback !== false);
-      setConnectivityDebugMode(prefs.debugMode === true);
-      apiClient.updateSettings({
-        connectionTimeout: Number(prefs.connectionTimeout) || 10000,
-        retryAttempts: Number(prefs.retryAttempts) || 3,
+    storageService
+      .getPreferences()
+      .then((prefs) => {
+        setHapticsEnabled(prefs.hapticFeedback !== false);
+        setConnectivityDebugMode(prefs.debugMode === true);
+        apiClient.updateSettings({
+          connectionTimeout: Number(prefs.connectionTimeout) || 10000,
+          retryAttempts: Number(prefs.retryAttempts) || 3,
+        });
+      })
+      .catch(() => {
+        // Defaults already applied in each module — safe to ignore
       });
-    }).catch(() => {
-      // Defaults already applied in each module — safe to ignore
-    });
   }, []);
 
   return (
@@ -283,11 +285,11 @@ export default function RootLayout() {
             <ToastProvider>
               <ServerProvider>
                 <ApiVersionProvider>
-                <TorrentProvider>
-                  <TransferProvider>
-                    <StackNavigator />
-                  </TransferProvider>
-                </TorrentProvider>
+                  <TorrentProvider>
+                    <TransferProvider>
+                      <StackNavigator />
+                    </TransferProvider>
+                  </TorrentProvider>
                 </ApiVersionProvider>
               </ServerProvider>
             </ToastProvider>

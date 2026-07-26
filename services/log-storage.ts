@@ -16,14 +16,16 @@ export const logStorage = {
   /**
    * Store logs locally
    */
-  async storeLogs(logs: Array<{ id: number; message: string; timestamp: number; type: number }>): Promise<void> {
+  async storeLogs(
+    logs: Array<{ id: number; message: string; timestamp: number; type: number }>,
+  ): Promise<void> {
     try {
       const now = Date.now();
-      const logsWithTimestamp: StoredLogEntry[] = logs.map(log => ({
+      const logsWithTimestamp: StoredLogEntry[] = logs.map((log) => ({
         ...log,
         storedAt: now,
       }));
-      
+
       await AsyncStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logsWithTimestamp));
       await AsyncStorage.setItem(LOG_TIMESTAMP_KEY, now.toString());
     } catch (error) {
@@ -38,9 +40,9 @@ export const logStorage = {
     try {
       const logsJson = await AsyncStorage.getItem(LOG_STORAGE_KEY);
       if (!logsJson) return [];
-      
+
       const logs: StoredLogEntry[] = JSON.parse(logsJson);
-      
+
       // Check if logs should be auto-deleted (older than 5 minutes)
       const timestampJson = await AsyncStorage.getItem(LOG_TIMESTAMP_KEY);
       if (timestampJson) {
@@ -52,7 +54,7 @@ export const logStorage = {
           return [];
         }
       }
-      
+
       return logs;
     } catch (error) {
       console.error('Failed to get logs:', error);
@@ -87,10 +89,10 @@ export const logStorage = {
     try {
       const timestampJson = await AsyncStorage.getItem(LOG_TIMESTAMP_KEY);
       if (!timestampJson) return;
-      
+
       const storedTimestamp = parseInt(timestampJson, 10);
       const now = Date.now();
-      
+
       if (now - storedTimestamp > LOG_AUTO_DELETE_DURATION) {
         await this.clearLogs();
       }
@@ -106,9 +108,8 @@ export const logStorage = {
     const timer = setTimeout(async () => {
       await this.clearLogs();
     }, LOG_AUTO_DELETE_DURATION);
-    
+
     // Return cleanup function
     return () => clearTimeout(timer);
   },
 };
-

@@ -42,7 +42,7 @@ interface ThemeContextType {
 
 function resolveIsDark(
   mode: ThemeMode,
-  system: 'light' | 'dark' | 'unspecified' | null | undefined
+  system: 'light' | 'dark' | 'unspecified' | null | undefined,
 ): boolean {
   if (mode === 'dark') return true;
   if (mode === 'light') return false;
@@ -56,10 +56,7 @@ function resolveIsDark(
  *   - new key `themeMode`: 'system' | 'light' | 'dark'
  *   - legacy key `theme`: 'dark' | 'light' | true | false
  */
-function normalizeThemeMode(
-  themeMode: unknown,
-  legacyTheme: unknown
-): ThemeMode {
+function normalizeThemeMode(themeMode: unknown, legacyTheme: unknown): ThemeMode {
   if (themeMode === 'system' || themeMode === 'light' || themeMode === 'dark') {
     return themeMode;
   }
@@ -173,7 +170,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const preferences = await storageService.getPreferences();
       const mode = normalizeThemeMode(
         (preferences as { themeMode?: unknown }).themeMode,
-        preferences.theme
+        preferences.theme,
       );
       setThemeModeState(mode);
     } catch (error) {
@@ -276,4 +273,3 @@ export function useTheme(): ThemeContextType {
 
 // Export for testing/debugging
 export { darkColors, lightColors, trueBlackColors };
-

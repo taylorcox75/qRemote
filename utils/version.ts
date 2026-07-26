@@ -13,4 +13,3 @@ export const APP_VERSION = Constants.expoConfig?.version || 'N/A';
 export function getAppVersion(): string {
   return APP_VERSION;
 }
-

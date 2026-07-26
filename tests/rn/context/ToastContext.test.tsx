@@ -41,10 +41,10 @@ describe('ToastContext', () => {
   it('starts with no toast', async () => {
     await render(
       <ThemeProvider>
-      <ToastProvider>
-        <Consumer />
-      </ToastProvider>
-      </ThemeProvider>
+        <ToastProvider>
+          <Consumer />
+        </ToastProvider>
+      </ThemeProvider>,
     );
     expect(screen.getByTestId('toast-text').props.children).toBe('none');
   });
@@ -52,10 +52,10 @@ describe('ToastContext', () => {
   it('showToast sets toast state and it renders; hideToast clears it', async () => {
     await render(
       <ThemeProvider>
-      <ToastProvider>
-        <Consumer />
-      </ToastProvider>
-      </ThemeProvider>
+        <ToastProvider>
+          <Consumer />
+        </ToastProvider>
+      </ThemeProvider>,
     );
     await act(async () => {
       fireEvent.press(screen.getByTestId('show'));
@@ -72,10 +72,10 @@ describe('ToastContext', () => {
     (storageService.getPreferences as jest.Mock).mockResolvedValue({ toastDuration: 5000 });
     await render(
       <ThemeProvider>
-      <ToastProvider>
-        <Consumer />
-      </ToastProvider>
-      </ThemeProvider>
+        <ToastProvider>
+          <Consumer />
+        </ToastProvider>
+      </ThemeProvider>,
     );
     await waitFor(() => expect(storageService.getPreferences).toHaveBeenCalled());
   });
@@ -84,10 +84,10 @@ describe('ToastContext', () => {
     (storageService.getPreferences as jest.Mock).mockRejectedValue(new Error('fail'));
     await render(
       <ThemeProvider>
-      <ToastProvider>
-        <Consumer />
-      </ToastProvider>
-      </ThemeProvider>
+        <ToastProvider>
+          <Consumer />
+        </ToastProvider>
+      </ThemeProvider>,
     );
     await waitFor(() => expect(storageService.getPreferences).toHaveBeenCalled());
   });
@@ -96,10 +96,10 @@ describe('ToastContext', () => {
     (storageService.getPreferences as jest.Mock).mockResolvedValue({ toastDuration: 'nope' });
     await render(
       <ThemeProvider>
-      <ToastProvider>
-        <Consumer />
-      </ToastProvider>
-      </ThemeProvider>
+        <ToastProvider>
+          <Consumer />
+        </ToastProvider>
+      </ThemeProvider>,
     );
     await waitFor(() => expect(storageService.getPreferences).toHaveBeenCalled());
   });
@@ -109,11 +109,11 @@ describe('ToastContext', () => {
     Platform.OS = 'android';
     await render(
       <ThemeProvider>
-      <ToastProvider>
-        <Consumer />
-        <ModalToast />
-      </ToastProvider>
-      </ThemeProvider>
+        <ToastProvider>
+          <Consumer />
+          <ModalToast />
+        </ToastProvider>
+      </ThemeProvider>,
     );
     await act(async () => {
       fireEvent.press(screen.getByTestId('show'));
@@ -140,10 +140,10 @@ describe('ToastContext', () => {
 
     await render(
       <ThemeProvider>
-      <ToastProvider>
-        <Wrapper />
-      </ToastProvider>
-      </ThemeProvider>
+        <ToastProvider>
+          <Wrapper />
+        </ToastProvider>
+      </ThemeProvider>,
     );
 
     await act(async () => {

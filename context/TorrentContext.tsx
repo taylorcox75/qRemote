@@ -4,7 +4,15 @@
  * Key exports: TorrentProvider, useTorrents
  * Known issues: isRecoveringFromBackground was a ref that didn't trigger re-renders (fixed to use state in Task 1.4d).
  */
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  ReactNode,
+} from 'react';
 import { AppState, AppStateStatus, InteractionManager } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TorrentInfo, MainData, ServerState, Category } from '@/types/api';
@@ -131,9 +139,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.server_state) {
-        serverState = serverState
-          ? { ...serverState, ...data.server_state }
-          : data.server_state;
+        serverState = serverState ? { ...serverState, ...data.server_state } : data.server_state;
       }
 
       state = { torrents, categories, tags, serverState };
@@ -217,9 +223,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
           ridRef.current = 0;
           await new Promise<void>((resolve) => {
             InteractionManager.runAfterInteractions(() => {
-              queryClient
-                .invalidateQueries({ queryKey: ['torrents'] })
-                .finally(() => resolve());
+              queryClient.invalidateQueries({ queryKey: ['torrents'] }).finally(() => resolve());
             });
           });
           setIsRecoveringState(false);

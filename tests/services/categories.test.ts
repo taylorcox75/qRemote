@@ -32,7 +32,9 @@ describe('categoriesApi', () => {
   it('addCategory without savePath', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await categoriesApi.addCategory('Movies');
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/createCategory', { category: 'Movies' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/createCategory', {
+      category: 'Movies',
+    });
   });
 
   it('addCategory with savePath', async () => {

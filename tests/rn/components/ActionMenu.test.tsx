@@ -103,7 +103,7 @@ describe('ActionMenu', () => {
 
     it('renders the popover container and all item labels', async () => {
       await render(
-        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 200 }} />
+        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 200 }} />,
       );
       expect(screen.getByTestId('action-menu-popover')).toBeTruthy();
       expect(screen.getByText('Pause')).toBeTruthy();
@@ -117,14 +117,14 @@ describe('ActionMenu', () => {
           onClose={jest.fn()}
           items={items}
           anchor={{ x: 100, y: 200 }}
-        />
+        />,
       );
       expect(screen.queryByTestId('action-menu-popover')).toBeNull();
     });
 
     it('is 230pt wide, themed, and hidden until measured', async () => {
       await render(
-        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 200 }} />
+        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 200 }} />,
       );
       const style = popoverStyle();
       expect(style.width).toBe(230);
@@ -139,7 +139,7 @@ describe('ActionMenu', () => {
 
     it('positions just below the anchor when there is room', async () => {
       await render(
-        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 200 }} />
+        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 200 }} />,
       );
       await layoutPopover(120);
       const style = popoverStyle();
@@ -150,7 +150,7 @@ describe('ActionMenu', () => {
 
     it('clamps horizontally so the popover stays on screen', async () => {
       await render(
-        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 350, y: 200 }} />
+        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 350, y: 200 }} />,
       );
       await layoutPopover(120);
       // screen 390 - margin 8 - width 230 = 152
@@ -159,7 +159,7 @@ describe('ActionMenu', () => {
 
     it('clamps to the left margin for far-left anchors', async () => {
       await render(
-        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: -40, y: 200 }} />
+        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: -40, y: 200 }} />,
       );
       await layoutPopover(120);
       expect(popoverStyle().left).toBe(8);
@@ -167,7 +167,7 @@ describe('ActionMenu', () => {
 
     it('clamps vertically using the measured height near the bottom edge', async () => {
       await render(
-        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 800 }} />
+        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 800 }} />,
       );
       await layoutPopover(300);
       // screen 844 - margin 8 - height 300 = 536
@@ -177,7 +177,7 @@ describe('ActionMenu', () => {
     it('respects safe-area insets when clamping', async () => {
       Object.assign(mockInsets, { top: 59, bottom: 34, left: 0, right: 0 });
       await render(
-        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 10 }} />
+        <ActionMenu visible onClose={jest.fn()} items={items} anchor={{ x: 100, y: 10 }} />,
       );
       await layoutPopover(120);
       const style = popoverStyle();
@@ -191,7 +191,7 @@ describe('ActionMenu', () => {
       jest.useFakeTimers();
       const onClose = jest.fn();
       await render(
-        <ActionMenu visible onClose={onClose} items={items} anchor={{ x: 100, y: 200 }} />
+        <ActionMenu visible onClose={onClose} items={items} anchor={{ x: 100, y: 200 }} />,
       );
       await fireEvent.press(screen.getByText('Pause'));
       expect(onClose).toHaveBeenCalledTimes(1);

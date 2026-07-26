@@ -36,11 +36,11 @@ export const formatSpeed = (bytes: number | undefined | null): string => {
 export const formatTime = (seconds: number | undefined | null): string => {
   if (seconds == null || isNaN(seconds) || seconds < 0) return '∞';
   if (seconds === 0) return 'Done';
-  
+
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes}m`;
   }
@@ -128,7 +128,7 @@ export const formatDate = (timestamp: number | undefined | null): string => {
   if (timestamp == null || isNaN(timestamp) || timestamp <= 0) {
     return 'Not provided';
   }
-  
+
   // Convert Unix timestamp (seconds) to milliseconds and format
   try {
     const date = new Date(timestamp * 1000);

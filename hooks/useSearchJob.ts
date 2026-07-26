@@ -54,16 +54,12 @@ async function fetchStatusAndResults(jobId: number): Promise<{
   results: SearchResult[];
 }> {
   const [statusList, resultsResponse]: [SearchJobStatus[], SearchResultsResponse] =
-    await Promise.all([
-      searchApi.getStatus(jobId),
-      searchApi.getResults(jobId, RESULTS_LIMIT, 0),
-    ]);
+    await Promise.all([searchApi.getStatus(jobId), searchApi.getResults(jobId, RESULTS_LIMIT, 0)]);
 
   const jobStatus = statusList.find((entry) => entry.id === jobId);
   // Trust /results over /status when /status reports stale data (race-prone
   // immediately after a job finishes).
-  const status: SearchStatusValue =
-    resultsResponse.status ?? jobStatus?.status ?? 'Stopped';
+  const status: SearchStatusValue = resultsResponse.status ?? jobStatus?.status ?? 'Stopped';
   const total = resultsResponse.total ?? jobStatus?.total ?? 0;
 
   return {
@@ -106,27 +102,21 @@ export function useSearchJob(): UseSearchJobResult {
     retry: 1,
   });
 
-  const stopInternal = useCallback(
-    async (id: number) => {
-      try {
-        await searchApi.stop(id);
-      } catch {
-        // 404 is fine — job already stopped or removed.
-      }
-    },
-    [],
-  );
+  const stopInternal = useCallback(async (id: number) => {
+    try {
+      await searchApi.stop(id);
+    } catch {
+      // 404 is fine — job already stopped or removed.
+    }
+  }, []);
 
-  const deleteInternal = useCallback(
-    async (id: number) => {
-      try {
-        await searchApi.deleteSearch(id);
-      } catch {
-        // Tolerate 404 — server already cleaned up.
-      }
-    },
-    [],
-  );
+  const deleteInternal = useCallback(async (id: number) => {
+    try {
+      await searchApi.deleteSearch(id);
+    } catch {
+      // Tolerate 404 — server already cleaned up.
+    }
+  }, []);
 
   const reset = useCallback(async () => {
     const currentId = activeJobRef.current;
@@ -246,8 +236,7 @@ export function useSearchJob(): UseSearchJobResult {
   // TorrentContext — trigger conditions and cooldown live in the hook.
   useReactiveReconnect(queryError);
 
-  const error = mutationError
-    ?? (queryError ? getErrorMessage(queryError) : null);
+  const error = mutationError ?? (queryError ? getErrorMessage(queryError) : null);
 
   return {
     jobId,

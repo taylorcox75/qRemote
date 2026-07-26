@@ -10,8 +10,9 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('react-native-safe-area-context', () =>
-  require('react-native-safe-area-context/jest/mock.tsx').default
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock.tsx').default,
 );
 
 describe('Toast', () => {
@@ -29,7 +30,7 @@ describe('Toast', () => {
     async (type) => {
       const { toJSON } = await render(<Toast message="msg" type={type} />);
       expect(toJSON()).toBeTruthy();
-    }
+    },
   );
 
   it('calls onHide when the toast body is pressed', async () => {

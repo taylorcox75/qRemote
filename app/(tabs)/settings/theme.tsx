@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +12,8 @@ import { useToast } from '@/context/ToastContext';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
-import type { ThemeMode } from '@/types/preferences';
+import { DEFAULT_PREFERENCES, type ThemeMode } from '@/types/preferences';
+import { storageService } from '@/services/storage';
 
 interface ColorSettingRowProps {
   label: string;
@@ -29,13 +24,14 @@ interface ColorSettingRowProps {
 
 function ColorSettingRow({ label, color, onPress, colors }: ColorSettingRowProps) {
   return (
-    <TouchableOpacity
-      style={styles.colorRow}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={styles.colorRow} onPress={onPress} activeOpacity={0.7}>
       <Text style={[styles.colorLabel, { color: colors.text }]}>{label}</Text>
-      <View style={[styles.colorPreview, { backgroundColor: color, borderColor: colors.surfaceOutline }]} />
+      <View
+        style={[
+          styles.colorPreview,
+          { backgroundColor: color, borderColor: colors.surfaceOutline },
+        ]}
+      />
     </TouchableOpacity>
   );
 }
@@ -59,7 +55,11 @@ export default function ThemeSettingsScreen() {
   };
 
   const themeModeOptions: OptionPickerItem[] = [
-    { label: t('screens.settings.themeModeSystem'), value: 'system', icon: 'phone-portrait-outline' },
+    {
+      label: t('screens.settings.themeModeSystem'),
+      value: 'system',
+      icon: 'phone-portrait-outline',
+    },
     { label: t('screens.settings.themeModeLight'), value: 'light', icon: 'sunny-outline' },
     { label: t('screens.settings.themeModeDark'), value: 'dark', icon: 'moon-outline' },
   ];
@@ -72,7 +72,12 @@ export default function ThemeSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.surfaceOutline }]}>
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: colors.background, borderBottomColor: colors.surfaceOutline },
+          ]}
+        >
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -81,248 +86,310 @@ export default function ThemeSettingsScreen() {
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.themeAndColors')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t('screens.settings.themeAndColors')}
+          </Text>
           <View style={styles.headerButton} />
         </View>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Theme Mode */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.appearance').toUpperCase()}</Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <TouchableOpacity
-              style={styles.settingRow}
-              onPress={() => setThemeModePickerVisible(true)}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={t('screens.settings.themeMode')}
-              accessibilityValue={{ text: currentThemeModeLabel }}
-            >
-              <View style={styles.settingLeft}>
-                <Ionicons
-                  name={isDark ? 'moon-outline' : 'sunny-outline'}
-                  size={22}
-                  color={colors.primary}
-                />
-                <View style={styles.settingText}>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.themeMode')}</Text>
-                  <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                    {t('screens.settings.themeModeHint')}
-                  </Text>
+          {/* Theme Mode */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.appearance').toUpperCase()}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => setThemeModePickerVisible(true)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('screens.settings.themeMode')}
+                accessibilityValue={{ text: currentThemeModeLabel }}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons
+                    name={isDark ? 'moon-outline' : 'sunny-outline'}
+                    size={22}
+                    color={colors.primary}
+                  />
+                  <View style={styles.settingText}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.themeMode')}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {t('screens.settings.themeModeHint')}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.themeModeValue}>
-                <Text style={[styles.themeModeValueText, { color: colors.text }]}>{currentThemeModeLabel}</Text>
-                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-              </View>
-            </TouchableOpacity>
+                <View style={styles.themeModeValue}>
+                  <Text style={[styles.themeModeValueText, { color: colors.text }]}>
+                    {currentThemeModeLabel}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Torrent state colors (badge & border by activity) */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.torrentStateColors')}</Text>
-            <TouchableOpacity
-              accessibilityLabel={t('screens.settings.resetStateColors')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={async () => {
-                try {
-                  await colorThemeManager.resetTorrentStateColors(isDark);
-                  await reloadCustomColors();
-                  showToast(t('toast.stateColorsReset'), 'success');
-                } catch (error) {
-                  showToast(t('errors.failedToResetStateColors'), 'error');
-                }
-              }}
-            >
-              <Ionicons name="refresh" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
+          {/* Torrent state colors (badge & border by activity) */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {t('screens.settings.torrentStateColors')}
+              </Text>
+              <TouchableOpacity
+                accessibilityLabel={t('screens.settings.resetStateColors')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={async () => {
+                  try {
+                    await colorThemeManager.resetTorrentStateColors(isDark);
+                    await reloadCustomColors();
+                    showToast(t('toast.stateColorsReset'), 'success');
+                  } catch (error) {
+                    showToast(t('errors.failedToResetStateColors'), 'error');
+                  }
+                }}
+              >
+                <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <ColorSettingRow
+                label="Downloading"
+                color={colors.stateDownloading}
+                onPress={() => handleColorSelect('stateDownloading')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Seeding (idle)"
+                color={colors.stateSeeding}
+                onPress={() => handleColorSelect('stateSeeding')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Download + Upload"
+                color={colors.stateUploadAndDownload}
+                onPress={() => handleColorSelect('stateUploadAndDownload')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Upload only"
+                color={colors.stateUploadOnly}
+                onPress={() => handleColorSelect('stateUploadOnly')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Error / Stalled DL"
+                color={colors.stateError}
+                onPress={() => handleColorSelect('stateError')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Stalled (upload)"
+                color={colors.stateStalled}
+                onPress={() => handleColorSelect('stateStalled')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Paused / Stopped"
+                color={colors.statePaused}
+                onPress={() => handleColorSelect('statePaused')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Checking"
+                color={colors.stateChecking}
+                onPress={() => handleColorSelect('stateChecking')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Metadata"
+                color={colors.stateMetadata}
+                onPress={() => handleColorSelect('stateMetadata')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Queued"
+                color={colors.stateQueued}
+                onPress={() => handleColorSelect('stateQueued')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Other"
+                color={colors.stateOther}
+                onPress={() => handleColorSelect('stateOther')}
+                colors={colors}
+              />
+            </View>
           </View>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <ColorSettingRow
-              label="Downloading"
-              color={colors.stateDownloading}
-              onPress={() => handleColorSelect('stateDownloading')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Seeding (idle)"
-              color={colors.stateSeeding}
-              onPress={() => handleColorSelect('stateSeeding')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Download + Upload"
-              color={colors.stateUploadAndDownload}
-              onPress={() => handleColorSelect('stateUploadAndDownload')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Upload only"
-              color={colors.stateUploadOnly}
-              onPress={() => handleColorSelect('stateUploadOnly')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Error / Stalled DL"
-              color={colors.stateError}
-              onPress={() => handleColorSelect('stateError')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Stalled (upload)"
-              color={colors.stateStalled}
-              onPress={() => handleColorSelect('stateStalled')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Paused / Stopped"
-              color={colors.statePaused}
-              onPress={() => handleColorSelect('statePaused')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Checking"
-              color={colors.stateChecking}
-              onPress={() => handleColorSelect('stateChecking')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Metadata"
-              color={colors.stateMetadata}
-              onPress={() => handleColorSelect('stateMetadata')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Queued"
-              color={colors.stateQueued}
-              onPress={() => handleColorSelect('stateQueued')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Other"
-              color={colors.stateOther}
-              onPress={() => handleColorSelect('stateOther')}
-              colors={colors}
-            />
-          </View>
-        </View>
 
-        {/* Advanced Color Customization */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.advancedColors')}</Text>
-            <TouchableOpacity
-              accessibilityLabel={t('screens.settings.resetColors')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={async () => {
-                try {
-                  await colorThemeManager.resetCustomColors(isDark);
-                  await reloadCustomColors();
-                  showToast(t('toast.colorsReset'), 'success');
-                } catch (error) {
-                  showToast(t('errors.failedToResetColors'), 'error');
-                }
-              }}
-            >
-              <Ionicons name="refresh" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
+          {/* Advanced Color Customization */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {t('screens.settings.advancedColors')}
+              </Text>
+              <TouchableOpacity
+                accessibilityLabel={t('screens.settings.resetColors')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={async () => {
+                  try {
+                    await colorThemeManager.resetCustomColors(isDark);
+                    await reloadCustomColors();
+                    showToast(t('toast.colorsReset'), 'success');
+                  } catch (error) {
+                    showToast(t('errors.failedToResetColors'), 'error');
+                  }
+                }}
+              >
+                <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <ColorSettingRow
+                label="Primary"
+                color={colors.primary}
+                onPress={() => handleColorSelect('primary')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Error"
+                color={colors.error}
+                onPress={() => handleColorSelect('error')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Success"
+                color={colors.success}
+                onPress={() => handleColorSelect('success')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Warning"
+                color={colors.warning}
+                onPress={() => handleColorSelect('warning')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Background"
+                color={colors.background}
+                onPress={() => handleColorSelect('background')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Surface"
+                color={colors.surface}
+                onPress={() => handleColorSelect('surface')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Surface Outline"
+                color={colors.surfaceOutline}
+                onPress={() => handleColorSelect('surfaceOutline')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Text"
+                color={colors.text}
+                onPress={() => handleColorSelect('text')}
+                colors={colors}
+              />
+              <View style={[styles.separator, { backgroundColor: colors.background }]} />
+              <ColorSettingRow
+                label="Text Secondary"
+                color={colors.textSecondary}
+                onPress={() => handleColorSelect('textSecondary')}
+                colors={colors}
+              />
+            </View>
           </View>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <ColorSettingRow
-              label="Primary"
-              color={colors.primary}
-              onPress={() => handleColorSelect('primary')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Error"
-              color={colors.error}
-              onPress={() => handleColorSelect('error')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Success"
-              color={colors.success}
-              onPress={() => handleColorSelect('success')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Warning"
-              color={colors.warning}
-              onPress={() => handleColorSelect('warning')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Background"
-              color={colors.background}
-              onPress={() => handleColorSelect('background')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Surface"
-              color={colors.surface}
-              onPress={() => handleColorSelect('surface')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Surface Outline"
-              color={colors.surfaceOutline}
-              onPress={() => handleColorSelect('surfaceOutline')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Text"
-              color={colors.text}
-              onPress={() => handleColorSelect('text')}
-              colors={colors}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.background }]} />
-            <ColorSettingRow
-              label="Text Secondary"
-              color={colors.textSecondary}
-              onPress={() => handleColorSelect('textSecondary')}
-              colors={colors}
-            />
-          </View>
-        </View>
 
-        <ColorPicker
-          visible={colorPickerVisible}
-          currentColor={colorPickerKey ? colors[colorPickerKey] : '#000000'}
-          onColorChange={async (newColor) => {
-            try {
-              const custom = await colorThemeManager.getCustomColors(isDark);
-              const updatedCustom: ColorTheme = {
-                ...(custom || {}),
-                [colorPickerKey!]: newColor,
-              };
-              await colorThemeManager.saveCustomColors(isDark, updatedCustom);
-              await reloadCustomColors();
-              showToast(`${colorPickerKey} color updated`, 'success');
-            } catch (error) {
-              showToast(t('errors.failedToSaveColor'), 'error');
-            }
-          }}
-          onClose={() => setColorPickerVisible(false)}
-        />
+          {/* Category & tag sticker colors */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {t('screens.settings.categoryTagColors').toUpperCase()}
+              </Text>
+              <TouchableOpacity
+                accessibilityLabel={t('screens.settings.resetCategoryTagColors')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={async () => {
+                  try {
+                    const prefs = await storageService.getPreferences();
+                    await storageService.savePreferences({
+                      ...prefs,
+                      defaultCategoryColor: DEFAULT_PREFERENCES.defaultCategoryColor,
+                      defaultTagColor: DEFAULT_PREFERENCES.defaultTagColor,
+                      categoryColors: {},
+                      tagColors: {},
+                    });
+                    showToast(t('toast.categoryTagColorsReset'), 'success');
+                  } catch {
+                    showToast(t('errors.failedToResetCategoryTagColors'), 'error');
+                  }
+                }}
+              >
+                <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => router.push('/settings/category-tag-colors')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="pricetags-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingText}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.categoryTagColors')}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {t('screens.settings.categoryTagColorsHint')}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ColorPicker
+            visible={colorPickerVisible}
+            currentColor={colorPickerKey ? colors[colorPickerKey] : '#000000'}
+            onColorChange={async (newColor) => {
+              try {
+                const custom = await colorThemeManager.getCustomColors(isDark);
+                const updatedCustom: ColorTheme = {
+                  ...(custom || {}),
+                  [colorPickerKey!]: newColor,
+                };
+                await colorThemeManager.saveCustomColors(isDark, updatedCustom);
+                await reloadCustomColors();
+                showToast(`${colorPickerKey} color updated`, 'success');
+              } catch (error) {
+                showToast(t('errors.failedToSaveColor'), 'error');
+              }
+            }}
+            onClose={() => setColorPickerVisible(false)}
+          />
         </ScrollView>
       </View>
 
@@ -451,4 +518,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

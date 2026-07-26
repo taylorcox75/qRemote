@@ -68,9 +68,7 @@ export function CircularProgress({
       </Svg>
       {showLabel && (
         <View style={styles.labelContainer}>
-          <Text style={[styles.percentage, { color: colors.text }]}>
-            {percentage.toFixed(0)}%
-          </Text>
+          <Text style={[styles.percentage, { color: colors.text }]}>{percentage.toFixed(0)}%</Text>
           <Text style={[styles.speed, { color: colors.textSecondary }]} numberOfLines={1}>
             {formatSpeed(current)}
           </Text>

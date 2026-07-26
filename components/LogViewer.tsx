@@ -124,8 +124,15 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
       <View style={styles.overlay}>
         <View style={[styles.container, { backgroundColor: colors.surface }]}>
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: colors.surfaceOutline, backgroundColor: colors.surface }]}>
-            <Text style={[styles.title, { color: colors.text }]}>{t('screens.settings.logsTitle')}</Text>
+          <View
+            style={[
+              styles.header,
+              { borderBottomColor: colors.surfaceOutline, backgroundColor: colors.surface },
+            ]}
+          >
+            <Text style={[styles.title, { color: colors.text }]}>
+              {t('screens.settings.logsTitle')}
+            </Text>
             <View style={styles.headerButtons}>
               <TouchableOpacity
                 onPress={handleClear}
@@ -153,7 +160,9 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
           ) : logs.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="document-text-outline" size={64} color={colors.textSecondary} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('screens.settings.noLogsAvailable')}</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                {t('screens.settings.noLogsAvailable')}
+              </Text>
               <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
                 {t('screens.settings.logsAutoClear')}
               </Text>
@@ -165,7 +174,16 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
               showsVerticalScrollIndicator
             >
               {logs.map((log) => (
-                <View key={log.id} style={[styles.logEntry, { backgroundColor: colors.background, borderLeftColor: getLogTypeColor(log.type) }]}>
+                <View
+                  key={log.id}
+                  style={[
+                    styles.logEntry,
+                    {
+                      backgroundColor: colors.background,
+                      borderLeftColor: getLogTypeColor(log.type),
+                    },
+                  ]}
+                >
                   <View style={styles.logHeader}>
                     <View style={[styles.logTypeBadge, { backgroundColor: colors.primary }]}>
                       <Text style={[styles.logTypeText, { color: colors.surface }]}>
@@ -300,4 +318,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-

@@ -1,8 +1,14 @@
 import { ServerConfig, ServerEndpointKind } from '@/types/api';
 
 export const AVATAR_PALETTE = [
-  '#0A84FF', '#30D158', '#FF9F0A', '#FF453A',
-  '#BF5AF2', '#FF375F', '#5AC8FA', '#FFD60A',
+  '#0A84FF',
+  '#30D158',
+  '#FF9F0A',
+  '#FF453A',
+  '#BF5AF2',
+  '#FF375F',
+  '#5AC8FA',
+  '#FFD60A',
 ];
 
 export function avatarColor(name: string): string {
@@ -22,7 +28,7 @@ export function hasFallback(server: ServerConfig): boolean {
 
 export function resolveServerEndpoint(
   server: ServerConfig,
-  endpoint: ServerEndpointKind
+  endpoint: ServerEndpointKind,
 ): ServerConfig {
   if (endpoint === 'fallback' && hasFallback(server)) {
     return {
@@ -46,7 +52,7 @@ export function getServerEndpointLabel(server: ServerConfig, endpoint: ServerEnd
 
 export function getActiveEndpoint(
   server: ServerConfig,
-  activeServer: ServerConfig | null
+  activeServer: ServerConfig | null,
 ): ServerEndpointKind | null {
   if (!activeServer || activeServer.id !== server.id) {
     return null;

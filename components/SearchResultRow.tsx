@@ -11,13 +11,7 @@
  * filename and an action chip row underneath.
  */
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
@@ -44,10 +38,7 @@ interface SearchResultRowProps {
 //   success    >= 20 seeders   (healthy)
 //   warning     1-19 seeders   (mediocre)
 //   muted          0 seeders   (dead)
-function healthColor(
-  seeders: number,
-  colors: ReturnType<typeof useTheme>['colors'],
-): string {
+function healthColor(seeders: number, colors: ReturnType<typeof useTheme>['colors']): string {
   if (seeders >= 20) return colors.success;
   if (seeders > 0) return colors.warning;
   return colors.textSecondary;
@@ -94,10 +85,7 @@ export function SearchResultRow({
           {/* Line 2: health dot + meta */}
           <View style={styles.statusRow}>
             <View style={[styles.stateDot, { backgroundColor: dotColor }]} />
-            <Text
-              style={[styles.statusText, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
+            <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
               {formatSize(result.fileSize)}
               {'  ·  '}
               <Text style={{ color: colors.success }}>↑{seeders}</Text>
@@ -144,9 +132,7 @@ export function SearchResultRow({
       {/* Inline action row appears when expanded */}
       {expanded && (
         <>
-          <View
-            style={[styles.divider, { backgroundColor: colors.surfaceOutline }]}
-          />
+          <View style={[styles.divider, { backgroundColor: colors.surfaceOutline }]} />
           <View style={styles.actionRow}>
             {result.descrLink && onOpenLink ? (
               <ActionPill
@@ -202,10 +188,7 @@ function ActionPill({ icon, label, colors, onPress }: ActionPillProps) {
       activeOpacity={0.7}
     >
       <Ionicons name={icon} size={14} color={colors.primary} />
-      <Text
-        style={[styles.actionPillText, { color: colors.text }]}
-        numberOfLines={1}
-      >
+      <Text style={[styles.actionPillText, { color: colors.text }]} numberOfLines={1}>
         {label}
       </Text>
     </TouchableOpacity>

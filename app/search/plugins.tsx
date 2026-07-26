@@ -59,12 +59,9 @@ export default function PluginsScreen() {
     }, [queryClient]),
   );
 
-  const refresh = useCallback(
-    async () => {
-      await queryClient.invalidateQueries({ queryKey: ['search', 'plugins'] });
-    },
-    [queryClient],
-  );
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['search', 'plugins'] });
+  }, [queryClient]);
 
   const handleToggleEnabled = useCallback(
     async (plugin: SearchPlugin) => {
@@ -161,7 +158,10 @@ export default function PluginsScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        edges={['top']}
+      >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -186,9 +186,7 @@ export default function PluginsScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="add" size={18} color="#FFFFFF" />
-              <Text style={styles.primaryButtonText}>
-                {t('screens.search.installPlugin')}
-              </Text>
+              <Text style={styles.primaryButtonText}>{t('screens.search.installPlugin')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -269,22 +267,13 @@ interface PluginRowProps {
   colors: ReturnType<typeof useTheme>['colors'];
 }
 
-function PluginRow({
-  plugin,
-  isBusy,
-  isLast,
-  onToggle,
-  onUninstall,
-  colors,
-}: PluginRowProps) {
+function PluginRow({ plugin, isBusy, isLast, onToggle, onUninstall, colors }: PluginRowProps) {
   const { t } = useTranslation();
   return (
     <>
       <View style={styles.row}>
         <View style={styles.rowBody}>
-          <Text style={[styles.pluginName, { color: colors.text }]}>
-            {plugin.fullName}
-          </Text>
+          <Text style={[styles.pluginName, { color: colors.text }]}>{plugin.fullName}</Text>
           <Text style={[styles.pluginMeta, { color: colors.textSecondary }]} numberOfLines={1}>
             v{plugin.version || '?'} · {plugin.name}
           </Text>
@@ -312,9 +301,7 @@ function PluginRow({
           </TouchableOpacity>
         </View>
       </View>
-      {!isLast && (
-        <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-      )}
+      {!isLast && <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />}
     </>
   );
 }

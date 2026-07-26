@@ -1,13 +1,6 @@
 import { ColorTheme } from '@/services/color-theme-manager';
 
-export type SortField =
-  | 'name'
-  | 'size'
-  | 'progress'
-  | 'dlspeed'
-  | 'upspeed'
-  | 'ratio'
-  | 'added_on';
+export type SortField = 'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on';
 
 export type ExpandedCardField =
   | 'dlSpeed'
@@ -67,6 +60,18 @@ export interface AppPreferences {
   /** Per-theme color overrides, keyed by 'dark' | 'light' */
   customColors: Record<string, ColorTheme>;
 
+  /** Default sticker color applied to every category that has no per-name override */
+  defaultCategoryColor: string;
+
+  /** Default sticker color applied to every tag that has no per-name override */
+  defaultTagColor: string;
+
+  /** Per-category sticker color overrides, keyed by category name */
+  categoryColors: Record<string, string>;
+
+  /** Per-tag sticker color overrides, keyed by tag name */
+  tagColors: Record<string, string>;
+
   /** Field to sort the torrent list by */
   defaultSortBy: SortField;
 
@@ -119,7 +124,7 @@ export interface AppPreferences {
   /** Whether the user has completed the onboarding flow */
   hasCompletedOnboarding: boolean;
 
-  /** Auto-categorize torrents by tracker hostname */
+  /** Auto-tag torrents added from Search with the result's tracker/indexer label (not categorization) */
   autoCategorizeByTracker: boolean;
 
   /** When enabled, the add-torrent button opens the full add-torrent screen */
@@ -154,6 +159,10 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   theme: 'dark',
   themeMode: 'system',
   customColors: {},
+  defaultCategoryColor: '#0A84FF',
+  defaultTagColor: '#30D158',
+  categoryColors: {},
+  tagColors: {},
   defaultSortBy: 'added_on',
   defaultSortDirection: 'desc',
   defaultFilter: 'all',

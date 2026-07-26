@@ -19,7 +19,7 @@ describe('SpeedGraph', () => {
 
   it('renders multi-point polyline with custom dimensions and maxValue', async () => {
     const { toJSON } = await render(
-      <SpeedGraph data={[1, 5, 3, 8, 2]} color="#0f0" width={200} height={80} maxValue={10} />
+      <SpeedGraph data={[1, 5, 3, 8, 2]} color="#0f0" width={200} height={80} maxValue={10} />,
     );
     expect(toJSON()).toBeTruthy();
   });

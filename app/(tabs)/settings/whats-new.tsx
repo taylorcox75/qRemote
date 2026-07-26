@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +10,20 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 function formatReleaseDate(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number);
@@ -35,12 +42,19 @@ export default function WhatsNewScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Ionicons name="sparkles" size={22} color={colors.primary} />
-            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.whatsNew')}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              {t('screens.settings.whatsNew')}
+            </Text>
           </View>
           <View style={styles.headerButton} />
         </View>
@@ -49,16 +63,55 @@ export default function WhatsNewScreen() {
           {CHANGELOG.map((release) => (
             <View key={release.version} style={styles.changelogRelease}>
               <View style={styles.releaseHeader}>
-                <Text style={[styles.releaseVersion, { color: colors.primary }]}>v{release.version}</Text>
-                <Text style={[styles.releaseDate, { color: colors.textSecondary }]}>{formatReleaseDate(release.date)}</Text>
+                <Text style={[styles.releaseVersion, { color: colors.primary }]}>
+                  v{release.version}
+                </Text>
+                <Text style={[styles.releaseDate, { color: colors.textSecondary }]}>
+                  {formatReleaseDate(release.date)}
+                </Text>
               </View>
               <View style={[styles.changesList, { backgroundColor: colors.surface }]}>
-                {release.changes.map((change, changeIndex) => (
-                  <View key={changeIndex} style={styles.changeItem}>
-                    <Ionicons name="checkmark-circle" size={18} color={colors.success} style={styles.changeIcon} />
-                    <Text style={[styles.changeText, { color: colors.text }]}>{change}</Text>
-                  </View>
-                ))}
+                {release.sections
+                  ? release.sections.map((section, sectionIndex) => (
+                      <View
+                        key={`${release.version}-${section.title}`}
+                        style={[
+                          styles.sectionBlock,
+                          sectionIndex > 0 && {
+                            marginTop: spacing.md,
+                            paddingTop: spacing.md,
+                            borderTopWidth: StyleSheet.hairlineWidth,
+                            borderTopColor: colors.surfaceOutline,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                          {section.title}
+                        </Text>
+                        {section.items.map((item, itemIndex) => (
+                          <View key={itemIndex} style={styles.changeItem}>
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={18}
+                              color={colors.success}
+                              style={styles.changeIcon}
+                            />
+                            <Text style={[styles.changeText, { color: colors.text }]}>{item}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ))
+                  : (release.changes ?? []).map((change, changeIndex) => (
+                      <View key={changeIndex} style={styles.changeItem}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color={colors.success}
+                          style={styles.changeIcon}
+                        />
+                        <Text style={[styles.changeText, { color: colors.text }]}>{change}</Text>
+                      </View>
+                    ))}
               </View>
             </View>
           ))}
@@ -98,6 +151,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
     ...shadows.card,
+  },
+  sectionBlock: {
+    gap: spacing.sm,
+  },
+  sectionTitle: {
+    ...typography.label,
+    marginBottom: spacing.xs,
   },
   changeItem: {
     flexDirection: 'row',

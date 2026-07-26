@@ -7,12 +7,7 @@
  * Key exports: searchApi
  */
 import { apiClient } from './client';
-import {
-  SearchJob,
-  SearchJobStatus,
-  SearchPlugin,
-  SearchResultsResponse,
-} from '@/types/api';
+import { SearchJob, SearchJobStatus, SearchPlugin, SearchResultsResponse } from '@/types/api';
 
 const API_VERSION = 'v2';
 
@@ -26,11 +21,7 @@ export const searchApi = {
    * @returns { id } — the new job id
    * @throws when the server's concurrent-search limit is reached (HTTP 409)
    */
-  async start(
-    pattern: string,
-    plugins: string | string[],
-    category: string,
-  ): Promise<SearchJob> {
+  async start(pattern: string, plugins: string | string[], category: string): Promise<SearchJob> {
     const pluginsParam = Array.isArray(plugins) ? plugins.join('|') : plugins;
     return (await apiClient.postUrlEncoded(`/api/${API_VERSION}/search/start`, {
       pattern,
@@ -54,10 +45,7 @@ export const searchApi = {
   async getStatus(id?: number): Promise<SearchJobStatus[]> {
     const params: Record<string, string | number | boolean> = {};
     if (id !== undefined) params.id = id;
-    const response = await apiClient.get(
-      `/api/${API_VERSION}/search/status`,
-      params,
-    );
+    const response = await apiClient.get(`/api/${API_VERSION}/search/status`, params);
     return Array.isArray(response) ? (response as SearchJobStatus[]) : [];
   },
 
@@ -66,11 +54,7 @@ export const searchApi = {
    *
    * @throws HTTP 404 when the job does not exist, HTTP 409 when the offset is invalid
    */
-  async getResults(
-    id: number,
-    limit?: number,
-    offset?: number,
-  ): Promise<SearchResultsResponse> {
+  async getResults(id: number, limit?: number, offset?: number): Promise<SearchResultsResponse> {
     const params: Record<string, string | number | boolean> = { id };
     if (limit !== undefined) params.limit = limit;
     if (offset !== undefined) params.offset = offset;
@@ -101,10 +85,9 @@ export const searchApi = {
    */
   async installPlugin(sources: string | string[]): Promise<void> {
     const sourcesParam = Array.isArray(sources) ? sources.join('|') : sources;
-    await apiClient.postUrlEncoded(
-      `/api/${API_VERSION}/search/installPlugin`,
-      { sources: sourcesParam },
-    );
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/search/installPlugin`, {
+      sources: sourcesParam,
+    });
   },
 
   /**
@@ -112,34 +95,27 @@ export const searchApi = {
    */
   async uninstallPlugin(names: string | string[]): Promise<void> {
     const namesParam = Array.isArray(names) ? names.join('|') : names;
-    await apiClient.postUrlEncoded(
-      `/api/${API_VERSION}/search/uninstallPlugin`,
-      { names: namesParam },
-    );
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/search/uninstallPlugin`, {
+      names: namesParam,
+    });
   },
 
   /**
    * Enable or disable one or more plugins.
    */
-  async enablePlugin(
-    names: string | string[],
-    enable: boolean,
-  ): Promise<void> {
+  async enablePlugin(names: string | string[], enable: boolean): Promise<void> {
     const namesParam = Array.isArray(names) ? names.join('|') : names;
-    await apiClient.postUrlEncoded(
-      `/api/${API_VERSION}/search/enablePlugin`,
-      { names: namesParam, enable: enable ? 'true' : 'false' },
-    );
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/search/enablePlugin`, {
+      names: namesParam,
+      enable: enable ? 'true' : 'false',
+    });
   },
 
   /**
    * Trigger an auto-update of all installed plugins.
    */
   async updatePlugins(): Promise<void> {
-    await apiClient.postUrlEncoded(
-      `/api/${API_VERSION}/search/updatePlugins`,
-      {},
-    );
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/search/updatePlugins`, {});
   },
 
   /**
@@ -152,9 +128,9 @@ export const searchApi = {
    * and torrent add happen asynchronously server-side.
    */
   async downloadTorrent(torrentUrl: string, pluginName: string): Promise<void> {
-    await apiClient.postUrlEncoded(
-      `/api/${API_VERSION}/search/downloadTorrent`,
-      { torrentUrl, pluginName },
-    );
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/search/downloadTorrent`, {
+      torrentUrl,
+      pluginName,
+    });
   },
 };

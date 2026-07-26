@@ -31,7 +31,11 @@ export function isLoginBodyFail(body: string): boolean {
   return trimmed === 'Fails.' || trimmed === 'Fails';
 }
 
-export function isLoginSuccess({ status, body, hasSessionCookie = false }: LoginResponseInfo): boolean {
+export function isLoginSuccess({
+  status,
+  body,
+  hasSessionCookie = false,
+}: LoginResponseInfo): boolean {
   if (isLoginBodyOk(body)) return true;
   if (isLoginBodyFail(body)) return false;
   // qBittorrent 5.x success — empty body, cookie may be invisible to JS.

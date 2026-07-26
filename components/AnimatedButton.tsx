@@ -11,13 +11,13 @@ interface AnimatedButtonProps extends TouchableOpacityProps {
  * A button component with scale animation on press
  * Provides a subtle iOS-like press feedback
  */
-export function AnimatedButton({ 
-  children, 
-  onPress, 
-  style, 
+export function AnimatedButton({
+  children,
+  onPress,
+  style,
   scaleValue = 0.96,
   disabled,
-  ...props 
+  ...props
 }: AnimatedButtonProps) {
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -50,10 +50,7 @@ export function AnimatedButton({
       disabled={disabled}
       {...props}
     >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>
-        {children}
-      </Animated.View>
+      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
     </TouchableOpacity>
   );
 }
-

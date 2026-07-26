@@ -22,7 +22,7 @@ export function Confetti({ active, duration = 2000 }: ConfettiProps) {
         rotation: new Animated.Value(0),
         color: getRandomColor(),
       })),
-    []
+    [],
   );
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function Confetti({ active, duration = 2000 }: ConfettiProps) {
             duration: duration,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
 
       Animated.stagger(30, animations).start();
@@ -102,5 +102,3 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 });
-
-

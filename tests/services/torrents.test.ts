@@ -93,7 +93,10 @@ describe('torrentsApi', () => {
     it('with indexes joined by pipe', async () => {
       mockGet.mockResolvedValueOnce([]);
       await torrentsApi.getTorrentContents('h1', [0, 1]);
-      expect(mockGet).toHaveBeenCalledWith('/api/v2/torrents/files', { hash: 'h1', indexes: '0|1' });
+      expect(mockGet).toHaveBeenCalledWith('/api/v2/torrents/files', {
+        hash: 'h1',
+        indexes: '0|1',
+      });
     });
     it('returns [] for non-array', async () => {
       mockGet.mockResolvedValueOnce(null);
@@ -258,7 +261,7 @@ describe('torrentsApi', () => {
           sequentialDownload: false,
           firstLastPiecePrio: false,
           autoTMM: true,
-        }
+        },
       );
       expect(mockPostFormData).toHaveBeenCalledWith('/api/v2/torrents/add', expect.any(FormData));
     });
@@ -267,25 +270,38 @@ describe('torrentsApi', () => {
   it('addTrackers joins with newline', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.addTrackers('h1', ['url1', 'url2']);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/addTrackers', { hash: 'h1', urls: 'url1\nurl2' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/addTrackers', {
+      hash: 'h1',
+      urls: 'url1\nurl2',
+    });
   });
 
   it('editTrackers', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.editTrackers('h1', 'old', 'new');
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/editTracker', { hash: 'h1', origUrl: 'old', newUrl: 'new' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/editTracker', {
+      hash: 'h1',
+      origUrl: 'old',
+      newUrl: 'new',
+    });
   });
 
   it('removeTrackers joins with pipe', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.removeTrackers('h1', ['url1', 'url2']);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/removeTrackers', { hash: 'h1', urls: 'url1|url2' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/removeTrackers', {
+      hash: 'h1',
+      urls: 'url1|url2',
+    });
   });
 
   it('addPeers', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.addPeers(['h1', 'h2'], ['1.2.3.4:80']);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/addPeers', { hashes: 'h1|h2', peers: '1.2.3.4:80' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/addPeers', {
+      hashes: 'h1|h2',
+      peers: '1.2.3.4:80',
+    });
   });
 
   it('increasePriority', async () => {
@@ -315,7 +331,11 @@ describe('torrentsApi', () => {
   it('setFilePriority', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setFilePriority('h1', [0, 1], 7 as never);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/filePrio', { hash: 'h1', id: '0|1', priority: '7' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/filePrio', {
+      hash: 'h1',
+      id: '0|1',
+      priority: '7',
+    });
   });
 
   describe('getTorrentDownloadLimit', () => {
@@ -334,7 +354,10 @@ describe('torrentsApi', () => {
   it('setTorrentDownloadLimit', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setTorrentDownloadLimit(['h1'], 100);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setDownloadLimit', { hashes: 'h1', limit: 100 });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setDownloadLimit', {
+      hashes: 'h1',
+      limit: 100,
+    });
   });
 
   describe('setTorrentShareLimits', () => {
@@ -368,78 +391,117 @@ describe('torrentsApi', () => {
   it('setTorrentUploadLimit', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setTorrentUploadLimit(['h1'], 300);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setUploadLimit', { hashes: 'h1', limit: 300 });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setUploadLimit', {
+      hashes: 'h1',
+      limit: 300,
+    });
   });
 
   it('setTorrentLocation', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setTorrentLocation(['h1'], '/new/path');
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setLocation', { hashes: 'h1', location: '/new/path' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setLocation', {
+      hashes: 'h1',
+      location: '/new/path',
+    });
   });
 
   it('setTorrentName', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setTorrentName('h1', 'New Name');
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/rename', { hash: 'h1', name: 'New Name' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/rename', {
+      hash: 'h1',
+      name: 'New Name',
+    });
   });
 
   it('setTorrentCategory', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setTorrentCategory(['h1'], 'Movies');
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setCategory', { hashes: 'h1', category: 'Movies' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setCategory', {
+      hashes: 'h1',
+      category: 'Movies',
+    });
   });
 
   it('addTorrentTags', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.addTorrentTags(['h1'], ['a', 'b']);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/addTags', { hashes: 'h1', tags: 'a,b' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/addTags', {
+      hashes: 'h1',
+      tags: 'a,b',
+    });
   });
 
   it('removeTorrentTags', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.removeTorrentTags(['h1'], ['a']);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/removeTags', { hashes: 'h1', tags: 'a' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/removeTags', {
+      hashes: 'h1',
+      tags: 'a',
+    });
   });
 
   it('setAutomaticTorrentManagement', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setAutomaticTorrentManagement(['h1'], true);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setAutoManagement', { hashes: 'h1', enable: 'true' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setAutoManagement', {
+      hashes: 'h1',
+      enable: 'true',
+    });
   });
 
   it('toggleSequentialDownload', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.toggleSequentialDownload(['h1']);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/toggleSequentialDownload', { hashes: 'h1' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/toggleSequentialDownload', {
+      hashes: 'h1',
+    });
   });
 
   it('setFirstLastPiecePriority', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setFirstLastPiecePriority(['h1']);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/toggleFirstLastPiecePrio', { hashes: 'h1' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/toggleFirstLastPiecePrio', {
+      hashes: 'h1',
+    });
   });
 
   it('setForceStart', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setForceStart(['h1'], true);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setForceStart', { hashes: 'h1', value: 'true' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setForceStart', {
+      hashes: 'h1',
+      value: 'true',
+    });
   });
 
   it('setSuperSeeding', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.setSuperSeeding(['h1'], false);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setSuperSeeding', { hashes: 'h1', value: 'false' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setSuperSeeding', {
+      hashes: 'h1',
+      value: 'false',
+    });
   });
 
   it('renameFile', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.renameFile('h1', 'old.txt', 'new.txt');
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/renameFile', { hash: 'h1', oldPath: 'old.txt', newPath: 'new.txt' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/renameFile', {
+      hash: 'h1',
+      oldPath: 'old.txt',
+      newPath: 'new.txt',
+    });
   });
 
   it('renameFolder', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.renameFolder('h1', 'old', 'new');
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/renameFolder', { hash: 'h1', oldPath: 'old', newPath: 'new' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/renameFolder', {
+      hash: 'h1',
+      oldPath: 'old',
+      newPath: 'new',
+    });
   });
 });

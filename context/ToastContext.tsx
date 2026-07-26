@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from 'react';
 import { Platform } from 'react-native';
 import { Toast, ToastType } from '@/components/Toast';
 import { storageService } from '@/services/storage';
@@ -156,4 +164,3 @@ export function ModalToast() {
     />
   );
 }
-

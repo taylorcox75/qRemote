@@ -40,7 +40,9 @@ import { useToast } from '@/context/ToastContext';
 import { useSearchJob } from '@/hooks/useSearchJob';
 import { searchApi } from '@/services/api/search';
 import { torrentsApi } from '@/services/api/torrents';
+import { tagsApi } from '@/services/api/tags';
 import { storageService } from '@/services/storage';
+import { clogDebug, clogWarn } from '@/services/connectivity-log';
 import { SearchPlugin, SearchResult } from '@/types/api';
 import { siteHost, resultTrackerLabel } from '@/utils/searchResult';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -55,12 +57,78 @@ const ENABLED = 'enabled';
 
 type SortKey = 'seeders' | 'size' | 'name' | 'leechers';
 
-const SORT_OPTIONS: Array<{ key: SortKey; labelKey: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = [
+const SORT_OPTIONS: Array<{
+  key: SortKey;
+  labelKey: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+}> = [
   { key: 'seeders', labelKey: 'screens.search.sortSeeders', icon: 'arrow-up-outline' },
   { key: 'leechers', labelKey: 'screens.search.sortLeechers', icon: 'arrow-down-outline' },
   { key: 'size', labelKey: 'screens.search.sortSize', icon: 'cube-outline' },
   { key: 'name', labelKey: 'screens.search.sortName', icon: 'text-outline' },
 ];
+
+const TAG_MATCH_ATTEMPTS = 8;
+const TAG_MATCH_DELAY_MS = 2000;
+
+/**
+ * search/downloadTorrent (used for plugin-native downloads, see
+ * handleAddResult) never reports which torrent it added — it's fire-and-forget
+ * server-side. Best-effort: poll the torrent list for a name match and tag it
+ * once it appears, silently (no toast) since this is a background nicety, not
+ * a user-initiated action. Prefers the newest match by `added_on` when several
+ * share the same name. Aborts cleanly when `signal` is aborted (e.g. unmount).
+ */
+async function tagNewlyDownloadedTorrent(
+  fileName: string,
+  tag: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  for (let attempt = 0; attempt < TAG_MATCH_ATTEMPTS; attempt++) {
+    if (signal?.aborted) return;
+    await new Promise<void>((resolve) => {
+      if (signal?.aborted) {
+        resolve();
+        return;
+      }
+      const onAbort = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+      const timeout = setTimeout(() => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve();
+      }, TAG_MATCH_DELAY_MS);
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+    if (signal?.aborted) return;
+    try {
+      const list = await torrentsApi.getTorrentList();
+      if (signal?.aborted) return;
+      const match = list
+        .filter(
+          (torrent) =>
+            torrent.name === fileName &&
+            !torrent.tags
+              .split(',')
+              .map((existing) => existing.trim())
+              .includes(tag),
+        )
+        .sort((a, b) => (b.added_on ?? 0) - (a.added_on ?? 0))[0];
+      if (match) {
+        await tagsApi.createTags([tag]);
+        if (signal?.aborted) return;
+        await torrentsApi.addTorrentTags([match.hash], [tag]);
+        clogDebug('SEARCH', `Auto-tagged "${fileName}" with tracker tag "${tag}"`);
+        return;
+      }
+    } catch {
+      // Keep retrying — best-effort only, no user-facing error.
+    }
+  }
+  if (signal?.aborted) return;
+  clogWarn('SEARCH', `Could not find newly added torrent "${fileName}" to auto-tag with "${tag}"`);
+}
 
 export default function SearchScreen() {
   const { t } = useTranslation();
@@ -72,6 +140,7 @@ export default function SearchScreen() {
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
   const queryInputRef = useRef<TextInput>(null);
+  const activeTagPollsRef = useRef(new Set<AbortController>());
 
   // Scroll-to-collapse header, matching the Torrents tab's pattern: the
   // header floats absolutely above the list and slides off-screen on scroll
@@ -84,6 +153,16 @@ export default function SearchScreen() {
   const headerTranslateY = useRef(new Animated.Value(0)).current;
   const isHeaderVisible = useRef(true);
   const isAnimating = useRef(false);
+
+  useEffect(() => {
+    const polls = activeTagPollsRef.current;
+    return () => {
+      for (const controller of polls) {
+        controller.abort();
+      }
+      polls.clear();
+    };
+  }, []);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -143,17 +222,7 @@ export default function SearchScreen() {
     [headerHeight, headerTranslateY],
   );
 
-  const {
-    jobId,
-    status,
-    results,
-    total,
-    isLoading,
-    error,
-    start,
-    stop,
-    reset,
-  } = useSearchJob();
+  const { jobId, status, results, total, isLoading, error, start, stop, reset } = useSearchJob();
 
   const [query, setQuery] = useState('');
   const [plugin, setPlugin] = useState<string>(ALL);
@@ -420,6 +489,11 @@ export default function SearchScreen() {
       if (!result.fileUrl) return;
       setPendingAddUrl(result.fileUrl);
       try {
+        const prefs = await storageService.getPreferences();
+        const trackerTag = prefs.autoCategorizeByTracker
+          ? resultTrackerLabel(result, isAggregatedSource)
+          : '';
+
         // Non-magnet result URLs from direct tracker plugins often need the
         // plugin's context to resolve (login cookies, magnet extraction from
         // an HTML page, …) — delegate those to search/downloadTorrent
@@ -437,8 +511,19 @@ export default function SearchScreen() {
           result.engineName
         ) {
           await searchApi.downloadTorrent(result.fileUrl, result.engineName);
+          // search/downloadTorrent never reports which torrent it added — tag
+          // it in the background, best-effort, once it shows up by name.
+          if (trackerTag) {
+            const controller = new AbortController();
+            activeTagPollsRef.current.add(controller);
+            void tagNewlyDownloadedTorrent(result.fileName, trackerTag, controller.signal).finally(
+              () => {
+                activeTagPollsRef.current.delete(controller);
+              },
+            );
+          }
         } else {
-          await torrentsApi.addTorrent(result.fileUrl);
+          await torrentsApi.addTorrent(result.fileUrl, trackerTag ? { tags: [trackerTag] } : undefined);
         }
         haptics.success();
         showToast(t('screens.search.addedToast'), 'success');
@@ -544,12 +629,14 @@ export default function SearchScreen() {
 
   // ────────────────────────────────────────────────── chip data ───────────
 
-  type PluginChip = { key: string; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] };
+  type PluginChip = {
+    key: string;
+    label: string;
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+  };
 
   const pluginChips: PluginChip[] = useMemo(() => {
-    const chips: PluginChip[] = [
-      { key: ALL, label: t('screens.search.allPlugins'), icon: 'apps' },
-    ];
+    const chips: PluginChip[] = [{ key: ALL, label: t('screens.search.allPlugins'), icon: 'apps' }];
     for (const p of sortedPlugins) {
       chips.push({
         key: p.name,
@@ -628,7 +715,9 @@ export default function SearchScreen() {
       return (
         <View style={[styles.center, { backgroundColor: colors.background }]}>
           <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: spacing.md }]}>
+          <Text
+            style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: spacing.md }]}
+          >
             {t('screens.search.runningInitial')}
           </Text>
         </View>
@@ -650,336 +739,336 @@ export default function SearchScreen() {
             banner, etc.) to dismiss the keyboard without stealing taps from
             the controls. */}
         <Animated.View
-          style={[
-            styles.headerContainer,
-            { transform: [{ translateY: headerTranslateY }] },
-          ]}
+          style={[styles.headerContainer, { transform: [{ translateY: headerTranslateY }] }]}
           onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
         >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={[styles.searchCard, { backgroundColor: colors.background }]}>
-          {/* Search row: [42x42 plugins button] [search input] [42x42 submit] */}
-          <View style={styles.searchRow}>
-            <TouchableOpacity
-              style={[
-                styles.iconButton,
-                {
-                  backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
-                  borderColor: colors.surfaceOutline,
-                },
-              ]}
-              onPress={() => {
-                haptics.light();
-                setShowSortMenu(!showSortMenu);
-              }}
-              activeOpacity={0.7}
-              accessibilityLabel={t('screens.settings.sortBy')}
-            >
-              <Ionicons
-                name="swap-vertical"
-                size={18}
-                color={showSortMenu ? colors.primary : colors.text}
-              />
-            </TouchableOpacity>
-
-            <View
-              style={[
-                styles.searchInputContainer,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.surfaceOutline,
-                },
-              ]}
-            >
-              <Ionicons
-                name="search"
-                size={18}
-                color={colors.textSecondary}
-                style={styles.searchInputIcon}
-              />
-              <TextInput
-                ref={queryInputRef}
-                value={query}
-                onChangeText={setQuery}
-                style={[styles.searchInput, { color: colors.text }]}
-                placeholder={t('screens.search.placeholder')}
-                placeholderTextColor={colors.textSecondary}
-                autoCorrect={false}
-                autoCapitalize="none"
-                returnKeyType="search"
-                onSubmitEditing={handleSubmit}
-              />
-              {query.length > 0 && !isLoading && (
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={[styles.searchCard, { backgroundColor: colors.background }]}>
+              {/* Search row: [42x42 plugins button] [search input] [42x42 submit] */}
+              <View style={styles.searchRow}>
                 <TouchableOpacity
-                  onPress={onClearQuery}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityLabel={t('common.clearSearch')}
+                  style={[
+                    styles.iconButton,
+                    {
+                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
+                      borderColor: colors.surfaceOutline,
+                    },
+                  ]}
+                  onPress={() => {
+                    haptics.light();
+                    setShowSortMenu(!showSortMenu);
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.settings.sortBy')}
                 >
-                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-              {isLoading && (
-                <ActivityIndicator
-                  size="small"
-                  color={colors.primary}
-                  style={{ marginLeft: spacing.xs }}
-                />
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                {
-                  backgroundColor: query.trim() ? colors.primary : colors.surfaceOutline,
-                },
-              ]}
-              onPress={handleSubmit}
-              activeOpacity={0.7}
-              disabled={!query.trim()}
-              accessibilityLabel={t('screens.search.tabTitle')}
-            >
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Plugin chip row */}
-          <View style={styles.filterRow}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRowContainer}
-            >
-              <TouchableOpacity
-                style={styles.pluginsCornerButton}
-                onPress={handleOpenPlugins}
-                activeOpacity={0.7}
-                accessibilityLabel={t('screens.search.pluginsTitle')}
-              >
-                <Ionicons name="extension-puzzle-outline" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-
-              {pluginChips.map((chip) => {
-                const isActive = plugin === chip.key;
-                return (
-                  <FilterChip
-                    key={chip.key}
-                    label={chip.label}
-                    icon={chip.icon}
-                    active={isActive}
-                    numberOfLines={1}
-                    style={styles.filterChip}
-                    textStyle={styles.filterChipText}
-                    onPress={() => {
-                      haptics.light();
-                      setPlugin(chip.key);
-                      setCategory(ALL);
-                    }}
+                  <Ionicons
+                    name="swap-vertical"
+                    size={18}
+                    color={showSortMenu ? colors.primary : colors.text}
                   />
-                );
-              })}
-            </ScrollView>
-          </View>
+                </TouchableOpacity>
 
-          {/* Tracker/indexer chip row — populates as results stream in, so it
+                <View
+                  style={[
+                    styles.searchInputContainer,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.surfaceOutline,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="search"
+                    size={18}
+                    color={colors.textSecondary}
+                    style={styles.searchInputIcon}
+                  />
+                  <TextInput
+                    ref={queryInputRef}
+                    value={query}
+                    onChangeText={setQuery}
+                    style={[styles.searchInput, { color: colors.text }]}
+                    placeholder={t('screens.search.placeholder')}
+                    placeholderTextColor={colors.textSecondary}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    returnKeyType="search"
+                    onSubmitEditing={handleSubmit}
+                  />
+                  {query.length > 0 && !isLoading && (
+                    <TouchableOpacity
+                      onPress={onClearQuery}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityLabel={t('common.clearSearch')}
+                    >
+                      <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                  {isLoading && (
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.primary}
+                      style={{ marginLeft: spacing.xs }}
+                    />
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.submitButton,
+                    {
+                      backgroundColor: query.trim() ? colors.primary : colors.surfaceOutline,
+                    },
+                  ]}
+                  onPress={handleSubmit}
+                  activeOpacity={0.7}
+                  disabled={!query.trim()}
+                  accessibilityLabel={t('screens.search.tabTitle')}
+                >
+                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Plugin chip row */}
+              <View style={styles.filterRow}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterRowContainer}
+                >
+                  <TouchableOpacity
+                    style={styles.pluginsCornerButton}
+                    onPress={handleOpenPlugins}
+                    activeOpacity={0.7}
+                    accessibilityLabel={t('screens.search.pluginsTitle')}
+                  >
+                    <Ionicons
+                      name="extension-puzzle-outline"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+
+                  {pluginChips.map((chip) => {
+                    const isActive = plugin === chip.key;
+                    return (
+                      <FilterChip
+                        key={chip.key}
+                        label={chip.label}
+                        icon={chip.icon}
+                        active={isActive}
+                        numberOfLines={1}
+                        style={styles.filterChip}
+                        textStyle={styles.filterChipText}
+                        onPress={() => {
+                          haptics.light();
+                          setPlugin(chip.key);
+                          setCategory(ALL);
+                        }}
+                      />
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Tracker/indexer chip row — populates as results stream in, so it
               grows while a search is still running (each plugin/indexer
               reports at its own pace). Multi-select: toggling a chip filters
               already-fetched results client-side, it does not re-run the
               search. Rendered above Category since it's independent of which
               plugin is selected. */}
-          {availableTrackers.length > 1 && (
-            <View style={styles.filterRow}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterRowContainer}
-              >
-                <View style={styles.filterRowLabel}>
-                  <Ionicons name="globe-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.filterRowLabelText, { color: colors.textSecondary }]}>
-                    {t('screens.search.indexerLabel')}
-                  </Text>
-                </View>
-                <FilterChip
-                  label={t('screens.search.allTrackers')}
-                  active={selectedTrackers.size === 0}
-                  numberOfLines={1}
-                  style={styles.filterChip}
-                  textStyle={styles.filterChipText}
-                  onPress={() => {
-                    haptics.light();
-                    setSelectedTrackers(new Set());
-                  }}
-                />
-                {availableTrackers.map((host) => (
-                  <FilterChip
-                    key={host}
-                    label={host}
-                    active={selectedTrackers.has(host)}
-                    numberOfLines={1}
-                    style={styles.filterChip}
-                    textStyle={styles.filterChipText}
-                    onPress={() => toggleTracker(host)}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Category chip row (only when a specific plugin is selected) */}
-          {categories.length > 0 && (
-            <View style={styles.filterRow}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterRowContainer}
-              >
-                <View style={styles.filterRowLabel}>
-                  <Ionicons name="folder-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.filterRowLabelText, { color: colors.textSecondary }]}>
-                    {t('screens.search.categoryLabel')}
-                  </Text>
-                </View>
-                {[
-                  { id: ALL, name: t('screens.search.allCategories') },
-                  ...categories,
-                ].map((cat) => {
-                  const isActive = category === cat.id;
-                  return (
+              {availableTrackers.length > 1 && (
+                <View style={styles.filterRow}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterRowContainer}
+                  >
+                    <View style={styles.filterRowLabel}>
+                      <Ionicons name="globe-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[styles.filterRowLabelText, { color: colors.textSecondary }]}>
+                        {t('screens.search.indexerLabel')}
+                      </Text>
+                    </View>
                     <FilterChip
-                      key={cat.id}
-                      label={cat.name}
-                      active={isActive}
+                      label={t('screens.search.allTrackers')}
+                      active={selectedTrackers.size === 0}
                       numberOfLines={1}
                       style={styles.filterChip}
                       textStyle={styles.filterChipText}
                       onPress={() => {
                         haptics.light();
-                        setCategory(cat.id);
+                        setSelectedTrackers(new Set());
                       }}
                     />
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
+                    {availableTrackers.map((host) => (
+                      <FilterChip
+                        key={host}
+                        label={host}
+                        active={selectedTrackers.has(host)}
+                        numberOfLines={1}
+                        style={styles.filterChip}
+                        textStyle={styles.filterChipText}
+                        onPress={() => toggleTracker(host)}
+                      />
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
-          {/* Running banner + result count */}
-          {jobId !== null && (
-            <View style={styles.statusBanner}>
-              <View style={styles.statusBannerLeft}>
-                {status === 'Running' ? (
-                  <>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.statusBannerText, { color: colors.textSecondary }]}>
-                      {t('screens.search.runningCount', { count: total })}
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                    <Text style={[styles.statusBannerText, { color: colors.textSecondary }]}>
-                      {t('screens.search.foundCount', { count: total })}
-                    </Text>
-                  </>
-                )}
-              </View>
-              {status === 'Running' && (
-                <TouchableOpacity
+              {/* Category chip row (only when a specific plugin is selected) */}
+              {categories.length > 0 && (
+                <View style={styles.filterRow}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterRowContainer}
+                  >
+                    <View style={styles.filterRowLabel}>
+                      <Ionicons name="folder-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[styles.filterRowLabelText, { color: colors.textSecondary }]}>
+                        {t('screens.search.categoryLabel')}
+                      </Text>
+                    </View>
+                    {[{ id: ALL, name: t('screens.search.allCategories') }, ...categories].map(
+                      (cat) => {
+                        const isActive = category === cat.id;
+                        return (
+                          <FilterChip
+                            key={cat.id}
+                            label={cat.name}
+                            active={isActive}
+                            numberOfLines={1}
+                            style={styles.filterChip}
+                            textStyle={styles.filterChipText}
+                            onPress={() => {
+                              haptics.light();
+                              setCategory(cat.id);
+                            }}
+                          />
+                        );
+                      },
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Running banner + result count */}
+              {jobId !== null && (
+                <View style={styles.statusBanner}>
+                  <View style={styles.statusBannerLeft}>
+                    {status === 'Running' ? (
+                      <>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={[styles.statusBannerText, { color: colors.textSecondary }]}>
+                          {t('screens.search.runningCount', { count: total })}
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                        <Text style={[styles.statusBannerText, { color: colors.textSecondary }]}>
+                          {t('screens.search.foundCount', { count: total })}
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                  {status === 'Running' && (
+                    <TouchableOpacity
+                      style={[
+                        styles.stopChip,
+                        { backgroundColor: colors.error, borderColor: colors.error },
+                      ]}
+                      onPress={() => void stop()}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="stop" size={12} color="#FFFFFF" />
+                      <Text style={[styles.stopChipText, { color: '#FFFFFF' }]}>
+                        {t('screens.search.stop')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* Sort dropdown — appears when sort icon is toggled */}
+              {showSortMenu && (
+                <View
                   style={[
-                    styles.stopChip,
-                    { backgroundColor: colors.error, borderColor: colors.error },
+                    styles.sortDropdown,
+                    {
+                      backgroundColor: isDark ? colors.surface : colors.background,
+                      borderColor: colors.surfaceOutline,
+                    },
                   ]}
-                  onPress={() => void stop()}
-                  activeOpacity={0.7}
                 >
-                  <Ionicons name="stop" size={12} color="#FFFFFF" />
-                  <Text style={[styles.stopChipText, { color: '#FFFFFF' }]}>
-                    {t('screens.search.stop')}
-                  </Text>
-                </TouchableOpacity>
+                  {SORT_OPTIONS.map((opt) => {
+                    const isActive = sortBy === opt.key;
+                    return (
+                      <TouchableOpacity
+                        key={opt.key}
+                        style={[
+                          styles.sortOption,
+                          isActive && {
+                            backgroundColor: isDark ? colors.primaryOpac : colors.primary,
+                          },
+                        ]}
+                        onPress={() => {
+                          haptics.light();
+                          if (isActive) {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortBy(opt.key);
+                            setSortDirection(opt.key === 'name' ? 'asc' : 'desc');
+                          }
+                          setShowSortMenu(false);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={opt.icon}
+                          size={18}
+                          color={
+                            isActive
+                              ? isDark
+                                ? colors.primary
+                                : '#FFFFFF'
+                              : isDark
+                                ? colors.textSecondary
+                                : colors.text
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.sortOptionText,
+                            {
+                              color: isActive
+                                ? isDark
+                                  ? colors.primary
+                                  : '#FFFFFF'
+                                : isDark
+                                  ? colors.textSecondary
+                                  : colors.text,
+                              fontWeight: isActive ? '600' : '400',
+                            },
+                          ]}
+                        >
+                          {t(opt.labelKey)}
+                        </Text>
+                        {isActive && (
+                          <Ionicons
+                            name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
+                            size={18}
+                            color={isDark ? colors.primary : '#FFFFFF'}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               )}
             </View>
-          )}
-
-          {/* Sort dropdown — appears when sort icon is toggled */}
-          {showSortMenu && (
-            <View
-              style={[
-                styles.sortDropdown,
-                {
-                  backgroundColor: isDark ? colors.surface : colors.background,
-                  borderColor: colors.surfaceOutline,
-                },
-              ]}
-            >
-              {SORT_OPTIONS.map((opt) => {
-                const isActive = sortBy === opt.key;
-                return (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[
-                      styles.sortOption,
-                      isActive && {
-                        backgroundColor: isDark ? colors.primaryOpac : colors.primary,
-                      },
-                    ]}
-                    onPress={() => {
-                      haptics.light();
-                      if (isActive) {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy(opt.key);
-                        setSortDirection(opt.key === 'name' ? 'asc' : 'desc');
-                      }
-                      setShowSortMenu(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={opt.icon}
-                      size={18}
-                      color={
-                        isActive
-                          ? isDark
-                            ? colors.primary
-                            : '#FFFFFF'
-                          : isDark
-                          ? colors.textSecondary
-                          : colors.text
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.sortOptionText,
-                        {
-                          color: isActive
-                            ? isDark
-                              ? colors.primary
-                              : '#FFFFFF'
-                            : isDark
-                            ? colors.textSecondary
-                            : colors.text,
-                          fontWeight: isActive ? '600' : '400',
-                        },
-                      ]}
-                    >
-                      {t(opt.labelKey)}
-                    </Text>
-                    {isActive && (
-                      <Ionicons
-                        name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
-                        size={18}
-                        color={isDark ? colors.primary : '#FFFFFF'}
-                      />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
-        </TouchableWithoutFeedback>
+          </TouchableWithoutFeedback>
         </Animated.View>
 
         {/* Results list / empty state */}
@@ -1000,7 +1089,10 @@ export default function SearchScreen() {
                 isAdding={pendingAddUrl === item.fileUrl}
               />
             )}
-            contentContainerStyle={{ paddingBottom: spacing.xxxl, paddingTop: headerHeight + spacing.xs }}
+            contentContainerStyle={{
+              paddingBottom: spacing.xxxl,
+              paddingTop: headerHeight + spacing.xs,
+            }}
             onScroll={handleScroll}
             scrollEventThrottle={50}
             keyboardShouldPersistTaps="handled"

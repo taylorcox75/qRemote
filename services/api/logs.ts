@@ -17,7 +17,7 @@ export const logsApi = {
     info: boolean = true,
     warning: boolean = true,
     critical: boolean = true,
-    lastKnownId?: number
+    lastKnownId?: number,
   ): Promise<LogEntry[]> {
     const params: Record<string, string | number | boolean> = {
       normal: normal ? 1 : 0,
@@ -31,16 +31,16 @@ export const logsApi = {
     }
 
     const response = await apiClient.get(`/api/${API_VERSION}/log/main`, params);
-    
+
     if (Array.isArray(response)) {
       return response as LogEntry[];
     }
-    
+
     const obj = response as Record<string, unknown>;
     if (obj && Array.isArray(obj.data)) {
       return obj.data as LogEntry[];
     }
-    
+
     return [];
   },
 
@@ -55,16 +55,16 @@ export const logsApi = {
     }
 
     const response = await apiClient.get(`/api/${API_VERSION}/log/peers`, params);
-    
+
     if (Array.isArray(response)) {
       return response as PeerLogEntry[];
     }
-    
+
     const obj = response as Record<string, unknown>;
     if (obj && Array.isArray(obj.data)) {
       return obj.data as PeerLogEntry[];
     }
-    
+
     return [];
   },
 };

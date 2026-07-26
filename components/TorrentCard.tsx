@@ -7,7 +7,14 @@ import { useTheme } from '@/context/ThemeContext';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
 import { haptics } from '@/utils/haptics';
 import { getStateColor, getStateLabel, hasEta } from '@/utils/torrent-state';
-import { formatSpeed, formatSize, formatTime, formatProgress, formatAvailability } from '@/utils/format';
+import { avatarColor } from '@/utils/server';
+import {
+  formatSpeed,
+  formatSize,
+  formatTime,
+  formatProgress,
+  formatAvailability,
+} from '@/utils/format';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { ExpandedCardField, DEFAULT_PREFERENCES } from '@/types/preferences';
@@ -22,6 +29,14 @@ interface TorrentCardProps {
   expandedCardFields?: Record<ExpandedCardField, boolean>;
   /** Columns in the detailed-card stats grid (3 | 4 | 5). Defaults to 4. */
   gridColumns?: 3 | 4 | 5;
+  /** Sticker color applied to every category without a per-name override (Theme & Colors). */
+  defaultCategoryColor?: string;
+  /** Sticker color applied to every tag without a per-name override (Theme & Colors). */
+  defaultTagColor?: string;
+  /** Per-category sticker color overrides, keyed by category name. */
+  categoryColors?: Record<string, string>;
+  /** Per-tag sticker color overrides, keyed by tag name. */
+  tagColors?: Record<string, string>;
 }
 
 // Detailed-card cell: small secondary label stacked above the value.
@@ -119,6 +134,10 @@ function TorrentCardInner({
   compact = true,
   expandedCardFields,
   gridColumns = 4,
+  defaultCategoryColor,
+  defaultTagColor,
+  categoryColors,
+  tagColors,
 }: TorrentCardProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -163,7 +182,16 @@ function TorrentCardInner({
     upspeed > 0 ? `${formatSpeed(upspeed)} ↑` : null,
     dlspeed > 0 ? `${formatSpeed(dlspeed)} ↓` : null,
     `${(torrent.ratio ?? 0).toFixed(2)} ${t('⇅')}`,
-  ].filter(Boolean).join('  ·  ');
+  ]
+    .filter(Boolean)
+    .join('  ·  ');
+
+  const tagList = torrent.tags
+    ? torrent.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    : [];
 
   // Build detail items: short fields become stacked label-over-value cells in
   // a wrapping N-per-row grid; long ones span a full-width truncated row.
@@ -186,24 +214,90 @@ function TorrentCardInner({
       detailItems.push({ key, label, value, fullWidth, truncate });
     };
 
-    if (show('seeds')) addItem('seeds', t('screens.settings.expandedCardFieldsList.seeds'), `${torrent.num_seeds} / ${torrent.num_complete}`);
-    if (show('peers')) addItem('peers', t('screens.settings.expandedCardFieldsList.peers'), `${torrent.num_leechs} / ${torrent.num_incomplete}`);
-    if (show('ratioLimit')) addItem('ratioLimit', t('screens.settings.expandedCardFieldsList.ratioLimit'), torrent.ratio_limit != null && torrent.ratio_limit >= 0 ? torrent.ratio_limit.toFixed(2) : '∞');
-    if (show('maxRatio')) addItem('maxRatio', t('screens.settings.expandedCardFieldsList.maxRatio'), torrent.max_ratio != null && torrent.max_ratio >= 0 ? torrent.max_ratio.toFixed(2) : '∞');
-    if (show('uploaded')) addItem('uploaded', t('screens.settings.expandedCardFieldsList.uploaded'), formatSize(torrent.uploaded));
-    if (show('availability')) addItem('availability', t('screens.settings.expandedCardFieldsList.availability'), torrent.availability > 0 ? formatAvailability(torrent.availability) : '—');
-    if (show('popularity') && torrent.popularity != null) addItem('popularity', t('screens.settings.expandedCardFieldsList.popularity'), torrent.popularity.toFixed(2));
-    if (show('seedingTime')) addItem('seedingTime', t('screens.settings.expandedCardFieldsList.seedingTime'), torrent.seeding_time > 0 ? formatTime(torrent.seeding_time) : '—');
+    if (show('seeds'))
+      addItem(
+        'seeds',
+        t('screens.settings.expandedCardFieldsList.seeds'),
+        `${torrent.num_seeds} / ${torrent.num_complete}`,
+      );
+    if (show('peers'))
+      addItem(
+        'peers',
+        t('screens.settings.expandedCardFieldsList.peers'),
+        `${torrent.num_leechs} / ${torrent.num_incomplete}`,
+      );
+    if (show('ratioLimit'))
+      addItem(
+        'ratioLimit',
+        t('screens.settings.expandedCardFieldsList.ratioLimit'),
+        torrent.ratio_limit != null && torrent.ratio_limit >= 0
+          ? torrent.ratio_limit.toFixed(2)
+          : '∞',
+      );
+    if (show('maxRatio'))
+      addItem(
+        'maxRatio',
+        t('screens.settings.expandedCardFieldsList.maxRatio'),
+        torrent.max_ratio != null && torrent.max_ratio >= 0 ? torrent.max_ratio.toFixed(2) : '∞',
+      );
+    if (show('uploaded'))
+      addItem(
+        'uploaded',
+        t('screens.settings.expandedCardFieldsList.uploaded'),
+        formatSize(torrent.uploaded),
+      );
+    if (show('availability'))
+      addItem(
+        'availability',
+        t('screens.settings.expandedCardFieldsList.availability'),
+        torrent.availability > 0 ? formatAvailability(torrent.availability) : '—',
+      );
+    if (show('popularity') && torrent.popularity != null)
+      addItem(
+        'popularity',
+        t('screens.settings.expandedCardFieldsList.popularity'),
+        torrent.popularity.toFixed(2),
+      );
+    if (show('seedingTime'))
+      addItem(
+        'seedingTime',
+        t('screens.settings.expandedCardFieldsList.seedingTime'),
+        torrent.seeding_time > 0 ? formatTime(torrent.seeding_time) : '—',
+      );
     if (show('addedOn')) {
       const added = new Date(torrent.added_on * 1000);
       const addedValid = torrent.added_on > 0 && !isNaN(added.getTime());
-      addItem('addedOn', t('screens.settings.expandedCardFieldsList.addedOn'), addedValid ? added.toLocaleDateString() : '—');
-      addItem('addedTime', t('screens.settings.expandedCardFieldsList.addedTime'), addedValid ? added.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
+      addItem(
+        'addedOn',
+        t('screens.settings.expandedCardFieldsList.addedOn'),
+        addedValid ? added.toLocaleDateString() : '—',
+      );
+      addItem(
+        'addedTime',
+        t('screens.settings.expandedCardFieldsList.addedTime'),
+        addedValid ? added.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+      );
     }
-    if (show('tags') && !!torrent.tags) addItem('tags', t('screens.settings.expandedCardFieldsList.tags'), torrent.tags, true);
-    if (show('category') && !!torrent.category) addItem('category', t('screens.settings.expandedCardFieldsList.category'), torrent.category);
-    if (show('tracker') && !!torrent.tracker) addItem('tracker', t('screens.settings.expandedCardFieldsList.tracker'), torrent.tracker, true, true);
-    if (show('savePath') && !!torrent.save_path) addItem('savePath', t('screens.settings.expandedCardFieldsList.savePath'), torrent.save_path, true, true);
+    if (show('tags') && !!torrent.tags)
+      addItem('tags', t('screens.settings.expandedCardFieldsList.tags'), torrent.tags, true);
+    if (show('category') && !!torrent.category)
+      addItem('category', t('screens.settings.expandedCardFieldsList.category'), torrent.category);
+    if (show('tracker') && !!torrent.tracker)
+      addItem(
+        'tracker',
+        t('screens.settings.expandedCardFieldsList.tracker'),
+        torrent.tracker,
+        true,
+        true,
+      );
+    if (show('savePath') && !!torrent.save_path)
+      addItem(
+        'savePath',
+        t('screens.settings.expandedCardFieldsList.savePath'),
+        torrent.save_path,
+        true,
+        true,
+      );
   }
 
   return (
@@ -230,9 +324,7 @@ function TorrentCardInner({
           {/* Tint layer: state color at low opacity behind fully-opaque text.
               getStateColor returns mixed formats (hex/rgb/rgba), so the tint is
               layered via View opacity instead of parsing/recomposing the color. */}
-          <View
-            style={[StyleSheet.absoluteFill, { backgroundColor: stateColor, opacity: 0.28 }]}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: stateColor, opacity: 0.55 }]} />
           {/* Theme text color, not the state color — state-colored text on its
               own tint can be unreadable for low-contrast states. */}
           <Text style={[styles.badgeText, { color: colors.text }]} numberOfLines={1}>
@@ -242,7 +334,10 @@ function TorrentCardInner({
         {onMenuPress && (
           <TouchableOpacity
             ref={menuButtonRef}
-            onPress={(e) => { e.stopPropagation?.(); handleMenuPress(); }}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              handleMenuPress();
+            }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.menuButton}
             activeOpacity={0.6}
@@ -269,9 +364,17 @@ function TorrentCardInner({
         </View>
         {onPauseResume && (
           <TouchableOpacity
-            onPress={(e) => { e.stopPropagation?.(); haptics.medium(); onPauseResume(); }}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              haptics.medium();
+              onPauseResume();
+            }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={[styles.pauseCircle, !compact && styles.pauseCircleDetailed, { backgroundColor: stateColor }]}
+            style={[
+              styles.pauseCircle,
+              !compact && styles.pauseCircleDetailed,
+              { backgroundColor: stateColor },
+            ]}
             activeOpacity={0.7}
             accessibilityLabel={isPaused ? t('actions.resume') : t('actions.pause')}
           >
@@ -281,10 +384,54 @@ function TorrentCardInner({
         )}
       </View>
 
-      {/* Always-on: Downloaded / Total */}
-      <Text style={[styles.sizeText, { color: colors.textSecondary }]}>
-        {formatSize(downloaded)} / {formatSize(totalSize)}
-      </Text>
+      {/* Always-on: Downloaded / Total, with the torrent's category/tags as
+          right-aligned stickers — inset to align with the progress bar's
+          right edge (not the card edge), matching the pause circle's width */}
+      <View
+        style={[
+          styles.sizeRow,
+          onPauseResume && { paddingRight: (compact ? 24 : 28) + spacing.sm },
+        ]}
+      >
+        <Text style={[styles.sizeText, { color: colors.textSecondary }]}>
+          {formatSize(downloaded)} / {formatSize(totalSize)}
+        </Text>
+        {(torrent.category || tagList.length > 0) && (
+          <View style={styles.stickerRow}>
+            {torrent.category ? (
+              <View style={styles.sticker}>
+                <Ionicons
+                  name="folder-outline"
+                  size={11}
+                  color={
+                    categoryColors?.[torrent.category] ??
+                    defaultCategoryColor ??
+                    avatarColor(torrent.category)
+                  }
+                />
+                <Text style={[styles.stickerText, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {torrent.category}
+                </Text>
+              </View>
+            ) : null}
+            {tagList.map((tag) => (
+              <View key={tag} style={styles.sticker}>
+                <Ionicons
+                  name="pricetag-outline"
+                  size={11}
+                  color={tagColors?.[tag] ?? defaultTagColor ?? avatarColor(tag)}
+                />
+                <Text
+                  style={[styles.stickerText, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {tag}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* Expanded detail section — stacked label-over-value cells, N per row;
           full-width truncated rows for long fields */}
@@ -349,7 +496,11 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.onMenuPress === next.onMenuPress &&
     prev.compact === next.compact &&
     prev.expandedCardFields === next.expandedCardFields &&
-    prev.gridColumns === next.gridColumns
+    prev.gridColumns === next.gridColumns &&
+    prev.defaultCategoryColor === next.defaultCategoryColor &&
+    prev.defaultTagColor === next.defaultTagColor &&
+    prev.categoryColors === next.categoryColors &&
+    prev.tagColors === next.tagColors
   );
 });
 
@@ -408,6 +559,23 @@ const styles = StyleSheet.create({
     marginTop: 1,
     marginBottom: 1,
   },
+  stickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: spacing.xs,
+    flexShrink: 0,
+  },
+  sticker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: 100,
+  },
+  stickerText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -429,9 +597,15 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
   },
+  sizeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   sizeText: {
     fontSize: 12,
     fontWeight: '400',
+    flexShrink: 1,
   },
   detailGrid: {
     flexDirection: 'row',

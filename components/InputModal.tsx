@@ -1,14 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { PathAutocompleteInput } from '@/components/PathAutocompleteInput';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 
@@ -23,6 +17,8 @@ interface InputModalProps {
   keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
   multiline?: boolean;
   allowEmpty?: boolean;
+  /** Suggests directory names as the user types (qBittorrent 5.0+ only; see PathAutocompleteInput). */
+  pathAutocomplete?: boolean;
 }
 
 export function InputModal({
@@ -36,6 +32,7 @@ export function InputModal({
   keyboardType = 'default',
   multiline = false,
   allowEmpty = false,
+  pathAutocomplete = false,
 }: InputModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -61,12 +58,7 @@ export function InputModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleCancel}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleCancel}>
       <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
         <View
           style={[
@@ -79,25 +71,45 @@ export function InputModal({
           ]}
         >
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-          {message && <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>}
-          <TextInput
-            style={[
-              styles.input,
-              multiline && styles.inputMultiline,
-              {
-                backgroundColor: colors.background,
-                borderColor: colors.surfaceOutline,
-                color: colors.text,
-              },
-            ]}
-            value={value}
-            onChangeText={setValue}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textSecondary}
-            keyboardType={keyboardType}
-            multiline={multiline}
-            autoFocus
-          />
+          {message && (
+            <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
+          )}
+          {pathAutocomplete ? (
+            <PathAutocompleteInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.surfaceOutline,
+                  color: colors.text,
+                },
+              ]}
+              value={value}
+              onChangeText={setValue}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textSecondary}
+              autoFocus
+            />
+          ) : (
+            <TextInput
+              style={[
+                styles.input,
+                multiline && styles.inputMultiline,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.surfaceOutline,
+                  color: colors.text,
+                },
+              ]}
+              value={value}
+              onChangeText={setValue}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textSecondary}
+              keyboardType={keyboardType}
+              multiline={multiline}
+              autoFocus
+            />
+          )}
           <View style={styles.buttons}>
             <TouchableOpacity
               style={[styles.button, { backgroundColor: colors.surfaceOutline }]}
@@ -109,7 +121,9 @@ export function InputModal({
               style={[styles.button, { backgroundColor: colors.primary }]}
               onPress={handleConfirm}
             >
-              <Text style={[styles.buttonText, { color: colors.surface }]}>{t('common.confirm')}</Text>
+              <Text style={[styles.buttonText, { color: colors.surface }]}>
+                {t('common.confirm')}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -169,4 +183,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

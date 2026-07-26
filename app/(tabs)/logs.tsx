@@ -59,7 +59,7 @@ export default function LogsScreen() {
           filters.info,
           filters.warning,
           filters.critical,
-          lastAppLogId
+          lastAppLogId,
         );
         if (logs.length > 0) {
           setAppLogs((prev) => {
@@ -134,17 +134,14 @@ export default function LogsScreen() {
   const filteredAppLogs = useMemo(() => {
     if (!searchQuery.trim()) return appLogs;
     const query = searchQuery.toLowerCase();
-    return appLogs.filter(log => 
-      log.message.toLowerCase().includes(query)
-    );
+    return appLogs.filter((log) => log.message.toLowerCase().includes(query));
   }, [appLogs, searchQuery]);
 
   const filteredPeerLogs = useMemo(() => {
     if (!searchQuery.trim()) return peerLogs;
     const query = searchQuery.toLowerCase();
-    return peerLogs.filter(log => 
-      log.ip.toLowerCase().includes(query) ||
-      log.client.toLowerCase().includes(query)
+    return peerLogs.filter(
+      (log) => log.ip.toLowerCase().includes(query) || log.client.toLowerCase().includes(query),
     );
   }, [peerLogs, searchQuery]);
 
@@ -153,7 +150,9 @@ export default function LogsScreen() {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <Text style={[styles.message, { color: colors.text }]}>{t('screens.logs.notConnected')}</Text>
+        <Text style={[styles.message, { color: colors.text }]}>
+          {t('screens.logs.notConnected')}
+        </Text>
         <Text style={[styles.subMessage, { color: colors.textSecondary }]}>
           {t('screens.logs.notConnectedHint')}
         </Text>
@@ -178,194 +177,205 @@ export default function LogsScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.tabs, { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline }]}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'app' && { borderBottomColor: colors.primary }]}
-          onPress={() => setActiveTab('app')}
+        <View
+          style={[
+            styles.tabs,
+            { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
+          ]}
         >
-          <Text
-            style={[
-              styles.tabText,
-              { color: activeTab === 'app' ? colors.primary : colors.textSecondary },
-              activeTab === 'app' && { fontWeight: '600' },
-            ]}
-          >
-            {t('screens.logs.applicationLogs')}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'peer' && { borderBottomColor: colors.primary }]}
-          onPress={() => setActiveTab('peer')}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              { color: activeTab === 'peer' ? colors.primary : colors.textSecondary },
-              activeTab === 'peer' && { fontWeight: '600' },
-            ]}
-          >
-            {t('screens.logs.peerLogs')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Search Bar */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
-        <View style={[styles.searchInputContainer, { backgroundColor: colors.background }]}>
-          <Ionicons name="search" size={18} color={colors.textSecondary} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder={t('screens.logs.searchLogs')}
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              accessibilityLabel={t('common.clearSearch')}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {activeTab === 'app' && (
-        <View style={[styles.filters, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('screens.logs.filter')}</Text>
           <TouchableOpacity
-            style={[
-              styles.filterButton,
-              { backgroundColor: filters.normal ? colors.primary : colors.background },
-            ]}
-            onPress={() => setFilters({ ...filters, normal: !filters.normal })}
+            style={[styles.tab, activeTab === 'app' && { borderBottomColor: colors.primary }]}
+            onPress={() => setActiveTab('app')}
           >
             <Text
               style={[
-                styles.filterButtonText,
-                { color: filters.normal ? '#FFFFFF' : colors.text },
+                styles.tabText,
+                { color: activeTab === 'app' ? colors.primary : colors.textSecondary },
+                activeTab === 'app' && { fontWeight: '600' },
               ]}
             >
-              {t('screens.logs.normal')}
+              {t('screens.logs.applicationLogs')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.filterButton,
-              { backgroundColor: filters.info ? colors.primary : colors.background },
-            ]}
-            onPress={() => setFilters({ ...filters, info: !filters.info })}
+            style={[styles.tab, activeTab === 'peer' && { borderBottomColor: colors.primary }]}
+            onPress={() => setActiveTab('peer')}
           >
             <Text
               style={[
-                styles.filterButtonText,
-                { color: filters.info ? '#FFFFFF' : colors.text },
+                styles.tabText,
+                { color: activeTab === 'peer' ? colors.primary : colors.textSecondary },
+                activeTab === 'peer' && { fontWeight: '600' },
               ]}
             >
-              {t('screens.logs.info')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              { backgroundColor: filters.warning ? colors.warning : colors.background },
-            ]}
-            onPress={() => setFilters({ ...filters, warning: !filters.warning })}
-          >
-            <Text
-              style={[
-                styles.filterButtonText,
-                { color: filters.warning ? '#FFFFFF' : colors.text },
-              ]}
-            >
-              {t('screens.logs.warning')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              { backgroundColor: filters.critical ? colors.error : colors.background },
-            ]}
-            onPress={() =>
-              setFilters({ ...filters, critical: !filters.critical })
-            }
-          >
-            <Text
-              style={[
-                styles.filterButtonText,
-                { color: filters.critical ? '#FFFFFF' : colors.text },
-              ]}
-            >
-              {t('screens.logs.critical')}
+              {t('screens.logs.peerLogs')}
             </Text>
           </TouchableOpacity>
         </View>
-      )}
 
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
-        }
-      >
-        {loading && appLogs.length === 0 && peerLogs.length === 0 ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={colors.primary} />
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+          <View style={[styles.searchInputContainer, { backgroundColor: colors.background }]}>
+            <Ionicons name="search" size={18} color={colors.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder={t('screens.logs.searchLogs')}
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                accessibilityLabel={t('common.clearSearch')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
           </View>
-        ) : activeTab === 'app' ? (
-          filteredAppLogs.length === 0 ? (
+        </View>
+
+        {activeTab === 'app' && (
+          <View style={[styles.filters, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
+              {t('screens.logs.filter')}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                { backgroundColor: filters.normal ? colors.primary : colors.background },
+              ]}
+              onPress={() => setFilters({ ...filters, normal: !filters.normal })}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  { color: filters.normal ? '#FFFFFF' : colors.text },
+                ]}
+              >
+                {t('screens.logs.normal')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                { backgroundColor: filters.info ? colors.primary : colors.background },
+              ]}
+              onPress={() => setFilters({ ...filters, info: !filters.info })}
+            >
+              <Text
+                style={[styles.filterButtonText, { color: filters.info ? '#FFFFFF' : colors.text }]}
+              >
+                {t('screens.logs.info')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                { backgroundColor: filters.warning ? colors.warning : colors.background },
+              ]}
+              onPress={() => setFilters({ ...filters, warning: !filters.warning })}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  { color: filters.warning ? '#FFFFFF' : colors.text },
+                ]}
+              >
+                {t('screens.logs.warning')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                { backgroundColor: filters.critical ? colors.error : colors.background },
+              ]}
+              onPress={() => setFilters({ ...filters, critical: !filters.critical })}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  { color: filters.critical ? '#FFFFFF' : colors.text },
+                ]}
+              >
+                {t('screens.logs.critical')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          {loading && appLogs.length === 0 && peerLogs.length === 0 ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : activeTab === 'app' ? (
+            filteredAppLogs.length === 0 ? (
+              <View style={styles.center}>
+                <Text style={[styles.message, { color: colors.textSecondary }]}>
+                  {searchQuery ? t('screens.logs.noLogsMatch') : t('screens.logs.noLogsAvailable')}
+                </Text>
+              </View>
+            ) : (
+              filteredAppLogs.map((log) => (
+                <View key={log.id} style={[styles.logItem, { backgroundColor: colors.surface }]}>
+                  <View style={styles.logHeader}>
+                    <View
+                      style={[styles.logTypeBadge, { backgroundColor: getLogTypeColor(log.type) }]}
+                    >
+                      <Text style={styles.logTypeText}>{getLogTypeLabel(log.type)}</Text>
+                    </View>
+                    <Text style={[styles.logTimestamp, { color: colors.textSecondary }]}>
+                      {formatTimestamp(log.timestamp)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.logMessage, { color: colors.text }]}>{log.message}</Text>
+                </View>
+              ))
+            )
+          ) : filteredPeerLogs.length === 0 ? (
             <View style={styles.center}>
               <Text style={[styles.message, { color: colors.textSecondary }]}>
-                {searchQuery ? t('screens.logs.noLogsMatch') : t('screens.logs.noLogsAvailable')}
+                {searchQuery
+                  ? t('screens.logs.noPeerLogsMatch')
+                  : t('screens.logs.noPeerLogsAvailable')}
               </Text>
             </View>
           ) : (
-            filteredAppLogs.map((log) => (
+            filteredPeerLogs.map((log) => (
               <View key={log.id} style={[styles.logItem, { backgroundColor: colors.surface }]}>
                 <View style={styles.logHeader}>
-                  <View
-                    style={[
-                      styles.logTypeBadge,
-                      { backgroundColor: getLogTypeColor(log.type) },
-                    ]}
-                  >
-                    <Text style={styles.logTypeText}>
-                      {getLogTypeLabel(log.type)}
-                    </Text>
-                  </View>
+                  <Text style={[styles.logIp, { color: colors.text }]}>
+                    {log.ip}:{log.port}
+                  </Text>
                   <Text style={[styles.logTimestamp, { color: colors.textSecondary }]}>
-                    {formatTimestamp(log.timestamp)}
+                    {formatTimestamp(log.id)}
                   </Text>
                 </View>
-                <Text style={[styles.logMessage, { color: colors.text }]}>{log.message}</Text>
-              </View>
-            ))
-          )
-        ) : filteredPeerLogs.length === 0 ? (
-          <View style={styles.center}>
-              <Text style={[styles.message, { color: colors.textSecondary }]}>
-              {searchQuery ? t('screens.logs.noPeerLogsMatch') : t('screens.logs.noPeerLogsAvailable')}
-            </Text>
-          </View>
-        ) : (
-          filteredPeerLogs.map((log) => (
-            <View key={log.id} style={[styles.logItem, { backgroundColor: colors.surface }]}>
-              <View style={styles.logHeader}>
-                <Text style={[styles.logIp, { color: colors.text }]}>{log.ip}:{log.port}</Text>
-                <Text style={[styles.logTimestamp, { color: colors.textSecondary }]}>
-                  {formatTimestamp(log.id)}
+                <Text style={[styles.logMessage, { color: colors.text }]}>
+                  {t('screens.logs.client', { value: log.client })}
+                </Text>
+                <Text style={[styles.logMessage, { color: colors.text }]}>
+                  {t('screens.logs.connectionLabel', { value: log.connection })}
+                </Text>
+                <Text style={[styles.logMessage, { color: colors.text }]}>
+                  {t('screens.logs.flags', { value: log.flags })}
                 </Text>
               </View>
-              <Text style={[styles.logMessage, { color: colors.text }]}>{t('screens.logs.client', { value: log.client })}</Text>
-              <Text style={[styles.logMessage, { color: colors.text }]}>{t('screens.logs.connectionLabel', { value: log.connection })}</Text>
-              <Text style={[styles.logMessage, { color: colors.text }]}>{t('screens.logs.flags', { value: log.flags })}</Text>
-            </View>
-          ))
-        )}
-      </ScrollView>
-    </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
     </>
   );
 }
@@ -478,4 +488,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

@@ -59,7 +59,10 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       sync().catch(() => {});
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : '';
-      showToast(msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')), 'error');
+      showToast(
+        msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')),
+        'error',
+      );
     } finally {
       setLoading(false);
     }
@@ -157,53 +160,59 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     }
   }, [torrent, ensureConnection, sync, showToast, t]);
 
-  const handleSetDownloadLimit = useCallback((value: string) => {
-    if (!torrent) return;
-    (async () => {
-      try {
-        setLoading(true);
-        const limitKB = parseFloat(value) || 0;
-        const limitBytes = limitKB * 1024;
-        await torrentsApi.setTorrentDownloadLimit([torrent.hash], limitBytes);
-        sync().catch(() => {});
-        showToast(
-          limitKB === 0
-            ? t('toast.downloadLimitSet', { value: t('common.unlimited') })
-            : t('toast.dlLimitSetKb', { value: limitKB }),
-          'success',
-        );
-      } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : '';
-        showToast(msg || t('errors.generic'), 'error');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [torrent, sync, showToast, t]);
+  const handleSetDownloadLimit = useCallback(
+    (value: string) => {
+      if (!torrent) return;
+      (async () => {
+        try {
+          setLoading(true);
+          const limitKB = parseFloat(value) || 0;
+          const limitBytes = limitKB * 1024;
+          await torrentsApi.setTorrentDownloadLimit([torrent.hash], limitBytes);
+          sync().catch(() => {});
+          showToast(
+            limitKB === 0
+              ? t('toast.downloadLimitSet', { value: t('common.unlimited') })
+              : t('toast.dlLimitSetKb', { value: limitKB }),
+            'success',
+          );
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : '';
+          showToast(msg || t('errors.generic'), 'error');
+        } finally {
+          setLoading(false);
+        }
+      })();
+    },
+    [torrent, sync, showToast, t],
+  );
 
-  const handleSetUploadLimit = useCallback((value: string) => {
-    if (!torrent) return;
-    (async () => {
-      try {
-        setLoading(true);
-        const limitKB = parseFloat(value) || 0;
-        const limitBytes = limitKB * 1024;
-        await torrentsApi.setTorrentUploadLimit([torrent.hash], limitBytes);
-        sync().catch(() => {});
-        showToast(
-          limitKB === 0
-            ? t('toast.uploadLimitSet', { value: t('common.unlimited') })
-            : t('toast.ulLimitSetKb', { value: limitKB }),
-          'success',
-        );
-      } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : '';
-        showToast(msg || t('errors.generic'), 'error');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [torrent, sync, showToast, t]);
+  const handleSetUploadLimit = useCallback(
+    (value: string) => {
+      if (!torrent) return;
+      (async () => {
+        try {
+          setLoading(true);
+          const limitKB = parseFloat(value) || 0;
+          const limitBytes = limitKB * 1024;
+          await torrentsApi.setTorrentUploadLimit([torrent.hash], limitBytes);
+          sync().catch(() => {});
+          showToast(
+            limitKB === 0
+              ? t('toast.uploadLimitSet', { value: t('common.unlimited') })
+              : t('toast.ulLimitSetKb', { value: limitKB }),
+            'success',
+          );
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : '';
+          showToast(msg || t('errors.generic'), 'error');
+        } finally {
+          setLoading(false);
+        }
+      })();
+    },
+    [torrent, sync, showToast, t],
+  );
 
   const handleToggleGlobalSpeedLimit = useCallback(async () => {
     if (!(await ensureConnection())) return;
@@ -248,7 +257,9 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
         onPress: handleForceStart,
       },
       {
-        label: t('actions.globalSpeedLimit', { status: transferInfo?.use_alt_speed_limits ? t('common.on') : t('common.off') }),
+        label: t('actions.globalSpeedLimit', {
+          status: transferInfo?.use_alt_speed_limits ? t('common.on') : t('common.off'),
+        }),
         icon: 'speedometer',
         onPress: handleToggleGlobalSpeedLimit,
       },

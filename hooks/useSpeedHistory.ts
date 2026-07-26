@@ -9,11 +9,9 @@ const MAX_HISTORY_LENGTH = 30; // Keep last 30 readings
 export function useSpeedHistory() {
   const { transferInfo } = useTransfer();
   const [downloadHistory, setDownloadHistory] = useState<number[]>(
-    Array(MAX_HISTORY_LENGTH).fill(0)
+    Array(MAX_HISTORY_LENGTH).fill(0),
   );
-  const [uploadHistory, setUploadHistory] = useState<number[]>(
-    Array(MAX_HISTORY_LENGTH).fill(0)
-  );
+  const [uploadHistory, setUploadHistory] = useState<number[]>(Array(MAX_HISTORY_LENGTH).fill(0));
 
   useEffect(() => {
     if (transferInfo) {
@@ -37,5 +35,3 @@ export function useSpeedHistory() {
     currentUpload: transferInfo?.up_info_speed || 0,
   };
 }
-
-

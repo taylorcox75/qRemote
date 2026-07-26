@@ -39,7 +39,7 @@ describe('CircularProgress', () => {
 
   it('supports custom size/strokeWidth', async () => {
     const { toJSON } = await render(
-      <CircularProgress current={10} limit={100} color="#00f" size={100} strokeWidth={10} />
+      <CircularProgress current={10} limit={100} color="#00f" size={100} strokeWidth={10} />,
     );
     expect(toJSON()).toBeTruthy();
   });

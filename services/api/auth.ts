@@ -16,21 +16,32 @@ export const authApi = {
       // Clear any existing cookies before login
       apiClient.clearCookies();
       clogInfo('AUTH', `Login attempt for user "${username}"`);
-      
-      const response = await apiClient.postUrlEncoded(`/api/${API_VERSION}/auth/login`, {
-        username,
-        password,
-      }, signal);
-      
+
+      const response = await apiClient.postUrlEncoded(
+        `/api/${API_VERSION}/auth/login`,
+        {
+          username,
+          password,
+        },
+        signal,
+      );
+
       // Check if cookies were set after login
       const cookies = apiClient.getCookies();
-      
-      const responsePreview = typeof response === 'string' ? response.substring(0, 50) : 'non-string response';
-      console.log('[Auth] Login response:', responsePreview);
-      console.log('[Auth] Cookies received:', cookies ? 'Yes (' + cookies.length + ' chars)' : 'No');
 
-      clogDebug('AUTH', `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`);
-      
+      const responsePreview =
+        typeof response === 'string' ? response.substring(0, 50) : 'non-string response';
+      console.log('[Auth] Login response:', responsePreview);
+      console.log(
+        '[Auth] Cookies received:',
+        cookies ? 'Yes (' + cookies.length + ' chars)' : 'No',
+      );
+
+      clogDebug(
+        'AUTH',
+        `Response: "${responsePreview}" | Cookies: ${cookies ? 'Yes (' + cookies.length + ' chars)' : 'No'}`,
+      );
+
       // Success/failure interpretation is shared with the connection
       // diagnostic — see utils/login-response.ts for the version matrix.
       const responseStr = typeof response === 'string' ? response.trim() : String(response).trim();
@@ -47,7 +58,10 @@ export const authApi = {
       clogWarn('AUTH', `Login failed — body: "${responseStr}", cookies: ${hasCookie}`);
       return { status: 'Fails' };
     } catch (error: unknown) {
-      if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
+      if (
+        error instanceof Error &&
+        (error.name === 'AbortError' || error.name === 'CanceledError')
+      ) {
         throw error;
       }
       if (error instanceof AxiosError && error.code === 'ERR_CANCELED') {
@@ -59,15 +73,19 @@ export const authApi = {
       const statusHint = axiosErr?.response?.status ? ` (HTTP ${axiosErr.response.status})` : '';
       console.warn('[Auth] Login error:', message, statusHint);
       clogError('AUTH', `Login error: ${message}${statusHint}`);
-      
-      if (message.includes('timeout') || message.includes('Connection') || message.includes('Network')) {
+
+      if (
+        message.includes('timeout') ||
+        message.includes('Connection') ||
+        message.includes('Network')
+      ) {
         throw error;
       }
-      
+
       if (axiosErr?.response?.status === 403) {
         throw new Error('Authentication failed. Please check your username and password.');
       }
-      
+
       return { status: 'Fails' };
     }
   },
@@ -80,4 +98,3 @@ export const authApi = {
     apiClient.clearCookies();
   },
 };
-

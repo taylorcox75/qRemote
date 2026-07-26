@@ -18,4 +18,3 @@ export function FocusAwareStatusBar({ barStyle }: FocusAwareStatusBarProps) {
   // style="dark" = dark content (black text) for light backgrounds
   return <StatusBar style={barStyle === 'light-content' ? 'light' : 'dark'} />;
 }
-

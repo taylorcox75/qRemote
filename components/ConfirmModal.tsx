@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -52,12 +46,7 @@ export function ConfirmModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleCancel}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleCancel}>
       <View style={styles.overlay}>
         <View
           style={[
@@ -92,9 +81,7 @@ export function ConfirmModal({
                 onPress={() => handleButtonPress(button)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.buttonText, { color: colors.surface }]}>
-                  {button.label}
-                </Text>
+                <Text style={[styles.buttonText, { color: colors.surface }]}>{button.label}</Text>
               </TouchableOpacity>
             ))}
             <TouchableOpacity

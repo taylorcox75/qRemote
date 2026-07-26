@@ -92,7 +92,9 @@ function makeServer(overrides: Partial<ServerConfig> = {}): ServerConfig {
   };
 }
 
-function runRequestInterceptor(config: Record<string, unknown> = { headers: {}, method: 'get', url: '/test' }) {
+function runRequestInterceptor(
+  config: Record<string, unknown> = { headers: {}, method: 'get', url: '/test' },
+) {
   if (!capturedRequestInterceptor) throw new Error('Request interceptor not captured');
   return capturedRequestInterceptor(config);
 }
@@ -160,7 +162,10 @@ describe('apiClient', () => {
 
     it('sets Referer and Origin headers', () => {
       apiClient.setServer(makeServer());
-      const config = runRequestInterceptor() as { headers: Record<string, string>; baseURL: string };
+      const config = runRequestInterceptor() as {
+        headers: Record<string, string>;
+        baseURL: string;
+      };
       expect(config.headers.Referer).toBe(`${config.baseURL}/`);
       expect(config.headers.Origin).toBe('http://example.com:8080');
     });
@@ -207,7 +212,11 @@ describe('apiClient', () => {
     });
 
     it('uses Set-Cookie (capitalized) fallback', () => {
-      capturedResponseInterceptorSuccess!({ headers: { 'Set-Cookie': 'SID=cap; Path=/' }, data: '', status: 200 });
+      capturedResponseInterceptorSuccess!({
+        headers: { 'Set-Cookie': 'SID=cap; Path=/' },
+        data: '',
+        status: 200,
+      });
       expect(apiClient.getCookies()).toBe('SID=cap');
     });
 
@@ -236,22 +245,34 @@ describe('apiClient', () => {
   describe('response interceptor — error normalization', () => {
     function makeErr(overrides: Partial<InstanceType<typeof MockAxiosError>> = {}) {
       const err = new MockAxiosError('request failed');
-      Object.assign(err, { config: { baseURL: 'http://example.com', url: '/api/v2/x' } }, overrides);
+      Object.assign(
+        err,
+        { config: { baseURL: 'http://example.com', url: '/api/v2/x' } },
+        overrides,
+      );
       return err;
     }
 
     it('normalizes 403 to auth error and clears cookies', () => {
       apiClient.setServer(makeServer());
-      capturedResponseInterceptorSuccess!({ headers: { 'set-cookie': 'SID=abc' }, data: '', status: 200 });
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': 'SID=abc' },
+        data: '',
+        status: 200,
+      });
       expect(apiClient.getCookies()).not.toBe('');
       const err = makeErr({ response: { status: 403 } });
-      expect(() => capturedResponseInterceptorError!(err)).toThrow('Authentication failed. Please check your credentials.');
+      expect(() => capturedResponseInterceptorError!(err)).toThrow(
+        'Authentication failed. Please check your credentials.',
+      );
       expect(apiClient.getCookies()).toBe('');
     });
 
     it('normalizes 429 with retry-after header', () => {
       const err = makeErr({ response: { status: 429, headers: { 'retry-after': '30' } } });
-      expect(() => capturedResponseInterceptorError!(err)).toThrow('Rate limited by server. Please retry after 30 seconds.');
+      expect(() => capturedResponseInterceptorError!(err)).toThrow(
+        'Rate limited by server. Please retry after 30 seconds.',
+      );
     });
 
     it('normalizes 429 without retry-after header', () => {
@@ -265,7 +286,7 @@ describe('apiClient', () => {
         response: { status: 409 },
       });
       expect(() => capturedResponseInterceptorError!(err)).toThrow(
-        'Torrent queueing must be enabled in qBittorrent to change priorities.'
+        'Torrent queueing must be enabled in qBittorrent to change priorities.',
       );
     });
 
@@ -283,7 +304,7 @@ describe('apiClient', () => {
         response: { status: 409 },
       });
       expect(() => capturedResponseInterceptorError!(err)).toThrow(
-        'This torrent already exists or could not be added.'
+        'This torrent already exists or could not be added.',
       );
     });
 
@@ -294,12 +315,16 @@ describe('apiClient', () => {
 
     it('normalizes ECONNABORTED to connection timeout error', () => {
       const err = makeErr({ code: 'ECONNABORTED' });
-      expect(() => capturedResponseInterceptorError!(err)).toThrow('Connection timeout. Please check your server connection.');
+      expect(() => capturedResponseInterceptorError!(err)).toThrow(
+        'Connection timeout. Please check your server connection.',
+      );
     });
 
     it('normalizes ERR_NETWORK to connection timeout error', () => {
       const err = makeErr({ code: 'ERR_NETWORK' });
-      expect(() => capturedResponseInterceptorError!(err)).toThrow('Connection timeout. Please check your server connection.');
+      expect(() => capturedResponseInterceptorError!(err)).toThrow(
+        'Connection timeout. Please check your server connection.',
+      );
     });
 
     it('falls through to response data message for unknown status', () => {
@@ -328,7 +353,11 @@ describe('apiClient', () => {
     it('clears cookies and apiVersion when switching to a different server id', () => {
       apiClient.setServer(makeServer({ id: 'server-1' }));
       apiClient.setApiVersion('2.8.3');
-      capturedResponseInterceptorSuccess!({ headers: { 'set-cookie': 'SID=abc' }, data: '', status: 200 });
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': 'SID=abc' },
+        data: '',
+        status: 200,
+      });
       expect(apiClient.getCookies()).not.toBe('');
 
       apiClient.setServer(makeServer({ id: 'server-2' }));
@@ -338,7 +367,11 @@ describe('apiClient', () => {
 
     it('preserves cookies when re-setting the same server id', () => {
       apiClient.setServer(makeServer({ id: 'server-1' }));
-      capturedResponseInterceptorSuccess!({ headers: { 'set-cookie': 'SID=abc' }, data: '', status: 200 });
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': 'SID=abc' },
+        data: '',
+        status: 200,
+      });
       expect(apiClient.getCookies()).not.toBe('');
 
       apiClient.setServer(makeServer({ id: 'server-1', name: 'renamed' }));
@@ -347,7 +380,11 @@ describe('apiClient', () => {
 
     it('clears cookies when setting server to null', () => {
       apiClient.setServer(makeServer());
-      capturedResponseInterceptorSuccess!({ headers: { 'set-cookie': 'SID=abc' }, data: '', status: 200 });
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': 'SID=abc' },
+        data: '',
+        status: 200,
+      });
       apiClient.setServer(null);
       expect(apiClient.getCookies()).toBe('');
       expect(apiClient.getServer()).toBeNull();
@@ -356,7 +393,9 @@ describe('apiClient', () => {
 
   describe('apiVersion / features', () => {
     it('caches features until version changes', () => {
-      const { getApiFeatures } = jest.requireMock('@/utils/apiVersion') as { getApiFeatures: jest.Mock };
+      const { getApiFeatures } = jest.requireMock('@/utils/apiVersion') as {
+        getApiFeatures: jest.Mock;
+      };
       apiClient.setApiVersion('2.9.0');
       apiClient.getApiFeatures();
       apiClient.getApiFeatures();
@@ -392,18 +431,28 @@ describe('apiClient', () => {
   describe('postFormData', () => {
     it('throws when no server is configured', async () => {
       apiClient.setServer(null);
-      await expect(apiClient.postFormData('/upload', new FormData())).rejects.toThrow('No server configured');
+      await expect(apiClient.postFormData('/upload', new FormData())).rejects.toThrow(
+        'No server configured',
+      );
     });
 
     it('posts with multipart headers and cookie when present', async () => {
       apiClient.setServer(makeServer());
-      capturedResponseInterceptorSuccess!({ headers: { 'set-cookie': 'SID=abc' }, data: '', status: 200 });
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': 'SID=abc' },
+        data: '',
+        status: 200,
+      });
       mockAxiosInstance.post.mockResolvedValueOnce({ data: 'ok' });
 
       const result = await apiClient.postFormData('/upload', new FormData());
 
       expect(result).toBe('ok');
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/upload', expect.any(FormData), expect.anything());
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/upload',
+        expect.any(FormData),
+        expect.anything(),
+      );
     });
   });
 
@@ -411,7 +460,7 @@ describe('apiClient', () => {
     it('throws when no server is configured', async () => {
       apiClient.setServer(null);
       await expect(apiClient.postUrlEncoded('/auth/login', { a: 1 })).rejects.toThrow(
-        'No server configured. Please connect to a server first.'
+        'No server configured. Please connect to a server first.',
       );
     });
 
@@ -450,9 +499,7 @@ describe('apiClient', () => {
       apiClient.updateSettings({ retryAttempts: 2 });
       const timeoutErr = new MockAxiosError('timeout of 10000ms exceeded');
       timeoutErr.code = 'ECONNABORTED';
-      mockAxiosInstance.get
-        .mockRejectedValueOnce(timeoutErr)
-        .mockResolvedValueOnce({ data: 'ok' });
+      mockAxiosInstance.get.mockRejectedValueOnce(timeoutErr).mockResolvedValueOnce({ data: 'ok' });
 
       const result = await apiClient.get('/torrents/info');
 
@@ -463,7 +510,9 @@ describe('apiClient', () => {
     it('does not retry a non-retriable error', async () => {
       apiClient.setServer(makeServer());
       apiClient.updateSettings({ retryAttempts: 3 });
-      mockAxiosInstance.get.mockRejectedValueOnce(new Error('Authentication failed. Please check your credentials.'));
+      mockAxiosInstance.get.mockRejectedValueOnce(
+        new Error('Authentication failed. Please check your credentials.'),
+      );
 
       await expect(apiClient.get('/torrents/info')).rejects.toThrow('Authentication failed');
       expect(mockAxiosInstance.get).toHaveBeenCalledTimes(1);

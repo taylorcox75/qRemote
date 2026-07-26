@@ -51,17 +51,20 @@ export function useSpeedTracker(enabled: boolean = true) {
 
     // Update stats
     setStats((prev) => {
-      const dataPoints = prev.sessionStartTime > 0 
-        ? Math.max(1, Math.floor((now - prev.sessionStartTime) / COLLECTION_INTERVAL))
-        : 1;
-      
+      const dataPoints =
+        prev.sessionStartTime > 0
+          ? Math.max(1, Math.floor((now - prev.sessionStartTime) / COLLECTION_INTERVAL))
+          : 1;
+
       // Calculate new averages (incremental average)
-      const newAvgDownload = prev.averageDownload > 0
-        ? (prev.averageDownload * (dataPoints - 1) + downloadSpeed) / dataPoints
-        : downloadSpeed;
-      const newAvgUpload = prev.averageUpload > 0
-        ? (prev.averageUpload * (dataPoints - 1) + uploadSpeed) / dataPoints
-        : uploadSpeed;
+      const newAvgDownload =
+        prev.averageDownload > 0
+          ? (prev.averageDownload * (dataPoints - 1) + downloadSpeed) / dataPoints
+          : downloadSpeed;
+      const newAvgUpload =
+        prev.averageUpload > 0
+          ? (prev.averageUpload * (dataPoints - 1) + uploadSpeed) / dataPoints
+          : uploadSpeed;
 
       const newStats: SpeedStats = {
         averageDownload: newAvgDownload,
@@ -114,4 +117,3 @@ export function useSpeedTracker(enabled: boolean = true) {
     getLatestSpeeds: () => lastSpeedsRef.current,
   };
 }
-

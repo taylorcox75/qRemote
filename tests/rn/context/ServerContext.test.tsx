@@ -60,7 +60,7 @@ async function renderProvider() {
       <ServerProvider>
         <Consumer onRender={(ctx) => (latest = ctx)} />
       </ServerProvider>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
   return () => latest!;
 }
@@ -82,7 +82,7 @@ describe('ServerContext', () => {
     // Suppress React error logging noise
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     await expect(render(<BadConsumer />)).rejects.toThrow(
-      'useServer must be used within a ServerProvider'
+      'useServer must be used within a ServerProvider',
     );
     spy.mockRestore();
   });
@@ -114,7 +114,9 @@ describe('ServerContext', () => {
   });
 
   it('does not auto-connect when autoConnectLastServer is false, but connects if exactly one server exists', async () => {
-    (storageService.getPreferences as jest.Mock).mockResolvedValue({ autoConnectLastServer: false });
+    (storageService.getPreferences as jest.Mock).mockResolvedValue({
+      autoConnectLastServer: false,
+    });
     (ServerManager.getServers as jest.Mock).mockResolvedValue([server1]);
     (ServerManager.connectToServer as jest.Mock).mockResolvedValue(true);
     (apiClient.getServer as jest.Mock).mockReturnValue(server1);
@@ -125,24 +127,24 @@ describe('ServerContext', () => {
     expect(getLatest().isConnected).toBe(true);
   });
 
-  it('clears currentServer when auto-connect fails', async () => {
+  it('keeps currentServer when auto-connect fails so Settings can offer Connect', async () => {
     (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
     (ServerManager.connectToServer as jest.Mock).mockResolvedValue(false);
 
     const getLatest = await renderProvider();
     await waitFor(() => expect(getLatest().isLoading).toBe(false));
     expect(getLatest().isConnected).toBe(false);
-    expect(getLatest().currentServer).toBeNull();
+    expect(getLatest().currentServer).toEqual(server1);
   });
 
-  it('handles auto-connect throwing', async () => {
+  it('keeps currentServer when auto-connect throws so Settings can offer Connect', async () => {
     (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
     (ServerManager.connectToServer as jest.Mock).mockRejectedValue(new Error('boom'));
 
     const getLatest = await renderProvider();
     await waitFor(() => expect(getLatest().isLoading).toBe(false));
     expect(getLatest().isConnected).toBe(false);
-    expect(getLatest().currentServer).toBeNull();
+    expect(getLatest().currentServer).toEqual(server1);
   });
 
   it('handles preferences load throwing entirely', async () => {
@@ -193,13 +195,13 @@ describe('ServerContext', () => {
     await expect(
       act(async () => {
         await getLatest().connectToServer(server2);
-      })
+      }),
     ).rejects.toThrow('network');
 
     expect(getLatest().isConnected).toBe(false);
   });
 
-  it('disconnect resets state', async () => {
+  it('disconnect keeps currentServer for one-tap reconnect', async () => {
     (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
     (ServerManager.connectToServer as jest.Mock).mockResolvedValue(true);
     (apiClient.getServer as jest.Mock).mockReturnValue(server1);
@@ -214,7 +216,7 @@ describe('ServerContext', () => {
     });
 
     expect(getLatest().isConnected).toBe(false);
-    expect(getLatest().currentServer).toBeNull();
+    expect(getLatest().currentServer).toEqual(server1);
   });
 
   it('disconnect swallows ServerManager.disconnect errors', async () => {

@@ -34,43 +34,46 @@ project** — see "iOS Native Workflow" below before touching anything under
 Do NOT run typecheck, tests, or lint after individual edits or "to be safe" while working — on this hardware (Raspberry Pi) every run is expensive and the user has explicitly said not to. Run the checks ONCE, as a batch, only when getting ready to commit:
 - `npx tsc --noEmit` — typecheck (currently clean; incremental via `.tsbuildinfo`, ~25s warm / ~85s cold)
 - `npm test` — Jest (ts-jest) under `tests/`. When only one module changed, `npm test -- tests/utils/<name>.test.ts` runs a single suite (~18s vs minutes)
-- `npm run lint` — the warning baseline (~149, all pre-existing) is expected noise. Zero *errors* is the bar.
+- `npm run lint` — warnings are expected baseline noise (count drifts; do not chase it). Zero *errors* is the bar.
 - `npm run format` — Prettier
 
 ### File Index (complete map — trust it, don't re-explore; only open the files you're changing)
 
 **Screens (`app/`, Expo Router):**
 - `app/(tabs)/(torrents)/` — nested stack under Torrents tab (keeps tab bar visible): `index` list + `torrent/[hash]`, `torrent/files`, `torrent/manage-trackers`. Route group `(torrents)` is omitted from URLs → `/`, `/torrent/[hash]`, etc.
-- `app/(tabs)/search.tsx` — Search tab: job polling UI, plugin/category/indexer filter chip rows, client-side sort, collapsing header
-- `app/(tabs)/transfer.tsx` / `app/(tabs)/logs.tsx` — transfer stats, connectivity logs (`logs` is `href: null` — reachable from Settings, not a tab)
-- `app/(tabs)/settings/` — nested stack under Settings tab (keeps tab bar visible): `index` hub + sub-screens `about`, `add-torrent-dialogue`, `advanced`, `appearance`, `detailed-card-fields`, `notifications`, `servers`, `theme`, `torrent-defaults`, `whats-new`. URLs are `/settings`, `/settings/theme`, etc.
+- `app/(tabs)/search.tsx` — Search tab: job polling UI, plugin/category/indexer filter chip rows, client-side sort, collapsing header; optional auto-tag-by-tracker on add (`autoCategorizeByTracker` pref — tags Search downloads only; key name is historical)
+- `app/(tabs)/transfer.tsx` / `app/(tabs)/logs.tsx` — transfer stats, connectivity logs (`logs` is `href: null` — reachable from Advanced in Settings, not a tab)
+- `app/(tabs)/rss/` — RSS Feeds tab (tree + `feed` detail). Tab `href` is null until connected **and** server `rss_processing_enabled` is on; Settings → RSS toggles that. Do **not** put rules/settings screens here — those live under Settings.
+- `app/(tabs)/settings/` — nested stack under Settings tab (keeps tab bar visible). Hub order on `index`: Servers → Appearance → Server Settings → RSS → Search Plugins → Advanced; then What's New → About; then Community (source / issues / Beer Fund / Rate). Notifications & Feedback is nested under `advanced`, not the hub.
+  - Sub-screens: `about`, `add-torrent-dialogue`, `advanced` (app advanced + link to notifications), `appearance`, `category-tag-colors`, `detailed-card-fields`, `notifications`, `rss`, `rss-rules`, `rss-rule`, `servers`, `server-settings-advanced` (qBit email/automation), `theme`, `torrent-defaults` (nav label **Server Settings** — route path unchanged), `whats-new`
+  - URLs: `/settings`, `/settings/theme`, `/settings/torrent-defaults`, `/settings/rss`, etc.
 - `app/(tabs)/_layout.tsx` — tab bar; `app/_layout.tsx` — root providers/theme/deep-link handling; root stack anchors on `(tabs)` and only hosts non-tab routes (server modals, add-torrent, search plugins)
-- `app/torrents/add.tsx` — add-torrent flow (magnet/.torrent, options); root stack (no tab bar)
-- `app/search/plugins.tsx` — search plugin install/enable/uninstall (`app/search/_layout.tsx` stack); root stack (no tab bar)
+- `app/torrents/add.tsx` — add-torrent flow (magnet/.torrent, options); root stack (no tab bar); uses `PathAutocompleteInput` for save paths
+- `app/search/plugins.tsx` — search plugin install/enable/uninstall (`app/search/_layout.tsx` stack); root stack (no tab bar); also linked from Settings hub
 - `app/server/add.tsx`, `app/server/[id].tsx` — server add/edit; presented as native modal sheets → they mount `<ModalToast/>` locally (see ToastContext)
 
-**Do not recreate** the old top-level `app/settings/` or `app/torrent/` trees — those were moved under `(tabs)` so the tab bar stays visible. Same for the former `app/(tabs)/index.tsx` / `app/(tabs)/settings.tsx` hub files.
+**Do not recreate** the old top-level `app/settings/` or `app/torrent/` trees — those were moved under `(tabs)` so the tab bar stays visible. Same for the former `app/(tabs)/index.tsx` / `app/(tabs)/settings.tsx` hub files. Do not resurrect deleted `app/(tabs)/rss/rule.tsx` / `rules.tsx` — use `app/(tabs)/settings/rss-rule.tsx` / `rss-rules.tsx`.
 
 **Contexts (`context/`):**
-- `ServerContext.tsx` — connection lifecycle; `checkAndReconnect()` ALWAYS does a full re-login (no session-validity probe) and de-dupes concurrent calls via a shared in-flight promise. qBittorrent ties search jobs to the session — never call it eagerly on foreground/AppState events, only reactively after a request actually fails
+- `ServerContext.tsx` — connection lifecycle; `checkAndReconnect()` ALWAYS does a full re-login (no session-validity probe) and de-dupes concurrent calls via a shared in-flight promise. qBittorrent ties search jobs to the session — never call it eagerly on foreground/AppState events, only reactively after a request actually fails. `disconnect()` clears the session but **keeps** `currentServer` (and storage current-server id) for one-tap reconnect from Settings; call `forgetCurrentServer()` when deleting that server / the last server so Settings does not offer Connect to a gone config.
 - `TorrentContext.tsx` — rid-based incremental torrent sync + the reactive auto-reconnect effect other providers piggyback on
 - `TransferContext.tsx` — transfer-info poll; relies on TorrentContext's reactive reconnect
 - `ToastContext.tsx` + `components/Toast.tsx` — global toast is a plain view (NEVER wrap in RN `<Modal>` — a Modal captures all touches and freezes the UI); native-modal-sheet screens need the locally-mounted `ModalToast`
 - `ThemeContext.tsx` — `useTheme()`, `colors` object, user color overrides; `ApiVersionContext.tsx` — detected qBittorrent API version → feature gating via `utils/apiVersion.ts`
 
 **Components (`components/`, all PascalCase function components taking a `…Props` interface):**
-- Modals/pickers: `ActionMenu` (anchored popover), `ConfirmModal` (themed confirm — prefer over `Alert.alert`), `InputModal` (preferred over `Alert.prompt`), `OptionPicker`, `MultiSelectPicker`, `CategoryModal`, `TagsModal`, `ColorPicker`
-- Torrent/search UI: `TorrentCard` (React.memo with custom comparator — keep it in sync when adding rendered fields), `SearchResultRow` (+internal ActionPill), `FilterChip`, `EmptyState`, `SkeletonLoader` (+`SkeletonTorrentCard`), `PieceMap` (piece-state bar used on torrent detail)
+- Modals/pickers: `ActionMenu` (anchored popover), `ConfirmModal` (themed confirm — prefer over `Alert.alert`), `InputModal` (preferred over `Alert.prompt`; optional `pathAutocomplete` prop), `OptionPicker`, `MultiSelectPicker`, `CategoryModal`, `TagsModal`, `ColorPicker`, `PathAutocompleteInput` (directory suggestions via `app/getDirectoryContent`, qBit 5.0+ / WebAPI ≥ 2.11 — silent no-op when unsupported)
+- Torrent/search UI: `TorrentCard` (React.memo with custom comparator — keep it in sync when adding rendered fields; category/tag stickers use `categoryColors`/`tagColors` + defaults + `avatarColor` fallback), `SearchResultRow` (+internal ActionPill), `FilterChip`, `EmptyState`, `SkeletonLoader` (+`SkeletonTorrentCard`), `PieceMap` (piece-state bar used on torrent detail)
 - Visuals: `SpeedGraph`, `CircularProgress`, `AnimatedProgressBar`, `AnimatedButton`, `Confetti`
 - Chrome/diagnostics: `FocusAwareStatusBar`, `SettingRow`, `QuickConnectPanel`, `LogViewer`, `DebugRow`, `SuperDebugPanel` (connection diagnostics steps)
 
 **API wrappers (`services/api/`, thin objects over `apiClient`):**
 - `client.ts` — `apiClient` axios singleton; normalizes HTTP errors into human-text `Error`s (callers substring-match these — grep before rewording any message); holds server config, cookies, API version, Basic Auth header
-- `auth.ts` (login/logout) · `sync.ts` (getMainData rid-sync, getTorrentPeers) · `transfer.ts` (global speed limits, alt-speed toggle, banPeers) · `application.ts` (version/buildInfo/preferences/cookies) · `categories.ts` · `tags.ts` · `logs.ts` (main+peer logs) · `search.ts` (job start/stop/status/results/delete + plugin management + downloadTorrent)
+- `auth.ts` (login/logout) · `sync.ts` (getMainData rid-sync, getTorrentPeers) · `transfer.ts` (global speed limits, alt-speed toggle, banPeers) · `application.ts` (version/buildInfo/preferences/cookies + `getDirectoryContent`) · `categories.ts` · `tags.ts` · `logs.ts` (main+peer logs) · `search.ts` (job start/stop/status/results/delete + plugin management + downloadTorrent)
 - `torrents.ts` — everything per-torrent: list/properties/trackers/webseeds/contents/pieces, pause/resume/delete/recheck/reannounce, add (URL+file), tracker & peer edits, priorities (queue + file), limits/share-limits, location/name/category/tags, AMM/sequential/firstLastPiece/forceStart/superSeeding, renameFile/renameFolder
 
 **Services (`services/`):**
-- `server-manager.ts` — server CRUD + connect/reconnect/test (`ConnectionTestResult`, `isNetworkError`)
+- `server-manager.ts` — server CRUD + connect/reconnect/test (`ConnectionTestResult`, `isNetworkError`); user `disconnect()` does not clear current-server id (Settings reconnect)
 - `storage.ts` — AsyncStorage preferences (typed shape + defaults in `types/preferences.ts`)
 - `query-client.ts` — shared TanStack `QueryClient`; `color-theme-manager.ts` — save/load/apply user color themes
 - `connectivity-log.ts` — in-memory ring log, `clogDebug/Info/Warn/Error(tag, msg)`; `log-storage.ts` — persisted log entries for the Logs tab
@@ -82,11 +85,11 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
 - `useSpeedTracker.ts` / `useSpeedHistory.ts` — sampling for SpeedGraph
 
 **Utils (`utils/`, pure, well-tested — add logic here when it doesn't need React):**
-- `format.ts` (size/speed/time/ratio/percent/progress/availability/date — progress & availability FLOOR, never round up) · `torrent-state.ts` (state→color/label, completion/eta rules) · `error.ts` (`getErrorMessage`) · `apiVersion.ts` (parse + `ApiFeatures` gating) · `server.ts` (endpoint resolution incl. fallback URL, avatar colors) · `magnet.ts` / `torrent-file.ts` (incoming link/file parsing) · `searchResult.ts` (indexer-label heuristics) · `login-response.ts` (qBittorrent login body/cookie interpretation) · `basicAuth.ts` · `haptics.ts` (global toggle + wrappers) · `tags.ts` (CSV tag parsing) · `add-torrent-dialogue.ts` (compact/full variant choice) · `version.ts` (`APP_VERSION`)
+- `format.ts` (size/speed/time/ratio/percent/progress/availability/date — progress & availability FLOOR, never round up) · `torrent-state.ts` (state→color/label, completion/eta rules) · `error.ts` (`getErrorMessage`) · `apiVersion.ts` (parse + `ApiFeatures` gating, incl. `supportsGetDirectoryContent`) · `server.ts` (endpoint resolution incl. fallback URL, avatar colors) · `magnet.ts` / `torrent-file.ts` (incoming link/file parsing) · `searchResult.ts` (indexer-label heuristics) · `login-response.ts` (qBittorrent login body/cookie interpretation) · `basicAuth.ts` · `haptics.ts` (global toggle + wrappers) · `tags.ts` (CSV tag parsing) · `add-torrent-dialogue.ts` (compact/full variant choice) · `version.ts` (`APP_VERSION`)
 
 **i18n:** `i18n/index.ts` initializes react-i18next; each locale is ONE file `locales/{en,es,zh,fr,de,ru}/translation.json` containing all namespaces: `common`, `states`, `screens`, `placeholders`, `actions`, `alerts`, `server`, `torrentDetail`, `filters`, `sort`, `toast`, `errors`. Keys look like `t('actions.pause')`.
 
-**Types/constants:** `types/api.ts` (all qBittorrent API shapes, `TorrentInfo`, `ServerConfig`), `types/preferences.ts` (typed prefs + defaults — includes `expandedCardGridColumns: 3|4|5`, default **4**); `constants/`: `changelog.ts` (in-app "What's New" — see Changelog discipline), `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts` (shared style tokens — use these, don't invent ad-hoc spacing)
+**Types/constants:** `types/api.ts` (all qBittorrent API shapes, `TorrentInfo`, `ServerConfig`, Downloads/Server Settings preference fields), `types/preferences.ts` (typed prefs + defaults — includes `expandedCardGridColumns: 3|4|5` default **4**, plus `defaultCategoryColor` / `defaultTagColor` / `categoryColors` / `tagColors`); `constants/`: `changelog.ts` (in-app "What's New" — sectioned format from v3.8.23; see Changelog discipline), `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts` (shared style tokens — use these, don't invent ad-hoc spacing)
 
 ### Task Recipes (exact touch-lists for recurring changes — follow, don't rediscover)
 - **Add/change a user-facing string:** add the key to ALL SIX `locales/*/translation.json` (really translate — the parity test rejects lazily-copied English ≥16 chars), use via `t('ns.key')`. Verify with `npm test` (parity test will name any file you missed).
@@ -117,14 +120,36 @@ Do NOT run typecheck, tests, or lint after individual edits or "to be safe" whil
 7. Color defaults use mixed formats (rgb, rgba, hex). The color picker only handles 6-digit hex. Changing a default from `rgba(...)` to `#hex` removes the alpha channel and changes visual appearance.
 8. **Changelog discipline (user-facing changes only).** The in-app "What's New" panel reads `constants/changelog.ts` (`CHANGELOG`, newest first). When your change is **user-facing** (feature, bug fix, visible UI/behavior change):
    1. Compare `package.json` `version` to the top entry `CHANGELOG[0].version`.
-   2. **If they are EQUAL** → the latest entry is already released. Add ONE **new** entry at the top with a **patch bump only** (`x.y.(z+1)`), today's date (`YYYY-MM-DD`), and your change in `changes[]`. **Do NOT touch `package.json`** — the release process owns the app version.
-   3. **If they DIFFER** (changelog is ahead of package.json) → a previous agent already opened the unreleased entry. **Append** your change line to that top entry's `changes[]`. Do **NOT** create a new entry and do **NOT** change its `version`.
+   2. **If they are EQUAL** → the latest entry is already released. Add ONE **new** entry at the top with a **patch bump only** (`x.y.(z+1)`), today's date (`YYYY-MM-DD`), and your change under the matching section in `sections[]` (see format below). **Do NOT touch `package.json`** — the release process owns the app version.
+   3. **If they DIFFER** (changelog is ahead of package.json) → a previous agent already opened the unreleased entry. **Append** your change line to the matching section in that top entry's `sections[]`. Do **NOT** create a new entry and do **NOT** change its `version`. If the matching section is missing, add it. Deduplicate: if an existing line already covers the same change, do not add a near-duplicate.
 
-   This keeps a single unreleased entry accumulating until a human cuts a release by bumping `package.json` to match. Internal-only work (docs, config, refactors, tests, tooling) gets **no** changelog entry.
+   **Release note format (required for all new / unreleased entries from v3.8.23 onward):** use `sections`, not the legacy flat `changes[]` array. Each release has up to three sections, in this order, omitting any section with no items:
 
-   **Ignore semver instinct.** You never decide major/minor/patch — the only version edit you ever make is a single patch bump, and only in the EQUAL case. A new feature does NOT mean a minor bump. When in doubt, you are almost always in the DIFFER case → just append a line, touch nothing else.
+   - **New Features** — user-visible capabilities and UI additions
+   - **Bugs Fixed** — corrections to broken or incorrect behavior
+   - **Maintenance** — polish, copy/label clarifications, internal reliability that still surfaces to users
 
-   *Worked example:* `package.json` is `3.3.0`, top changelog entry is `3.3.1` → they DIFFER → append your line to `3.3.1`'s `changes[]`. (A wrong fix would be creating a `3.4.0` entry — don't.)
+   Shape:
+
+   ```ts
+   {
+     version: 'x.y.z',
+     date: 'YYYY-MM-DD',
+     sections: [
+       { title: 'New Features', items: ['…'] },
+       { title: 'Bugs Fixed', items: ['…'] },
+       { title: 'Maintenance', items: ['…'] },
+     ],
+   }
+   ```
+
+   Older releases may still use flat `changes?: string[]`; leave them alone. The What's New screen renders `sections` when present, otherwise falls back to `changes`.
+
+   This keeps a single unreleased entry accumulating until a human cuts a release by bumping `package.json` to match. Internal-only work (docs, config, refactors, tests, tooling) gets **no** changelog entry — including AGENTS.md / plan updates.
+
+   **Ignore semver instinct.** You never decide major/minor/patch — the only version edit you ever make is a single patch bump, and only in the EQUAL case. A new feature does NOT mean a minor bump. When in doubt, you are almost always in the DIFFER case → just append a line under the right section, touch nothing else.
+
+   *Worked example:* `package.json` is `3.3.0`, top changelog entry is `3.3.1` → they DIFFER → append your bug-fix line to `3.3.1`'s `sections` → `Bugs Fixed` → `items[]`. (A wrong fix would be creating a `3.4.0` entry or dumping into a flat `changes[]` — don't.)
 
    **Native version fields don't auto-sync anymore.** Now that iOS is bare (see "iOS Native Workflow"), `expo prebuild` no longer runs, so nothing propagates `package.json`'s `version` into the native app. Whenever `package.json`'s `version` is bumped as part of a release (the human-driven step in 8.2 above), `MARKETING_VERSION` must also be bumped by hand in **both** the Debug and Release configs of `ios/qRemote.xcodeproj/project.pbxproj` (or via Xcode's qRemote target → General tab → Version field) to match. `CURRENT_PROJECT_VERSION` (the build number, both configs) should be bumped too, on every new build/TestFlight submission, independent of the marketing version. `ios/qRemote/Info.plist`'s `CFBundleShortVersionString`/`CFBundleVersion` reference these via `$(MARKETING_VERSION)`/`$(CURRENT_PROJECT_VERSION)` and need no separate edit.
 9. ~~Search feature flag~~ — retired in v3.7.0. In-app search ships publicly; `constants/features.ts` and the `FEATURES.search` gate were removed entirely. Do not reintroduce a feature-flag system for it without being asked.

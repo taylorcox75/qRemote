@@ -111,7 +111,10 @@ export function MultiSelectPicker({
               const menuWidth = 320;
               const adjustedX = (screenWidth - menuWidth) / 2;
 
-              if (Math.abs(adjustedY - currentTop) > 5 || Math.abs(adjustedX - menuPosition.x) > 5) {
+              if (
+                Math.abs(adjustedY - currentTop) > 5 ||
+                Math.abs(adjustedX - menuPosition.x) > 5
+              ) {
                 hasAdjustedPosition.current = true;
                 setMenuPosition({ x: adjustedX, y: adjustedY });
               }
@@ -132,12 +135,19 @@ export function MultiSelectPicker({
         >
           <View style={[styles.menuHeader, { borderBottomColor: colors.surfaceOutline }]}>
             <Text style={[styles.menuTitle, { color: colors.text }]}>{title}</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel={t('common.close')}>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel={t('common.close')}
+            >
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ paddingBottom: spacing.sm }}>
+          <ScrollView
+            style={{ maxHeight: 380 }}
+            contentContainerStyle={{ paddingBottom: spacing.sm }}
+          >
             {options.map((option, index) => {
               const selected = selectedValues.includes(option.value);
               return (
@@ -154,7 +164,12 @@ export function MultiSelectPicker({
                     accessibilityState={{ selected }}
                   >
                     {option.icon && (
-                      <Ionicons name={option.icon} size={20} color={colors.primary} style={styles.menuIcon} />
+                      <Ionicons
+                        name={option.icon}
+                        size={20}
+                        color={colors.primary}
+                        style={styles.menuIcon}
+                      />
                     )}
                     <Text
                       style={[
@@ -174,7 +189,9 @@ export function MultiSelectPicker({
                     />
                   </TouchableOpacity>
                   {index < options.length - 1 && (
-                    <View style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]} />
+                    <View
+                      style={[styles.menuDivider, { backgroundColor: colors.surfaceOutline }]}
+                    />
                   )}
                 </React.Fragment>
               );
@@ -234,4 +251,3 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
   },
 });
-

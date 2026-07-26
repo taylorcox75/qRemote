@@ -32,7 +32,7 @@ function encodeBase64(input: string): string {
         0xf0 | (cp >> 18),
         0x80 | ((cp >> 12) & 0x3f),
         0x80 | ((cp >> 6) & 0x3f),
-        0x80 | (cp & 0x3f)
+        0x80 | (cp & 0x3f),
       );
     } else {
       bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));

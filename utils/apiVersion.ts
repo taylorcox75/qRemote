@@ -33,6 +33,8 @@ export interface ApiFeatures {
    * boundary, and only the preference one was handled previously.
    */
   useStoppedAddParam: boolean;
+  /** app/getDirectoryContent endpoint exists, for path autocomplete (WebAPI ≥ 2.11.0 / qBit 5.0). */
+  supportsGetDirectoryContent: boolean;
 }
 
 export function parseApiVersion(raw: string): ParsedVersion | null {
@@ -63,6 +65,7 @@ const V5_FEATURES: ApiFeatures = {
   supportsSearchDownloadTorrent: true,
   useAddStoppedEnabledPreference: true,
   useStoppedAddParam: true,
+  supportsGetDirectoryContent: true,
 };
 
 export function getApiFeatures(apiVersion: string | null): ApiFeatures {
@@ -80,6 +83,7 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     supportsSearchDownloadTorrent: isV5,
     useAddStoppedEnabledPreference: isV5,
     useStoppedAddParam: isV5,
+    supportsGetDirectoryContent: isV5,
   };
 }
 

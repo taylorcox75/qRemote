@@ -60,7 +60,10 @@ export function FilterChip({
       accessibilityState={accessibilityState ?? { selected: active }}
     >
       {icon && <Ionicons name={icon} size={iconSize} color={active ? '#FFFFFF' : colors.text} />}
-      <Text style={[styles.chipText, { color: active ? '#FFFFFF' : colors.text }, textStyle]} numberOfLines={numberOfLines}>
+      <Text
+        style={[styles.chipText, { color: active ? '#FFFFFF' : colors.text }, textStyle]}
+        numberOfLines={numberOfLines}
+      >
         {label}
       </Text>
       {children}

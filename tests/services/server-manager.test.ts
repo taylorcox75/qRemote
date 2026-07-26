@@ -162,7 +162,9 @@ describe('ServerManager', () => {
       const err = new AxiosError('forbidden');
       err.response = { status: 403 } as never;
       mockApp.getVersion.mockRejectedValueOnce(err);
-      await expect(ServerManager.connectToServer(makeServer())).rejects.toThrow('Authentication failed');
+      await expect(ServerManager.connectToServer(makeServer())).rejects.toThrow(
+        'Authentication failed',
+      );
     });
 
     it('rethrows network errors from the post-login version check', async () => {
@@ -176,26 +178,32 @@ describe('ServerManager', () => {
     it('throws generic error for unrecognized post-login failure', async () => {
       mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });
       mockApp.getVersion.mockRejectedValueOnce(new Error('weird failure'));
-      await expect(ServerManager.connectToServer(makeServer())).rejects.toThrow('Failed to connect to server');
+      await expect(ServerManager.connectToServer(makeServer())).rejects.toThrow(
+        'Failed to connect to server',
+      );
     });
 
     it('propagates a network error from bypassAuth version check', async () => {
       const err = new AxiosError('timeout');
       err.code = 'ERR_NETWORK';
       mockApp.getVersion.mockRejectedValueOnce(err);
-      await expect(ServerManager.connectToServer(makeServer({ bypassAuth: true }))).rejects.toThrow();
+      await expect(
+        ServerManager.connectToServer(makeServer({ bypassAuth: true })),
+      ).rejects.toThrow();
     });
 
     it('throws generic error for non-network bypassAuth failure', async () => {
       mockApp.getVersion.mockRejectedValueOnce(new Error('boom'));
       await expect(ServerManager.connectToServer(makeServer({ bypassAuth: true }))).rejects.toThrow(
-        'Failed to connect to server'
+        'Failed to connect to server',
       );
     });
 
     it('succeeds via API key without calling login', async () => {
       mockApp.getVersion.mockResolvedValueOnce({ version: '5.2', apiVersion: '2.14' });
-      const result = await ServerManager.connectToServer(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }));
+      const result = await ServerManager.connectToServer(
+        makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }),
+      );
       expect(result).toBe(true);
       expect(mockAuth.login).not.toHaveBeenCalled();
       expect(mockStorage.setCurrentServerId).toHaveBeenCalledWith('s1');
@@ -207,7 +215,7 @@ describe('ServerManager', () => {
       err.response = { status: 401 } as never;
       mockApp.getVersion.mockRejectedValueOnce(err);
       await expect(
-        ServerManager.connectToServer(makeServer({ useApiKey: true, apiKey: 'qbt_badkey' }))
+        ServerManager.connectToServer(makeServer({ useApiKey: true, apiKey: 'qbt_badkey' })),
       ).rejects.toThrow('Authentication failed');
     });
 
@@ -216,7 +224,7 @@ describe('ServerManager', () => {
       err.code = 'ERR_NETWORK';
       mockApp.getVersion.mockRejectedValueOnce(err);
       await expect(
-        ServerManager.connectToServer(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }))
+        ServerManager.connectToServer(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' })),
       ).rejects.toThrow();
     });
   });
@@ -241,8 +249,12 @@ describe('ServerManager', () => {
     });
 
     it('does not fall back on a non-network primary error', async () => {
-      mockAuth.login.mockRejectedValueOnce(new Error('Authentication failed. Please check your credentials.'));
-      await expect(ServerManager.connectToServer(serverWithFallback)).rejects.toThrow('Authentication failed');
+      mockAuth.login.mockRejectedValueOnce(
+        new Error('Authentication failed. Please check your credentials.'),
+      );
+      await expect(ServerManager.connectToServer(serverWithFallback)).rejects.toThrow(
+        'Authentication failed',
+      );
       expect(mockAuth.login).toHaveBeenCalledTimes(1);
     });
 
@@ -266,13 +278,13 @@ describe('ServerManager', () => {
       expect(result?.id).toBe('s1');
     });
 
-    it('disconnect logs out, clears the api client and current server id', async () => {
+    it('disconnect logs out and clears the api client but keeps the last server id', async () => {
       mockApiClient.getServer.mockReturnValue(makeServer());
       mockAuth.logout.mockResolvedValueOnce(undefined);
       await ServerManager.disconnect();
       expect(mockAuth.logout).toHaveBeenCalled();
       expect(mockApiClient.setServer).toHaveBeenCalledWith(null);
-      expect(mockStorage.setCurrentServerId).toHaveBeenCalledWith(null);
+      expect(mockStorage.setCurrentServerId).not.toHaveBeenCalled();
     });
 
     it('disconnect swallows logout errors', async () => {
@@ -283,7 +295,9 @@ describe('ServerManager', () => {
     });
 
     it('disconnect skips logout for API-key servers (auth endpoints reject Bearer keys)', async () => {
-      mockApiClient.getServer.mockReturnValue(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }));
+      mockApiClient.getServer.mockReturnValue(
+        makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }),
+      );
       await ServerManager.disconnect();
       expect(mockAuth.logout).not.toHaveBeenCalled();
       expect(mockApiClient.setServer).toHaveBeenCalledWith(null);
@@ -369,7 +383,9 @@ describe('ServerManager', () => {
     it('skips login when useApiKey is set', async () => {
       mockApiClient.getServer.mockReturnValue(null);
       mockApp.getVersion.mockResolvedValueOnce({ version: '5.2', apiVersion: '2.14' });
-      const result = await ServerManager.testConnection(makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }));
+      const result = await ServerManager.testConnection(
+        makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }),
+      );
       expect(result.success).toBe(true);
       expect(mockAuth.login).not.toHaveBeenCalled();
     });

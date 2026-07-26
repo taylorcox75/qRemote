@@ -80,12 +80,12 @@ export default function TorrentFilesScreen() {
       setLoading(true);
       const filesData = await torrentsApi.getTorrentContents(hash);
       setFiles(filesData);
-      
+
       // Collapse all folders only on the very first load so that toggling/priority doesn't collapse the tree
       if (!hasInitializedCollapse.current) {
         hasInitializedCollapse.current = true;
         const folders = new Set<string>();
-        filesData.forEach(file => {
+        filesData.forEach((file) => {
           const parts = file.name.split('/');
           for (let i = 0; i < parts.length - 1; i++) {
             folders.add(parts.slice(0, i + 1).join('/'));
@@ -142,7 +142,7 @@ export default function TorrentFilesScreen() {
     if (updating) return;
     try {
       setUpdating(true);
-      const allIndices = files.map(f => f.index);
+      const allIndices = files.map((f) => f.index);
       await torrentsApi.setFilePriority(hash, allIndices, 1);
       await loadFiles();
       showToast(t('toast.allFilesSelected'), 'success');
@@ -157,7 +157,7 @@ export default function TorrentFilesScreen() {
     if (updating) return;
     try {
       setUpdating(true);
-      const allIndices = files.map(f => f.index);
+      const allIndices = files.map((f) => f.index);
       await torrentsApi.setFilePriority(hash, allIndices, 0);
       await loadFiles();
       showToast(t('toast.allFilesDeselected'), 'success');
@@ -187,10 +187,10 @@ export default function TorrentFilesScreen() {
     try {
       setUpdating(true);
       // Check if all files in folder are selected
-      const folderFiles = files.filter(f => fileIndices.includes(f.index));
-      const allSelected = folderFiles.every(f => f.priority > 0);
+      const folderFiles = files.filter((f) => fileIndices.includes(f.index));
+      const allSelected = folderFiles.every((f) => f.priority > 0);
       const newPriority: FilePriority = allSelected ? 0 : 1;
-      
+
       await torrentsApi.setFilePriority(hash, fileIndices, newPriority);
       await loadFiles();
     } catch (error: unknown) {
@@ -201,7 +201,7 @@ export default function TorrentFilesScreen() {
   };
 
   const handleFolderExpand = (folderPath: string) => {
-    setCollapsedFolders(prev => {
+    setCollapsedFolders((prev) => {
       const next = new Set(prev);
       if (next.has(folderPath)) {
         next.delete(folderPath);
@@ -220,7 +220,7 @@ export default function TorrentFilesScreen() {
   const handleSetPriority = async (priority: FilePriority) => {
     if (!menuFile || updating) return;
     setMenuVisible(false);
-    
+
     try {
       setUpdating(true);
       await torrentsApi.setFilePriority(hash, [menuFile.index], priority);
@@ -302,8 +302,8 @@ export default function TorrentFilesScreen() {
   };
 
   const selectedIndices = useMemo(
-    () => files.filter(f => f.priority > 0).map(f => f.index),
-    [files]
+    () => files.filter((f) => f.priority > 0).map((f) => f.index),
+    [files],
   );
   const selectedCount = selectedIndices.length;
 
@@ -314,7 +314,10 @@ export default function TorrentFilesScreen() {
       setUpdating(true);
       await torrentsApi.setFilePriority(hash, selectedIndices, priority);
       await loadFiles();
-      showToast(t('toast.prioritySetForCount', { label: getPriorityLabel(priority), count: selectedCount }), 'success');
+      showToast(
+        t('toast.prioritySetForCount', { label: getPriorityLabel(priority), count: selectedCount }),
+        'success',
+      );
     } catch (error: unknown) {
       showToast(getErrorMessage(error), 'error');
     } finally {
@@ -324,7 +327,7 @@ export default function TorrentFilesScreen() {
 
   const getFileIcon = (fileName: string): React.ComponentProps<typeof Ionicons>['name'] => {
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    
+
     if (['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v'].includes(ext)) {
       return 'videocam';
     }
@@ -340,19 +343,19 @@ export default function TorrentFilesScreen() {
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
       return 'archive';
     }
-    
+
     return 'document';
   };
 
   // Build tree structure and flatten for display
   const displayItems = useMemo(() => {
     const items: Array<FileTreeItem & { id: string }> = [];
-    const folderMap = new Map<string, { files: TorrentFile[], indices: number[], size: number }>();
+    const folderMap = new Map<string, { files: TorrentFile[]; indices: number[]; size: number }>();
 
     // Group files by folder and track indices
-    files.forEach(file => {
+    files.forEach((file) => {
       const parts = file.name.split('/');
-      
+
       // Track folders and their file indices
       for (let i = 0; i < parts.length - 1; i++) {
         const folderPath = parts.slice(0, i + 1).join('/');
@@ -370,8 +373,8 @@ export default function TorrentFilesScreen() {
 
     // Build display list with proper hierarchy
     const addedFolders = new Set<string>();
-    
-    files.forEach(file => {
+
+    files.forEach((file) => {
       const parts = file.name.split('/');
       const fileName = parts[parts.length - 1];
       const depth = parts.length - 1;
@@ -380,20 +383,20 @@ export default function TorrentFilesScreen() {
       for (let i = 0; i < depth; i++) {
         const folderPath = parts.slice(0, i + 1).join('/');
         const folderName = parts[i];
-        
+
         if (!addedFolders.has(folderPath)) {
           addedFolders.add(folderPath);
-          
+
           // Check if parent is collapsed
           const parentPath = parts.slice(0, i).join('/');
           if (i > 0 && collapsedFolders.has(parentPath)) {
             continue; // Skip if parent is collapsed
           }
-          
+
           const folderData = folderMap.get(folderPath)!;
-          const allSelected = folderData.files.every(f => f.priority > 0);
-          const someSelected = folderData.files.some(f => f.priority > 0);
-          
+          const allSelected = folderData.files.every((f) => f.priority > 0);
+          const someSelected = folderData.files.some((f) => f.priority > 0);
+
           items.push({
             id: `folder-${folderPath}`,
             type: 'folder',
@@ -439,7 +442,9 @@ export default function TorrentFilesScreen() {
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <Text style={[styles.message, { color: colors.text }]}>{t('screens.files.notConnected')}</Text>
+          <Text style={[styles.message, { color: colors.text }]}>
+            {t('screens.files.notConnected')}
+          </Text>
         </View>
       </>
     );
@@ -460,8 +465,17 @@ export default function TorrentFilesScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} accessibilityLabel={t('common.back')}>
+        <View
+          style={[
+            styles.topBar,
+            { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>{t('screens.files.title')}</Text>
@@ -473,7 +487,12 @@ export default function TorrentFilesScreen() {
         ) : (
           <>
             {/* Bulk Actions Header */}
-            <View style={[styles.bulkActionsHeader, { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline }]}>
+            <View
+              style={[
+                styles.bulkActionsHeader,
+                { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
+              ]}
+            >
               <TouchableOpacity
                 style={[styles.bulkActionButton, { backgroundColor: colors.primary }]}
                 onPress={handleSelectAll}
@@ -493,13 +512,22 @@ export default function TorrentFilesScreen() {
               <TouchableOpacity
                 style={[
                   styles.bulkActionButton,
-                  { backgroundColor: selectedCount > 0 ? colors.primary : colors.surfaceOutline }
+                  { backgroundColor: selectedCount > 0 ? colors.primary : colors.surfaceOutline },
                 ]}
                 onPress={() => selectedCount > 0 && setBulkPriorityMenuVisible(true)}
                 disabled={updating || selectedCount === 0}
               >
-                <Ionicons name="flag-outline" size={18} color={selectedCount > 0 ? '#FFFFFF' : colors.textSecondary} />
-                <Text style={[styles.bulkActionText, selectedCount === 0 && { color: colors.textSecondary }]}>
+                <Ionicons
+                  name="flag-outline"
+                  size={18}
+                  color={selectedCount > 0 ? '#FFFFFF' : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.bulkActionText,
+                    selectedCount === 0 && { color: colors.textSecondary },
+                  ]}
+                >
                   {t('screens.files.changePriority')}
                 </Text>
               </TouchableOpacity>
@@ -525,38 +553,63 @@ export default function TorrentFilesScreen() {
                 if (item.type === 'folder') {
                   const isCollapsed = collapsedFolders.has(item.path);
                   return (
-                    <View style={[styles.folderRow, { marginLeft: indent, backgroundColor: colors.surface }]}>
+                    <View
+                      style={[
+                        styles.folderRow,
+                        { marginLeft: indent, backgroundColor: colors.surface },
+                      ]}
+                    >
                       <TouchableOpacity
                         style={styles.folderCheckbox}
                         onPress={() => handleFolderToggle(item.path, item.fileIndices!)}
                         disabled={updating}
-                        accessibilityLabel={item.allSelected ? t('screens.files.deselectFolder') : t('screens.files.selectFolder')}
+                        accessibilityLabel={
+                          item.allSelected
+                            ? t('screens.files.deselectFolder')
+                            : t('screens.files.selectFolder')
+                        }
                       >
                         <Ionicons
-                          name={item.allSelected ? 'checkbox' : item.someSelected ? 'remove-outline' : 'square-outline'}
+                          name={
+                            item.allSelected
+                              ? 'checkbox'
+                              : item.someSelected
+                                ? 'remove-outline'
+                                : 'square-outline'
+                          }
                           size={24}
-                          color={item.allSelected || item.someSelected ? colors.primary : colors.textSecondary}
+                          color={
+                            item.allSelected || item.someSelected
+                              ? colors.primary
+                              : colors.textSecondary
+                          }
                         />
                       </TouchableOpacity>
-                      
+
                       <TouchableOpacity
                         style={styles.folderContent}
                         onPress={() => handleFolderExpand(item.path)}
                         onLongPress={() => promptRenameFolder(item.path)}
                         delayLongPress={350}
                       >
-                        <Ionicons 
-                          name={isCollapsed ? 'chevron-forward' : 'chevron-down'} 
-                          size={20} 
-                          color={colors.text} 
+                        <Ionicons
+                          name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+                          size={20}
+                          color={colors.text}
                         />
-                        <Ionicons name="folder" size={20} color={colors.primary} style={{ marginLeft: 8 }} />
+                        <Ionicons
+                          name="folder"
+                          size={20}
+                          color={colors.primary}
+                          style={{ marginLeft: 8 }}
+                        />
                         <View style={styles.folderInfo}>
                           <Text style={[styles.folderName, { color: colors.text }]}>
                             {item.name}
                           </Text>
                           <Text style={[styles.folderMeta, { color: colors.textSecondary }]}>
-                            {t('screens.files.filesCount', { count: item.fileCount })} • {formatSize(item.size || 0)}
+                            {t('screens.files.filesCount', { count: item.fileCount })} •{' '}
+                            {formatSize(item.size || 0)}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -582,7 +635,11 @@ export default function TorrentFilesScreen() {
                       style={styles.fileCheckbox}
                       onPress={() => handleFileToggle(file)}
                       disabled={updating}
-                      accessibilityLabel={file.priority === 0 ? t('screens.files.selectFile') : t('screens.files.deselectFile')}
+                      accessibilityLabel={
+                        file.priority === 0
+                          ? t('screens.files.selectFile')
+                          : t('screens.files.deselectFile')
+                      }
                     >
                       <Ionicons
                         name={file.priority === 0 ? 'square-outline' : 'checkbox'}
@@ -590,7 +647,7 @@ export default function TorrentFilesScreen() {
                         color={file.priority === 0 ? colors.textSecondary : colors.primary}
                       />
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity
                       style={[styles.fileCard, { backgroundColor: colors.surface }]}
                       onPress={() => showPriorityMenu(file)}
@@ -602,16 +659,16 @@ export default function TorrentFilesScreen() {
                       disabled={updating}
                     >
                       <View style={styles.fileHeader}>
-                        <Ionicons 
-                          name={getFileIcon(item.name)} 
-                          size={20} 
-                          color={getPriorityColor(file.priority)} 
+                        <Ionicons
+                          name={getFileIcon(item.name)}
+                          size={20}
+                          color={getPriorityColor(file.priority)}
                         />
                         <View style={styles.fileInfo}>
-                          <Text 
+                          <Text
                             style={[
-                              styles.fileName, 
-                              { color: file.priority === 0 ? colors.textSecondary : colors.text }
+                              styles.fileName,
+                              { color: file.priority === 0 ? colors.textSecondary : colors.text },
                             ]}
                           >
                             {item.name}
@@ -620,28 +677,46 @@ export default function TorrentFilesScreen() {
                             <Text style={[styles.fileSize, { color: colors.textSecondary }]}>
                               {formatSize(file.size)}
                             </Text>
-                            <Text style={[styles.fileSeparator, { color: colors.textSecondary }]}>•</Text>
+                            <Text style={[styles.fileSeparator, { color: colors.textSecondary }]}>
+                              •
+                            </Text>
                             <Text style={[styles.fileProgress, { color: colors.textSecondary }]}>
                               {formatProgress(file.progress)}
                             </Text>
                           </View>
                         </View>
                       </View>
-                      
+
                       <View style={styles.fileFooter}>
-                        <View style={[styles.progressBar, { backgroundColor: colors.surfaceOutline }]}>
-                          <View 
+                        <View
+                          style={[styles.progressBar, { backgroundColor: colors.surfaceOutline }]}
+                        >
+                          <View
                             style={[
-                              styles.progressFill, 
-                              { 
+                              styles.progressFill,
+                              {
                                 width: `${file.progress * 100}%`,
-                                backgroundColor: getPriorityColor(file.priority)
-                              }
-                            ]} 
+                                backgroundColor: getPriorityColor(file.priority),
+                              },
+                            ]}
                           />
                         </View>
-                        <View style={[styles.priorityBadge, { backgroundColor: isDark ? colors.surfaceOutline : getPriorityColor(file.priority) + '20' }]}>
-                          <Text style={[styles.priorityText, { color: isDark ? colors.text : getPriorityColor(file.priority) }]}>
+                        <View
+                          style={[
+                            styles.priorityBadge,
+                            {
+                              backgroundColor: isDark
+                                ? colors.surfaceOutline
+                                : getPriorityColor(file.priority) + '20',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.priorityText,
+                              { color: isDark ? colors.text : getPriorityColor(file.priority) },
+                            ]}
+                          >
                             {getPriorityLabel(file.priority)}
                           </Text>
                         </View>
@@ -681,8 +756,13 @@ export default function TorrentFilesScreen() {
                 },
               ]}
             >
-              <Text style={[styles.menuTitle, { color: colors.text }]}>{t('screens.files.fileActions')}</Text>
-              <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>
+                {t('screens.files.fileActions')}
+              </Text>
+              <Text
+                style={[styles.menuSubtitle, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
                 {menuFile?.name.split('/').pop()}
               </Text>
 
@@ -691,7 +771,9 @@ export default function TorrentFilesScreen() {
                 onPress={() => menuFile && promptRenameFile(menuFile)}
               >
                 <Ionicons name="pencil-outline" size={20} color={colors.primary} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.renameFile')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.renameFile')}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -699,31 +781,39 @@ export default function TorrentFilesScreen() {
                 onPress={() => handleSetPriority(0)}
               >
                 <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.skipDontDownload')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.skipDontDownload')}
+                </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.menuOption, { borderBottomColor: colors.surfaceOutline }]}
                 onPress={() => handleSetPriority(1)}
               >
                 <Ionicons name="play-circle" size={20} color={colors.primary} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.normalPriority')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.normalPriority')}
+                </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.menuOption, { borderBottomColor: colors.surfaceOutline }]}
                 onPress={() => handleSetPriority(6)}
               >
                 <Ionicons name="arrow-up-circle" size={20} color={colors.warning} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.highPriority')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.highPriority')}
+                </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.menuOption, { borderBottomWidth: 0 }]}
                 onPress={() => handleSetPriority(7)}
               >
                 <Ionicons name="flash" size={20} color={colors.error} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.maximumPriority')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.maximumPriority')}
+                </Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -750,41 +840,51 @@ export default function TorrentFilesScreen() {
                 },
               ]}
             >
-              <Text style={[styles.menuTitle, { color: colors.text }]}>{t('screens.files.setPriorityForSelected')}</Text>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>
+                {t('screens.files.setPriorityForSelected')}
+              </Text>
               <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>
                 {t('screens.files.selectedCount', { count: selectedCount })}
               </Text>
-              
+
               <TouchableOpacity
                 style={[styles.menuOption, { borderBottomColor: colors.surfaceOutline }]}
                 onPress={() => handleBulkSetPriority(0)}
               >
                 <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.skipDontDownload')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.skipDontDownload')}
+                </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.menuOption, { borderBottomColor: colors.surfaceOutline }]}
                 onPress={() => handleBulkSetPriority(1)}
               >
                 <Ionicons name="play-circle" size={20} color={colors.primary} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.normalPriority')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.normalPriority')}
+                </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.menuOption, { borderBottomColor: colors.surfaceOutline }]}
                 onPress={() => handleBulkSetPriority(6)}
               >
                 <Ionicons name="arrow-up-circle" size={20} color={colors.warning} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.highPriority')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.highPriority')}
+                </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.menuOption, { borderBottomWidth: 0 }]}
                 onPress={() => handleBulkSetPriority(7)}
               >
                 <Ionicons name="flash" size={20} color={colors.error} />
-                <Text style={[styles.menuOptionText, { color: colors.text }]}>{t('screens.files.maximumPriority')}</Text>
+                <Text style={[styles.menuOptionText, { color: colors.text }]}>
+                  {t('screens.files.maximumPriority')}
+                </Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>

@@ -285,7 +285,7 @@ describe('useSearchJob', () => {
       () => {
         expect(result.current.error).toBe('poll failed');
       },
-      { timeout: 3000 }
+      { timeout: 3000 },
     );
     expect(useReactiveReconnect).toHaveBeenCalled();
   });

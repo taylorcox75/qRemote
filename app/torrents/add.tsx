@@ -20,6 +20,7 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSelectPicker';
 import { InputModal } from '@/components/InputModal';
+import { PathAutocompleteInput } from '@/components/PathAutocompleteInput';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
@@ -494,7 +495,7 @@ export default function AddTorrentFullScreen() {
                         <Text style={[styles.label, { color: colors.textSecondary }]}>
                           {t('screens.addTorrent.savePath')}
                         </Text>
-                        <TextInput
+                        <PathAutocompleteInput
                           style={[
                             styles.input,
                             {
@@ -507,8 +508,6 @@ export default function AddTorrentFullScreen() {
                           onChangeText={setSavePath}
                           placeholder={t('screens.addTorrent.savePathPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
-                          autoCapitalize="none"
-                          autoCorrect={false}
                         />
                       </View>
                       {showField('tags') && (
@@ -953,6 +952,7 @@ export default function AddTorrentFullScreen() {
         defaultValue={pendingNewCategoryPath}
         keyboardType="default"
         allowEmpty
+        pathAutocomplete
         onCancel={() => setCreateCategoryPathVisible(false)}
         onConfirm={async (value) => {
           const path = value.trim();

@@ -35,7 +35,7 @@ describe('FilterChip', () => {
     await render(
       <FilterChip label="WithChild" active={false} onPress={jest.fn()}>
         <Text>child-content</Text>
-      </FilterChip>
+      </FilterChip>,
     );
     expect(screen.getByText('child-content')).toBeTruthy();
   });
@@ -50,7 +50,7 @@ describe('FilterChip', () => {
         accessibilityLabel="custom-chip"
         accessibilityState={{ selected: true }}
         numberOfLines={1}
-      />
+      />,
     );
     expect(screen.getByLabelText('custom-chip')).toBeTruthy();
   });

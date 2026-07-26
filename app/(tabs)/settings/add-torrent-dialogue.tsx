@@ -36,7 +36,9 @@ export default function AddTorrentDialogueSettingsScreen() {
   const { isDark, colors } = useTheme();
 
   const [useFull, setUseFull] = useState(false);
-  const [fields, setFields] = useState<Record<AddTorrentDialogField, boolean>>(DEFAULT_PREFERENCES.addTorrentDialogueFields);
+  const [fields, setFields] = useState<Record<AddTorrentDialogField, boolean>>(
+    DEFAULT_PREFERENCES.addTorrentDialogueFields,
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -45,10 +47,17 @@ export default function AddTorrentDialogueSettingsScreen() {
           const prefs = await storageService.getPreferences();
           setUseFull(!!prefs.useFullAddTorrentDialogue);
           const stored = (prefs.addTorrentDialogueFields as Partial<typeof fields>) || {};
-          const normalized = { ...DEFAULT_PREFERENCES.addTorrentDialogueFields, ...stored, source: true };
+          const normalized = {
+            ...DEFAULT_PREFERENCES.addTorrentDialogueFields,
+            ...stored,
+            source: true,
+          };
           setFields(normalized);
           if (stored.source === false) {
-            await storageService.savePreferences({ ...prefs, addTorrentDialogueFields: normalized });
+            await storageService.savePreferences({
+              ...prefs,
+              addTorrentDialogueFields: normalized,
+            });
           }
         } catch {
           setUseFull(false);
@@ -56,10 +65,13 @@ export default function AddTorrentDialogueSettingsScreen() {
         }
       };
       load();
-    }, [])
+    }, []),
   );
 
-  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
+  const savePreference = async <K extends keyof AppPreferences>(
+    key: K,
+    value: AppPreferences[K],
+  ) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -68,36 +80,87 @@ export default function AddTorrentDialogueSettingsScreen() {
     }
   };
 
-  const toggleField = useCallback(
-    (field: AddTorrentDialogField, value: boolean) => {
-      if (field === 'source') return;
-      setFields((prev) => {
-        const next = { ...prev, [field]: value, source: true };
-        void savePreference('addTorrentDialogueFields', next as AppPreferences['addTorrentDialogueFields']);
-        return next;
-      });
-    },
-    []
-  );
+  const toggleField = useCallback((field: AddTorrentDialogField, value: boolean) => {
+    if (field === 'source') return;
+    setFields((prev) => {
+      const next = { ...prev, [field]: value, source: true };
+      void savePreference(
+        'addTorrentDialogueFields',
+        next as AppPreferences['addTorrentDialogueFields'],
+      );
+      return next;
+    });
+  }, []);
 
   const fieldMeta = useMemo(() => {
-    const map: Record<AddTorrentDialogField, { icon: React.ComponentProps<typeof Ionicons>['name']; labelKey: string }> = {
-      source: { icon: 'link-outline', labelKey: 'screens.settings.addTorrentDialogueFields.source' },
-      savePath: { icon: 'folder-outline', labelKey: 'screens.settings.addTorrentDialogueFields.savePath' },
-      category: { icon: 'folder-open-outline', labelKey: 'screens.settings.addTorrentDialogueFields.category' },
-      tags: { icon: 'pricetag-outline', labelKey: 'screens.settings.addTorrentDialogueFields.tags' },
-      rename: { icon: 'text-outline', labelKey: 'screens.settings.addTorrentDialogueFields.rename' },
-      stopped: { icon: 'pause-circle-outline', labelKey: 'screens.settings.addTorrentDialogueFields.stopped' },
-      skipChecking: { icon: 'checkmark-done-outline', labelKey: 'screens.settings.addTorrentDialogueFields.skipChecking' },
-      rootFolder: { icon: 'folder-outline', labelKey: 'screens.settings.addTorrentDialogueFields.rootFolder' },
-      autoTMM: { icon: 'sync-outline', labelKey: 'screens.settings.addTorrentDialogueFields.autoTMM' },
-      sequentialDownload: { icon: 'swap-vertical-outline', labelKey: 'screens.settings.addTorrentDialogueFields.sequentialDownload' },
-      firstLastPiecePrio: { icon: 'layers-outline', labelKey: 'screens.settings.addTorrentDialogueFields.firstLastPiecePrio' },
-      dlLimit: { icon: 'download-outline', labelKey: 'screens.settings.addTorrentDialogueFields.dlLimit' },
-      upLimit: { icon: 'arrow-up-outline', labelKey: 'screens.settings.addTorrentDialogueFields.upLimit' },
-      ratioLimit: { icon: 'swap-horizontal-outline', labelKey: 'screens.settings.addTorrentDialogueFields.ratioLimit' },
-      seedingTimeLimit: { icon: 'time-outline', labelKey: 'screens.settings.addTorrentDialogueFields.seedingTimeLimit' },
-      cookie: { icon: 'document-text-outline', labelKey: 'screens.settings.addTorrentDialogueFields.cookie' },
+    const map: Record<
+      AddTorrentDialogField,
+      { icon: React.ComponentProps<typeof Ionicons>['name']; labelKey: string }
+    > = {
+      source: {
+        icon: 'link-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.source',
+      },
+      savePath: {
+        icon: 'folder-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.savePath',
+      },
+      category: {
+        icon: 'folder-open-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.category',
+      },
+      tags: {
+        icon: 'pricetag-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.tags',
+      },
+      rename: {
+        icon: 'text-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.rename',
+      },
+      stopped: {
+        icon: 'pause-circle-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.stopped',
+      },
+      skipChecking: {
+        icon: 'checkmark-done-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.skipChecking',
+      },
+      rootFolder: {
+        icon: 'folder-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.rootFolder',
+      },
+      autoTMM: {
+        icon: 'sync-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.autoTMM',
+      },
+      sequentialDownload: {
+        icon: 'swap-vertical-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.sequentialDownload',
+      },
+      firstLastPiecePrio: {
+        icon: 'layers-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.firstLastPiecePrio',
+      },
+      dlLimit: {
+        icon: 'download-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.dlLimit',
+      },
+      upLimit: {
+        icon: 'arrow-up-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.upLimit',
+      },
+      ratioLimit: {
+        icon: 'swap-horizontal-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.ratioLimit',
+      },
+      seedingTimeLimit: {
+        icon: 'time-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.seedingTimeLimit',
+      },
+      cookie: {
+        icon: 'document-text-outline',
+        labelKey: 'screens.settings.addTorrentDialogueFields.cookie',
+      },
     };
     return map;
   }, []);
@@ -107,10 +170,17 @@ export default function AddTorrentDialogueSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.addTorrentDialogue')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t('screens.settings.addTorrentDialogue')}
+          </Text>
           <View style={styles.headerButton} />
         </View>
 
@@ -124,7 +194,9 @@ export default function AddTorrentDialogueSettingsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="albums-outline" size={22} color={colors.primary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.useFullDialogue')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.useFullDialogue')}
+                    </Text>
                     <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
                       {t('screens.settings.useFullDialogueHint')}
                     </Text>
@@ -158,7 +230,9 @@ export default function AddTorrentDialogueSettingsScreen() {
                       <View style={styles.settingRow}>
                         <View style={styles.settingLeft}>
                           <Ionicons name={meta.icon} size={22} color={colors.primary} />
-                          <Text style={[styles.settingLabel, { color: colors.text }]}>{t(meta.labelKey)}</Text>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t(meta.labelKey)}
+                          </Text>
                         </View>
                         <Switch
                           value={value}
@@ -168,7 +242,11 @@ export default function AddTorrentDialogueSettingsScreen() {
                           ios_backgroundColor={colors.surfaceOutline}
                         />
                       </View>
-                      {!isLast && <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />}
+                      {!isLast && (
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                      )}
                     </React.Fragment>
                   );
                 })}
@@ -205,9 +283,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingHint: { fontSize: 12, marginTop: 1 },
   separator: { height: 1, marginLeft: 50 },
 });
-

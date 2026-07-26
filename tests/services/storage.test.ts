@@ -89,7 +89,11 @@ describe('storageService', () => {
 
     it('persists basicAuth fields separately, storing password in SecureStore', async () => {
       await storageService.saveServer(
-        makeServer({ useBasicAuth: true, basicAuthUsername: 'proxyuser', basicAuthPassword: 'proxypass' })
+        makeServer({
+          useBasicAuth: true,
+          basicAuthUsername: 'proxyuser',
+          basicAuthPassword: 'proxypass',
+        }),
       );
       const servers = await storageService.getServers();
       expect(servers[0].useBasicAuth).toBe(true);
@@ -101,7 +105,7 @@ describe('storageService', () => {
 
     it('persists the apiKey field separately, storing it in SecureStore', async () => {
       await storageService.saveServer(
-        makeServer({ useApiKey: true, apiKey: 'qbt_abcdefghijklmnopqrstuvwx1234' })
+        makeServer({ useApiKey: true, apiKey: 'qbt_abcdefghijklmnopqrstuvwx1234' }),
       );
       const servers = await storageService.getServers();
       expect(servers[0].useApiKey).toBe(true);
@@ -152,10 +156,10 @@ describe('storageService', () => {
 
     it('removes the apiKey secret and blanks it on surviving records', async () => {
       await storageService.saveServer(
-        makeServer({ id: 's1', useApiKey: true, apiKey: 'qbt_deleteme12345678901234567890' })
+        makeServer({ id: 's1', useApiKey: true, apiKey: 'qbt_deleteme12345678901234567890' }),
       );
       await storageService.saveServer(
-        makeServer({ id: 's2', useApiKey: true, apiKey: 'qbt_keepme1234567890123456789012' })
+        makeServer({ id: 's2', useApiKey: true, apiKey: 'qbt_keepme1234567890123456789012' }),
       );
       await storageService.deleteServer('s1');
       expect(mockSecureStore['server_api_key_s1']).toBeUndefined();

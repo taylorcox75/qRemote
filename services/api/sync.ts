@@ -14,12 +14,14 @@ export const syncApi = {
       params.rid = rid;
     }
 
-    const response = await apiClient.get(`/api/${API_VERSION}/sync/maindata`, params) as MainData;
-    
+    const response = (await apiClient.get(`/api/${API_VERSION}/sync/maindata`, params)) as MainData;
+
     if (response.torrents) {
       const torrents: { [hash: string]: TorrentInfo } = {};
       Object.keys(response.torrents).forEach((hashKey) => {
-        const torrent: Partial<TorrentInfo> & { hash?: string } = { ...response.torrents![hashKey] };
+        const torrent: Partial<TorrentInfo> & { hash?: string } = {
+          ...response.torrents![hashKey],
+        };
         torrent.hash = hashKey;
         torrents[hashKey] = torrent as TorrentInfo;
       });

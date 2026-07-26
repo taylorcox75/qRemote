@@ -73,7 +73,9 @@ export function QuickConnectPanel({
           <View style={[styles.iconRing, { borderColor: colors.surfaceOutline }]}>
             <Ionicons name="navigate-outline" size={36} color={colors.textSecondary} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.text, marginTop: spacing.lg, fontSize: 20 }]}>
+          <Text
+            style={[styles.emptyTitle, { color: colors.text, marginTop: spacing.lg, fontSize: 20 }]}
+          >
             {t('screens.torrents.notConnected')}
           </Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
@@ -100,7 +102,12 @@ export function QuickConnectPanel({
                     activeOpacity={0.7}
                     disabled={connectingId !== null}
                   >
-                    <View style={[styles.serverAvatar, { backgroundColor: color + '22', borderColor: color + '44' }]}>
+                    <View
+                      style={[
+                        styles.serverAvatar,
+                        { backgroundColor: color + '22', borderColor: color + '44' },
+                      ]}
+                    >
                       <Text style={[styles.serverAvatarLetter, { color }]}>
                         {server.name.charAt(0).toUpperCase()}
                       </Text>
@@ -111,28 +118,54 @@ export function QuickConnectPanel({
                       </Text>
                       <View style={styles.serverAddressRow}>
                         {server.useHttps && (
-                          <Ionicons name="lock-closed" size={10} color={colors.success} style={{ marginRight: 3 }} />
+                          <Ionicons
+                            name="lock-closed"
+                            size={10}
+                            color={colors.success}
+                            style={{ marginRight: 3 }}
+                          />
                         )}
-                        <Text style={[styles.serverAddress, { color: colors.textSecondary }]} numberOfLines={1}>
+                        <Text
+                          style={[styles.serverAddress, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
                           {addr}
                         </Text>
                       </View>
                       {errMsg && (
-                        <Text style={[styles.serverErrorText, { color: colors.error }]} numberOfLines={1}>
+                        <Text
+                          style={[styles.serverErrorText, { color: colors.error }]}
+                          numberOfLines={1}
+                        >
                           {errMsg}
                         </Text>
                       )}
                     </View>
-                    <View style={[styles.connectPill, { backgroundColor: errMsg ? colors.error + '18' : color + '18', borderColor: errMsg ? colors.error + '40' : color + '40' }]}>
-                      {isConnectingThis
-                        ? <ActivityIndicator size="small" color={color} />
-                        : <Text style={[styles.connectPillText, { color: errMsg ? colors.error : color }]}>
-                            {errMsg ? t('common.retry', { defaultValue: 'Retry' }) : t('common.connect', { defaultValue: 'Connect' })}
-                          </Text>
-                      }
+                    <View
+                      style={[
+                        styles.connectPill,
+                        {
+                          backgroundColor: errMsg ? colors.error + '18' : color + '18',
+                          borderColor: errMsg ? colors.error + '40' : color + '40',
+                        },
+                      ]}
+                    >
+                      {isConnectingThis ? (
+                        <ActivityIndicator size="small" color={color} />
+                      ) : (
+                        <Text
+                          style={[styles.connectPillText, { color: errMsg ? colors.error : color }]}
+                        >
+                          {errMsg
+                            ? t('common.retry', { defaultValue: 'Retry' })
+                            : t('common.connect', { defaultValue: 'Connect' })}
+                        </Text>
+                      )}
                     </View>
                   </TouchableOpacity>
-                  {!isLast && <View style={[styles.divider, { backgroundColor: colors.surfaceOutline }]} />}
+                  {!isLast && (
+                    <View style={[styles.divider, { backgroundColor: colors.surfaceOutline }]} />
+                  )}
                 </View>
               );
             })}
@@ -144,7 +177,12 @@ export function QuickConnectPanel({
           onPress={onAddServer}
           activeOpacity={0.7}
         >
-          <View style={[styles.addServerIcon, { backgroundColor: colors.surface, borderColor: colors.surfaceOutline }]}>
+          <View
+            style={[
+              styles.addServerIcon,
+              { backgroundColor: colors.surface, borderColor: colors.surfaceOutline },
+            ]}
+          >
             <Ionicons name="add" size={20} color={colors.primary} />
           </View>
           <Text style={[styles.addServerText, { color: colors.primary }]}>

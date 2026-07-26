@@ -47,7 +47,9 @@ describe('isLoginSuccess (qBittorrent 4.x/5.x response matrix)', () => {
   });
 
   it('405 Method Not Allowed fails', () => {
-    expect(isLoginSuccess({ status: 405, body: 'Method Not Allowed', hasSessionCookie: false })).toBe(false);
+    expect(
+      isLoginSuccess({ status: 405, body: 'Method Not Allowed', hasSessionCookie: false }),
+    ).toBe(false);
   });
 
   it('200 with an inconclusive body and no cookie fails (proxy stripped everything)', () => {

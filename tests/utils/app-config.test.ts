@@ -6,13 +6,13 @@ describe('app.config magnet registration', () => {
     const urlTypes = expoConfig?.ios?.infoPlist?.CFBundleURLTypes;
     expect(Array.isArray(urlTypes)).toBe(true);
 
-    const hasMagnetScheme = urlTypes.some((entry: { CFBundleURLSchemes?: string[] }) =>
-      Array.isArray(entry.CFBundleURLSchemes) && entry.CFBundleURLSchemes.includes('magnet')
+    const hasMagnetScheme = urlTypes.some(
+      (entry: { CFBundleURLSchemes?: string[] }) =>
+        Array.isArray(entry.CFBundleURLSchemes) && entry.CFBundleURLSchemes.includes('magnet'),
     );
 
     expect(hasMagnetScheme).toBe(true);
   });
-
 });
 
 describe('app.config torrent file registration', () => {
@@ -23,8 +23,10 @@ describe('app.config torrent file registration', () => {
     const documentTypes = expoConfig?.ios?.infoPlist?.CFBundleDocumentTypes;
     expect(Array.isArray(documentTypes)).toBe(true);
 
-    const hasTorrentType = documentTypes.some((entry: { LSItemContentTypes?: string[] }) =>
-      Array.isArray(entry.LSItemContentTypes) && entry.LSItemContentTypes.includes('org.bittorrent.torrent')
+    const hasTorrentType = documentTypes.some(
+      (entry: { LSItemContentTypes?: string[] }) =>
+        Array.isArray(entry.LSItemContentTypes) &&
+        entry.LSItemContentTypes.includes('org.bittorrent.torrent'),
     );
 
     expect(hasTorrentType).toBe(true);
@@ -43,12 +45,14 @@ describe('app.config torrent file registration', () => {
     expect(Array.isArray(exportedTypes)).toBe(true);
 
     const torrentType = exportedTypes.find(
-      (entry: { UTTypeIdentifier?: string }) => entry.UTTypeIdentifier === 'org.bittorrent.torrent'
+      (entry: { UTTypeIdentifier?: string }) => entry.UTTypeIdentifier === 'org.bittorrent.torrent',
     );
 
     expect(torrentType).toBeDefined();
     expect(torrentType.UTTypeTagSpecification['public.filename-extension']).toContain('torrent');
-    expect(torrentType.UTTypeTagSpecification['public.mime-type']).toContain('application/x-bittorrent');
+    expect(torrentType.UTTypeTagSpecification['public.mime-type']).toContain(
+      'application/x-bittorrent',
+    );
     // public.content conformance is required for Files' open-with
     // eligibility; public.data alone only surfaces the app in the share sheet.
     expect(torrentType.UTTypeConformsTo).toContain('public.data');
@@ -57,8 +61,10 @@ describe('app.config torrent file registration', () => {
 
   it('claims Owner handler rank for the torrent document type (issue #125)', () => {
     const documentTypes = expoConfig?.ios?.infoPlist?.CFBundleDocumentTypes;
-    const torrentDoc = documentTypes.find((entry: { LSItemContentTypes?: string[] }) =>
-      Array.isArray(entry.LSItemContentTypes) && entry.LSItemContentTypes.includes('org.bittorrent.torrent')
+    const torrentDoc = documentTypes.find(
+      (entry: { LSItemContentTypes?: string[] }) =>
+        Array.isArray(entry.LSItemContentTypes) &&
+        entry.LSItemContentTypes.includes('org.bittorrent.torrent'),
     );
     expect(torrentDoc.LSHandlerRank).toBe('Owner');
   });

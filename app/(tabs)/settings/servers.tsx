@@ -69,24 +69,44 @@ function SwipeableServerItem({
         const finalValue = baseValue + gestureState.dx;
         if (finalValue < -40) {
           isSwipeOpen.current = true;
-          Animated.spring(translateX, { toValue: -80, useNativeDriver: true, tension: 50, friction: 7 }).start();
+          Animated.spring(translateX, {
+            toValue: -80,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 7,
+          }).start();
         } else {
           isSwipeOpen.current = false;
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 50, friction: 7 }).start();
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 7,
+          }).start();
         }
       },
-    })
+    }),
   ).current;
 
   const handleDelete = () => {
     isSwipeOpen.current = false;
-    Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 50, friction: 7 }).start(() => onDelete());
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 7,
+    }).start(() => onDelete());
   };
 
   const handlePress = () => {
     if (isSwipeOpen.current) {
       isSwipeOpen.current = false;
-      Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 50, friction: 7 }).start();
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }).start();
     } else {
       onPress();
     }
@@ -105,7 +125,10 @@ function SwipeableServerItem({
           </TouchableOpacity>
         </View>
         <Animated.View
-          style={[styles.swipeableContent, { transform: [{ translateX }], backgroundColor: colors.surface }]}
+          style={[
+            styles.swipeableContent,
+            { transform: [{ translateX }], backgroundColor: colors.surface },
+          ]}
           {...panResponder.panHandlers}
         >
           <TouchableOpacity style={styles.listItem} onPress={handlePress} activeOpacity={0.7}>
@@ -114,14 +137,19 @@ function SwipeableServerItem({
                 <Ionicons name="server-outline" size={20} color={colors.primary} />
                 <View style={styles.listItemText}>
                   <Text style={[styles.listItemTitle, { color: colors.text }]}>{server.name}</Text>
-                  <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]}>{serverAddress}</Text>
+                  <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]}>
+                    {serverAddress}
+                  </Text>
                 </View>
               </View>
               <View style={styles.listItemRight}>
                 {isConnectedToThis ? (
                   <TouchableOpacity
                     style={[styles.smallButton, { backgroundColor: colors.error }]}
-                    onPress={(e) => { e.stopPropagation(); onDisconnect(); }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onDisconnect();
+                    }}
                   >
                     <Text style={styles.smallButtonText} numberOfLines={1} adjustsFontSizeToFit>
                       {t('screens.settings.disconnect')}
@@ -130,7 +158,10 @@ function SwipeableServerItem({
                 ) : (
                   <TouchableOpacity
                     style={[styles.smallButton, { backgroundColor: colors.success }]}
-                    onPress={(e) => { e.stopPropagation(); onConnect(); }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onConnect();
+                    }}
                   >
                     <Text style={styles.smallButtonText}>{t('screens.settings.connect')}</Text>
                   </TouchableOpacity>
@@ -150,7 +181,8 @@ export default function ServersSettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
-  const { currentServer, isConnected, connectToServer, disconnect } = useServer();
+  const { currentServer, isConnected, connectToServer, disconnect, forgetCurrentServer } =
+    useServer();
   const { showToast } = useToast();
 
   const [servers, setServers] = useState<ServerConfig[]>([]);
@@ -164,7 +196,7 @@ export default function ServersSettingsScreen() {
     useCallback(() => {
       loadServers();
       loadPreferences();
-    }, [])
+    }, []),
   );
 
   const loadServers = useCallback(async () => {
@@ -188,7 +220,10 @@ export default function ServersSettingsScreen() {
     }
   };
 
-  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
+  const savePreference = async <K extends keyof AppPreferences>(
+    key: K,
+    value: AppPreferences[K],
+  ) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -224,12 +259,20 @@ export default function ServersSettingsScreen() {
       const isDeletingCurrentServer = currentServer?.id === server.id;
       await ServerManager.deleteServer(server.id);
       await loadServers();
-      if (isDeletingCurrentServer && isConnected) {
-        await disconnect();
+      if (isDeletingCurrentServer) {
+        // Drop the remembered last server so Settings doesn't offer Connect
+        // to a config that no longer exists.
+        if (isConnected) {
+          await disconnect();
+        }
+        forgetCurrentServer();
       } else {
         const remainingServers = await ServerManager.getServers();
-        if (remainingServers.length === 0 && isConnected) {
-          await disconnect();
+        if (remainingServers.length === 0) {
+          if (isConnected) {
+            await disconnect();
+          }
+          forgetCurrentServer();
         }
       }
       showToast(t('toast.serverDeleted', { name: server.name }), 'success');
@@ -254,11 +297,23 @@ export default function ServersSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.servers')}</Text>
-          <TouchableOpacity onPress={handleAddServer} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('screens.settings.addServer')}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t('screens.settings.servers')}
+          </Text>
+          <TouchableOpacity
+            onPress={handleAddServer}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('screens.settings.addServer')}
+          >
             <Ionicons name="add" size={26} color={colors.primary} />
           </TouchableOpacity>
         </View>
@@ -266,12 +321,16 @@ export default function ServersSettingsScreen() {
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Auto-connect */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.serverManagement').toUpperCase()}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.serverManagement').toUpperCase()}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="flash-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.autoConnectLastServer')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.autoConnectLastServer')}
+                  </Text>
                 </View>
                 <Switch
                   value={autoConnectLastServer}
@@ -289,7 +348,11 @@ export default function ServersSettingsScreen() {
           {/* Server List */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}>{t('screens.settings.servers').toUpperCase()}</Text>
+              <Text
+                style={[styles.sectionHeader, { color: colors.textSecondary, marginBottom: 0 }]}
+              >
+                {t('screens.settings.servers').toUpperCase()}
+              </Text>
               <TouchableOpacity
                 onPress={handleAddServer}
                 accessibilityLabel={t('screens.settings.addServer')}
@@ -334,9 +397,7 @@ export default function ServersSettingsScreen() {
         visible={!!pendingDelete}
         title={t('server.deleteServer')}
         message={
-          pendingDelete
-            ? t('server.deleteServerConfirm', { name: pendingDelete.name })
-            : undefined
+          pendingDelete ? t('server.deleteServerConfirm', { name: pendingDelete.name }) : undefined
         }
         buttons={[
           {
@@ -388,7 +449,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   separator: { height: 1, marginLeft: 50 },
   listItem: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },

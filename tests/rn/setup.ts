@@ -1,5 +1,6 @@
-jest.mock('react-native-safe-area-context', () =>
-  require('react-native-safe-area-context/jest/mock').default,
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
 );
 
 jest.mock('expo-router', () => {
@@ -18,7 +19,10 @@ jest.mock('expo-router', () => {
     useLocalSearchParams: jest.fn(() => ({})),
     useSegments: jest.fn(() => []),
     useFocusEffect: jest.fn(),
-    useNavigation: jest.fn(() => ({ setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()) })),
+    useNavigation: jest.fn(() => ({
+      setOptions: jest.fn(),
+      addListener: jest.fn(() => jest.fn()),
+    })),
     Link: actual.Link,
   };
 });

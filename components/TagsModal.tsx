@@ -115,25 +115,21 @@ export function TagsModal({
   const confirmDelete = (tag: string) => {
     if (!onDeleteTag) return;
     haptics.medium();
-    Alert.alert(
-      t('alerts.deleteTag', { tag }),
-      t('alerts.deleteTagMessage'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            setBusy(true);
-            try {
-              await onDeleteTag(tag);
-            } finally {
-              setBusy(false);
-            }
-          },
+    Alert.alert(t('alerts.deleteTag', { tag }), t('alerts.deleteTagMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await onDeleteTag(tag);
+          } finally {
+            setBusy(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -148,23 +144,18 @@ export function TagsModal({
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-        <View
-          style={[
-            styles.sheet,
-            { backgroundColor: colors.surface, ...shadows.large },
-          ]}
-        >
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+        <View style={[styles.sheet, { backgroundColor: colors.surface, ...shadows.large }]}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>
               {t('screens.addTorrent.tags')}
             </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel={t('common.close')}>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={t('common.close')}
+            >
               <Ionicons name="close-circle" size={26} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -187,11 +178,12 @@ export function TagsModal({
                 {currentTags.map((tag) => (
                   <View
                     key={tag}
-                    style={[styles.currentChip, { backgroundColor: colors.surface, borderColor: colors.primary }]}
+                    style={[
+                      styles.currentChip,
+                      { backgroundColor: colors.surface, borderColor: colors.primary },
+                    ]}
                   >
-                    <Text style={[styles.currentChipText, { color: colors.primary }]}>
-                      {tag}
-                    </Text>
+                    <Text style={[styles.currentChipText, { color: colors.primary }]}>{tag}</Text>
                     <TouchableOpacity
                       onPress={() => handleRemove(tag)}
                       disabled={isLoading}
@@ -225,9 +217,7 @@ export function TagsModal({
                       activeOpacity={0.7}
                     >
                       <Ionicons name="add" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.availableChipText, { color: colors.text }]}>
-                        {tag}
-                      </Text>
+                      <Text style={[styles.availableChipText, { color: colors.text }]}>{tag}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -276,7 +266,11 @@ export function TagsModal({
                 {isLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Ionicons name="add" size={20} color={newTagInput.trim() ? '#FFFFFF' : colors.textSecondary} />
+                  <Ionicons
+                    name="add"
+                    size={20}
+                    color={newTagInput.trim() ? '#FFFFFF' : colors.textSecondary}
+                  />
                 )}
               </TouchableOpacity>
             </View>

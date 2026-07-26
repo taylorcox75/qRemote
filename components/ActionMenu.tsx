@@ -81,12 +81,7 @@ export function ActionMenu({ visible, onClose, items, anchor }: ActionMenuProps)
             color={item.destructive ? colors.error : colors.primary}
             style={styles.icon}
           />
-          <Text
-            style={[
-              styles.label,
-              { color: item.destructive ? colors.error : colors.text },
-            ]}
-          >
+          <Text style={[styles.label, { color: item.destructive ? colors.error : colors.text }]}>
             {item.label}
           </Text>
         </TouchableOpacity>
@@ -102,15 +97,10 @@ export function ActionMenu({ visible, onClose, items, anchor }: ActionMenuProps)
     const left = Math.max(minLeft, Math.min(anchorPoint.x, maxLeft));
 
     const minTop = insets.top + POPOVER_MARGIN;
-    const maxPopoverHeight =
-      screenHeight - insets.top - insets.bottom - POPOVER_MARGIN * 2;
+    const maxPopoverHeight = screenHeight - insets.top - insets.bottom - POPOVER_MARGIN * 2;
     const effectiveHeight = Math.min(popoverHeight ?? 0, maxPopoverHeight);
-    const maxTop =
-      screenHeight - insets.bottom - POPOVER_MARGIN - effectiveHeight;
-    const top = Math.max(
-      minTop,
-      Math.min(anchorPoint.y + POPOVER_ANCHOR_GAP, maxTop)
-    );
+    const maxTop = screenHeight - insets.bottom - POPOVER_MARGIN - effectiveHeight;
+    const top = Math.max(minTop, Math.min(anchorPoint.y + POPOVER_ANCHOR_GAP, maxTop));
 
     return (
       <View
@@ -142,7 +132,15 @@ export function ActionMenu({ visible, onClose, items, anchor }: ActionMenuProps)
         {anchor ? (
           renderPopover(anchor)
         ) : (
-          <View style={[styles.sheet, { backgroundColor: colors.surface, paddingBottom: Math.max(insets.bottom, spacing.lg) }]}>
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: colors.surface,
+                paddingBottom: Math.max(insets.bottom, spacing.lg),
+              },
+            ]}
+          >
             <View style={[styles.handle, { backgroundColor: colors.surfaceOutline }]} />
             {renderItems()}
           </View>

@@ -68,7 +68,10 @@ describe('resultTrackerLabel', () => {
   });
 
   it('prefers the bracketed title tag when aggregated', () => {
-    const result = makeResult({ fileName: '[1337x] Title', siteUrl: 'https://prowlarr.local:9696' });
+    const result = makeResult({
+      fileName: '[1337x] Title',
+      siteUrl: 'https://prowlarr.local:9696',
+    });
     expect(resultTrackerLabel(result, true)).toBe('1337x');
   });
 

@@ -65,7 +65,11 @@ describe('searchApi', () => {
   it('getResults with limit and offset', async () => {
     mockGet.mockResolvedValueOnce({ results: [], status: 'Running', total: 0 });
     await searchApi.getResults(1, 10, 20);
-    expect(mockGet).toHaveBeenCalledWith('/api/v2/search/results', { id: 1, limit: 10, offset: 20 });
+    expect(mockGet).toHaveBeenCalledWith('/api/v2/search/results', {
+      id: 1,
+      limit: 10,
+      offset: 20,
+    });
   });
 
   it('getResults without limit/offset', async () => {
@@ -113,13 +117,19 @@ describe('searchApi', () => {
   it('enablePlugin true', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await searchApi.enablePlugin(['a'], true);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/search/enablePlugin', { names: 'a', enable: 'true' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/search/enablePlugin', {
+      names: 'a',
+      enable: 'true',
+    });
   });
 
   it('enablePlugin false', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await searchApi.enablePlugin('a', false);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/search/enablePlugin', { names: 'a', enable: 'false' });
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/search/enablePlugin', {
+      names: 'a',
+      enable: 'false',
+    });
   });
 
   it('updatePlugins', async () => {

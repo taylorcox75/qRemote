@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  ReactNode,
+} from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ServerConfig, ServerEndpointKind } from '@/types/api';
 import { ServerManager } from '@/services/server-manager';
@@ -19,6 +27,8 @@ interface ServerContextType {
   activeEndpoint: ServerEndpointKind | null;
   connectToServer: (server: ServerConfig) => Promise<boolean>;
   disconnect: () => Promise<void>;
+  /** Drop the remembered last server (e.g. after it was deleted). */
+  forgetCurrentServer: () => void;
   reconnect: () => Promise<boolean>;
   checkAndReconnect: () => Promise<boolean>;
 }
@@ -68,15 +78,14 @@ export function ServerProvider({ children }: { children: ReactNode }) {
             const connected = await ServerManager.connectToServer(server);
             setIsConnected(connected);
             refreshActiveEndpoint(server, connected);
-            // On failure, connectToServer/connectToEndpoint has already
-            // cleared apiClient and logged the reason — no need to repeat it.
+            // Keep currentServer even on failure so Settings can offer Connect.
             if (!connected) {
-              setCurrentServer(null);
+              setIsConnected(false);
             }
           } catch {
             setIsConnected(false);
             setActiveEndpoint(null);
-            setCurrentServer(null);
+            // Keep currentServer so the user can retry from Settings.
           }
         } else {
           setIsConnected(false);
@@ -132,7 +141,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       }
     },
     onSuccess: () => {
-      setCurrentServer(null);
+      // Keep currentServer so Settings can show it with a Connect action.
       setIsConnected(false);
       setActiveEndpoint(null);
     },
@@ -141,6 +150,12 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const disconnect = async () => {
     await disconnectMutation.mutateAsync();
   };
+
+  const forgetCurrentServer = useCallback(() => {
+    setCurrentServer(null);
+    setIsConnected(false);
+    setActiveEndpoint(null);
+  }, []);
 
   const reconnect = useCallback(async (): Promise<boolean> => {
     try {
@@ -218,6 +233,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         activeEndpoint,
         connectToServer,
         disconnect,
+        forgetCurrentServer,
         reconnect,
         checkAndReconnect,
       }}

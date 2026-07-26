@@ -52,8 +52,12 @@ jest.mock('axios', () => ({
     constructor(initial?: Record<string, string>) {
       if (initial) Object.assign(this.headers, initial);
     }
-    set(key: string, value: string) { this.headers[key] = value; }
-    get(key: string) { return this.headers[key]; }
+    set(key: string, value: string) {
+      this.headers[key] = value;
+    }
+    get(key: string) {
+      return this.headers[key];
+    }
   },
   AxiosError: class extends Error {},
 }));
@@ -125,7 +129,11 @@ describe('apiClient request interceptor — Basic Auth', () => {
 
   it('adds a Basic Authorization header when useBasicAuth is true with credentials', () => {
     const config = runRequestInterceptor(
-      makeServer({ useBasicAuth: true, basicAuthUsername: 'proxyuser', basicAuthPassword: 'proxypass' })
+      makeServer({
+        useBasicAuth: true,
+        basicAuthUsername: 'proxyuser',
+        basicAuthPassword: 'proxypass',
+      }),
     );
     const headers = config.headers as Record<string, string>;
     expect(headers['Authorization']).toMatch(/^Basic /);
@@ -133,7 +141,7 @@ describe('apiClient request interceptor — Basic Auth', () => {
 
   it('Authorization header encodes the correct credentials', () => {
     const config = runRequestInterceptor(
-      makeServer({ useBasicAuth: true, basicAuthUsername: 'admin', basicAuthPassword: 'secret' })
+      makeServer({ useBasicAuth: true, basicAuthUsername: 'admin', basicAuthPassword: 'secret' }),
     );
     const headers = config.headers as Record<string, string>;
     const encoded = (headers['Authorization'] as string).slice(6);
@@ -142,7 +150,11 @@ describe('apiClient request interceptor — Basic Auth', () => {
   });
 
   it('coalesces undefined basicAuthPassword to empty string (no crash)', () => {
-    const server = makeServer({ useBasicAuth: true, basicAuthUsername: 'user', basicAuthPassword: undefined });
+    const server = makeServer({
+      useBasicAuth: true,
+      basicAuthUsername: 'user',
+      basicAuthPassword: undefined,
+    });
     expect(() => runRequestInterceptor(server)).not.toThrow();
     const config = runRequestInterceptor(server);
     const headers = config.headers as Record<string, string>;
@@ -154,7 +166,7 @@ describe('apiClient request interceptor — Basic Auth', () => {
 
   it('still sets Cookie header alongside Authorization when both are present', () => {
     apiClient.setServer(
-      makeServer({ useBasicAuth: true, basicAuthUsername: 'u', basicAuthPassword: 'p' })
+      makeServer({ useBasicAuth: true, basicAuthUsername: 'u', basicAuthPassword: 'p' }),
     );
     // Manually inject a cookie by simulating a captured response
     if (capturedResponseInterceptorSuccess) {

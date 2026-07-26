@@ -101,25 +101,21 @@ export function CategoryModal({
   const confirmDelete = (category: string) => {
     if (!onDeleteCategory) return;
     haptics.medium();
-    Alert.alert(
-      t('alerts.deleteCategory', { name: category }),
-      t('alerts.deleteCategoryMessage'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            setBusy(true);
-            try {
-              await onDeleteCategory(category);
-            } finally {
-              setBusy(false);
-            }
-          },
+    Alert.alert(t('alerts.deleteCategory', { name: category }), t('alerts.deleteCategoryMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await onDeleteCategory(category);
+          } finally {
+            setBusy(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -134,18 +130,18 @@ export function CategoryModal({
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
         <View style={[styles.sheet, { backgroundColor: colors.surface, ...shadows.large }]}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>
               {t('torrentDetail.setCategory')}
             </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel={t('common.close')}>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={t('common.close')}
+            >
               <Ionicons name="close-circle" size={26} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -165,7 +161,12 @@ export function CategoryModal({
               </Text>
             ) : (
               <View style={styles.chipRow}>
-                <View style={[styles.currentChip, { backgroundColor: colors.surface, borderColor: colors.primary }]}>
+                <View
+                  style={[
+                    styles.currentChip,
+                    { backgroundColor: colors.surface, borderColor: colors.primary },
+                  ]}
+                >
                   <Text style={[styles.currentChipText, { color: colors.primary }]}>
                     {currentCategory}
                   </Text>
@@ -191,7 +192,10 @@ export function CategoryModal({
                   {availableCategories.map((cat) => (
                     <TouchableOpacity
                       key={cat}
-                      style={[styles.availableChip, { backgroundColor: colors.background, borderColor: colors.surfaceOutline }]}
+                      style={[
+                        styles.availableChip,
+                        { backgroundColor: colors.background, borderColor: colors.surfaceOutline },
+                      ]}
                       onPress={() => handleSelect(cat)}
                       onLongPress={onDeleteCategory ? () => confirmDelete(cat) : undefined}
                       disabled={isLoading}

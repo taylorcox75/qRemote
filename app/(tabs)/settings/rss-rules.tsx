@@ -1,9 +1,12 @@
 /**
- * rules.tsx — RSS auto-download rule list.
+ * rss-rules.tsx — RSS auto-download rule list.
  *
  * Lists qBittorrent RSS rules (useRssRules), with per-row enable toggle,
  * and a long-press ActionMenu for rename / view-matching-articles / delete.
- * Add/edit itself lives in rule.tsx (this screen only navigates there).
+ * Add/edit itself lives in rss-rule.tsx (this screen only navigates there).
+ * Lives under app/(tabs)/settings/ (not app/(tabs)/rss/) so that pushing here
+ * from Settings stays within the Settings tab's own nested stack — back
+ * navigation correctly returns to Settings instead of switching tabs.
  */
 import React, { useCallback, useState } from 'react';
 import {
@@ -169,10 +172,7 @@ export default function RssRulesScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        edges={[]}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -201,7 +201,7 @@ export default function RssRulesScreen() {
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/rss/rule')}
+              onPress={() => router.push('/settings/rss-rule')}
               activeOpacity={0.8}
             >
               <Ionicons name="add" size={18} color="#FFFFFF" />
@@ -231,7 +231,7 @@ export default function RssRulesScreen() {
                   isBusy={busyName === name}
                   isLast={index === ruleList.length - 1}
                   onToggle={() => handleToggleEnabled(name, rule)}
-                  onPress={() => router.push({ pathname: '/rss/rule', params: { name } })}
+                  onPress={() => router.push({ pathname: '/settings/rss-rule', params: { name } })}
                   onLongPress={() => openMenu(name)}
                   colors={colors}
                 />

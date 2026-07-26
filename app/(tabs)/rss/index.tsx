@@ -109,6 +109,7 @@ export default function RssFeedsScreen() {
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | undefined>();
   const [pendingInput, setPendingInput] = useState<PendingInput | null>(null);
   const [pendingRemove, setPendingRemove] = useState<PendingRemove | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
@@ -311,11 +312,13 @@ export default function RssFeedsScreen() {
     [router],
   );
 
-  const openFolderMenu = useCallback((path: string) => {
+  const openFolderMenu = useCallback((path: string, anchor?: { x: number; y: number }) => {
+    setMenuAnchor(anchor);
     setMenuTarget({ kind: 'folder', path });
   }, []);
 
-  const openFeedMenu = useCallback((path: string) => {
+  const openFeedMenu = useCallback((path: string, anchor?: { x: number; y: number }) => {
+    setMenuAnchor(anchor);
     setMenuTarget({ kind: 'feed', path });
   }, []);
 
@@ -442,23 +445,13 @@ export default function RssFeedsScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        edges={[]}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <View style={styles.headerButton} />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t('screens.rss.feedsTitle')}
           </Text>
-          <TouchableOpacity
-            onPress={() => router.push('/rss/rules')}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-            accessibilityLabel={t('screens.rss.rulesTitle')}
-          >
-            <Ionicons name="funnel-outline" size={22} color={colors.text} />
-          </TouchableOpacity>
+          <View style={styles.headerButton} />
         </View>
 
         <View style={styles.actionRow}>
@@ -535,7 +528,8 @@ export default function RssFeedsScreen() {
                   isBusy={busyPath === item.path}
                   colors={colors}
                   onToggle={() => toggleFolder(item.path)}
-                  onLongPress={() => openFolderMenu(item.path)}
+                  onLongPress={(anchor) => openFolderMenu(item.path, anchor)}
+                  onMenuPress={(anchor) => openFolderMenu(item.path, anchor)}
                 />
               ) : (
                 <FeedRow
@@ -544,7 +538,8 @@ export default function RssFeedsScreen() {
                   isBusy={busyPath === item.path}
                   colors={colors}
                   onPress={() => handleOpenFeed(item.path)}
-                  onLongPress={() => openFeedMenu(item.path)}
+                  onLongPress={(anchor) => openFeedMenu(item.path, anchor)}
+                  onMenuPress={(anchor) => openFeedMenu(item.path, anchor)}
                 />
               )
             }
@@ -563,6 +558,7 @@ export default function RssFeedsScreen() {
         visible={menuTarget !== null}
         onClose={() => setMenuTarget(null)}
         items={menuItems}
+        anchor={menuAnchor}
       />
 
       <InputModal
@@ -604,6 +600,8 @@ export default function RssFeedsScreen() {
 
 // ─────────────────────────────────────────────────────── row components ───────
 
+type Anchor = { x: number; y: number };
+
 interface FolderRowProps {
   path: string;
   depth: number;
@@ -611,7 +609,8 @@ interface FolderRowProps {
   isBusy: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
   onToggle: () => void;
-  onLongPress: () => void;
+  onLongPress: (anchor: Anchor) => void;
+  onMenuPress: (anchor: Anchor) => void;
 }
 
 function FolderRow({
@@ -622,6 +621,7 @@ function FolderRow({
   colors,
   onToggle,
   onLongPress,
+  onMenuPress,
 }: FolderRowProps) {
   return (
     <TouchableOpacity
@@ -630,7 +630,7 @@ function FolderRow({
         { paddingLeft: spacing.lg + depth * spacing.lg, opacity: isBusy ? 0.5 : 1 },
       ]}
       onPress={onToggle}
-      onLongPress={onLongPress}
+      onLongPress={(e) => onLongPress({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
       disabled={isBusy}
       activeOpacity={0.6}
     >
@@ -641,10 +641,17 @@ function FolderRow({
         style={styles.chevron}
       />
       <Ionicons name="folder" size={20} color={colors.primary} style={styles.rowIcon} />
-      <Text style={[styles.rowTitle, { color: colors.text }]} numberOfLines={1}>
+      <Text style={[styles.rowTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>
         {rssPathBaseName(path)}
       </Text>
       {isBusy && <ActivityIndicator size="small" color={colors.primary} />}
+      <TouchableOpacity
+        onPress={(e) => onMenuPress({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
+        hitSlop={8}
+        style={styles.menuButton}
+      >
+        <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
@@ -655,10 +662,11 @@ interface FeedRowProps {
   isBusy: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
   onPress: () => void;
-  onLongPress: () => void;
+  onLongPress: (anchor: Anchor) => void;
+  onMenuPress: (anchor: Anchor) => void;
 }
 
-function FeedRow({ feed, depth, isBusy, colors, onPress, onLongPress }: FeedRowProps) {
+function FeedRow({ feed, depth, isBusy, colors, onPress, onLongPress, onMenuPress }: FeedRowProps) {
   return (
     <TouchableOpacity
       style={[
@@ -666,7 +674,7 @@ function FeedRow({ feed, depth, isBusy, colors, onPress, onLongPress }: FeedRowP
         { paddingLeft: spacing.lg + depth * spacing.lg, opacity: isBusy ? 0.5 : 1 },
       ]}
       onPress={onPress}
-      onLongPress={onLongPress}
+      onLongPress={(e) => onLongPress({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
       disabled={isBusy}
       activeOpacity={0.6}
     >
@@ -695,6 +703,13 @@ function FeedRow({ feed, depth, isBusy, colors, onPress, onLongPress }: FeedRowP
         ) : null}
       </View>
       {isBusy && <ActivityIndicator size="small" color={colors.primary} />}
+      <TouchableOpacity
+        onPress={(e) => onMenuPress({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
+        hitSlop={8}
+        style={styles.menuButton}
+      >
+        <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
@@ -783,6 +798,12 @@ const styles = StyleSheet.create({
   rowSubtitle: {
     ...typography.caption,
     marginTop: 2,
+  },
+  menuButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   center: {
     alignItems: 'center',

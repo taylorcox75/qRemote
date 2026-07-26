@@ -255,7 +255,8 @@ export class ServerManager {
         : 'Disconnect requested (no server was connected)',
     );
     apiClient.setServer(null);
-    await storageService.setCurrentServerId(null);
+    // Keep currentServerId so Settings can offer one-tap reconnect to the
+    // last server, and so auto-connect-last-server still has a target.
   }
 
   /**

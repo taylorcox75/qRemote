@@ -6,15 +6,25 @@
  * Sub-screens live alongside this file under app/(tabs)/settings/ so the
  * bottom tab bar stays visible while browsing settings.
  */
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  Linking,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as StoreReview from 'expo-store-review';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { ServerManager } from '@/services/server-manager';
 import { APP_VERSION } from '@/utils/version';
 import { getErrorMessage } from '@/utils/error';
 import { hasFallback } from '@/utils/server';
@@ -22,6 +32,8 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { colorThemeManager } from '@/services/color-theme-manager';
+
+const APP_STORE_URL = 'https://apps.apple.com/us/app/qremote-for-qbittorrent/id6756276747';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -49,18 +61,80 @@ function NavRow({ icon, label, onPress, colors, isLast, iconColor }: NavRowProps
   );
 }
 
+interface ExternalRowProps {
+  icon: IconName;
+  label?: string;
+  onPress: () => void;
+  colors: ThemeColors;
+  isLast?: boolean;
+  trailing?: 'open' | 'stars';
+  description?: string;
+}
+
+function ExternalRow({
+  icon,
+  label,
+  onPress,
+  colors,
+  isLast,
+  trailing = 'open',
+  description,
+}: ExternalRowProps) {
+  return (
+    <>
+      <TouchableOpacity style={styles.navRow} onPress={onPress} activeOpacity={0.7}>
+        <View style={styles.navLeft}>
+          <Ionicons name={icon} size={22} color={colors.primary} />
+          <View style={styles.navTextGroup}>
+            {label ? <Text style={[styles.navLabel, { color: colors.text }]}>{label}</Text> : null}
+            {description ? (
+              <Text style={[styles.navDescription, { color: colors.textSecondary }]}>
+                {description}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        {trailing === 'stars' ? (
+          <View style={styles.starsRow}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Ionicons key={i} name="star-outline" size={14} color={colors.primary} />
+            ))}
+          </View>
+        ) : (
+          <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+        )}
+      </TouchableOpacity>
+      {!isLast && <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />}
+    </>
+  );
+}
+
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { currentServer, isConnected, activeEndpoint, disconnect } = useServer();
+  const { currentServer, isConnected, activeEndpoint, disconnect, connectToServer, isLoading } =
+    useServer();
   const { showToast } = useToast();
   const { isDark, colors } = useTheme();
+  const [hasServers, setHasServers] = useState(false);
   const disconnectBadgeBackground = colorThemeManager.hexToRgba(
     colorThemeManager.rgbaToHex(colors.error),
     0.18,
   );
+  const connectBadgeBackground = colorThemeManager.hexToRgba(
+    colorThemeManager.rgbaToHex(colors.success),
+    0.18,
+  );
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      ServerManager.getServers()
+        .then((servers) => setHasServers(servers.length > 0))
+        .catch(() => setHasServers(false));
+    }, []),
+  );
 
   useEffect(() => {
     if (isConnected) {
@@ -86,70 +160,137 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleConnect = async () => {
+    if (!currentServer || isLoading) return;
+    try {
+      const success = await connectToServer(currentServer);
+      if (success) {
+        showToast(t('toast.connectedTo', { name: currentServer.name }), 'success');
+      } else {
+        showToast(t('toast.failedToConnect'), 'error');
+      }
+    } catch (error) {
+      showToast(getErrorMessage(error), 'error');
+    }
+  };
+
+  const handleRate = useCallback(async () => {
+    try {
+      if (await StoreReview.isAvailableAsync()) {
+        await StoreReview.requestReview();
+        return;
+      }
+    } catch {
+      // Fall through to opening the App Store listing directly.
+    }
+    Linking.openURL(`${APP_STORE_URL}?action=write-review`).catch(() => {});
+  }, []);
+
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Connection Status Card */}
-        {currentServer && (
+        {hasServers && currentServer ? (
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.connection').toUpperCase()}
             </Text>
             <TouchableOpacity
               style={[styles.card, { backgroundColor: colors.surface }]}
-              onPress={isConnected ? handleDisconnect : undefined}
-              activeOpacity={isConnected ? 0.7 : 1}
+              onPress={isConnected ? handleDisconnect : handleConnect}
+              activeOpacity={0.7}
+              disabled={isLoading}
             >
               <View style={styles.connectionRow}>
-                <View style={styles.connectionInfo}>
-                  <View style={styles.connectionTitleRow}>
-                    <Animated.View
-                      style={[
-                        styles.statusDot,
-                        {
-                          backgroundColor: isConnected ? colors.success : colors.error,
-                          transform: [{ scale: isConnected ? pulseAnim : 1 }],
-                        },
-                      ]}
-                    />
+                <View style={styles.connectionTitleRow}>
+                  <Animated.View
+                    style={[
+                      styles.statusDot,
+                      {
+                        backgroundColor: isConnected ? colors.success : colors.error,
+                        transform: [{ scale: isConnected ? pulseAnim : 1 }],
+                      },
+                    ]}
+                  />
+                  <View style={styles.connectionTextGroup}>
                     <Text style={[styles.connectionTitle, { color: colors.text }]}>
                       {currentServer.name}
                     </Text>
-                  </View>
-                  <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
-                    {currentServer.host}
-                    {currentServer.port != null && currentServer.port > 0
-                      ? `:${currentServer.port}`
-                      : ''}
-                  </Text>
-                  {isConnected && hasFallback(currentServer) && activeEndpoint && (
                     <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
-                      {activeEndpoint === 'fallback'
-                        ? t('server.connectedViaFallback')
-                        : t('server.connectedViaPrimary')}
+                      {currentServer.host}
+                      {currentServer.port != null && currentServer.port > 0
+                        ? `:${currentServer.port}`
+                        : ''}
                     </Text>
-                  )}
+                    {isConnected && hasFallback(currentServer) && activeEndpoint && (
+                      <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
+                        {activeEndpoint === 'fallback'
+                          ? t('server.connectedViaFallback')
+                          : t('server.connectedViaPrimary')}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-                {isConnected && (
+                {isConnected ? (
                   <View
                     style={[
-                      styles.disconnectBadge,
+                      styles.actionBadge,
                       {
                         backgroundColor: disconnectBadgeBackground,
                         borderColor: colors.error,
                       },
                     ]}
                   >
-                    <Text style={[styles.disconnectText, { color: colors.text }]}>
+                    <Text style={[styles.actionBadgeText, { color: colors.text }]}>
                       {t('screens.settings.disconnect')}
+                    </Text>
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.actionBadge,
+                      {
+                        backgroundColor: connectBadgeBackground,
+                        borderColor: colors.success,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.actionBadgeText, { color: colors.text }]}>
+                      {t('screens.settings.connect')}
                     </Text>
                   </View>
                 )}
               </View>
             </TouchableOpacity>
           </View>
-        )}
+        ) : !hasServers ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.connection').toUpperCase()}
+            </Text>
+            <TouchableOpacity
+              style={[styles.card, { backgroundColor: colors.surface }]}
+              onPress={() => router.push('/server/add')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.connectionRow}>
+                <View style={styles.connectionTitleRow}>
+                  <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                  <View style={styles.connectionTextGroup}>
+                    <Text style={[styles.connectionTitle, { color: colors.text }]}>
+                      {t('screens.settings.addServer')}
+                    </Text>
+                    <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
+                      {t('screens.settings.noServersConfigured')}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Navigation Rows */}
         <View style={styles.section}>
@@ -168,14 +309,14 @@ export default function SettingsScreen() {
             />
             <NavRow
               icon="options-outline"
-              label={t('screens.settings.torrentList')}
+              label={t('screens.settings.serverSettings')}
               onPress={() => router.push('/settings/torrent-defaults')}
               colors={colors}
             />
             <NavRow
-              icon="notifications-outline"
-              label={t('screens.settings.notificationsFeedback')}
-              onPress={() => router.push('/settings/notifications')}
+              icon="logo-rss"
+              label={t('screens.settings.rss')}
+              onPress={() => router.push('/settings/rss')}
               colors={colors}
             />
             <NavRow
@@ -207,6 +348,44 @@ export default function SettingsScreen() {
               label={t('screens.settings.about')}
               onPress={() => router.push('/settings/about')}
               colors={colors}
+              isLast
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+            {t('screens.settings.community').toUpperCase()}
+          </Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <ExternalRow
+              icon="logo-github"
+              label={t('screens.settings.sourceCode')}
+              onPress={() => Linking.openURL('https://github.com/taylorcox75/qremote')}
+              colors={colors}
+            />
+            <ExternalRow
+              icon="bug-outline"
+              label={t('screens.settings.reportIssue')}
+              onPress={() => Linking.openURL('https://github.com/taylorcox75/qRemote/issues')}
+              colors={colors}
+            />
+            <ExternalRow
+              icon="beer-outline"
+              label={t('screens.settings.buyMeBeer')}
+              onPress={() =>
+                Linking.openURL(
+                  'https://www.paypal.com/donate/?business=E9XLGFHN963HN&no_recurring=0&currency_code=USD',
+                )
+              }
+              colors={colors}
+            />
+            <ExternalRow
+              description={t('screens.settings.rateAppHint')}
+              onPress={handleRate}
+              colors={colors}
+              trailing="stars"
+              icon="thumbs-up-outline"
               isLast
             />
           </View>
@@ -246,14 +425,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: spacing.lg,
-  },
-  connectionInfo: {
-    flex: 1,
+    gap: spacing.md,
   },
   connectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flex: 1,
+  },
+  connectionTextGroup: {
+    flex: 1,
   },
   statusDot: {
     width: 12,
@@ -267,15 +448,14 @@ const styles = StyleSheet.create({
   connectionSubtitle: {
     ...typography.small,
     marginTop: 2,
-    marginLeft: 20,
   },
-  disconnectBadge: {
+  actionBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: borderRadius.small,
     borderWidth: 1,
   },
-  disconnectText: {
+  actionBadgeText: {
     fontSize: 14,
     fontWeight: '600',
   },
@@ -290,10 +470,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  navTextGroup: {
+    flex: 1,
   },
   navLabel: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  navDescription: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
   },
   separator: {
     height: 1,

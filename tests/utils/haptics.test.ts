@@ -40,7 +40,9 @@ describe('haptics', () => {
 
   it('success triggers notificationAsync with Success type', () => {
     haptics.success();
-    expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success);
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith(
+      Haptics.NotificationFeedbackType.Success,
+    );
   });
 
   it('error triggers notificationAsync with Error type', () => {
@@ -50,7 +52,9 @@ describe('haptics', () => {
 
   it('warning triggers notificationAsync with Warning type', () => {
     haptics.warning();
-    expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Warning);
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith(
+      Haptics.NotificationFeedbackType.Warning,
+    );
   });
 
   it('selection triggers selectionAsync', () => {

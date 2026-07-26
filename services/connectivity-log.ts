@@ -20,9 +20,9 @@ export type ConnectivityLogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
 export interface ConnectivityLogEntry {
   id: number;
-  timestamp: number;       // Date.now()
+  timestamp: number; // Date.now()
   level: ConnectivityLogLevel;
-  tag: string;             // e.g. 'AUTH', 'API', 'CONN', 'HTTP'
+  tag: string; // e.g. 'AUTH', 'API', 'CONN', 'HTTP'
   message: string;
 }
 
@@ -32,11 +32,7 @@ let nextId = 1;
 /**
  * Push a log entry.  Called from services (auth, client, server-manager).
  */
-export function clog(
-  level: ConnectivityLogLevel,
-  tag: string,
-  message: string,
-): void {
+export function clog(level: ConnectivityLogLevel, tag: string, message: string): void {
   if (level === 'DEBUG' && !debugModeEnabled) return;
 
   entries.push({
@@ -55,8 +51,8 @@ export function clog(
 
 /** Convenience helpers */
 export const clogDebug = (tag: string, msg: string) => clog('DEBUG', tag, msg);
-export const clogInfo  = (tag: string, msg: string) => clog('INFO',  tag, msg);
-export const clogWarn  = (tag: string, msg: string) => clog('WARN',  tag, msg);
+export const clogInfo = (tag: string, msg: string) => clog('INFO', tag, msg);
+export const clogWarn = (tag: string, msg: string) => clog('WARN', tag, msg);
 export const clogError = (tag: string, msg: string) => clog('ERROR', tag, msg);
 
 /**
@@ -83,9 +79,11 @@ export function formatConnectivityLog(): string {
     return '(no connectivity log entries captured this session)';
   }
 
-  return entries.map((e) => {
-    const d = new Date(e.timestamp);
-    const ts = d.toISOString().replace('T', ' ').replace('Z', '');
-    return `${ts} [${e.level}] [${e.tag}] ${e.message}`;
-  }).join('\n');
+  return entries
+    .map((e) => {
+      const d = new Date(e.timestamp);
+      const ts = d.toISOString().replace('T', ' ').replace('Z', '');
+      return `${ts} [${e.level}] [${e.tag}] ${e.message}`;
+    })
+    .join('\n');
 }

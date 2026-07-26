@@ -89,8 +89,17 @@ export const colorThemeManager = {
 
   /** Keys used only for torrent state colors (can be reset independently) */
   torrentStateColorKeys: [
-    'stateDownloading', 'stateSeeding', 'stateUploadAndDownload', 'stateUploadOnly',
-    'stateError', 'stateStalled', 'statePaused', 'stateChecking', 'stateMetadata', 'stateQueued', 'stateOther',
+    'stateDownloading',
+    'stateSeeding',
+    'stateUploadAndDownload',
+    'stateUploadOnly',
+    'stateError',
+    'stateStalled',
+    'statePaused',
+    'stateChecking',
+    'stateMetadata',
+    'stateQueued',
+    'stateOther',
   ] as const,
 
   /**
@@ -136,15 +145,16 @@ export const colorThemeManager = {
     if (rgba.startsWith('#') && (rgba.length === 7 || rgba.length === 4)) return rgba;
     const match = rgba.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
     if (!match) return '#000000';
-    
+
     const r = parseInt(match[1], 10);
     const g = parseInt(match[2], 10);
     const b = parseInt(match[3], 10);
-    
-    return `#${[r, g, b].map(x => {
-      const hex = x.toString(16);
-      return hex.length === 1 ? '0' + hex : hex;
-    }).join('')}`;
+
+    return `#${[r, g, b]
+      .map((x) => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      })
+      .join('')}`;
   },
 };
-

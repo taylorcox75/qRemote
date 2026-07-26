@@ -8,7 +8,7 @@ export const transferApi = {
    * Get global transfer info
    */
   async getGlobalTransferInfo(): Promise<GlobalTransferInfo> {
-    return await apiClient.get(`/api/${API_VERSION}/transfer/info`) as GlobalTransferInfo;
+    return (await apiClient.get(`/api/${API_VERSION}/transfer/info`)) as GlobalTransferInfo;
   },
 
   /**
@@ -30,7 +30,7 @@ export const transferApi = {
    * Get global download limit
    */
   async getGlobalDownloadLimit(): Promise<number> {
-    return await apiClient.get(`/api/${API_VERSION}/transfer/downloadLimit`) as number;
+    return (await apiClient.get(`/api/${API_VERSION}/transfer/downloadLimit`)) as number;
   },
 
   /**
@@ -46,7 +46,7 @@ export const transferApi = {
    * Get global upload limit
    */
   async getGlobalUploadLimit(): Promise<number> {
-    return await apiClient.get(`/api/${API_VERSION}/transfer/uploadLimit`) as number;
+    return (await apiClient.get(`/api/${API_VERSION}/transfer/uploadLimit`)) as number;
   },
 
   /**
@@ -67,4 +67,3 @@ export const transferApi = {
     });
   },
 };
-

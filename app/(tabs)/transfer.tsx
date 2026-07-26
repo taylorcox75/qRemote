@@ -148,7 +148,9 @@ export default function TransferScreen() {
 
   // Custom limit modal state
   const [limitModalVisible, setLimitModalVisible] = useState(false);
-  const [limitType, setLimitType] = useState<'download' | 'upload' | 'altDownload' | 'altUpload' | null>(null);
+  const [limitType, setLimitType] = useState<
+    'download' | 'upload' | 'altDownload' | 'altUpload' | null
+  >(null);
   const [limitInput, setLimitInput] = useState('');
 
   // Speed tracking
@@ -166,10 +168,7 @@ export default function TransferScreen() {
     () => speedData.map((point) => point.downloadSpeed),
     [speedData],
   );
-  const uploadGraphData = useMemo(
-    () => speedData.map((point) => point.uploadSpeed),
-    [speedData],
-  );
+  const uploadGraphData = useMemo(() => speedData.map((point) => point.uploadSpeed), [speedData]);
 
   const speedOptions = useMemo(() => buildSpeedOptions(t), [t]);
 
@@ -224,9 +223,7 @@ export default function TransferScreen() {
     setActionLoading('pauseDL');
     try {
       const downloadingHashes = torrents
-        .filter(
-          (t) => t.state === 'downloading' || t.state === 'forcedDL' || t.state === 'metaDL',
-        )
+        .filter((t) => t.state === 'downloading' || t.state === 'forcedDL' || t.state === 'metaDL')
         .map((t) => t.hash);
       if (downloadingHashes.length === 0) {
         showToast(t('screens.transfer.noDlTorrents'), 'info');
@@ -235,10 +232,7 @@ export default function TransferScreen() {
       }
       await torrentsApi.pauseTorrents(downloadingHashes);
       await syncTorrents();
-      showToast(
-        t('screens.transfer.pausedDl', { count: downloadingHashes.length }),
-        'success',
-      );
+      showToast(t('screens.transfer.pausedDl', { count: downloadingHashes.length }), 'success');
     } catch (err: unknown) {
       showToast(getErrorMessage(err), 'error');
     } finally {
@@ -250,9 +244,7 @@ export default function TransferScreen() {
     setActionLoading('pauseUL');
     try {
       const uploadingHashes = torrents
-        .filter(
-          (t) => t.state === 'uploading' || t.state === 'forcedUP' || t.state === 'stalledUP',
-        )
+        .filter((t) => t.state === 'uploading' || t.state === 'forcedUP' || t.state === 'stalledUP')
         .map((t) => t.hash);
       if (uploadingHashes.length === 0) {
         showToast(t('screens.transfer.noUlTorrents'), 'info');
@@ -261,10 +253,7 @@ export default function TransferScreen() {
       }
       await torrentsApi.pauseTorrents(uploadingHashes);
       await syncTorrents();
-      showToast(
-        t('screens.transfer.pausedUl', { count: uploadingHashes.length }),
-        'success',
-      );
+      showToast(t('screens.transfer.pausedUl', { count: uploadingHashes.length }), 'success');
     } catch (err: unknown) {
       showToast(getErrorMessage(err), 'error');
     } finally {
@@ -464,18 +453,26 @@ export default function TransferScreen() {
 
   const getLimitModalTitle = () => {
     switch (limitType) {
-      case 'download': return t('screens.transfer.downloadLimit');
-      case 'upload': return t('screens.transfer.uploadLimit');
-      case 'altDownload': return t('screens.transfer.altDownloadLimit');
-      case 'altUpload': return t('screens.transfer.altUploadLimit');
-      default: return '';
+      case 'download':
+        return t('screens.transfer.downloadLimit');
+      case 'upload':
+        return t('screens.transfer.uploadLimit');
+      case 'altDownload':
+        return t('screens.transfer.altDownloadLimit');
+      case 'altUpload':
+        return t('screens.transfer.altUploadLimit');
+      default:
+        return '';
     }
   };
 
   const openAltLimitModal = (type: 'altDownload' | 'altUpload') => {
-    const currentBytes = type === 'altDownload' ? transferInfo.alt_dl_limit : transferInfo.alt_up_limit;
+    const currentBytes =
+      type === 'altDownload' ? transferInfo.alt_dl_limit : transferInfo.alt_up_limit;
     setLimitType(type);
-    setLimitInput(currentBytes != null && currentBytes > 0 ? String(Math.round(bytesToKb(currentBytes))) : '');
+    setLimitInput(
+      currentBytes != null && currentBytes > 0 ? String(Math.round(bytesToKb(currentBytes))) : '',
+    );
     setLimitModalVisible(true);
   };
 
@@ -593,9 +590,7 @@ export default function TransferScreen() {
                   color={colors.primary}
                   width={GRAPH_WIDTH}
                   height={80}
-                  maxValue={
-                    transferInfo.dl_rate_limit > 0 ? transferInfo.dl_rate_limit : undefined
-                  }
+                  maxValue={transferInfo.dl_rate_limit > 0 ? transferInfo.dl_rate_limit : undefined}
                 />
               </View>
               <View style={styles.heroGraphOverlay}>
@@ -604,9 +599,7 @@ export default function TransferScreen() {
                   color={colors.success}
                   width={GRAPH_WIDTH}
                   height={80}
-                  maxValue={
-                    transferInfo.up_rate_limit > 0 ? transferInfo.up_rate_limit : undefined
-                  }
+                  maxValue={transferInfo.up_rate_limit > 0 ? transferInfo.up_rate_limit : undefined}
                 />
               </View>
             </View>
@@ -868,9 +861,7 @@ export default function TransferScreen() {
                     style={[
                       styles.statusDot,
                       {
-                        backgroundColor: getConnectionStatusColor(
-                          transferInfo.connection_status,
-                        ),
+                        backgroundColor: getConnectionStatusColor(transferInfo.connection_status),
                       },
                     ]}
                   />
@@ -897,9 +888,7 @@ export default function TransferScreen() {
 
               {serverState && (
                 <>
-                  <View
-                    style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
-                  />
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                   <View style={styles.row}>
                     <Text style={[styles.rowLabel, { color: colors.text }]}>
                       {t('screens.transfer.peers')}
@@ -913,9 +902,7 @@ export default function TransferScreen() {
 
               {diskSpaceInfo && diskSpaceInfo.free > 0 && (
                 <>
-                  <View
-                    style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
-                  />
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                   <View style={styles.row}>
                     <Text style={[styles.rowLabel, { color: colors.text }]}>
                       {t('screens.transfer.freeDiskSpace')}

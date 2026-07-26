@@ -14,7 +14,7 @@ describe('SkeletonLoader', () => {
 
   it('renders with custom width/height/borderRadius/style', async () => {
     const { toJSON } = await render(
-      <SkeletonLoader width={100} height={40} borderRadius={10} style={{ marginTop: 4 }} />
+      <SkeletonLoader width={100} height={40} borderRadius={10} style={{ marginTop: 4 }} />,
     );
     expect(toJSON()).toBeTruthy();
   });

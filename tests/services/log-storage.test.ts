@@ -89,7 +89,9 @@ describe('logStorage', () => {
       await logStorage.storeLogs(sampleLogs);
       // Simulate remainingLogs check returning a value once, forcing retry path
       const originalGetItem = AsyncStorage.getItem as jest.Mock;
-      originalGetItem.mockImplementationOnce((key: string) => Promise.resolve(mockAsyncStorage[key] ?? null)); // check call
+      originalGetItem.mockImplementationOnce((key: string) =>
+        Promise.resolve(mockAsyncStorage[key] ?? null),
+      ); // check call
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       await logStorage.clearLogs();
       consoleSpy.mockRestore();

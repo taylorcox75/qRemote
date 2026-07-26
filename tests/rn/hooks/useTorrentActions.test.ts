@@ -33,7 +33,9 @@ jest.mock('expo-clipboard', () => ({
   setStringAsync: jest.fn(),
 }));
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string, opts?: any) => (opts ? `${key}:${JSON.stringify(opts)}` : key) }),
+  useTranslation: () => ({
+    t: (key: string, opts?: any) => (opts ? `${key}:${JSON.stringify(opts)}` : key),
+  }),
 }));
 
 const baseTorrent: TorrentInfo = {

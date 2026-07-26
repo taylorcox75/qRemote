@@ -100,7 +100,7 @@ describe('TorrentCard state badge', () => {
     const tintStyle = StyleSheet.flatten((tintLayer as any).props.style);
     expect(tintStyle).toMatchObject({
       backgroundColor: downloadingColor,
-      opacity: 0.28,
+      opacity: 0.55,
       position: 'absolute',
     });
     expect(StyleSheet.flatten(badge?.props.style)).toMatchObject({ overflow: 'hidden' });
@@ -173,7 +173,9 @@ describe('TorrentCard stats line', () => {
     ].join('  ·  ');
     expect(screen.getByText(compactLine)).toBeTruthy();
     expect(
-      screen.getByText(`${formatSize(baseTorrent.completed)} / ${formatSize(baseTorrent.total_size)}`),
+      screen.getByText(
+        `${formatSize(baseTorrent.completed)} / ${formatSize(baseTorrent.total_size)}`,
+      ),
     ).toBeTruthy();
   });
 });
@@ -302,9 +304,7 @@ describe('TorrentCard three-dot menu button', () => {
 
     await screen.unmount();
 
-    await render(
-      <TorrentCard torrent={baseTorrent} onPress={jest.fn()} onMenuPress={jest.fn()} />,
-    );
+    await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} onMenuPress={jest.fn()} />);
     expect(screen.getByLabelText('actions.torrentMenu')).toBeTruthy();
   });
 
@@ -315,9 +315,7 @@ describe('TorrentCard three-dot menu button', () => {
     );
     const onMenuPress = jest.fn();
     const onPress = jest.fn();
-    await render(
-      <TorrentCard torrent={baseTorrent} onPress={onPress} onMenuPress={onMenuPress} />,
-    );
+    await render(<TorrentCard torrent={baseTorrent} onPress={onPress} onMenuPress={onMenuPress} />);
 
     fireEvent.press(screen.getByLabelText('actions.torrentMenu'), { nativeEvent: {} });
 

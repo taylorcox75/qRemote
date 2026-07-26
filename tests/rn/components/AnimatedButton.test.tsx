@@ -12,7 +12,7 @@ describe('AnimatedButton', () => {
     await render(
       <AnimatedButton>
         <Text>Press me</Text>
-      </AnimatedButton>
+      </AnimatedButton>,
     );
     expect(screen.getByText('Press me')).toBeTruthy();
   });
@@ -22,7 +22,7 @@ describe('AnimatedButton', () => {
     await render(
       <AnimatedButton onPress={onPress}>
         <Text>Tap</Text>
-      </AnimatedButton>
+      </AnimatedButton>,
     );
     fireEvent.press(screen.getByText('Tap'));
     expect(onPress).toHaveBeenCalledTimes(1);
@@ -33,7 +33,7 @@ describe('AnimatedButton', () => {
     await render(
       <AnimatedButton scaleValue={0.9}>
         <Text>Anim</Text>
-      </AnimatedButton>
+      </AnimatedButton>,
     );
     const el = screen.getByText('Anim');
     await act(async () => {
@@ -49,7 +49,7 @@ describe('AnimatedButton', () => {
     await render(
       <AnimatedButton disabled onPress={onPress}>
         <Text>Disabled</Text>
-      </AnimatedButton>
+      </AnimatedButton>,
     );
     const el = screen.getByText('Disabled');
     fireEvent(el, 'pressIn');

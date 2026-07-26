@@ -42,7 +42,7 @@ export default function AppearanceSettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPreferences();
-    }, [])
+    }, []),
   );
 
   const loadPreferences = async () => {
@@ -57,7 +57,10 @@ export default function AppearanceSettingsScreen() {
     }
   };
 
-  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
+  const savePreference = async <K extends keyof AppPreferences>(
+    key: K,
+    value: AppPreferences[K],
+  ) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -92,22 +95,33 @@ export default function AppearanceSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.appearance')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t('screens.settings.appearance')}
+          </Text>
           <View style={styles.headerButton} />
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Language */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.language').toUpperCase()}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.language').toUpperCase()}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="language-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.language')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.language')}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.pickerButton}
@@ -115,7 +129,11 @@ export default function AppearanceSettingsScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.pickerText, { color: colors.text }]}>
-                    {languageOptions.find((opt) => opt.value === ((i18n.language || 'en').startsWith('zh') ? 'zh' : (i18n.language || 'en')))?.label || 'English'}
+                    {languageOptions.find(
+                      (opt) =>
+                        opt.value ===
+                        ((i18n.language || 'en').startsWith('zh') ? 'zh' : i18n.language || 'en'),
+                    )?.label || 'English'}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -125,7 +143,9 @@ export default function AppearanceSettingsScreen() {
 
           {/* Theme & Colors */}
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.appearance').toUpperCase()}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.appearance').toUpperCase()}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.settingRow}
@@ -135,7 +155,9 @@ export default function AppearanceSettingsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="color-palette-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.themeAndColors')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.themeAndColors')}
+                    </Text>
                     <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
                       {t('screens.settings.themeDescription')}
                     </Text>
@@ -152,7 +174,9 @@ export default function AppearanceSettingsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.addTorrentDialogue')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.addTorrentDialogue')}
+                    </Text>
                     <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
                       {t('screens.settings.addTorrentDialogueDescription')}
                     </Text>
@@ -168,7 +192,9 @@ export default function AppearanceSettingsScreen() {
                     size={22}
                     color={colors.primary}
                   />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.detailedCardView')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.detailedCardView')}
+                  </Text>
                 </View>
                 <Switch
                   value={cardViewMode === 'expanded'}
@@ -186,7 +212,9 @@ export default function AppearanceSettingsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="list-circle-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.detailedCardFields')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.detailedCardFields')}
+                    </Text>
                     <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
                       {t('screens.settings.detailedCardFieldsDescription')}
                     </Text>
@@ -199,12 +227,19 @@ export default function AppearanceSettingsScreen() {
                 <View style={styles.settingLeft}>
                   <Ionicons name="refresh-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.refreshInterval')}</Text>
-                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.milliseconds')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.refreshInterval')}
+                    </Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                      {t('screens.settings.milliseconds')}
+                    </Text>
                   </View>
                 </View>
                 <TextInput
-                  style={[styles.settingInput, { borderColor: colors.textSecondary, color: colors.text }]}
+                  style={[
+                    styles.settingInput,
+                    { borderColor: colors.textSecondary, color: colors.text },
+                  ]}
                   value={autoRefreshInterval}
                   onChangeText={setAutoRefreshInterval}
                   onBlur={() => saveAutoRefreshInterval(autoRefreshInterval)}
@@ -221,7 +256,7 @@ export default function AppearanceSettingsScreen() {
         visible={languagePickerVisible}
         title={t('screens.settings.language')}
         options={languageOptions}
-        selectedValue={(i18n.language || 'en').startsWith('zh') ? 'zh' : (i18n.language || 'en')}
+        selectedValue={(i18n.language || 'en').startsWith('zh') ? 'zh' : i18n.language || 'en'}
         onSelect={async (value) => {
           await setStoredLanguage(value);
           await i18n.changeLanguage(value);

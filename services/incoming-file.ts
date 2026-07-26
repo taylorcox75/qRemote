@@ -3,7 +3,8 @@ import type { IncomingTorrentFile } from '@/utils/torrent-file';
 
 const INCOMING_TORRENTS_DIR = `${FileSystem.cacheDirectory}incoming-torrents/`;
 
-const sanitizeFileName = (name: string): string => name.replace(/[^a-zA-Z0-9._-]/g, '_') || 'download.torrent';
+const sanitizeFileName = (name: string): string =>
+  name.replace(/[^a-zA-Z0-9._-]/g, '_') || 'download.torrent';
 
 /**
  * Copy an incoming .torrent file into the app's own cache directory.
@@ -15,7 +16,9 @@ const sanitizeFileName = (name: string): string => name.replace(/[^a-zA-Z0-9._-]
  * immediately, before any further delay, gives us a stable app-owned URI to
  * upload from instead.
  */
-export async function persistIncomingTorrentFile(file: IncomingTorrentFile): Promise<IncomingTorrentFile> {
+export async function persistIncomingTorrentFile(
+  file: IncomingTorrentFile,
+): Promise<IncomingTorrentFile> {
   if (!file.uri.startsWith('file://')) {
     return file;
   }

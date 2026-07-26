@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  ReactNode,
+} from 'react';
 import { AppState, AppStateStatus, InteractionManager } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { GlobalTransferInfo } from '@/types/api';
@@ -35,8 +43,10 @@ async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
     // qBittorrent's app/preferences endpoint stores alt_*_limit in bytes/s
     // (despite the WebUI API wiki claiming KiB/s). Verified empirically: setting
     // 1024 ends up as 1 KiB/s in qBT's WebUI, i.e. qBT divides by 1024 for display.
-    alt_dl_limit: serverPrefs?.alt_dl_limit != null ? (serverPrefs.alt_dl_limit as number) : undefined,
-    alt_up_limit: serverPrefs?.alt_up_limit != null ? (serverPrefs.alt_up_limit as number) : undefined,
+    alt_dl_limit:
+      serverPrefs?.alt_dl_limit != null ? (serverPrefs.alt_dl_limit as number) : undefined,
+    alt_up_limit:
+      serverPrefs?.alt_up_limit != null ? (serverPrefs.alt_up_limit as number) : undefined,
   };
 }
 
@@ -102,9 +112,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
           // query too — only when it's actually needed.
           await new Promise<void>((resolve) => {
             InteractionManager.runAfterInteractions(() => {
-              queryClient
-                .invalidateQueries({ queryKey: ['transfer'] })
-                .finally(() => resolve());
+              queryClient.invalidateQueries({ queryKey: ['transfer'] }).finally(() => resolve());
             });
           });
           setIsRecoveringState(false);
@@ -133,53 +141,65 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, queryClient]);
 
-  const setDownloadLimit = useCallback(async (limit: number) => {
-    if (!isConnected) return;
-    try {
-      await transferApi.setGlobalDownloadLimit(limit);
-      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-    } catch (err: unknown) {
-      setMutationError(getErrorMessage(err));
-    }
-  }, [isConnected, queryClient]);
+  const setDownloadLimit = useCallback(
+    async (limit: number) => {
+      if (!isConnected) return;
+      try {
+        await transferApi.setGlobalDownloadLimit(limit);
+        await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+      } catch (err: unknown) {
+        setMutationError(getErrorMessage(err));
+      }
+    },
+    [isConnected, queryClient],
+  );
 
-  const setUploadLimit = useCallback(async (limit: number) => {
-    if (!isConnected) return;
-    try {
-      await transferApi.setGlobalUploadLimit(limit);
-      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-    } catch (err: unknown) {
-      setMutationError(getErrorMessage(err));
-    }
-  }, [isConnected, queryClient]);
+  const setUploadLimit = useCallback(
+    async (limit: number) => {
+      if (!isConnected) return;
+      try {
+        await transferApi.setGlobalUploadLimit(limit);
+        await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+      } catch (err: unknown) {
+        setMutationError(getErrorMessage(err));
+      }
+    },
+    [isConnected, queryClient],
+  );
 
   // Alt limits use the pref keys alt_dl_limit / alt_up_limit (note: 'up', not 'ul';
   // confirmed against qBT 5.x server output) and are stored in bytes/s on the
   // app/preferences endpoint, despite the WebUI API wiki claiming KiB/s.
   // Mirrors the bytes/s contract of setDownloadLimit / setUploadLimit above.
-  const setAltDownloadLimit = useCallback(async (bytesLimit: number) => {
-    if (!isConnected) return;
-    try {
-      await applicationApi.setPreferences({ alt_dl_limit: bytesLimit });
-      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-    } catch (err: unknown) {
-      setMutationError(getErrorMessage(err));
-    }
-  }, [isConnected, queryClient]);
+  const setAltDownloadLimit = useCallback(
+    async (bytesLimit: number) => {
+      if (!isConnected) return;
+      try {
+        await applicationApi.setPreferences({ alt_dl_limit: bytesLimit });
+        await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+      } catch (err: unknown) {
+        setMutationError(getErrorMessage(err));
+      }
+    },
+    [isConnected, queryClient],
+  );
 
-  const setAltUploadLimit = useCallback(async (bytesLimit: number) => {
-    if (!isConnected) return;
-    try {
-      await applicationApi.setPreferences({ alt_up_limit: bytesLimit });
-      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-    } catch (err: unknown) {
-      setMutationError(getErrorMessage(err));
-    }
-  }, [isConnected, queryClient]);
+  const setAltUploadLimit = useCallback(
+    async (bytesLimit: number) => {
+      if (!isConnected) return;
+      try {
+        await applicationApi.setPreferences({ alt_up_limit: bytesLimit });
+        await queryClient.invalidateQueries({ queryKey: ['transfer'] });
+      } catch (err: unknown) {
+        setMutationError(getErrorMessage(err));
+      }
+    },
+    [isConnected, queryClient],
+  );
 
   const transferInfo = isConnected ? (transferData ?? null) : null;
-  const error = mutationError
-    ?? (isRecoveringState ? null : queryError ? getErrorMessage(queryError) : null);
+  const error =
+    mutationError ?? (isRecoveringState ? null : queryError ? getErrorMessage(queryError) : null);
 
   return (
     <TransferContext.Provider

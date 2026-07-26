@@ -34,7 +34,7 @@ describe('ApiVersionContext', () => {
     };
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     await expect(render(<Bad />)).rejects.toThrow(
-      'useApiFeatures must be used within ApiVersionProvider'
+      'useApiFeatures must be used within ApiVersionProvider',
     );
     spy.mockRestore();
   });
@@ -46,7 +46,7 @@ describe('ApiVersionContext', () => {
     await render(
       <ApiVersionProvider>
         <Consumer onRender={(ctx) => (latest = ctx)} />
-      </ApiVersionProvider>
+      </ApiVersionProvider>,
     );
     await waitFor(() => expect(latest).toBeDefined());
     expect(latest!.apiVersion).toBeNull();
@@ -60,7 +60,7 @@ describe('ApiVersionContext', () => {
     await render(
       <ApiVersionProvider>
         <Consumer onRender={(ctx) => (latest = ctx)} />
-      </ApiVersionProvider>
+      </ApiVersionProvider>,
     );
     await waitFor(() => expect(latest).toBeDefined());
     expect(latest!.apiVersion).toBe('2.8.3');
@@ -75,7 +75,7 @@ describe('ApiVersionContext', () => {
     await render(
       <ApiVersionProvider>
         <Consumer onRender={(ctx) => (latest = ctx)} />
-      </ApiVersionProvider>
+      </ApiVersionProvider>,
     );
     await waitFor(() => expect(latest).toBeDefined());
     expect(latest!.apiVersion).toBe('2.11.2');

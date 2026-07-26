@@ -37,7 +37,7 @@ export default function ManageTrackersScreen() {
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
   const { t } = useTranslation();
-  
+
   const [trackers, setTrackers] = useState<Tracker[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingTracker, setAddingTracker] = useState(false);
@@ -58,8 +58,12 @@ export default function ManageTrackersScreen() {
       const trackersData = await torrentsApi.getTorrentTrackers(hash);
       // Filter out DHT, PEX, LSD entries
       const realTrackers = trackersData.filter(
-        t => t.url && !t.url.includes('**') && !t.url.includes('DHT') && 
-             !t.url.includes('PEX') && !t.url.includes('LSD')
+        (t) =>
+          t.url &&
+          !t.url.includes('**') &&
+          !t.url.includes('DHT') &&
+          !t.url.includes('PEX') &&
+          !t.url.includes('LSD'),
       );
       setTrackers(realTrackers);
     } catch (error: unknown) {
@@ -101,19 +105,27 @@ export default function ManageTrackersScreen() {
 
   const getStatusText = (status: number) => {
     switch (status) {
-      case 2: return t('screens.trackers.working');
-      case 3: return t('screens.trackers.updating');
-      case 0: return t('screens.trackers.disabled');
-      default: return t('screens.trackers.notContacted');
+      case 2:
+        return t('screens.trackers.working');
+      case 3:
+        return t('screens.trackers.updating');
+      case 0:
+        return t('screens.trackers.disabled');
+      default:
+        return t('screens.trackers.notContacted');
     }
   };
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 2: return colors.success;
-      case 3: return colors.primary;
-      case 0: return colors.textSecondary;
-      default: return colors.textSecondary;
+      case 2:
+        return colors.success;
+      case 3:
+        return colors.primary;
+      case 0:
+        return colors.textSecondary;
+      default:
+        return colors.textSecondary;
     }
   };
 
@@ -167,9 +179,14 @@ export default function ManageTrackersScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      
+
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline }]}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
+        ]}
+      >
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
@@ -178,7 +195,7 @@ export default function ManageTrackersScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text 
+        <Text
           style={[styles.headerTitle, { color: colors.text }]}
           numberOfLines={1}
           adjustsFontSizeToFit
@@ -186,10 +203,13 @@ export default function ManageTrackersScreen() {
           {t('screens.trackers.title')}
         </Text>
         <TouchableOpacity
-          style={[styles.reannounceButton, { 
-            backgroundColor: reannouncing ? colors.primary : 'transparent',
-            borderColor: reannouncing ? colors.primary : colors.textSecondary,
-          }]}
+          style={[
+            styles.reannounceButton,
+            {
+              backgroundColor: reannouncing ? colors.primary : 'transparent',
+              borderColor: reannouncing ? colors.primary : colors.textSecondary,
+            },
+          ]}
           onPress={handleReannounceAll}
           disabled={reannouncing}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -212,15 +232,16 @@ export default function ManageTrackersScreen() {
           {/* Add New Tracker - At Top */}
           {showAddInput ? (
             <View style={[styles.addTrackerCard, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.addTrackerLabel, { color: colors.text }]}>
-                New Tracker URL
-              </Text>
+              <Text style={[styles.addTrackerLabel, { color: colors.text }]}>New Tracker URL</Text>
               <TextInput
-                style={[styles.addTrackerInput, { 
-                  backgroundColor: colors.background, 
-                  color: colors.text,
-                  borderColor: colors.surfaceOutline 
-                }]}
+                style={[
+                  styles.addTrackerInput,
+                  {
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    borderColor: colors.surfaceOutline,
+                  },
+                ]}
                 value={newTrackerUrl}
                 onChangeText={setNewTrackerUrl}
                 placeholder="https://tracker.example.com/announce"
@@ -237,7 +258,7 @@ export default function ManageTrackersScreen() {
                     setNewTrackerUrl('');
                   }}
                 >
-                  <Text 
+                  <Text
                     style={[styles.addTrackerButtonText, { color: colors.text }]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
@@ -253,7 +274,7 @@ export default function ManageTrackersScreen() {
                   {addingTracker ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text 
+                    <Text
                       style={[styles.addTrackerButtonText, { color: '#FFFFFF' }]}
                       numberOfLines={1}
                       adjustsFontSizeToFit
@@ -270,11 +291,7 @@ export default function ManageTrackersScreen() {
               onPress={() => setShowAddInput(true)}
             >
               <Ionicons name="add" size={20} color="#FFFFFF" />
-              <Text 
-                style={styles.addButtonText}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
+              <Text style={styles.addButtonText} numberOfLines={1} adjustsFontSizeToFit>
                 Add New Tracker
               </Text>
             </TouchableOpacity>
@@ -282,16 +299,19 @@ export default function ManageTrackersScreen() {
 
           {/* Edit Tracker */}
           {editingTracker && (
-            <View style={[styles.addTrackerCard, { backgroundColor: colors.surface, marginTop: 12 }]}>
-              <Text style={[styles.addTrackerLabel, { color: colors.text }]}>
-                Edit Tracker URL
-              </Text>
+            <View
+              style={[styles.addTrackerCard, { backgroundColor: colors.surface, marginTop: 12 }]}
+            >
+              <Text style={[styles.addTrackerLabel, { color: colors.text }]}>Edit Tracker URL</Text>
               <TextInput
-                style={[styles.addTrackerInput, { 
-                  backgroundColor: colors.background, 
-                  color: colors.text,
-                  borderColor: colors.surfaceOutline 
-                }]}
+                style={[
+                  styles.addTrackerInput,
+                  {
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    borderColor: colors.surfaceOutline,
+                  },
+                ]}
                 value={editTrackerUrl}
                 onChangeText={setEditTrackerUrl}
                 placeholder="https://tracker.example.com/announce"
@@ -308,7 +328,7 @@ export default function ManageTrackersScreen() {
                     setEditTrackerUrl('');
                   }}
                 >
-                  <Text 
+                  <Text
                     style={[styles.addTrackerButtonText, { color: colors.text }]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
@@ -324,7 +344,7 @@ export default function ManageTrackersScreen() {
                   {addingTracker ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text 
+                    <Text
                       style={[styles.addTrackerButtonText, { color: '#FFFFFF' }]}
                       numberOfLines={1}
                       adjustsFontSizeToFit
@@ -339,23 +359,35 @@ export default function ManageTrackersScreen() {
 
           {/* Trackers List */}
           {trackers.length === 0 ? (
-            <EmptyState compact icon="globe-outline" iconSize={48} subtitle={t('screens.trackers.noTrackers')} />
+            <EmptyState
+              compact
+              icon="globe-outline"
+              iconSize={48}
+              subtitle={t('screens.trackers.noTrackers')}
+            />
           ) : (
             <View style={{ marginTop: 16 }}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: 8, marginLeft: 4 }]}>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: colors.textSecondary, marginBottom: 8, marginLeft: 4 },
+                ]}
+              >
                 {t('screens.trackers.existingTrackers', { count: trackers.length })}
               </Text>
               {trackers.map((tracker, index) => (
-                <View 
-                  key={index} 
-                  style={[styles.trackerRow, { backgroundColor: colors.surface }]}
-                >
+                <View key={index} style={[styles.trackerRow, { backgroundColor: colors.surface }]}>
                   <View style={styles.trackerInfo}>
                     <Text style={[styles.trackerUrl, { color: colors.text }]} numberOfLines={2}>
                       {tracker.url}
                     </Text>
                     <View style={styles.statusRow}>
-                      <View style={[styles.statusDot, { backgroundColor: getStatusColor(tracker.status) }]} />
+                      <View
+                        style={[
+                          styles.statusDot,
+                          { backgroundColor: getStatusColor(tracker.status) },
+                        ]}
+                      />
                       <Text style={[styles.statusText, { color: colors.textSecondary }]}>
                         {getStatusText(tracker.status)}
                       </Text>
@@ -526,4 +558,3 @@ const styles = StyleSheet.create({
     ...buttonText.primary,
   },
 });
-

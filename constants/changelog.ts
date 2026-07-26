@@ -4,19 +4,51 @@
  * Add new releases at the top.
  */
 
+export interface ChangelogSection {
+  title: string;
+  items: string[];
+}
+
 export interface ChangelogRelease {
   version: string;
   date: string; // ISO date YYYY-MM-DD
-  changes: string[];
+  /** Flat bullet list (older releases). Prefer `sections` for new releases. */
+  changes?: string[];
+  /** Grouped release notes (New Features / Bugs Fixed / Maintenance). */
+  sections?: ChangelogSection[];
 }
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '3.8.23',
     date: '2026-07-25',
-    changes: [
-      'Add support for qBittorrent API key authentication (v5.2.0+ / WebAPI 2.14.1+) as a new server authentication method, alongside username/password and bypass',
-      'Add RSS feed and auto-download rule management, reachable from Settings',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'qBittorrent API key authentication (v5.2.0+ / WebAPI 2.14.1+) alongside username/password and bypass',
+          'RSS feeds, auto-download rules, and RSS processing settings from Settings',
+          'Server Settings (formerly Torrent List) rebuilt to mirror qBittorrent Downloads — Add Torrent, Files, Save Locations, Automatic Import, plus Advanced email notifications and automation scripts',
+          'Custom category and tag sticker colors (Theme & Colors → Category & Tag Colors)',
+          'Directory path autocomplete on save-path fields when connected to qBittorrent 5.0+',
+          'Settings hub reorganized (Servers → Appearance → Server Settings → RSS → Search Plugins → Advanced), with Community links, Beer Fund / Rate, and a Connection card for Connect or Add Server',
+          'Search can auto-tag downloads by tracker when the preference is enabled (label clarified; preference key unchanged)',
+        ],
+      },
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Tab bar: active tab icon uses the accent color with a muted label for clearer hierarchy',
+          'Category rename migrates custom sticker colors, cleans up orphan categories on partial failure, and ignores double-tap Confirm',
+          'Delete .torrent File setting supports Never / If Added / Always (matching qBittorrent)',
+          'Default Save Path is only cached locally after a successful write to the connected server',
+          'Torrents sort menu opens under the sort button',
+        ],
+      },
+      {
+        title: 'Maintenance',
+        items: ['Internal reliability polish for Search auto-tag polling and path-field autocomplete'],
+      },
     ],
   },
   {

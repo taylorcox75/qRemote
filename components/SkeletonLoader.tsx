@@ -13,11 +13,11 @@ interface SkeletonLoaderProps {
  * Skeleton loader with shimmer effect
  * Used for loading states instead of spinners
  */
-export function SkeletonLoader({ 
-  width = '100%', 
-  height = 20, 
+export function SkeletonLoader({
+  width = '100%',
+  height = 20,
   borderRadius = 4,
-  style 
+  style,
 }: SkeletonLoaderProps) {
   const { colors } = useTheme();
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -35,7 +35,7 @@ export function SkeletonLoader({
           duration: 1000,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   }, []);
 
@@ -107,4 +107,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-

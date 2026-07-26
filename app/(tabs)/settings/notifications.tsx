@@ -31,7 +31,7 @@ export default function NotificationsSettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPreferences();
-    }, [])
+    }, []),
   );
 
   const loadPreferences = async () => {
@@ -45,7 +45,10 @@ export default function NotificationsSettingsScreen() {
     }
   };
 
-  const savePreference = async <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => {
+  const savePreference = async <K extends keyof AppPreferences>(
+    key: K,
+    value: AppPreferences[K],
+  ) => {
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({ ...prefs, [key]: value });
@@ -59,27 +62,43 @@ export default function NotificationsSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} activeOpacity={0.7} accessibilityLabel={t('common.back')}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            activeOpacity={0.7}
+            accessibilityLabel={t('common.back')}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.settings.notificationsFeedback')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t('screens.settings.notificationsFeedback')}
+          </Text>
           <View style={styles.headerButton} />
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('screens.settings.notificationsFeedback').toUpperCase()}</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.notificationsFeedback').toUpperCase()}
+            </Text>
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="timer-outline" size={22} color={colors.primary} />
                   <View>
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.notificationDuration')}</Text>
-                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>{t('screens.settings.milliseconds')}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.notificationDuration')}
+                    </Text>
+                    <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                      {t('screens.settings.milliseconds')}
+                    </Text>
                   </View>
                 </View>
                 <TextInput
-                  style={[styles.settingInput, { borderColor: colors.textSecondary, color: colors.text }]}
+                  style={[
+                    styles.settingInput,
+                    { borderColor: colors.textSecondary, color: colors.text },
+                  ]}
                   value={toastDuration.toString()}
                   onChangeText={(text) => {
                     const num = parseInt(text, 10);
@@ -96,7 +115,9 @@ export default function NotificationsSettingsScreen() {
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="phone-portrait-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>{t('screens.settings.hapticFeedback')}</Text>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.hapticFeedback')}
+                  </Text>
                 </View>
                 <Switch
                   value={hapticFeedback}
@@ -141,7 +162,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: spacing.md },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: spacing.md,
+  },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingHint: { fontSize: 12, marginTop: 1 },
   separator: { height: 1, marginLeft: 50 },

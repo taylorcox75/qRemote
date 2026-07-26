@@ -123,4 +123,3 @@ export const typography = {
     letterSpacing: 0.5,
   },
 };
-

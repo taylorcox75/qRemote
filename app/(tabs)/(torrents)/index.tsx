@@ -114,6 +114,14 @@ export default function TorrentsScreen() {
   const [expandedCardGridColumns, setExpandedCardGridColumns] = useState<3 | 4 | 5>(
     DEFAULT_PREFERENCES.expandedCardGridColumns,
   );
+  const [defaultCategoryColor, setDefaultCategoryColor] = useState<string>(
+    DEFAULT_PREFERENCES.defaultCategoryColor,
+  );
+  const [defaultTagColor, setDefaultTagColor] = useState<string>(DEFAULT_PREFERENCES.defaultTagColor);
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>(
+    DEFAULT_PREFERENCES.categoryColors,
+  );
+  const [tagColors, setTagColors] = useState<Record<string, string>>(DEFAULT_PREFERENCES.tagColors);
   // Category/tag filter state (null = all categories, '' = uncategorized)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [tagFilters, setTagFilters] = useState<string[]>([]);
@@ -200,6 +208,12 @@ export default function TorrentsScreen() {
               ? prefs.expandedCardGridColumns
               : 4,
           );
+          setDefaultCategoryColor(
+            prefs.defaultCategoryColor || DEFAULT_PREFERENCES.defaultCategoryColor,
+          );
+          setDefaultTagColor(prefs.defaultTagColor || DEFAULT_PREFERENCES.defaultTagColor);
+          setCategoryColors(prefs.categoryColors || {});
+          setTagColors(prefs.tagColors || {});
         } catch {
           // ignore
         }
@@ -1120,7 +1134,7 @@ export default function TorrentsScreen() {
                     styles.searchSortButton,
                     {
                       backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
-                      borderColor: colors.surfaceOutline,
+                      borderColor: colors.surface,
                     },
                   ]}
                   onPress={() => setShowSortMenu(!showSortMenu)}
@@ -1688,6 +1702,10 @@ export default function TorrentsScreen() {
                         compact={cardViewMode === 'compact'}
                         expandedCardFields={expandedCardFields}
                         gridColumns={expandedCardGridColumns}
+                        defaultCategoryColor={defaultCategoryColor}
+                        defaultTagColor={defaultTagColor}
+                        categoryColors={categoryColors}
+                        tagColors={tagColors}
                       />
                     </View>
                   </View>
@@ -2459,7 +2477,7 @@ const styles = StyleSheet.create({
   sortDropdown: {
     position: 'absolute',
     top: 50,
-    right: spacing.md,
+    left: spacing.md,
     minWidth: 200,
     borderRadius: borderRadius.large,
     borderWidth: 0.5,
