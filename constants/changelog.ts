@@ -20,6 +20,27 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.31',
+    date: '2026-07-26',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'Export and import your server list from Settings → Servers — passwords and API keys are never included in the file',
+        ],
+      },
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Editing a server updates the Settings connection card immediately, so one-tap Connect no longer retries the old address or credentials',
+          'Deleting a server from its edit screen clears the Settings connection card instead of offering Connect to the removed server',
+          'Test Connection on the edit-server screen respects a saved base path (reverse-proxy subfolder setups)',
+          'Exporting settings now includes fallback-endpoint fields, and re-importing no longer risks touching stored proxy passwords',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.3',
     date: '2026-07-25',
     sections: [
