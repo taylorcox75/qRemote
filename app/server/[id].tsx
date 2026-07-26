@@ -44,7 +44,7 @@ export default function EditServerScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
-  const { currentServer, disconnect, connectToServer } = useServer();
+  const { currentServer, disconnect, forgetCurrentServer, updateCurrentServer } = useServer();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const [name, setName] = useState('');
@@ -330,6 +330,9 @@ App Version: ${APP_VERSION}`;
       };
 
       await ServerManager.saveServer(server);
+      // Keep the in-memory "last server" in sync so one-tap Connect from the
+      // Settings hub uses the edited config, not the pre-edit snapshot.
+      updateCurrentServer(server);
       showToast(t('toast.serverSaved'), 'success');
       router.back();
     } catch (error) {
@@ -347,7 +350,14 @@ App Version: ${APP_VERSION}`;
         style: 'destructive',
         onPress: async () => {
           try {
+            const isDeletingCurrentServer = currentServer?.id === id;
             await ServerManager.deleteServer(id!);
+            if (isDeletingCurrentServer) {
+              // Drop the remembered last server so Settings doesn't offer
+              // Connect to a config that no longer exists (same as the
+              // Servers screen's delete path).
+              forgetCurrentServer();
+            }
             showToast(t('toast.serverDeleted', { name }), 'success');
             router.back();
           } catch (error) {
@@ -410,6 +420,10 @@ App Version: ${APP_VERSION}`;
         name: name.trim(),
         host: stripProtocol(host.trim()),
         port: portNum,
+        // Test against the same base paths a real connect would use — leaving
+        // these out tested the server root, which fails for reverse-proxy
+        // subfolder setups even though saving and connecting work fine.
+        basePath: preservedBasePath,
         ...applyServerAuthMode(authMode, { username, password, apiKey }),
         useHttps,
         useBasicAuth: useProxyBasicAuth,
@@ -419,6 +433,7 @@ App Version: ${APP_VERSION}`;
         fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
         fallbackPort: useFallback ? fallbackPortNum : undefined,
         fallbackUseHttps: useFallback ? fallbackUseHttps : false,
+        fallbackBasePath: preservedFallbackBasePath,
       };
 
       const result = await ServerManager.testConnection(server, testAbortController.current.signal);

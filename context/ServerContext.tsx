@@ -29,6 +29,12 @@ interface ServerContextType {
   disconnect: () => Promise<void>;
   /** Drop the remembered last server (e.g. after it was deleted). */
   forgetCurrentServer: () => void;
+  /**
+   * Replace the remembered server's config after it was edited, so one-tap
+   * Connect (Settings hub) doesn't retry with the pre-edit host/credentials.
+   * No-op when the edited server isn't the remembered one.
+   */
+  updateCurrentServer: (server: ServerConfig) => void;
   reconnect: () => Promise<boolean>;
   checkAndReconnect: () => Promise<boolean>;
 }
@@ -157,6 +163,10 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     setActiveEndpoint(null);
   }, []);
 
+  const updateCurrentServer = useCallback((server: ServerConfig) => {
+    setCurrentServer((prev) => (prev && prev.id === server.id ? server : prev));
+  }, []);
+
   const reconnect = useCallback(async (): Promise<boolean> => {
     try {
       setReconnecting(true);
@@ -234,6 +244,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         connectToServer,
         disconnect,
         forgetCurrentServer,
+        updateCurrentServer,
         reconnect,
         checkAndReconnect,
       }}

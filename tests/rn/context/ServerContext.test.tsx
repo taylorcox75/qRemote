@@ -235,6 +235,36 @@ describe('ServerContext', () => {
     expect(getLatest().isConnected).toBe(false);
   });
 
+  it('updateCurrentServer replaces the remembered config after an edit', async () => {
+    (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
+    (ServerManager.connectToServer as jest.Mock).mockResolvedValue(true);
+    (apiClient.getServer as jest.Mock).mockReturnValue(server1);
+
+    const getLatest = await renderProvider();
+    await waitFor(() => expect(getLatest().isLoading).toBe(false));
+    expect(getLatest().currentServer).toEqual(server1);
+
+    const editedServer1 = { ...server1, host: 'edited-host', password: 'new-pass' };
+    await act(async () => {
+      getLatest().updateCurrentServer(editedServer1);
+    });
+    expect(getLatest().currentServer).toEqual(editedServer1);
+  });
+
+  it('updateCurrentServer is a no-op for a different server id', async () => {
+    (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
+    (ServerManager.connectToServer as jest.Mock).mockResolvedValue(true);
+    (apiClient.getServer as jest.Mock).mockReturnValue(server1);
+
+    const getLatest = await renderProvider();
+    await waitFor(() => expect(getLatest().isLoading).toBe(false));
+
+    await act(async () => {
+      getLatest().updateCurrentServer(server2);
+    });
+    expect(getLatest().currentServer).toEqual(server1);
+  });
+
   it('reconnect() updates connection status on success/failure', async () => {
     (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
     (ServerManager.connectToServer as jest.Mock).mockResolvedValue(true);
