@@ -29,6 +29,15 @@ describe('ActionMenu', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Tests that opt into fake timers must not leave them installed on
+    // failure — an assertion throwing partway through a test body would
+    // otherwise skip an inline `jest.useRealTimers()` cleanup at the end of
+    // that test, leaking fake timers into every later test in this worker
+    // process (surfacing as unrelated timer-based tests misbehaving, or the
+    // worker failing to exit gracefully). afterEach always runs, so put
+    // cleanup here instead of at the end of the test body.
+    jest.clearAllTimers();
+    jest.useRealTimers();
     Object.assign(mockInsets, { top: 0, bottom: 0, left: 0, right: 0 });
   });
 
@@ -66,7 +75,6 @@ describe('ActionMenu', () => {
       jest.advanceTimersByTime(150);
     });
     expect(items[0].onPress).toHaveBeenCalledTimes(1);
-    jest.useRealTimers();
   });
 
   it('applies destructive styling path for destructive items without crashing', async () => {
@@ -200,7 +208,6 @@ describe('ActionMenu', () => {
         jest.advanceTimersByTime(150);
       });
       expect(items[0].onPress).toHaveBeenCalledTimes(1);
-      jest.useRealTimers();
     });
   });
 });
