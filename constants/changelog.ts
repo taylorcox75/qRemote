@@ -45,6 +45,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         title: 'Bugs Fixed',
         items: [
+          'Fixed a false "couldn\'t read torrent file" error that could briefly flash when opening a .torrent file from a cold launch',
           'Fixed Transfer tab speed numbers getting cut off at higher speeds',
           'Fixed per-torrent speed limits sometimes applying the wrong units',
           'Fixed torrent cards showing "unlimited" for a ratio limit that actually follows the global limit',

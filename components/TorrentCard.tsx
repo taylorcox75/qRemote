@@ -402,7 +402,7 @@ function TorrentCardInner({
           onPauseResume && { paddingRight: (compact ? 24 : 28) + spacing.sm },
         ]}
       >
-        <Text style={[styles.sizeText, { color: colors.textSecondary }]}>
+        <Text style={[styles.sizeText, { color: colors.textSecondary }]} numberOfLines={1}>
           {formatSize(downloaded)} / {formatSize(totalSize)}
         </Text>
         {(torrent.category || tagList.length > 0) && (
@@ -573,20 +573,24 @@ const styles = StyleSheet.create({
   },
   stickerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 4,
     marginLeft: spacing.xs,
-    flexShrink: 0,
+    flexShrink: 1,
+    maxWidth: '100%',
   },
   sticker: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     maxWidth: 100,
+    overflow: 'hidden',
   },
   stickerText: {
     fontSize: 12,
     fontWeight: '600',
+    flexShrink: 1,
   },
   progressRow: {
     flexDirection: 'row',
@@ -611,8 +615,10 @@ const styles = StyleSheet.create({
   },
   sizeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
+    rowGap: 4,
   },
   sizeText: {
     fontSize: 12,
