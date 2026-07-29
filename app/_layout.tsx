@@ -155,7 +155,10 @@ function StackNavigator() {
       });
     };
 
-    const dispatchDeepLink = async (incomingUrl?: string | null) => {
+    const dispatchDeepLink = async (
+      incomingUrl?: string | null,
+      opts: { silentFailure?: boolean } = {},
+    ): Promise<boolean> => {
       const magnetLink = extractMagnetLink(incomingUrl);
       if (magnetLink) {
         const now = Date.now();
@@ -164,20 +167,20 @@ function StackNavigator() {
           lastHandledMagnetRef.current.value === magnetLink &&
           now - lastHandledMagnetRef.current.at < 1500
         ) {
-          return;
+          return true;
         }
         lastHandledMagnetRef.current = { value: magnetLink, at: now };
 
         if (!rootNavReadyRef.current) {
           pendingDeepLinkRef.current = { type: 'magnet', value: magnetLink };
-          return;
+          return true;
         }
         navigateToMagnet(magnetLink);
-        return;
+        return true;
       }
 
       const rawTorrentFile = extractTorrentFile(incomingUrl);
-      if (!rawTorrentFile) return;
+      if (!rawTorrentFile) return false;
 
       const now = Date.now();
       if (
@@ -185,7 +188,7 @@ function StackNavigator() {
         lastHandledTorrentFileRef.current.value === rawTorrentFile.uri &&
         now - lastHandledTorrentFileRef.current.at < 1500
       ) {
-        return;
+        return true;
       }
       lastHandledTorrentFileRef.current = { value: rawTorrentFile.uri, at: now };
 
@@ -201,15 +204,18 @@ function StackNavigator() {
       const torrentFile = await persistIncomingTorrentFile(rawTorrentFile);
       if (!torrentFile) {
         clogWarn('LINK', `Could not read incoming .torrent: ${rawTorrentFile.uri}`);
-        showToast(t('errors.couldNotReadTorrentFile'), 'error');
-        return;
+        if (!opts.silentFailure) {
+          showToast(t('errors.couldNotReadTorrentFile'), 'error');
+        }
+        return false;
       }
 
       if (!rootNavReadyRef.current) {
         pendingDeepLinkRef.current = { type: 'torrentFile', value: torrentFile };
-        return;
+        return true;
       }
       navigateToTorrentFile(torrentFile);
+      return true;
     };
 
     const subscription = Linking.addEventListener('url', ({ url }) => {
@@ -222,26 +228,35 @@ function StackNavigator() {
       // Two independent sources for the cold-launch URL, because neither is
       // reliable alone on iOS here:
       //  - expo-linking's getLinkingURL() reads a native registry populated
-      //    by the "open url" AppDelegate callback (the one our
-      //    withNativeTorrentFileCopy patch rewrites to an app-owned copy).
+      //    by the "open url" AppDelegate callback, which can still carry the
+      //    original security-scoped file:// URI whose access has already
+      //    lapsed by the time JS reads it.
       //  - RN core's Linking.getInitialURL() reads bridge.launchOptions,
-      //    which the New Architecture may not populate.
-      // Try both: dispatchDeepLink de-dupes by URL, so whichever arrives
-      // first wins and the other is a no-op. Do NOT reduce this to one
+      //    which our withNativeTorrentFileCopy patch rewrites to an
+      //    app-owned copy of an incoming .torrent — but the New Architecture
+      //    may not populate it at all.
+      // Try the RN source first and only fall back to expo-linking's URL —
+      // silently — when the two disagree, so a stale/expired scoped URI from
+      // one source doesn't flash a failure toast right before the other
+      // source's valid copy succeeds (#175). Do NOT reduce this to one
       // source without testing a real cold launch — cold-launch "Open In"
       // has regressed repeatedly on exactly this code path.
-      const expoUrl = ExpoLinking.getLinkingURL();
-      clogInfo('LINK', `Cold-launch expo-linking URL: ${expoUrl ?? '(none)'}`);
-      void dispatchDeepLink(expoUrl);
+      void (async () => {
+        const [expoUrl, rnUrl] = await Promise.all([
+          Promise.resolve(ExpoLinking.getLinkingURL()),
+          Linking.getInitialURL().catch(() => null),
+        ]);
+        clogInfo('LINK', `Cold-launch expo-linking URL: ${expoUrl ?? '(none)'}`);
+        clogInfo('LINK', `Cold-launch RN URL: ${rnUrl ?? '(none)'}`);
 
-      Linking.getInitialURL()
-        .then((rnUrl) => {
-          clogInfo('LINK', `Cold-launch RN URL: ${rnUrl ?? '(none)'}`);
-          return dispatchDeepLink(rnUrl);
-        })
-        .catch(() => {
-          // No initial URL — safe to ignore.
-        });
+        const hasDistinctFallback = !!expoUrl && expoUrl !== rnUrl;
+        const handled = rnUrl
+          ? await dispatchDeepLink(rnUrl, { silentFailure: hasDistinctFallback })
+          : false;
+        if (!handled && hasDistinctFallback) {
+          await dispatchDeepLink(expoUrl);
+        }
+      })();
     }
 
     if (pendingDeepLinkRef.current) {
