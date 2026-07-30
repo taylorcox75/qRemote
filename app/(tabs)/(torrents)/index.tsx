@@ -2290,12 +2290,12 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 100,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.large,
   },
   skeletonList: {
     paddingTop: 100,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   selectionHeader: {
     flexDirection: 'row',
