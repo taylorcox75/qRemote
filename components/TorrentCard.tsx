@@ -520,14 +520,14 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: borderRadius.medium,
     borderLeftWidth: 1.5,
-    marginVertical: 2,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm - 2,
+    marginVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     ...shadows.card,
   },
   cardDetailed: {
     borderRadius: borderRadius.large,
-    marginVertical: 2,
+    marginVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
