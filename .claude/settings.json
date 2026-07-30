@@ -1,1 +1,7 @@
-{ "worktree": { "bgIsolation": "none" } }
+{
+  "worktree": { "bgIsolation": "none" },
+  "permissions": {
+    "ask": ["Edit(constants/changelog.ts)", "Write(constants/changelog.ts)"],
+    "deny": ["Bash(npm run web)", "Bash(npm run web:*)", "Bash(npm run web *)"]
+  }
+}
