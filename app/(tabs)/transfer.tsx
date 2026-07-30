@@ -42,6 +42,7 @@ import { InputModal } from '@/components/InputModal';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
+import { useGracefulError } from '@/hooks/useGracefulError';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRAPH_HORIZONTAL_PADDING = spacing.lg * 2;
@@ -74,6 +75,7 @@ export default function TransferScreen() {
     initialLoadComplete,
   } = useTorrents();
   const isRecoveringFromBackground = transferRecovering || torrentRecovering;
+  const { graceError, isPendingError } = useGracefulError(error);
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
   const router = useRouter();
@@ -419,7 +421,14 @@ export default function TransferScreen() {
     );
   }
 
-  if (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) {
+  // Show the loading spinner during initial launch, during background
+  // recovery, or while a fresh error is still within its grace window —
+  // most poll failures self-heal within a couple of seconds and shouldn't
+  // flash a hard error.
+  if (
+    (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) ||
+    (initialLoadComplete && (isRecoveringFromBackground || isPendingError))
+  ) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -431,12 +440,12 @@ export default function TransferScreen() {
     );
   }
 
-  if (error && !isRecoveringFromBackground && initialLoadComplete) {
+  if (graceError && initialLoadComplete) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <Ionicons name="alert-circle-outline" size={56} color={colors.error} />
-        <Text style={[styles.errorTitle, { color: colors.error }]}>{error}</Text>
+        <Text style={[styles.errorTitle, { color: colors.error }]}>{graceError}</Text>
         <TouchableOpacity
           style={[styles.retryButton, { backgroundColor: colors.primary }]}
           onPress={refresh}
