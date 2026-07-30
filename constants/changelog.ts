@@ -20,18 +20,6 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.8.35',
-    date: '2026-07-30',
-    sections: [
-      {
-        title: 'New Features',
-        items: [
-          'Added a browse button to save path fields that lists paths already in use by your torrents and categories, so you can tap to pick one instead of typing it',
-        ],
-      },
-    ],
-  },
-  {
     version: '3.8.34',
     date: '2026-07-27',
     sections: [
