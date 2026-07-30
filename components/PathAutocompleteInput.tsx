@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   TextInput,
@@ -8,10 +8,15 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
+import { useTorrents } from '@/context/TorrentContext';
 import { applicationApi } from '@/services/api/application';
 import { apiClient } from '@/services/api/client';
+import { getKnownSavePaths } from '@/utils/save-paths';
+import { SavePathPickerModal } from '@/components/SavePathPickerModal';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 
@@ -44,17 +49,27 @@ interface PathAutocompleteInputProps extends Omit<TextInputProps, 'value' | 'onC
  * Silently falls back to a plain input (no suggestions) when unsupported,
  * disconnected, or the directory doesn't exist — this is a nicety, not
  * something that should ever block or error the field.
+ *
+ * Also renders a browse button that opens SavePathPickerModal, listing paths
+ * already in use by qBittorrent (from TorrentContext — every torrent's
+ * save_path plus every category's savePath). Unlike the type-ahead above,
+ * this works on any qBittorrent version since it needs no extra API call (#180).
  */
 export function PathAutocompleteInput({
   value,
   onChangeText,
   style,
   onBlur,
+  editable,
   ...rest
 }: PathAutocompleteInputProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { isConnected } = useServer();
+  const { torrents, categories } = useTorrents();
+  const knownPaths = useMemo(() => getKnownSavePaths(torrents, categories), [torrents, categories]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [pickerVisible, setPickerVisible] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blurClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Bumped on each fetch / unmount so in-flight responses are ignored. */
@@ -132,18 +147,33 @@ export function PathAutocompleteInput({
 
   return (
     <View>
-      <TextInput
-        style={style}
-        value={value}
-        onChangeText={handleChangeText}
-        onBlur={(e) => {
-          clearSuggestionsSoon();
-          onBlur?.(e);
-        }}
-        autoCapitalize="none"
-        autoCorrect={false}
-        {...rest}
-      />
+      <View style={styles.row}>
+        <TextInput
+          style={[style, styles.textInput]}
+          value={value}
+          onChangeText={handleChangeText}
+          onBlur={(e) => {
+            clearSuggestionsSoon();
+            onBlur?.(e);
+          }}
+          editable={editable}
+          autoCapitalize="none"
+          autoCorrect={false}
+          {...rest}
+        />
+        <TouchableOpacity
+          onPress={() => setPickerVisible(true)}
+          disabled={editable === false}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={t('savePathPicker.browseButtonLabel')}
+        >
+          <Ionicons
+            name="folder-open-outline"
+            size={22}
+            color={editable === false ? colors.textSecondary : colors.primary}
+          />
+        </TouchableOpacity>
+      </View>
       {suggestions.length > 0 && (
         <ScrollView
           style={[
@@ -167,11 +197,29 @@ export function PathAutocompleteInput({
           ))}
         </ScrollView>
       )}
+      <SavePathPickerModal
+        visible={pickerVisible}
+        paths={knownPaths}
+        onSelect={(path) => {
+          cancelPendingBlurClear();
+          setSuggestions([]);
+          onChangeText(path);
+        }}
+        onClose={() => setPickerVisible(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  textInput: {
+    flex: 1,
+  },
   suggestions: {
     borderWidth: 1,
     borderRadius: borderRadius.medium,

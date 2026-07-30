@@ -939,6 +939,13 @@
     "useGlobal": "Valeur globale",
     "torrentRemoved": "Ce torrent n'est plus sur le serveur"
   },
+  "savePathPicker": {
+    "title": "Choisir le chemin d'enregistrement",
+    "browseButtonLabel": "Parcourir les chemins existants",
+    "filterPlaceholder": "Filtrer les chemins...",
+    "empty": "Aucun chemin utilisé pour l'instant. Ajoutez un torrent ou une catégorie pour voir des options ici.",
+    "noMatches": "Aucun chemin ne correspond à votre filtre."
+  },
   "filters": {
     "all": "Tous",
     "active": "Actifs",

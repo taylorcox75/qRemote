@@ -939,6 +939,13 @@
     "useGlobal": "Global verwenden",
     "torrentRemoved": "Dieser Torrent ist nicht mehr auf dem Server"
   },
+  "savePathPicker": {
+    "title": "Speicherpfad wählen",
+    "browseButtonLabel": "Vorhandene Pfade durchsuchen",
+    "filterPlaceholder": "Pfade filtern...",
+    "empty": "Noch keine Pfade in Verwendung. Füge einen Torrent oder eine Kategorie hinzu, um hier Optionen zu sehen.",
+    "noMatches": "Kein Pfad entspricht deinem Filter."
+  },
   "filters": {
     "all": "Alle",
     "active": "Aktiv",
