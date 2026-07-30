@@ -20,18 +20,6 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.8.TESTFLIGHT',
-    date: '2026-07-28',
-    sections: [
-      {
-        title: 'Bugs Fixed',
-        items: [
-          'Fixed a false "couldn\'t read torrent file" error that could briefly flash when opening a .torrent file from a cold launch',
-        ],
-      },
-    ],
-  },
-  {
     version: '3.8.34',
     date: '2026-07-27',
     sections: [
