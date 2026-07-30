@@ -939,6 +939,13 @@
     "useGlobal": "Usar global",
     "torrentRemoved": "Este torrent ya no está en el servidor"
   },
+  "savePathPicker": {
+    "title": "Elegir ruta de guardado",
+    "browseButtonLabel": "Explorar rutas existentes",
+    "filterPlaceholder": "Filtrar rutas...",
+    "empty": "Aún no hay rutas en uso. Añade un torrent o categoría para ver opciones aquí.",
+    "noMatches": "Ninguna ruta coincide con tu filtro."
+  },
   "filters": {
     "all": "Todos",
     "active": "Activos",

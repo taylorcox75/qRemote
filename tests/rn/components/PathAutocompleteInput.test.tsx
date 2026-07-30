@@ -4,6 +4,7 @@ import { PathAutocompleteInput } from '@/components/PathAutocompleteInput';
 import { applicationApi } from '@/services/api/application';
 import { apiClient } from '@/services/api/client';
 import { useServer } from '@/context/ServerContext';
+import { useTorrents } from '@/context/TorrentContext';
 
 jest.mock('@/context/ThemeContext', () => ({
   useTheme: () => ({
@@ -12,11 +13,18 @@ jest.mock('@/context/ThemeContext', () => ({
       text: '#000',
       textSecondary: '#666',
       surfaceOutline: '#ccc',
+      primary: '#007aff',
+      background: '#fff',
     },
   }),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
 jest.mock('@/context/ServerContext', () => ({ useServer: jest.fn() }));
+jest.mock('@/context/TorrentContext', () => ({ useTorrents: jest.fn() }));
 
 jest.mock('@/services/api/application', () => ({
   applicationApi: { getDirectoryContent: jest.fn() },
@@ -30,6 +38,7 @@ describe('PathAutocompleteInput', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(useServer).mockReturnValue({ isConnected: true } as any);
+    jest.mocked(useTorrents).mockReturnValue({ torrents: [], categories: {}, tags: [] } as any);
     jest.mocked(apiClient.getApiFeatures).mockReturnValue({
       supportsGetDirectoryContent: true,
     } as any);

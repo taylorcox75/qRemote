@@ -939,6 +939,13 @@
     "useGlobal": "使用全局",
     "torrentRemoved": "该种子已不在服务器上"
   },
+  "savePathPicker": {
+    "title": "选择保存路径",
+    "browseButtonLabel": "浏览现有路径",
+    "filterPlaceholder": "筛选路径...",
+    "empty": "尚无正在使用的路径。添加种子或分类后即可在此查看选项。",
+    "noMatches": "没有路径匹配你的筛选条件。"
+  },
   "filters": {
     "all": "全部",
     "active": "活动中",

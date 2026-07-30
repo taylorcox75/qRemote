@@ -960,6 +960,13 @@
     "useGlobal": "Use global",
     "torrentRemoved": "This torrent is no longer on the server"
   },
+  "savePathPicker": {
+    "title": "Choose Save Path",
+    "browseButtonLabel": "Browse existing paths",
+    "filterPlaceholder": "Filter paths...",
+    "empty": "No paths in use yet. Add a torrent or category to see options here.",
+    "noMatches": "No paths match your filter."
+  },
   "filters": {
     "all": "All",
     "active": "Active",
