@@ -20,6 +20,18 @@ export interface ChangelogRelease {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.35',
+    date: '2026-07-30',
+    sections: [
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Fixed the torrent list and Transfer tab occasionally flashing a connection error for a moment when opening the app or returning from background',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.34',
     date: '2026-07-27',
     sections: [

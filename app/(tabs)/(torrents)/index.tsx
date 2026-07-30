@@ -56,6 +56,7 @@ import { buttonStyles, buttonText } from '@/constants/buttons';
 import { typography } from '@/constants/typography';
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { useTorrentActions } from '@/hooks/useTorrentActions';
+import { useGracefulError } from '@/hooks/useGracefulError';
 import { getErrorMessage } from '@/utils/error';
 import { extractMagnetLink } from '@/utils/magnet';
 import { getAddTorrentDialogueVariant } from '@/utils/add-torrent-dialogue';
@@ -78,6 +79,7 @@ export default function TorrentsScreen() {
     isRecoveringFromBackground,
     initialLoadComplete,
   } = useTorrents();
+  const { graceError, isPendingError } = useGracefulError(error);
   const { isConnected, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
   const params = useLocalSearchParams<{
@@ -1084,8 +1086,14 @@ export default function TorrentsScreen() {
     );
   }
 
-  // Show skeleton list during initial app launch (server connecting or first data fetch)
-  if (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) {
+  // Show skeleton list during initial app launch (server connecting or first
+  // data fetch), during background recovery, or while a fresh error is still
+  // within its grace window — most poll failures self-heal within a couple
+  // of seconds and shouldn't flash a hard error.
+  if (
+    (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) ||
+    (initialLoadComplete && (isRecoveringFromBackground || isPendingError))
+  ) {
     return (
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -1100,8 +1108,9 @@ export default function TorrentsScreen() {
     );
   }
 
-  // Only show persistent errors (not during background recovery or initial connection)
-  if (error && !isRecoveringFromBackground && initialLoadComplete) {
+  // Only show persistent errors (not during background recovery, initial
+  // connection, or a fresh error still within its grace window)
+  if (graceError && initialLoadComplete) {
     return (
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -1110,7 +1119,7 @@ export default function TorrentsScreen() {
           icon="alert-circle-outline"
           iconColor={colors.error}
           title={t('screens.torrents.somethingWentWrong')}
-          subtitle={error}
+          subtitle={graceError}
           actionLabel={t('common.retry')}
           onAction={refresh}
         />
