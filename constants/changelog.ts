@@ -28,7 +28,8 @@ export const CHANGELOG: ChangelogRelease[] = [
         items: [
           'Fixed a false "couldn\'t read torrent file" error that could briefly flash when opening a .torrent file from a cold launch',
 		  'Fixed server background restoration bug',
-          'Spacing of cards'
+          'Spacing of cards',
+		  'Windows drive path autocomplete'
 		],
       },
     ],
