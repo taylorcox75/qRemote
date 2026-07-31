@@ -10,11 +10,15 @@
       "channel": "development"
     },
     "preview": {
-      "autoIncrement": true,
-	  "channel": "preview"
+      "ios": {
+        "autoIncrement": true
+      },
+      "channel": "preview"
     },
     "production": {
-      "autoIncrement": true,
+      "ios": {
+        "autoIncrement": true
+      },
       "channel": "production"
     }
   },
