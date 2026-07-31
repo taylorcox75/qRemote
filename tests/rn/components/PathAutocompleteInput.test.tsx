@@ -74,6 +74,20 @@ describe('PathAutocompleteInput', () => {
     expect(screen.queryByText('data')).toBeNull();
   });
 
+  it('fetches suggestions for a Windows drive-letter path other than the current drive', async () => {
+    jest.mocked(applicationApi.getDirectoryContent).mockResolvedValue(['D:/Downloads']);
+
+    const onChangeText = jest.fn();
+    await render(
+      <PathAutocompleteInput testID="path-input" value="D:/Do" onChangeText={onChangeText} />,
+    );
+
+    fireEvent.changeText(screen.getByTestId('path-input'), 'D:/Do');
+
+    expect(await screen.findByText('D:/Downloads')).toBeTruthy();
+    expect(applicationApi.getDirectoryContent).toHaveBeenCalledWith('D:/', 'dirs');
+  });
+
   it('immediately fetches the next directory level after a suggestion is tapped', async () => {
     jest
       .mocked(applicationApi.getDirectoryContent)
