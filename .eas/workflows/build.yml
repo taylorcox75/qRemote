@@ -1,13 +1,13 @@
 name: Create builds
 jobs:
   ios_preview:
-    name: Build iOS device
+    name: Build Preview
     type: build
     params:
       platform: ios
       profile: preview
   ios_prod:
-    name: Build iOS
+    name: Build Production
     type: build
     params:
       platform: ios

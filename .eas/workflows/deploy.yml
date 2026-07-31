@@ -1,11 +1,3 @@
-
-# Deploy to production
-#
-# Builds and submits to the app stores, or sends an over-the-air update when there are no native changes.
-# Learn more: https://docs.expo.dev/eas/workflows/examples/deploy-to-production/
-#
-# Created by EAS CLI v21.4.0
-
 name: Deploy to production
 jobs:
   fingerprint:
