@@ -24,6 +24,14 @@ const SUGGESTION_LIMIT = 8;
 const DEBOUNCE_MS = 250;
 /** Delay clearing suggestions on blur so a tap on a row can register first. */
 const BLUR_CLEAR_MS = 150;
+/**
+ * On a Windows qBittorrent host, getDirectoryContent('/', ...) resolves to the
+ * root of whatever drive qBittorrent happens to be running on (typically C:) —
+ * there's no API to enumerate other drives. But the endpoint does accept a
+ * drive-letter path like "D:/" directly, so once a user types one, suggestions
+ * should still kick in instead of silently doing nothing (#180).
+ */
+const WINDOWS_DRIVE_PATH = /^[A-Za-z]:\//;
 
 /**
  * qBittorrent's getDirectoryContent returns absolute paths (QDirIterator::next),
@@ -105,7 +113,7 @@ export function PathAutocompleteInput({
       return;
     }
     const lastSlash = text.lastIndexOf('/');
-    if (!text.startsWith('/') || lastSlash < 0) {
+    if ((!text.startsWith('/') && !WINDOWS_DRIVE_PATH.test(text)) || lastSlash < 0) {
       setSuggestions([]);
       return;
     }
