@@ -27,10 +27,10 @@ export const CHANGELOG: ChangelogRelease[] = [
         title: 'Bugs Fixed',
         items: [
           'Fixed a false "couldn\'t read torrent file" error that could briefly flash when opening a .torrent file from a cold launch',
-		  'Fixed server background restoration bug',
+          'Fixed server background restoration bug',
           'Spacing of cards',
-		  'Windows drive path autocomplete'
-		],
+          'Windows drive path autocomplete',
+        ],
       },
     ],
   },
@@ -43,7 +43,7 @@ export const CHANGELOG: ChangelogRelease[] = [
         items: [
           'Global seeding limits (ratio, seeding time, and what happens when reached) can now be set from the Transfer tab',
           'Added an Unlimited shortcut to the Max Ratio and Max Seeding Time editors on the Transfer tab',
-		  'File path now suggested from existing torrent paths and support for windows'
+          'File path now suggested from existing torrent paths and support for windows',
         ],
       },
       {

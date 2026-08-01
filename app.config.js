@@ -102,12 +102,12 @@ module.exports = {
         projectId: 'e2539074-777d-46d3-ae9e-9e584f9e9bb0',
       },
     },
-    "updates": {
-      "url": "https://u.expo.dev/e2539074-777d-46d3-ae9e-9e584f9e9bb0"
+    updates: {
+      url: 'https://u.expo.dev/e2539074-777d-46d3-ae9e-9e584f9e9bb0',
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-  },
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
     owner: 'taylorcox75',
   },
 };
