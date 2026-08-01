@@ -36,10 +36,14 @@ const WINDOWS_DRIVE_PATH = /^[A-Za-z]:\//;
 /**
  * qBittorrent's getDirectoryContent returns absolute paths (QDirIterator::next),
  * not basenames. Strip to the final segment so we can filter and apply safely.
+ * On Windows the server returns entries with backslash separators (e.g.
+ * "F:\test folder") even when queried with a forward-slash dirPath, so both
+ * separators have to be recognized or the "basename" ends up being the whole
+ * backslash path (#180).
  */
 function toBaseName(entry: string): string {
-  const trimmed = entry.replace(/\/+$/, '');
-  const idx = trimmed.lastIndexOf('/');
+  const trimmed = entry.replace(/[/\\]+$/, '');
+  const idx = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
   return idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
 }
 
@@ -196,7 +200,7 @@ export function PathAutocompleteInput({
             <TouchableOpacity
               key={path}
               style={styles.suggestionRow}
-              onPressIn={() => applySuggestion(path)}
+              onPress={() => applySuggestion(path)}
             >
               <Text style={[styles.suggestionText, { color: colors.text }]} numberOfLines={1}>
                 {path}
