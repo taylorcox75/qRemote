@@ -88,6 +88,20 @@ describe('PathAutocompleteInput', () => {
     expect(applicationApi.getDirectoryContent).toHaveBeenCalledWith('D:/', 'dirs');
   });
 
+  it('normalizes backslash-separated Windows entries to forward-slash suggestions', async () => {
+    jest.mocked(applicationApi.getDirectoryContent).mockResolvedValue(['F:\\test folder']);
+
+    const onChangeText = jest.fn();
+    await render(
+      <PathAutocompleteInput testID="path-input" value="F:/" onChangeText={onChangeText} />,
+    );
+
+    fireEvent.changeText(screen.getByTestId('path-input'), 'F:/');
+
+    expect(await screen.findByText('F:/test folder')).toBeTruthy();
+    expect(screen.queryByText('F:/F:\\test folder')).toBeNull();
+  });
+
   it('immediately fetches the next directory level after a suggestion is tapped', async () => {
     jest
       .mocked(applicationApi.getDirectoryContent)
@@ -102,7 +116,7 @@ describe('PathAutocompleteInput', () => {
     fireEvent.changeText(screen.getByTestId('path-input'), '/da');
     const suggestion = await screen.findByText('/data');
 
-    fireEvent(suggestion.parent!, 'pressIn');
+    fireEvent(suggestion.parent!, 'press');
 
     // applySuggestion calls onChangeText synchronously with the new value —
     // simulate the parent re-rendering with that value, as a real screen would.
