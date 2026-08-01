@@ -204,8 +204,8 @@ describe('TorrentCard container (left accent border + compact density)', () => {
       borderLeftWidth: 1.5,
       borderLeftColor: downloadingColor,
       backgroundColor: mockColors.surface,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm - 2,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
       borderRadius: borderRadius.medium,
     });
   });
