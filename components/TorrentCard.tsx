@@ -521,8 +521,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.medium,
     borderLeftWidth: 1.5,
     marginVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm - 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     ...shadows.card,
   },
   cardDetailed: {
