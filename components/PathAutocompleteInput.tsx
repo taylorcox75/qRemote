@@ -29,9 +29,30 @@ const BLUR_CLEAR_MS = 150;
  * root of whatever drive qBittorrent happens to be running on (typically C:) —
  * there's no API to enumerate other drives. But the endpoint does accept a
  * drive-letter path like "D:/" directly, so once a user types one, suggestions
- * should still kick in instead of silently doing nothing (#180).
+ * should still kick in instead of silently doing nothing (#180). Accept either
+ * separator after the colon (`D:/` or `D:\`) since Windows users naturally
+ * type backslashes.
  */
-const WINDOWS_DRIVE_PATH = /^[A-Za-z]:\//;
+const WINDOWS_DRIVE_PATH = /^[A-Za-z]:[/\\]/;
+/** A UNC network path, e.g. `\\nas\share\`. Windows-only; always backslash. */
+const UNC_PATH = /^\\\\/;
+
+/**
+ * True for paths that are unambiguously Windows-style (drive letter or UNC
+ * share) — the only case where `\` should be treated as a path separator.
+ * A bare `/`-rooted path (Linux/macOS host) never gets this treatment, so a
+ * literal backslash in a Linux directory name is never misread as a separator.
+ */
+export function isWindowsStylePath(text: string): boolean {
+  return WINDOWS_DRIVE_PATH.test(text) || UNC_PATH.test(text);
+}
+
+/** Index of the last path separator, respecting `isWindowsStylePath`. */
+function lastSeparatorIndex(text: string): number {
+  return isWindowsStylePath(text)
+    ? Math.max(text.lastIndexOf('/'), text.lastIndexOf('\\'))
+    : text.lastIndexOf('/');
+}
 
 /**
  * qBittorrent's getDirectoryContent returns absolute paths (QDirIterator::next),
@@ -116,13 +137,13 @@ export function PathAutocompleteInput({
       setSuggestions([]);
       return;
     }
-    const lastSlash = text.lastIndexOf('/');
-    if ((!text.startsWith('/') && !WINDOWS_DRIVE_PATH.test(text)) || lastSlash < 0) {
+    const lastSep = lastSeparatorIndex(text);
+    if ((!text.startsWith('/') && !isWindowsStylePath(text)) || lastSep < 0) {
       setSuggestions([]);
       return;
     }
-    const parentDir = text.slice(0, lastSlash + 1);
-    const partial = text.slice(lastSlash + 1).toLowerCase();
+    const parentDir = text.slice(0, lastSep + 1);
+    const partial = text.slice(lastSep + 1).toLowerCase();
     const fetchId = ++fetchIdRef.current;
     debounceRef.current = setTimeout(async () => {
       try {
@@ -150,7 +171,7 @@ export function PathAutocompleteInput({
 
   const applySuggestion = (path: string) => {
     cancelPendingBlurClear();
-    const newValue = `${path}/`;
+    const newValue = `${path}${isWindowsStylePath(path) ? '\\' : '/'}`;
     onChangeText(newValue);
     // Immediately list the directory just selected instead of leaving the
     // dropdown empty until the user types another character.
