@@ -396,9 +396,16 @@ export default function SearchScreen() {
         case 'name':
           cmp = (a.fileName || '').localeCompare(b.fileName || '');
           break;
-        case 'date':
-          cmp = (a.pubDate ?? 0) - (b.pubDate ?? 0);
+        case 'date': {
+          // qBittorrent always sends pubDate, using -1 as the "plugin didn't
+          // report one" sentinel (same convention as nbLeechers) — never
+          // actually absent. Normalize any non-positive value to 0 so
+          // unknown dates group together instead of comparing as -1.
+          const aDate = a.pubDate && a.pubDate > 0 ? a.pubDate : 0;
+          const bDate = b.pubDate && b.pubDate > 0 ? b.pubDate : 0;
+          cmp = aDate - bDate;
           break;
+        }
       }
       return sortDirection === 'asc' ? cmp : -cmp;
     });
