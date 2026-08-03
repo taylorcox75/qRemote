@@ -36,6 +36,7 @@ describe('getApiFeatures', () => {
       useAddStoppedEnabledPreference: true,
       useStoppedAddParam: true,
       supportsGetDirectoryContent: true,
+      supportsSearchPubDate: true,
     });
   });
 
@@ -53,6 +54,7 @@ describe('getApiFeatures', () => {
     expect(features.useAddStoppedEnabledPreference).toBe(false);
     expect(features.useStoppedAddParam).toBe(false);
     expect(features.supportsGetDirectoryContent).toBe(false);
+    expect(features.supportsSearchPubDate).toBe(false);
     // ratio limit fields only require 2.8+
     expect(features.hasRatioLimitFields).toBe(true);
   });
@@ -72,6 +74,7 @@ describe('getApiFeatures', () => {
     expect(features.useAddStoppedEnabledPreference).toBe(true);
     expect(features.useStoppedAddParam).toBe(true);
     expect(features.supportsGetDirectoryContent).toBe(true);
+    expect(features.supportsSearchPubDate).toBe(true);
   });
 
   it('enables v5 features above major version 2 (e.g. 3.0.0)', () => {

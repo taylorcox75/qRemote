@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { SearchResult } from '@/types/api';
-import { formatSize } from '@/utils/format';
+import { formatSize, formatDate } from '@/utils/format';
 import { resultTrackerLabel } from '@/utils/searchResult';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
@@ -92,6 +92,7 @@ export function SearchResultRow({
               {'  ·  '}
               <Text>↓{leechers}</Text>
               {host ? `  ·  ${host}` : ''}
+              {result.pubDate ? `  ·  ${formatDate(result.pubDate)}` : ''}
             </Text>
             {/* Chevron hints that the row expands */}
             <Ionicons

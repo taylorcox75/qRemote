@@ -35,6 +35,8 @@ export interface ApiFeatures {
   useStoppedAddParam: boolean;
   /** app/getDirectoryContent endpoint exists, for path autocomplete (WebAPI ≥ 2.11.0 / qBit 5.0). */
   supportsGetDirectoryContent: boolean;
+  /** search/results includes a pubDate field per result, for sort-by-date (WebAPI ≥ 2.11.0 / qBit 5.0). */
+  supportsSearchPubDate: boolean;
 }
 
 export function parseApiVersion(raw: string): ParsedVersion | null {
@@ -66,6 +68,7 @@ const V5_FEATURES: ApiFeatures = {
   useAddStoppedEnabledPreference: true,
   useStoppedAddParam: true,
   supportsGetDirectoryContent: true,
+  supportsSearchPubDate: true,
 };
 
 export function getApiFeatures(apiVersion: string | null): ApiFeatures {
@@ -84,6 +87,7 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     useAddStoppedEnabledPreference: isV5,
     useStoppedAddParam: isV5,
     supportsGetDirectoryContent: isV5,
+    supportsSearchPubDate: isV5,
   };
 }
 

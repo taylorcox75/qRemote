@@ -400,6 +400,8 @@ export interface SearchResult {
   descrLink: string;
   /** Name of the plugin that produced this result. Absent on older servers. */
   engineName?: string;
+  /** Unix timestamp (seconds) the torrent was published, if the plugin reported one (qBit 5.0+ / WebAPI >= 2.11.0). */
+  pubDate?: number;
 }
 
 export interface SearchResultsResponse {
