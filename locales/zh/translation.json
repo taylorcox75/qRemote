@@ -512,6 +512,7 @@
       "sortLeechers": "Leechers",
       "sortSize": "Size",
       "sortName": "Name",
+      "sortDate": "Date",
       "categoryLabel": "分类",
       "indexerLabel": "索引器",
       "allTrackers": "所有索引器",

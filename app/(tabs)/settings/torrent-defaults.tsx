@@ -20,7 +20,7 @@ import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { InputModal } from '@/components/InputModal';
-import { PathAutocompleteInput } from '@/components/PathAutocompleteInput';
+import { PathAutocompleteInput, isWindowsStylePath } from '@/components/PathAutocompleteInput';
 import { storageService } from '@/services/storage';
 import { applicationApi } from '@/services/api/application';
 import { apiClient } from '@/services/api/client';
@@ -1988,7 +1988,12 @@ export default function TorrentDefaultsScreen() {
               placeholder={
                 // Illustrative only — the field's actual value never gets set
                 // to this string; an empty save path really is sent as "".
-                `${defaultSavePath || t('screens.settings.categorySavePathPlaceholderDefault')}/${editCategoryName || editingCategory} ${t('screens.settings.categorySavePathPlaceholderSuffix')}`
+                (() => {
+                  const base =
+                    defaultSavePath || t('screens.settings.categorySavePathPlaceholderDefault');
+                  const sep = isWindowsStylePath(base) ? '\\' : '/';
+                  return `${base}${sep}${editCategoryName || editingCategory} ${t('screens.settings.categorySavePathPlaceholderSuffix')}`;
+                })()
               }
               placeholderTextColor={colors.textSecondary}
             />

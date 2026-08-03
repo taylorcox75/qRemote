@@ -102,6 +102,76 @@ describe('PathAutocompleteInput', () => {
     expect(screen.queryByText('F:/F:\\test folder')).toBeNull();
   });
 
+  it('fetches suggestions for a Windows drive-letter path typed with backslashes', async () => {
+    jest.mocked(applicationApi.getDirectoryContent).mockResolvedValue(['D:\\Downloads']);
+
+    const onChangeText = jest.fn();
+    await render(
+      <PathAutocompleteInput testID="path-input" value="D:\\Do" onChangeText={onChangeText} />,
+    );
+
+    fireEvent.changeText(screen.getByTestId('path-input'), 'D:\\Do');
+
+    expect(await screen.findByText('D:\\Downloads')).toBeTruthy();
+    expect(applicationApi.getDirectoryContent).toHaveBeenCalledWith('D:\\', 'dirs');
+  });
+
+  it('fetches suggestions for a UNC share path', async () => {
+    jest
+      .mocked(applicationApi.getDirectoryContent)
+      .mockResolvedValue(['\\\\nas\\share\\Downloads']);
+
+    const onChangeText = jest.fn();
+    await render(
+      <PathAutocompleteInput
+        testID="path-input"
+        value="\\\\nas\\share\\Do"
+        onChangeText={onChangeText}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByTestId('path-input'), '\\\\nas\\share\\Do');
+
+    expect(await screen.findByText('\\\\nas\\share\\Downloads')).toBeTruthy();
+    expect(applicationApi.getDirectoryContent).toHaveBeenCalledWith('\\\\nas\\share\\', 'dirs');
+  });
+
+  it('appends a backslash (not a forward slash) when a Windows-style suggestion is tapped', async () => {
+    jest.mocked(applicationApi.getDirectoryContent).mockResolvedValue(['D:\\Downloads']);
+
+    const onChangeText = jest.fn();
+    await render(
+      <PathAutocompleteInput testID="path-input" value="D:\\Do" onChangeText={onChangeText} />,
+    );
+
+    fireEvent.changeText(screen.getByTestId('path-input'), 'D:\\Do');
+    const suggestion = await screen.findByText('D:\\Downloads');
+
+    fireEvent(suggestion.parent!, 'press');
+
+    expect(onChangeText).toHaveBeenCalledWith('D:\\Downloads\\');
+  });
+
+  it('never treats a literal backslash in a Linux path as a separator', async () => {
+    jest.mocked(applicationApi.getDirectoryContent).mockResolvedValue(['/data/weird']);
+
+    const onChangeText = jest.fn();
+    await render(
+      <PathAutocompleteInput
+        testID="path-input"
+        value="/data/weird\\name"
+        onChangeText={onChangeText}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByTestId('path-input'), '/data/weird\\name');
+
+    // Give the debounced fetch a chance to have fired.
+    await new Promise((r) => setTimeout(r, 400));
+
+    expect(applicationApi.getDirectoryContent).toHaveBeenCalledWith('/data/', 'dirs');
+  });
+
   it('immediately fetches the next directory level after a suggestion is tapped', async () => {
     jest
       .mocked(applicationApi.getDirectoryContent)

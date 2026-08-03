@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { PathAutocompleteInput } from '@/components/PathAutocompleteInput';
 import { SettingRow } from '@/components/SettingRow';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSelectPicker';
@@ -450,7 +451,7 @@ export default function RssRuleEditorScreen() {
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
 
               <SettingRow label={t('screens.rss.savePath')} hint={t('screens.rss.savePathHint')}>
-                <TextInput
+                <PathAutocompleteInput
                   style={[
                     styles.rowInput,
                     {

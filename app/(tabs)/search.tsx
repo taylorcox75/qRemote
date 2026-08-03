@@ -55,7 +55,7 @@ import { haptics } from '@/utils/haptics';
 const ALL = 'all';
 const ENABLED = 'enabled';
 
-type SortKey = 'seeders' | 'size' | 'name' | 'leechers';
+type SortKey = 'seeders' | 'size' | 'name' | 'leechers' | 'date';
 
 const SORT_OPTIONS: Array<{
   key: SortKey;
@@ -66,6 +66,7 @@ const SORT_OPTIONS: Array<{
   { key: 'leechers', labelKey: 'screens.search.sortLeechers', icon: 'arrow-down-outline' },
   { key: 'size', labelKey: 'screens.search.sortSize', icon: 'cube-outline' },
   { key: 'name', labelKey: 'screens.search.sortName', icon: 'text-outline' },
+  { key: 'date', labelKey: 'screens.search.sortDate', icon: 'calendar-outline' },
 ];
 
 const TAG_MATCH_ATTEMPTS = 8;
@@ -234,6 +235,13 @@ export default function SearchScreen() {
   const [pendingAddUrl, setPendingAddUrl] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<SearchResult | null>(null);
 
+  // pubDate is a qBit 5.0+ (WebAPI >= 2.11.0) field — hide the option on older
+  // servers rather than offering a sort that silently does nothing.
+  const visibleSortOptions = useMemo(
+    () => SORT_OPTIONS.filter((opt) => opt.key !== 'date' || features.supportsSearchPubDate),
+    [features.supportsSearchPubDate],
+  );
+
   // Load remembered plugin/category once at mount. The query text itself is
   // deliberately NOT restored — it should reset on a fresh app launch, and
   // React state already keeps it intact when just switching tabs within the
@@ -388,6 +396,16 @@ export default function SearchScreen() {
         case 'name':
           cmp = (a.fileName || '').localeCompare(b.fileName || '');
           break;
+        case 'date': {
+          // qBittorrent always sends pubDate, using -1 as the "plugin didn't
+          // report one" sentinel (same convention as nbLeechers) — never
+          // actually absent. Normalize any non-positive value to 0 so
+          // unknown dates group together instead of comparing as -1.
+          const aDate = a.pubDate && a.pubDate > 0 ? a.pubDate : 0;
+          const bDate = b.pubDate && b.pubDate > 0 ? b.pubDate : 0;
+          cmp = aDate - bDate;
+          break;
+        }
       }
       return sortDirection === 'asc' ? cmp : -cmp;
     });
@@ -1013,7 +1031,7 @@ export default function SearchScreen() {
                     },
                   ]}
                 >
-                  {SORT_OPTIONS.map((opt) => {
+                  {visibleSortOptions.map((opt) => {
                     const isActive = sortBy === opt.key;
                     return (
                       <TouchableOpacity
