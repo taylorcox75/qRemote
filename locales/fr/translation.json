@@ -512,6 +512,7 @@
       "sortLeechers": "Leechers",
       "sortSize": "Size",
       "sortName": "Name",
+      "sortDate": "Date",
       "categoryLabel": "Catégorie",
       "indexerLabel": "Indexeur",
       "allTrackers": "Tous les indexeurs",

@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { SearchResult } from '@/types/api';
-import { formatSize } from '@/utils/format';
+import { formatSize, formatDate } from '@/utils/format';
 import { resultTrackerLabel } from '@/utils/searchResult';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
@@ -85,13 +85,19 @@ export function SearchResultRow({
           {/* Line 2: health dot + meta */}
           <View style={styles.statusRow}>
             <View style={[styles.stateDot, { backgroundColor: dotColor }]} />
-            <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
+            {/* numberOfLines=2, not 1: size/seeders/leechers/host/date can
+                overflow one line once a date is present — wrap instead of
+                silently truncating the date off the end. */}
+            <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={2}>
               {formatSize(result.fileSize)}
               {'  ·  '}
               <Text style={{ color: colors.success }}>↑{seeders}</Text>
               {'  ·  '}
               <Text>↓{leechers}</Text>
               {host ? `  ·  ${host}` : ''}
+              {/* qBittorrent sends -1 (not undefined) when the plugin didn't
+                  report a date — only render when it's a real timestamp. */}
+              {result.pubDate && result.pubDate > 0 ? `  ·  ${formatDate(result.pubDate)}` : ''}
             </Text>
             {/* Chevron hints that the row expands */}
             <Ionicons
