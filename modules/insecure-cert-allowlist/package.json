@@ -1,0 +1,9 @@
+{
+  "name": "insecure-cert-allowlist",
+  "version": "1.0.0",
+  "description": "Local Expo module: lets a specific per-server host bypass default TLS trust evaluation, for users who intentionally run qBittorrent behind a self-signed certificate.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "license": "MIT",
+  "private": true
+}

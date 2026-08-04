@@ -358,7 +358,7 @@ export function SuperDebugPanel({
       } else if (msg.includes('SSL') || msg.includes('certificate') || msg.includes('TLS')) {
         addEntry(
           'WARN',
-          'SSL/TLS error. If you do not have HTTPS set up on your server, turn off the "Use HTTPS" toggle above.',
+          'The server was reached, but iOS rejected its TLS certificate. If you do not have HTTPS set up, turn off the "Use HTTPS" toggle. If you are intentionally using a self-signed certificate, enable "Allow Self-Signed Certificate" in the Security section above — trusting the certificate on this device alone is not enough for a third-party app to accept it.',
           'warning',
         );
       } else {
@@ -548,7 +548,7 @@ export function SuperDebugPanel({
         } else if (msg.includes('SSL') || msg.includes('certificate') || msg.includes('TLS')) {
           addEntry(
             'WARN',
-            'SSL/TLS handshake failed. If you do not have HTTPS configured on your qBittorrent server, turn off the "Use HTTPS" toggle and try again.',
+            'The server was reached, but iOS rejected its TLS certificate. If you do not have HTTPS configured, turn off the "Use HTTPS" toggle. If you are intentionally using a self-signed certificate, enable "Allow Self-Signed Certificate" in the Security section above — trusting the certificate on this device alone is not enough for a third-party app to accept it.',
             'warning',
           );
         } else {

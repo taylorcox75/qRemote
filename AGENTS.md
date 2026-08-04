@@ -224,6 +224,10 @@ Consequences:
   so an incoming `.torrent` is copied natively inside the open-URL callback —
   while the security-scoped access is still valid — instead of racing the async
   JS Linking bridge on cold launch.
+- **When you need actual new native code (not a patch to a generated file),
+  write a local Expo module under `modules/`.** Precedent:
+  `modules/insecure-cert-allowlist` — autolinked by Expo from `modules/*` with
+  no config plugin needed, discovered automatically on `npm run xcode`'s prebuild.
 - **`app.config.js` is tested.** `tests/utils/app-config.test.ts` asserts the
   magnet scheme and `.torrent` document-type registration survive. Update it if
   you change those blocks; the comments in `app.config.js` explain why each key
@@ -400,6 +404,21 @@ Thin objects over `apiClient`.
 - **`color-theme-manager.ts`** — save/load/apply user color themes.
 - **`connectivity-log.ts`** — in-memory ring log (`clogDebug/Info/Warn/Error(tag, msg)`).
 - **`log-storage.ts`** — persisted entries for the Logs screen.
+
+### Native modules (`modules/`)
+
+- **`insecure-cert-allowlist`** — local Expo module (Swift + an Obj-C category
+  on `RCTHTTPRequestHandler`) backing the per-server "Allow Self-Signed
+  Certificate" toggle. RN's default iOS HTTP handler never implements the TLS
+  challenge delegate method, so it always falls through to default system
+  trust evaluation with zero override point — not even for a certificate the
+  user has manually trusted on-device. The category fills in that delegate
+  method and accepts the connection only for hosts JS has explicitly
+  allow-listed (`ServerConfig.allowInsecureCert`, synced from
+  `services/server-manager.ts`); every other host and every non-server-trust
+  challenge (Basic Auth, client cert) falls through to default handling
+  unchanged. iOS only; requires `npm run xcode` to pick up (new native code,
+  not just a generated-file patch).
 
 ### Hooks (`hooks/`)
 

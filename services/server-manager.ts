@@ -14,6 +14,21 @@ import { apiClient } from './api/client';
 import { authApi } from './api/auth';
 import { applicationApi } from './api/application';
 import { clogInfo, clogWarn, clogError } from './connectivity-log';
+import { setInsecureCertAllowedHosts } from '@/modules/insecure-cert-allowlist';
+
+/**
+ * Pushes every host opted into `allowInsecureCert` to the native TLS
+ * allowlist (see modules/insecure-cert-allowlist). Called after every read
+ * or write of the server list so the native side never lags behind a toggle
+ * change before the next connection attempt.
+ */
+function syncInsecureCertAllowlist(servers: ServerConfig[]): void {
+  const hosts = servers
+    .filter((s) => s.allowInsecureCert)
+    .flatMap((s) => [s.host, s.fallbackHost])
+    .filter((h): h is string => !!h);
+  setInsecureCertAllowedHosts(hosts);
+}
 
 /**
  * Per-endpoint outcome from a connection test. Used to surface granular
@@ -59,13 +74,16 @@ export class ServerManager {
    */
   static async saveServer(server: ServerConfig): Promise<void> {
     await storageService.saveServer(server);
+    syncInsecureCertAllowlist(await storageService.getServers());
   }
 
   /**
    * Get all saved servers
    */
   static async getServers(): Promise<ServerConfig[]> {
-    return await storageService.getServers();
+    const servers = await storageService.getServers();
+    syncInsecureCertAllowlist(servers);
+    return servers;
   }
 
   /**
@@ -93,6 +111,7 @@ export class ServerManager {
       await storageService.setManualDisconnect(false);
     }
     await storageService.deleteServer(id);
+    syncInsecureCertAllowlist(await storageService.getServers());
   }
 
   /**
@@ -285,7 +304,12 @@ export class ServerManager {
    * Get current connected server
    */
   static async getCurrentServer(): Promise<ServerConfig | null> {
-    return await storageService.getCurrentServer();
+    const [current, allServers] = await Promise.all([
+      storageService.getCurrentServer(),
+      storageService.getServers(),
+    ]);
+    syncInsecureCertAllowlist(allServers);
+    return current;
   }
 
   /**
@@ -342,6 +366,13 @@ export class ServerManager {
     server: ServerConfig,
     signal?: AbortSignal,
   ): Promise<ConnectionTestResult> {
+    if (server.allowInsecureCert) {
+      // Server may not be saved yet (Add Server's "Test Connection" builds a
+      // throwaway ServerConfig) — union it with the persisted allowlist so
+      // the toggle takes effect immediately, without wiping other servers'
+      // entries out of the native allowlist.
+      syncInsecureCertAllowlist([...(await storageService.getServers()), server]);
+    }
     if (!hasFallback(server)) {
       // Simple primary-only path — preserves the original shape for callers
       // that don't need per-endpoint detail.
