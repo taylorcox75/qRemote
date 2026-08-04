@@ -722,7 +722,7 @@
     "authentication": "AUTHENTICATION",
     "security": "SECURITY",
     "useHttps": "Use HTTPS",
-    "allowInsecureCert": "Allow Self-Signed Certificate",
+    "allowInsecureCert": "Allow Untrusted, Self-Signed Certificate",
     "allowInsecureCertHint": "Accepts this server's certificate even if iOS does not trust it. Only enable this for a server you control — it removes protection against a spoofed or intercepted connection.",
     "authMethod": "Authentication Method",
     "authMethodPassword": "Username & Password",
