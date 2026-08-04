@@ -701,6 +701,8 @@
     "authentication": "认证",
     "security": "安全",
     "useHttps": "使用 HTTPS",
+    "allowInsecureCert": "允许自签名证书",
+    "allowInsecureCertHint": "即使 iOS 不信任此服务器的证书,也接受该证书。仅对您自己掌控的服务器启用此选项——它会移除对伪造或被拦截连接的防护。",
     "authMethod": "认证方式",
     "authMethodPassword": "用户名和密码",
     "authMethodApiKey": "API 密钥",

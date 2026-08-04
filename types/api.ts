@@ -17,6 +17,8 @@ export interface ServerConfig {
   username: string;
   password: string;
   useHttps?: boolean;
+  /** When true, accept this server's (and its fallback's) TLS certificate even if untrusted — for self-signed setups. iOS only; see modules/insecure-cert-allowlist. */
+  allowInsecureCert?: boolean;
   bypassAuth?: boolean; // Skip authentication when local network auth is disabled
 
   /**

@@ -56,6 +56,7 @@ export default function EditServerScreen() {
   const [apiKey, setApiKey] = useState('');
   const [showAuthMethodPicker, setShowAuthMethodPicker] = useState(false);
   const [useHttps, setUseHttps] = useState(false);
+  const [allowInsecureCert, setAllowInsecureCert] = useState(false);
   const [useBasicAuth, setUseBasicAuth] = useState(false);
   const [basicAuthUsername, setBasicAuthUsername] = useState('');
   const [basicAuthPassword, setBasicAuthPassword] = useState('');
@@ -236,6 +237,7 @@ App Version: ${APP_VERSION}`;
         setApiKey(server.apiKey || '');
         setAuthMode(getServerAuthMode(server));
         setUseHttps(server.useHttps || false);
+        setAllowInsecureCert(server.allowInsecureCert || false);
         setUseBasicAuth(server.useBasicAuth || false);
         setBasicAuthUsername(server.basicAuthUsername || '');
         setBasicAuthPassword(server.basicAuthPassword || '');
@@ -319,6 +321,7 @@ App Version: ${APP_VERSION}`;
         basePath: preservedBasePath, // Preserve existing basePath for backward compatibility
         ...applyServerAuthMode(authMode, { username, password, apiKey }),
         useHttps,
+        allowInsecureCert: useHttps ? allowInsecureCert : false,
         useBasicAuth: useProxyBasicAuth,
         basicAuthUsername: useProxyBasicAuth ? basicAuthUsername.trim() : '',
         basicAuthPassword: useProxyBasicAuth ? basicAuthPassword : '',
@@ -426,6 +429,7 @@ App Version: ${APP_VERSION}`;
         basePath: preservedBasePath,
         ...applyServerAuthMode(authMode, { username, password, apiKey }),
         useHttps,
+        allowInsecureCert: useHttps ? allowInsecureCert : false,
         useBasicAuth: useProxyBasicAuth,
         basicAuthUsername: useProxyBasicAuth ? basicAuthUsername.trim() : '',
         basicAuthPassword: useProxyBasicAuth ? basicAuthPassword : '',
@@ -799,6 +803,26 @@ App Version: ${APP_VERSION}`;
                   thumbColor="#FFFFFF"
                 />
               </SettingRow>
+              {useHttps && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <SettingRow
+                    icon="warning-outline"
+                    iconColor={colors.warning}
+                    label={t('server.allowInsecureCert')}
+                  >
+                    <Switch
+                      value={allowInsecureCert}
+                      onValueChange={setAllowInsecureCert}
+                      trackColor={{ false: colors.surfaceOutline, true: colors.warning }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </SettingRow>
+                  <Text style={[styles.hintText, { color: colors.textSecondary }]}>
+                    {t('server.allowInsecureCertHint')}
+                  </Text>
+                </>
+              )}
             </View>
           </View>
 

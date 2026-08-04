@@ -102,6 +102,10 @@ describe('isNetworkError', () => {
 describe('ServerManager', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // saveServer/deleteServer/getCurrentServer all sync the native
+    // self-signed-cert allowlist off the full server list as a side effect;
+    // default it so tests that don't care about that list don't have to stub it.
+    mockStorage.getServers.mockResolvedValue([]);
   });
 
   describe('saveServer / getServers / getServer', () => {
