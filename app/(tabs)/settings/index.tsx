@@ -19,7 +19,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as StoreReview from 'expo-store-review';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
@@ -174,15 +173,12 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleRate = useCallback(async () => {
-    try {
-      if (await StoreReview.isAvailableAsync()) {
-        await StoreReview.requestReview();
-        return;
-      }
-    } catch {
-      // Fall through to opening the App Store listing directly.
-    }
+  const handleRate = useCallback(() => {
+    // This is an explicit "rate us" button, not a soft in-context ask, so it
+    // must go straight to the App Store review page. StoreReview.requestReview()
+    // is throttled by iOS to ~3 prompts/year and resolves silently with no
+    // dialog once that's exhausted -- it would make this button appear to do
+    // nothing on repeat taps (#212).
     Linking.openURL(`${APP_STORE_URL}?action=write-review`).catch(() => {});
   }, []);
 
