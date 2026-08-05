@@ -147,10 +147,7 @@ export default function ManageTrackersScreen() {
 
     try {
       setAddingTracker(true);
-      // Remove old tracker
-      await torrentsApi.removeTrackers(hash!, [editingTracker.url]);
-      // Add new tracker
-      await torrentsApi.addTrackers(hash!, [editTrackerUrl.trim()]);
+      await torrentsApi.editTrackers(hash!, editingTracker.url, editTrackerUrl.trim());
       setEditingTracker(null);
       setEditTrackerUrl('');
       fetchTrackers();

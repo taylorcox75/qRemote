@@ -17,20 +17,24 @@ export interface ChangelogRelease {
   /** Grouped release notes (New Features / Bugs Fixed / Maintenance). */
   sections?: ChangelogSection[];
 }
-
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.8.TESTFLIGHT',
-    date: '2026-07-28',
+    version: '3.8.35',
+    date: '2026-08-04',
     sections: [
+      {
+        title: 'New Features',
+        items: [
+          "Automatic Torrent Management can now be toggled from a torrent's detail screen",
+          "Added Pause Downloads and Pause Uploads to the Transfer tab's quick actions",
+        ],
+      },
       {
         title: 'Bugs Fixed',
         items: [
-          'Self-signed certs fix',
-          'Fixed a false "couldn\'t read torrent file" error that could briefly flash when opening a .torrent file from a cold launch',
-          'Fixed server background restoration bug',
-          'Spacing of cards',
-          'Windows drive path autocomplete for multiple drives',
+          'Disconnecting a server from Settings now shows a confirmation toast',
+          "Editing a tracker's URL no longer risks losing the tracker if the update doesn't fully complete",
+          'Fixed the React Native version on the About screen not falling back to "N/A" when unavailable',
         ],
       },
     ],
@@ -42,6 +46,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         title: 'New Features',
         items: [
+          'Allow self-signed-certs',
           'Global seeding limits (ratio, seeding time, and what happens when reached) can now be set from the Transfer tab',
           'Added an Unlimited shortcut to the Max Ratio and Max Seeding Time editors on the Transfer tab',
           'File path now suggested from existing torrent paths and support for windows',
@@ -52,6 +57,7 @@ export const CHANGELOG: ChangelogRelease[] = [
         items: [
           'Fixed a false "couldn\'t read torrent file" error that could briefly flash when opening a .torrent file from a cold launch',
           'Fixed Transfer tab speed numbers getting cut off at higher speeds',
+          'Fixed server background restoration bug',
           'Fixed per-torrent speed limits sometimes applying the wrong units',
           'Fixed torrent cards showing "unlimited" for a ratio limit that actually follows the global limit',
           'Fixed the folder-path autocomplete list clipping suggestions instead of scrolling to them',

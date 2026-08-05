@@ -481,7 +481,7 @@ export default function ServersSettingsScreen() {
                     colors={colors}
                     onPress={() => handleEditServer(server)}
                     onConnect={() => handleConnect(server)}
-                    onDisconnect={() => disconnect()}
+                    onDisconnect={handleDisconnect}
                     onDelete={() => setPendingDelete(server)}
                     isLast={index === servers.length - 1}
                   />

@@ -116,8 +116,9 @@ export default function AboutScreen() {
                 icon="logo-react"
                 label="React Native"
                 value={
-                  `${Platform.constants.reactNativeVersion?.major}.${Platform.constants.reactNativeVersion?.minor}.${Platform.constants.reactNativeVersion?.patch}` ||
-                  'N/A'
+                  Platform.constants.reactNativeVersion
+                    ? `${Platform.constants.reactNativeVersion.major}.${Platform.constants.reactNativeVersion.minor}.${Platform.constants.reactNativeVersion.patch}`
+                    : 'N/A'
                 }
                 colors={colors}
               />
