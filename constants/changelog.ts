@@ -35,6 +35,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           'Disconnecting a server from Settings now shows a confirmation toast',
           "Editing a tracker's URL no longer risks losing the tracker if the update doesn't fully complete",
           'Fixed the React Native version on the About screen not falling back to "N/A" when unavailable',
+          'Toast notifications no longer cover header buttons like Add on the Torrents and Search tabs — they now anchor near the bottom of the screen',
         ],
       },
     ],

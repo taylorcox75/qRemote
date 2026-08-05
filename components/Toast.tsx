@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Text, StyleSheet, Animated, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import { Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -9,14 +9,22 @@ import { spacing, borderRadius } from '@/constants/spacing';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+// Standard iOS bottom-tab-bar content height (React Navigation's default —
+// this app doesn't override tabBarStyle.height), used to keep the toast
+// clear of the tab bar without needing each tab screen to opt in.
+const TAB_BAR_HEIGHT = 49;
+
 interface ToastProps {
   message: string;
   type?: ToastType;
   duration?: number;
   onHide?: () => void;
-  /** Overrides the default safe-area-relative position — for screens whose
-   *  own header content (search bar, buttons) would otherwise sit under it. */
-  topOffsetOverride?: number;
+  /** False for screens with no bottom tab bar to clear — the native modal
+   *  sheets (server add/edit) mounting <ModalToast/>. Every other screen,
+   *  tab or not, keeps this true: the tab bar is either visible or just off
+   *  the bottom of a pushed screen, so reserving its space costs nothing
+   *  more than a slightly bigger gap on the screens where it isn't there. */
+  withinTabBar?: boolean;
 }
 
 export function Toast({
@@ -24,18 +32,16 @@ export function Toast({
   type = 'info',
   duration = 3000,
   onHide,
-  topOffsetOverride,
+  withinTabBar = true,
 }: ToastProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   // Fall back to initialWindowMetrics/hardcoded values for the brief window
   // before SafeAreaProvider has measured real insets on first render.
-  const safeTop =
-    insets.top ||
-    initialWindowMetrics?.insets.top ||
-    (Platform.OS === 'ios' ? 47 : StatusBar.currentHeight || 24);
-  const translateY = useRef(new Animated.Value(-100)).current;
+  const safeBottom =
+    insets.bottom || initialWindowMetrics?.insets.bottom || (Platform.OS === 'ios' ? 34 : 0);
+  const translateY = useRef(new Animated.Value(100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -65,7 +71,7 @@ export function Toast({
   const hide = () => {
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: -100,
+        toValue: 100,
         duration: 200,
         useNativeDriver: true,
       }),
@@ -105,7 +111,7 @@ export function Toast({
     }
   };
 
-  const topOffset = topOffsetOverride ?? safeTop + 8;
+  const bottomOffset = safeBottom + (withinTabBar ? TAB_BAR_HEIGHT : 0) + spacing.md;
 
   const toastContent = (
     <Animated.View
@@ -113,7 +119,7 @@ export function Toast({
         styles.container,
         {
           backgroundColor: colors.surface,
-          top: topOffset,
+          bottom: bottomOffset,
           transform: [{ translateY }],
           opacity,
         },

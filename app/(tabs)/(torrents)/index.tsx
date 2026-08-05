@@ -67,7 +67,7 @@ import { torrentHasAnyTag, UNTAGGED_FILTER } from '@/utils/tags';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
-  const { showToast, setToastTopOffset } = useToast();
+  const { showToast } = useToast();
   const router = useRouter();
   const {
     torrents,
@@ -175,19 +175,6 @@ export default function TorrentsScreen() {
   // Track last known default filter so we only sync when user changes it in Settings
   const lastDefaultFilterRef = useRef<string | null>(null);
 
-  // This screen's search/sort/add header overlays the top of the list (see
-  // headerContainer/listContent below) rather than taking up its own layout
-  // space, so the toast's default safe-area offset lands on top of it. Push
-  // the toast down past the header — a bit further than listContent's own
-  // paddingTop so it clears the header with room to spare — while this tab
-  // is focused.
-  useFocusEffect(
-    useCallback(() => {
-      setToastTopOffset(styles.listContent.paddingTop + spacing.xxl);
-      return () => setToastTopOffset(null);
-    }, [setToastTopOffset]),
-  );
-
   // Check for filter + card view mode preference changes on screen focus
   useFocusEffect(
     useCallback(() => {
@@ -261,13 +248,12 @@ export default function TorrentsScreen() {
             ? prefs.expandedCardGridColumns
             : 4,
         );
-      } catch (error) {
+      } catch {
         // Use defaults if loading fails
       }
     };
     loadDefaultPreferences();
     // Only run once on mount (app launch)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync pauseOnAdd from server when connected (best-effort background sync)
@@ -462,7 +448,7 @@ export default function TorrentsScreen() {
 
     // Sort torrents - efficient O(n log n) with native sort
     filtered.sort((a, b) => {
-      let comparison = 0;
+      let comparison: number;
 
       switch (sortBy) {
         case 'name':
@@ -1227,9 +1213,11 @@ export default function TorrentsScreen() {
                   style={styles.selectCheckbox}
                   onPress={() => {
                     if (selectMode) {
-                      selectedHashes.size === filteredTorrents.length
-                        ? clearSelection()
-                        : selectAll();
+                      if (selectedHashes.size === filteredTorrents.length) {
+                        clearSelection();
+                      } else {
+                        selectAll();
+                      }
                     } else {
                       toggleSelectMode();
                     }
