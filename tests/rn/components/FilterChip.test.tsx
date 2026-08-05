@@ -2,7 +2,6 @@ import React from 'react';
 import { Text } from 'react-native';
 import { render, fireEvent, screen } from '@testing-library/react-native';
 import { FilterChip } from '@/components/FilterChip';
-import { mockColors } from './theme-mock';
 
 jest.mock('@/context/ThemeContext', () => ({
   useTheme: () => ({ colors: require('./theme-mock').mockColors }),

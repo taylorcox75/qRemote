@@ -251,9 +251,13 @@ export class ServerManager {
             axiosErr?.response?.status === 401 ||
             message.includes('Authentication')
           ) {
-            throw new Error('Authentication failed. Please check your credentials.');
+            throw new Error('Authentication failed. Please check your credentials.', {
+              cause: error,
+            });
           }
-          throw new Error('Failed to connect to server. Please check your settings.');
+          throw new Error('Failed to connect to server. Please check your settings.', {
+            cause: error,
+          });
         }
       }
 
@@ -283,9 +287,13 @@ export class ServerManager {
             axiosErr?.response?.status === 401 ||
             message.includes('Authentication')
           ) {
-            throw new Error('Authentication failed. Please check your credentials.');
+            throw new Error('Authentication failed. Please check your credentials.', {
+              cause: error,
+            });
           }
-          throw new Error('Failed to connect to server. Please check your settings.');
+          throw new Error('Failed to connect to server. Please check your settings.', {
+            cause: error,
+          });
         }
       }
 
@@ -322,7 +330,7 @@ export class ServerManager {
     if (previousServer && getServerAuthMode(previousServer) !== 'apiKey') {
       try {
         await authApi.logout();
-      } catch (error) {
+      } catch {
         // Ignore logout errors
       }
     }

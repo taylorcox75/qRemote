@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
@@ -33,7 +32,6 @@ interface LogViewerProps {
 export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogViewerProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const [logs, setLogs] = useState<StoredLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
 

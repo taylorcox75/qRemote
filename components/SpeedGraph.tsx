@@ -56,7 +56,7 @@ export function niceGraphCeiling(bytesPerSecond: number): number {
 export function SpeedGraph({ data, color, width = 150, height = 50, maxValue }: SpeedGraphProps) {
   const { colors } = useTheme();
 
-  const { path, gradientId, yScale, domain } = useMemo(() => {
+  const { path, gradientId } = useMemo(() => {
     if (!data || data.length === 0) {
       return {
         path: '',

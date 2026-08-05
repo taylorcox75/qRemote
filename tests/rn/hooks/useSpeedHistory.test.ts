@@ -8,7 +8,9 @@ jest.mock('@/context/TransferContext', () => ({
 
 describe('useSpeedHistory', () => {
   it('returns zeroed history and zero current speeds when transferInfo is null', async () => {
-    jest.mocked(useTransfer).mockReturnValue({ transferInfo: null } as any);
+    jest
+      .mocked(useTransfer)
+      .mockReturnValue({ transferInfo: null } as unknown as ReturnType<typeof useTransfer>);
     const { result } = await renderHook(() => useSpeedHistory());
     expect(result.current.downloadHistory).toHaveLength(30);
     expect(result.current.downloadHistory.every((v) => v === 0)).toBe(true);
@@ -21,7 +23,7 @@ describe('useSpeedHistory', () => {
     const mockUseTransfer = jest.mocked(useTransfer);
     mockUseTransfer.mockReturnValue({
       transferInfo: { dl_info_speed: 1024 * 1024 * 2, up_info_speed: 1024 * 1024 },
-    } as any);
+    } as unknown as ReturnType<typeof useTransfer>);
 
     const { result, rerender } = await renderHook(() => useSpeedHistory());
 
@@ -32,7 +34,7 @@ describe('useSpeedHistory', () => {
 
     mockUseTransfer.mockReturnValue({
       transferInfo: { dl_info_speed: 1024 * 1024 * 4, up_info_speed: 1024 * 1024 * 3 },
-    } as any);
+    } as unknown as ReturnType<typeof useTransfer>);
     await rerender({});
 
     expect(result.current.downloadHistory).toHaveLength(30);

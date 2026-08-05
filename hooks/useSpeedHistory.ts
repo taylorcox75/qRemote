@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTransfer } from '@/context/TransferContext';
 
 const MAX_HISTORY_LENGTH = 30; // Keep last 30 readings

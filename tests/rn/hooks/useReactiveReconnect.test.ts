@@ -28,7 +28,7 @@ describe('useReactiveReconnect', () => {
     jest.mocked(useServer).mockReturnValue({
       isConnected: true,
       checkAndReconnect,
-    } as any);
+    } as unknown as ReturnType<typeof useServer>);
   });
 
   afterEach(() => {
@@ -47,7 +47,7 @@ describe('useReactiveReconnect', () => {
     jest.mocked(useServer).mockReturnValue({
       isConnected: false,
       checkAndReconnect,
-    } as any);
+    } as unknown as ReturnType<typeof useServer>);
     await renderHook(() => useReactiveReconnect(new Error('Network Error')));
     expect(checkAndReconnect).not.toHaveBeenCalled();
   });

@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import type { ReactTestInstance } from 'react-test-renderer';
 import { render, fireEvent, screen } from '@testing-library/react-native';
 import { TorrentCard } from '@/components/TorrentCard';
 import { TorrentInfo } from '@/types/api';
@@ -97,7 +98,7 @@ describe('TorrentCard state badge', () => {
     const badge = badgeText.parent;
     const tintLayer = badge?.children[0];
     expect(tintLayer).not.toBe(badgeText);
-    const tintStyle = StyleSheet.flatten((tintLayer as any).props.style);
+    const tintStyle = StyleSheet.flatten((tintLayer as unknown as ReactTestInstance).props.style);
     expect(tintStyle).toMatchObject({
       backgroundColor: downloadingColor,
       opacity: 0.18,
@@ -306,7 +307,8 @@ describe('TorrentCard pause/play circle', () => {
 describe('TorrentCard three-dot menu button', () => {
   // The mocked native View shares MockNativeMethods across instances, so the
   // component's measureInWindow call lands on this prototype jest.fn.
-  const measureInWindow = (View as any).prototype.measureInWindow as jest.Mock;
+  const measureInWindow = (View as unknown as { prototype: { measureInWindow: jest.Mock } })
+    .prototype.measureInWindow;
 
   afterEach(() => {
     measureInWindow.mockReset();
@@ -378,7 +380,7 @@ describe('TorrentCard expanded detail grid — stacked label-over-value cells', 
       fontSize: 11,
       color: mockColors.textSecondary,
     });
-    const value = cell?.children[1] as any;
+    const value = cell?.children[1] as unknown as ReactTestInstance;
     expect(StyleSheet.flatten(value.props.style)).toMatchObject({
       fontSize: 13,
       color: mockColors.text,

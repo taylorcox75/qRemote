@@ -36,18 +36,20 @@ jest.mock('@/services/api/client', () => ({
 describe('PathAutocompleteInput — browse known save paths (#180)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(useServer).mockReturnValue({ isConnected: true } as any);
+    jest
+      .mocked(useServer)
+      .mockReturnValue({ isConnected: true } as unknown as ReturnType<typeof useServer>);
     jest.mocked(apiClient.getApiFeatures).mockReturnValue({
       supportsGetDirectoryContent: true,
-    } as any);
+    } as unknown as ReturnType<typeof apiClient.getApiFeatures>);
   });
 
   it('opens the browse picker with paths known from torrents and categories', async () => {
     jest.mocked(useTorrents).mockReturnValue({
-      torrents: [{ save_path: '/data/movies' }, { save_path: '/data/tv' }] as any,
-      categories: { books: { name: 'books', savePath: '/data/books' } } as any,
+      torrents: [{ save_path: '/data/movies' }, { save_path: '/data/tv' }],
+      categories: { books: { name: 'books', savePath: '/data/books' } },
       tags: [],
-    } as any);
+    } as unknown as ReturnType<typeof useTorrents>);
 
     const onChangeText = jest.fn();
     await render(
@@ -63,10 +65,10 @@ describe('PathAutocompleteInput — browse known save paths (#180)', () => {
 
   it('selecting a path from the browse picker sets the exact value (no trailing slash)', async () => {
     jest.mocked(useTorrents).mockReturnValue({
-      torrents: [{ save_path: '/data/movies' }] as any,
+      torrents: [{ save_path: '/data/movies' }],
       categories: {},
       tags: [],
-    } as any);
+    } as unknown as ReturnType<typeof useTorrents>);
 
     const onChangeText = jest.fn();
     await render(
@@ -81,10 +83,10 @@ describe('PathAutocompleteInput — browse known save paths (#180)', () => {
 
   it('disables the browse button when the field is not editable', async () => {
     jest.mocked(useTorrents).mockReturnValue({
-      torrents: [{ save_path: '/data/movies' }] as any,
+      torrents: [{ save_path: '/data/movies' }],
       categories: {},
       tags: [],
-    } as any);
+    } as unknown as ReturnType<typeof useTorrents>);
 
     await render(
       <PathAutocompleteInput

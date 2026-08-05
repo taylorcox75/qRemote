@@ -20,7 +20,6 @@ interface InsecureCertAllowlistNativeModule {
 // this try/catch; a runtime require keeps the failure containable here.
 let nativeModule: InsecureCertAllowlistNativeModule | null = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { requireNativeModule } = require('expo-modules-core') as {
     requireNativeModule: (name: string) => InsecureCertAllowlistNativeModule;
   };

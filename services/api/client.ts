@@ -55,9 +55,9 @@ class ApiClient {
 
         const protocol = this.currentServer.useHttps ? 'https' : 'http';
         // Defense-in-depth: strip protocol and trailing colons/slashes from host even if already sanitized
-        let host = (this.currentServer.host || '')
+        const host = (this.currentServer.host || '')
           .replace(/^(https?:\/\/)/i, '')
-          .replace(/[:\/]+$/, '');
+          .replace(/[:/]+$/, '');
         const port = this.currentServer.port;
         const portNum = port !== undefined && port !== null ? Number(port) : undefined;
         const portPart =

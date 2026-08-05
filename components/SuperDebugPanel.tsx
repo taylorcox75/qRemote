@@ -177,7 +177,7 @@ export function SuperDebugPanel({
     h
       .trim()
       .replace(/^(https?:\/\/)/i, '')
-      .replace(/[:\/]+$/, '');
+      .replace(/[:/]+$/, '');
 
   const buildUrl = useCallback((): string => {
     const protocol = useHttps ? 'https' : 'http';

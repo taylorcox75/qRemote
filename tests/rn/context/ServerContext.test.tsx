@@ -6,6 +6,7 @@ import { ServerProvider, useServer } from '@/context/ServerContext';
 import { ServerManager } from '@/services/server-manager';
 import { apiClient } from '@/services/api/client';
 import { storageService } from '@/services/storage';
+import { ServerConfig } from '@/types/api';
 
 jest.mock('@/services/server-manager', () => ({
   ServerManager: {
@@ -38,8 +39,8 @@ jest.mock('@/services/connectivity-log', () => ({
   clogError: jest.fn(),
 }));
 
-const server1: any = { id: 's1', host: 'host1', port: 8080 };
-const server2: any = { id: 's2', host: 'host2', port: 8080 };
+const server1 = { id: 's1', host: 'host1', port: 8080 } as unknown as ServerConfig;
+const server2 = { id: 's2', host: 'host2', port: 8080 } as unknown as ServerConfig;
 
 function Consumer({ onRender }: { onRender: (ctx: ReturnType<typeof useServer>) => void }) {
   const ctx = useServer();

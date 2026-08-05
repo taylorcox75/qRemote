@@ -95,7 +95,7 @@ export default function LogsScreen() {
           setLastPeerLogId(logs[0]?.id);
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore log loading errors
     } finally {
       setLoading(false);

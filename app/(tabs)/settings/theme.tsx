@@ -145,7 +145,7 @@ export default function ThemeSettingsScreen() {
                     await colorThemeManager.resetTorrentStateColors(isDark);
                     await reloadCustomColors();
                     showToast(t('toast.stateColorsReset'), 'success');
-                  } catch (error) {
+                  } catch {
                     showToast(t('errors.failedToResetStateColors'), 'error');
                   }
                 }}
@@ -247,7 +247,7 @@ export default function ThemeSettingsScreen() {
                     await colorThemeManager.resetCustomColors(isDark);
                     await reloadCustomColors();
                     showToast(t('toast.colorsReset'), 'success');
-                  } catch (error) {
+                  } catch {
                     showToast(t('errors.failedToResetColors'), 'error');
                   }
                 }}
@@ -384,7 +384,7 @@ export default function ThemeSettingsScreen() {
                 await colorThemeManager.saveCustomColors(isDark, updatedCustom);
                 await reloadCustomColors();
                 showToast(`${colorPickerKey} color updated`, 'success');
-              } catch (error) {
+              } catch {
                 showToast(t('errors.failedToSaveColor'), 'error');
               }
             }}

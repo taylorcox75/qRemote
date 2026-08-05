@@ -46,7 +46,7 @@ export const colorThemeManager = {
       const customColors = preferences[CUSTOM_COLORS_KEY] as Record<string, ColorTheme> | undefined;
       const themeKey = isDark ? 'dark' : 'light';
       return customColors?.[themeKey] || null;
-    } catch (error) {
+    } catch {
       return null;
     }
   },
@@ -55,36 +55,28 @@ export const colorThemeManager = {
    * Save custom colors for a specific theme
    */
   async saveCustomColors(isDark: boolean, colors: ColorTheme): Promise<void> {
-    try {
-      const preferences = await storageService.getPreferences();
-      const themeKey = isDark ? 'dark' : 'light';
-      const customColors = (preferences[CUSTOM_COLORS_KEY] as Record<string, ColorTheme>) || {};
-      customColors[themeKey] = colors;
-      await storageService.savePreferences({
-        ...preferences,
-        [CUSTOM_COLORS_KEY]: customColors,
-      });
-    } catch (error) {
-      throw error;
-    }
+    const preferences = await storageService.getPreferences();
+    const themeKey = isDark ? 'dark' : 'light';
+    const customColors = (preferences[CUSTOM_COLORS_KEY] as Record<string, ColorTheme>) || {};
+    customColors[themeKey] = colors;
+    await storageService.savePreferences({
+      ...preferences,
+      [CUSTOM_COLORS_KEY]: customColors,
+    });
   },
 
   /**
    * Reset custom colors for a specific theme
    */
   async resetCustomColors(isDark: boolean): Promise<void> {
-    try {
-      const preferences = await storageService.getPreferences();
-      const customColors = (preferences[CUSTOM_COLORS_KEY] as Record<string, ColorTheme>) || {};
-      const themeKey = isDark ? 'dark' : 'light';
-      delete customColors[themeKey];
-      await storageService.savePreferences({
-        ...preferences,
-        [CUSTOM_COLORS_KEY]: customColors,
-      });
-    } catch (error) {
-      throw error;
-    }
+    const preferences = await storageService.getPreferences();
+    const customColors = (preferences[CUSTOM_COLORS_KEY] as Record<string, ColorTheme>) || {};
+    const themeKey = isDark ? 'dark' : 'light';
+    delete customColors[themeKey];
+    await storageService.savePreferences({
+      ...preferences,
+      [CUSTOM_COLORS_KEY]: customColors,
+    });
   },
 
   /** Keys used only for torrent state colors (can be reset independently) */
@@ -106,15 +98,11 @@ export const colorThemeManager = {
    * Reset only torrent state colors to defaults for a specific theme (keeps advanced colors)
    */
   async resetTorrentStateColors(isDark: boolean): Promise<void> {
-    try {
-      const custom = await this.getCustomColors(isDark);
-      if (!custom) return;
-      const updated = { ...custom };
-      this.torrentStateColorKeys.forEach((key) => delete updated[key]);
-      await this.saveCustomColors(isDark, updated);
-    } catch (error) {
-      throw error;
-    }
+    const custom = await this.getCustomColors(isDark);
+    if (!custom) return;
+    const updated = { ...custom };
+    this.torrentStateColorKeys.forEach((key) => delete updated[key]);
+    await this.saveCustomColors(isDark, updated);
   },
 
   /**

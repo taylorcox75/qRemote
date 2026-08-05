@@ -34,7 +34,8 @@ jest.mock('expo-clipboard', () => ({
 }));
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, opts?: any) => (opts ? `${key}:${JSON.stringify(opts)}` : key),
+    t: (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${JSON.stringify(opts)}` : key,
   }),
 }));
 
@@ -66,15 +67,17 @@ describe('useTorrentActions', () => {
       isConnected: true,
       currentServer: { id: '1' },
       reconnect,
-    } as any);
-    jest.mocked(useTorrents).mockReturnValue({ sync } as any);
+    } as unknown as ReturnType<typeof useServer>);
+    jest.mocked(useTorrents).mockReturnValue({ sync } as unknown as ReturnType<typeof useTorrents>);
     jest.mocked(useTransfer).mockReturnValue({
       transferInfo: { use_alt_speed_limits: false },
       toggleAlternativeSpeedLimits,
       refresh: refreshTransfer,
-    } as any);
-    jest.mocked(useToast).mockReturnValue({ showToast } as any);
-    jest.mocked(apiClient.getServer).mockReturnValue({ id: '1' } as any);
+    } as unknown as ReturnType<typeof useTransfer>);
+    jest.mocked(useToast).mockReturnValue({ showToast } as unknown as ReturnType<typeof useToast>);
+    jest
+      .mocked(apiClient.getServer)
+      .mockReturnValue({ id: '1' } as unknown as ReturnType<typeof apiClient.getServer>);
   });
 
   it('returns empty action menu items when torrent is null', async () => {
@@ -138,7 +141,7 @@ describe('useTorrentActions', () => {
         isConnected: false,
         currentServer: null,
         reconnect,
-      } as any);
+      } as unknown as ReturnType<typeof useServer>);
       const { result } = await renderHook(() => useTorrentActions(baseTorrent));
       await act(async () => {
         await result.current.handlePauseResume();
@@ -148,7 +151,7 @@ describe('useTorrentActions', () => {
     });
 
     it('reconnects when apiClient has no server bound', async () => {
-      jest.mocked(apiClient.getServer).mockReturnValue(null as any);
+      jest.mocked(apiClient.getServer).mockReturnValue(null);
       const { result } = await renderHook(() => useTorrentActions(baseTorrent));
       await act(async () => {
         await result.current.handlePauseResume();
@@ -158,7 +161,7 @@ describe('useTorrentActions', () => {
     });
 
     it('shows toast when reconnect fails', async () => {
-      jest.mocked(apiClient.getServer).mockReturnValue(null as any);
+      jest.mocked(apiClient.getServer).mockReturnValue(null);
       reconnect.mockResolvedValue(false);
       const { result } = await renderHook(() => useTorrentActions(baseTorrent));
       await act(async () => {
@@ -455,7 +458,7 @@ describe('useTorrentActions', () => {
         isConnected: false,
         currentServer: null,
         reconnect,
-      } as any);
+      } as unknown as ReturnType<typeof useServer>);
       const { result } = await renderHook(() => useTorrentActions(baseTorrent));
       await act(async () => {
         await result.current.handleToggleGlobalSpeedLimit();

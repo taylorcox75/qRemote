@@ -19,57 +19,53 @@ export const storageService = {
    * Password is stored securely in SecureStore
    */
   async saveServer(server: ServerConfig): Promise<void> {
-    try {
-      const servers = await this.getServers();
-      const existingIndex = servers.findIndex((s) => s.id === server.id);
+    const servers = await this.getServers();
+    const existingIndex = servers.findIndex((s) => s.id === server.id);
 
-      let updatedServers: ServerConfig[];
-      if (existingIndex >= 0) {
-        updatedServers = [...servers];
-        updatedServers[existingIndex] = server;
-      } else {
-        updatedServers = [...servers, server];
-      }
-
-      // Store server config without password
-      const serversWithoutPasswords = updatedServers.map((s) => ({
-        id: s.id,
-        name: s.name,
-        host: stripProtocol(s.host || ''),
-        port: s.port && s.port > 0 ? s.port : undefined,
-        basePath: s.basePath || '/',
-        username: s.username,
-        password: '', // Don't store password in AsyncStorage
-        useHttps: s.useHttps || false,
-        bypassAuth: s.bypassAuth || false,
-        // Fallback endpoint (optional). Only persisted when a fallback host
-        // is configured; absent fields naturally mean fallback is disabled.
-        useFallback: s.useFallback || false,
-        fallbackHost: stripProtocol(s.fallbackHost || ''),
-        fallbackPort: s.fallbackPort && s.fallbackPort > 0 ? s.fallbackPort : undefined,
-        fallbackUseHttps: s.fallbackUseHttps || false,
-        fallbackBasePath: s.fallbackBasePath || undefined,
-        // Proxy Basic Auth (password stored separately in SecureStore)
-        useBasicAuth: s.useBasicAuth || false,
-        basicAuthUsername: s.basicAuthUsername || '',
-        basicAuthPassword: '', // Don't store password in AsyncStorage
-        // API key auth (key stored separately in SecureStore)
-        useApiKey: s.useApiKey || false,
-        apiKey: '', // Don't store API key in AsyncStorage
-      }));
-
-      await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(serversWithoutPasswords));
-
-      // Store passwords securely
-      await SecureStore.setItemAsync(`server_password_${server.id}`, server.password);
-      await SecureStore.setItemAsync(
-        `server_basic_auth_password_${server.id}`,
-        server.basicAuthPassword ?? '',
-      );
-      await SecureStore.setItemAsync(`server_api_key_${server.id}`, server.apiKey ?? '');
-    } catch (error) {
-      throw error;
+    let updatedServers: ServerConfig[];
+    if (existingIndex >= 0) {
+      updatedServers = [...servers];
+      updatedServers[existingIndex] = server;
+    } else {
+      updatedServers = [...servers, server];
     }
+
+    // Store server config without password
+    const serversWithoutPasswords = updatedServers.map((s) => ({
+      id: s.id,
+      name: s.name,
+      host: stripProtocol(s.host || ''),
+      port: s.port && s.port > 0 ? s.port : undefined,
+      basePath: s.basePath || '/',
+      username: s.username,
+      password: '', // Don't store password in AsyncStorage
+      useHttps: s.useHttps || false,
+      bypassAuth: s.bypassAuth || false,
+      // Fallback endpoint (optional). Only persisted when a fallback host
+      // is configured; absent fields naturally mean fallback is disabled.
+      useFallback: s.useFallback || false,
+      fallbackHost: stripProtocol(s.fallbackHost || ''),
+      fallbackPort: s.fallbackPort && s.fallbackPort > 0 ? s.fallbackPort : undefined,
+      fallbackUseHttps: s.fallbackUseHttps || false,
+      fallbackBasePath: s.fallbackBasePath || undefined,
+      // Proxy Basic Auth (password stored separately in SecureStore)
+      useBasicAuth: s.useBasicAuth || false,
+      basicAuthUsername: s.basicAuthUsername || '',
+      basicAuthPassword: '', // Don't store password in AsyncStorage
+      // API key auth (key stored separately in SecureStore)
+      useApiKey: s.useApiKey || false,
+      apiKey: '', // Don't store API key in AsyncStorage
+    }));
+
+    await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(serversWithoutPasswords));
+
+    // Store passwords securely
+    await SecureStore.setItemAsync(`server_password_${server.id}`, server.password);
+    await SecureStore.setItemAsync(
+      `server_basic_auth_password_${server.id}`,
+      server.basicAuthPassword ?? '',
+    );
+    await SecureStore.setItemAsync(`server_api_key_${server.id}`, server.apiKey ?? '');
   },
 
   /**
@@ -117,7 +113,7 @@ export const storageService = {
       );
 
       return serversWithPasswords;
-    } catch (error) {
+    } catch {
       return [];
     }
   },
@@ -222,7 +218,7 @@ export const storageService = {
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.PREFERENCES);
       return data ? (JSON.parse(data) as Partial<AppPreferences>) : {};
-    } catch (error) {
+    } catch {
       return {};
     }
   },

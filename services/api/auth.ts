@@ -83,7 +83,9 @@ export const authApi = {
       }
 
       if (axiosErr?.response?.status === 403) {
-        throw new Error('Authentication failed. Please check your username and password.');
+        throw new Error('Authentication failed. Please check your username and password.', {
+          cause: error,
+        });
       }
 
       return { status: 'Fails' };

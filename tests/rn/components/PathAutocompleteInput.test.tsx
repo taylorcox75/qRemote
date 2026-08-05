@@ -37,15 +37,23 @@ jest.mock('@/services/api/client', () => ({
 describe('PathAutocompleteInput', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(useServer).mockReturnValue({ isConnected: true } as any);
-    jest.mocked(useTorrents).mockReturnValue({ torrents: [], categories: {}, tags: [] } as any);
+    jest
+      .mocked(useServer)
+      .mockReturnValue({ isConnected: true } as unknown as ReturnType<typeof useServer>);
+    jest
+      .mocked(useTorrents)
+      .mockReturnValue({ torrents: [], categories: {}, tags: [] } as unknown as ReturnType<
+        typeof useTorrents
+      >);
     jest.mocked(apiClient.getApiFeatures).mockReturnValue({
       supportsGetDirectoryContent: true,
-    } as any);
+    } as unknown as ReturnType<typeof apiClient.getApiFeatures>);
   });
 
   it('renders no suggestions when disconnected', async () => {
-    jest.mocked(useServer).mockReturnValue({ isConnected: false } as any);
+    jest
+      .mocked(useServer)
+      .mockReturnValue({ isConnected: false } as unknown as ReturnType<typeof useServer>);
     jest.mocked(applicationApi.getDirectoryContent).mockResolvedValue(['/data']);
 
     const onChangeText = jest.fn();

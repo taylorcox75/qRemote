@@ -173,7 +173,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         preferences.theme,
       );
       setThemeModeState(mode);
-    } catch (error) {
+    } catch {
       // Ignore theme loading errors — fall back to default 'system'
     } finally {
       setIsLoading(false);
@@ -184,7 +184,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       const custom = await colorThemeManager.getCustomColors(isDark);
       setCustomColors(custom);
-    } catch (error) {
+    } catch {
       // Ignore color loading errors
     }
   };
@@ -199,7 +199,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         // exported settings still reflect the current appearance.
         theme: effectiveDark ? 'dark' : 'light',
       });
-    } catch (error) {
+    } catch {
       // Ignore theme saving errors
     }
   };
@@ -211,7 +211,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       const custom = await colorThemeManager.getCustomColors(nextIsDark);
       setCustomColors(custom);
-    } catch (error) {
+    } catch {
       // Ignore color loading errors
     }
   };

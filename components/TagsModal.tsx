@@ -52,7 +52,7 @@ export function TagsModal({
   onDeleteTag,
   onClose,
 }: TagsModalProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { t } = useTranslation();
   const [newTagInput, setNewTagInput] = useState('');
   const [busy, setBusy] = useState(false);

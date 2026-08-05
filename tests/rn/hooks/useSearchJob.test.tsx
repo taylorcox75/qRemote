@@ -6,6 +6,7 @@ import { useSearchJob } from '@/hooks/useSearchJob';
 import { searchApi } from '@/services/api/search';
 import { useServer } from '@/context/ServerContext';
 import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
+import { SearchResult } from '@/types/api';
 
 jest.mock('@/services/api/search', () => ({
   searchApi: {
@@ -31,15 +32,17 @@ function makeWrapper() {
 describe('useSearchJob', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(useServer).mockReturnValue({ isConnected: true } as any);
+    jest
+      .mocked(useServer)
+      .mockReturnValue({ isConnected: true } as unknown as ReturnType<typeof useServer>);
     jest.mocked(searchApi.getStatus).mockResolvedValue([]);
     jest.mocked(searchApi.getResults).mockResolvedValue({
       status: 'Running',
       total: 0,
       results: [],
-    } as any);
-    jest.mocked(searchApi.stop).mockResolvedValue(undefined as any);
-    jest.mocked(searchApi.deleteSearch).mockResolvedValue(undefined as any);
+    });
+    jest.mocked(searchApi.stop).mockResolvedValue(undefined);
+    jest.mocked(searchApi.deleteSearch).mockResolvedValue(undefined);
   });
 
   it('starts idle with no job', async () => {
@@ -51,7 +54,9 @@ describe('useSearchJob', () => {
   });
 
   it('shows error when starting while not connected', async () => {
-    jest.mocked(useServer).mockReturnValue({ isConnected: false } as any);
+    jest
+      .mocked(useServer)
+      .mockReturnValue({ isConnected: false } as unknown as ReturnType<typeof useServer>);
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
     await act(async () => {
       await result.current.start('term', 'all', 'all');
@@ -61,7 +66,7 @@ describe('useSearchJob', () => {
   });
 
   it('starts a search job and polls for status/results', async () => {
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 42 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 42 });
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
     await act(async () => {
@@ -80,7 +85,7 @@ describe('useSearchJob', () => {
     jest
       .mocked(searchApi.start)
       .mockRejectedValueOnce(new Error('409 conflict'))
-      .mockResolvedValueOnce({ id: 7 } as any);
+      .mockResolvedValueOnce({ id: 7 });
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
     await act(async () => {
@@ -120,10 +125,7 @@ describe('useSearchJob', () => {
   });
 
   it('stops and deletes a previous job before starting a new one', async () => {
-    jest
-      .mocked(searchApi.start)
-      .mockResolvedValueOnce({ id: 1 } as any)
-      .mockResolvedValueOnce({ id: 2 } as any);
+    jest.mocked(searchApi.start).mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce({ id: 2 });
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
     await act(async () => {
@@ -141,7 +143,7 @@ describe('useSearchJob', () => {
   });
 
   it('stop() invokes searchApi.stop for the active job', async () => {
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 5 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 5 });
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
     await act(async () => {
@@ -163,7 +165,7 @@ describe('useSearchJob', () => {
   });
 
   it('tolerates a failing stop call (job already stopped/removed server-side)', async () => {
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 9 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 9 });
     jest.mocked(searchApi.stop).mockRejectedValue(new Error('stop boom'));
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
@@ -179,7 +181,7 @@ describe('useSearchJob', () => {
   });
 
   it('reset() clears job state and deletes the server-side job when connected', async () => {
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 11 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 11 });
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
     await act(async () => {
@@ -202,10 +204,12 @@ describe('useSearchJob', () => {
   });
 
   it('force-clears local state when disconnected mid-search', async () => {
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 3 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 3 });
     const { result, rerender } = await renderHook(
       ({ connected }: { connected: boolean }) => {
-        jest.mocked(useServer).mockReturnValue({ isConnected: connected } as any);
+        jest
+          .mocked(useServer)
+          .mockReturnValue({ isConnected: connected } as unknown as ReturnType<typeof useServer>);
         return useSearchJob();
       },
       { wrapper: makeWrapper(), initialProps: { connected: true } },
@@ -224,7 +228,7 @@ describe('useSearchJob', () => {
   });
 
   it('deletes the server-side job on unmount', async () => {
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 21 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 21 });
     const { result, unmount } = await renderHook(() => useSearchJob(), {
       wrapper: makeWrapper(),
     });
@@ -246,10 +250,10 @@ describe('useSearchJob', () => {
       .spyOn(AppState, 'addEventListener')
       .mockImplementation((_event, handler) => {
         appStateHandler = handler as (state: string) => void;
-        return { remove: jest.fn() } as any;
+        return { remove: jest.fn() } as unknown as ReturnType<typeof AppState.addEventListener>;
       });
 
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 55 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 55 });
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
     await act(async () => {
@@ -273,7 +277,7 @@ describe('useSearchJob', () => {
   });
 
   it('surfaces query errors via getErrorMessage and calls useReactiveReconnect', async () => {
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 99 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 99 });
     jest.mocked(searchApi.getResults).mockRejectedValue(new Error('poll failed'));
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
@@ -291,12 +295,12 @@ describe('useSearchJob', () => {
   });
 
   it('stops polling once status is Stopped', async () => {
-    jest.mocked(searchApi.start).mockResolvedValue({ id: 8 } as any);
+    jest.mocked(searchApi.start).mockResolvedValue({ id: 8 });
     jest.mocked(searchApi.getResults).mockResolvedValue({
       status: 'Stopped',
       total: 5,
-      results: [{ fileName: 'x' } as any],
-    } as any);
+      results: [{ fileName: 'x' } as unknown as SearchResult],
+    });
     const { result } = await renderHook(() => useSearchJob(), { wrapper: makeWrapper() });
 
     await act(async () => {

@@ -26,7 +26,6 @@ export function useSpeedTracker(enabled: boolean = true) {
     peakUpload: 0,
     sessionStartTime: Date.now(),
   });
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSpeedsRef = useRef<{ download: number; upload: number }>({ download: 0, upload: 0 });
   const statsRef = useRef<SpeedStats>(stats);
 

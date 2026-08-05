@@ -66,7 +66,7 @@ const PRESET_COLORS = [
 ];
 
 export function ColorPicker({ visible, currentColor, onColorChange, onClose }: ColorPickerProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { t } = useTranslation();
   const [hexInput, setHexInput] = useState(colorThemeManager.rgbaToHex(currentColor));
   const [inputError, setInputError] = useState(false);
