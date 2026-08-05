@@ -7,9 +7,7 @@
 qRemote puts your entire qBittorrent server in your pocket. Start, monitor, and finish torrents from anywhere — with live updates every couple of seconds, a polished dark UI, one-tap actions, and built-in search across dozens of indexers. No web UI pinching and zooming, no clunky wrappers: a real native-feeling app designed for your thumb.
 
 <p align="center">
-  <img src="assets/appstore/iphone_1.jpg" width="300">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/appstore/iphone_2.jpg" width="300">
+  <img src="assets/github-landing.jpg" width="300">
 </p>
 
 Your torrents at a glance: every card shows status, speed, progress, and ETA in real time, with one-tap pause/resume and swipe actions. Filter by state — All, Active, Done, Paused, Scheduled — search the list instantly, and sort however you want. Adding is just as fast: paste a magnet link, open a `.torrent` file straight from the Files app, or tap **+** and go.
