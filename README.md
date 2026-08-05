@@ -7,7 +7,8 @@
 qRemote puts your entire qBittorrent server in your pocket. Start, monitor, and finish torrents from anywhere — with live updates every couple of seconds, a polished dark UI, one-tap actions, and built-in search across dozens of indexers. No web UI pinching and zooming, no clunky wrappers: a real native-feeling app designed for your thumb.
 
 <p align="center">
-  <img src="assets/appstore/01-remote.png" width="300">
+  <img src="assets/appstore/iphone_1.jpg" width="300">
+  <img src="assets/appstore/iphone_2.jpg" width="300">
 </p>
 
 Your torrents at a glance: every card shows status, speed, progress, and ETA in real time, with one-tap pause/resume and swipe actions. Filter by state — All, Active, Done, Paused, Scheduled — search the list instantly, and sort however you want. Adding is just as fast: paste a magnet link, open a `.torrent` file straight from the Files app, or tap **+** and go.
@@ -15,7 +16,7 @@ Your torrents at a glance: every card shows status, speed, progress, and ETA in 
 ## Manage Torrents
 
 <p align="center">
-  <img src="assets/appstore/02-modern.png" width="300">
+  <img src="assets/appstore/iphone_3.jpg" width="300">
 </p>
 
 Tap into any torrent for total control. The big three — **Pause**, **Recheck**, **Delete** — sit right at the top, one tap away. Below, everything qBittorrent knows about the torrent, live and editable:
@@ -31,7 +32,7 @@ No digging through nested menus. Everything about a torrent lives on one screen.
 ## Manage Transfers
 
 <p align="center">
-  <img src="assets/appstore/03-interactive.png" width="300">
+  <img src="assets/appstore/iphone_4.jpg" width="300">
 </p>
 
 A live, scrolling upload/download graph keeps you in control of your bandwidth — watch a 61 MiB/s download happen in real time. Then shape it:
@@ -47,7 +48,7 @@ It's the qBittorrent status bar, reimagined for a phone — and it updates live 
 ## Search Plugin Support
 
 <p align="center">
-  <img src="assets/appstore/04-search.png" width="300">
+  <img src="assets/appstore/iphone_5.jpg" width="300">
 </p>
 
 Stop hopping between browser tabs. qRemote drives qBittorrent's search plugins directly, so you can search **dozens of indexers at once** and add results in one tap:
@@ -64,7 +65,7 @@ Search, evaluate, add. Ten seconds, start to finish.
 ## Server Management
 
 <p align="center">
-  <img src="assets/appstore/05-settings.png" width="300">
+  <img src="assets/appstore/iphone_6.jpg" width="300">
 </p>
 
 Make qBittorrent behave *your* way, and manage every server you run:

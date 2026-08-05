@@ -32,11 +32,9 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         title: 'Bugs Fixed',
         items: [
-          'Disconnecting a server from Settings now shows a confirmation toast',
-          "Editing a tracker's URL no longer risks losing the tracker if the update doesn't fully complete",
-          'Fixed the React Native version on the About screen not falling back to "N/A" when unavailable',
-          'Toast notifications no longer cover header buttons like Add on the Torrents and Search tabs — they now anchor near the bottom of the screen',
-          'Fixed unreadable dark text on confirmation and dialog buttons in dark mode',
+          'Fixed unreadable button text on confirmation and input dialogs in dark mode',
+          "Fixed editing a tracker's URL sometimes losing the tracker instead of updating it",
+          'Disconnecting a server from Settings now confirms with a toast',
         ],
       },
     ],
