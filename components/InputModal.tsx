@@ -206,7 +206,7 @@ export function InputModal({
               onPress={handleConfirm}
               disabled={!canConfirm}
             >
-              <Text style={[styles.buttonText, { color: colors.surface }]}>
+              <Text style={[styles.buttonText, { color: colors.onAccent }]}>
                 {t('common.confirm')}
               </Text>
             </TouchableOpacity>

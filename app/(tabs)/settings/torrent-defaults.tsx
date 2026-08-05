@@ -2010,7 +2010,7 @@ export default function TorrentDefaultsScreen() {
                 style={[modalStyles.button, { backgroundColor: colors.primary }]}
                 onPress={handleSaveCategoryEdit}
               >
-                <Text style={[modalStyles.buttonText, { color: colors.surface }]}>
+                <Text style={[modalStyles.buttonText, { color: colors.onAccent }]}>
                   {t('common.confirm')}
                 </Text>
               </TouchableOpacity>

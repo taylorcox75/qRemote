@@ -36,6 +36,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           "Editing a tracker's URL no longer risks losing the tracker if the update doesn't fully complete",
           'Fixed the React Native version on the About screen not falling back to "N/A" when unavailable',
           'Toast notifications no longer cover header buttons like Add on the Torrents and Search tabs — they now anchor near the bottom of the screen',
+          'Fixed unreadable dark text on confirmation and dialog buttons in dark mode',
         ],
       },
     ],

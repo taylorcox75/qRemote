@@ -182,7 +182,7 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
                 >
                   <View style={styles.logHeader}>
                     <View style={[styles.logTypeBadge, { backgroundColor: colors.primary }]}>
-                      <Text style={[styles.logTypeText, { color: colors.surface }]}>
+                      <Text style={[styles.logTypeText, { color: colors.onAccent }]}>
                         {getLogTypeLabel(log.type)}
                       </Text>
                     </View>

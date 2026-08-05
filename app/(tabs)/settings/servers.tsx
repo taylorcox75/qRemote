@@ -211,7 +211,11 @@ export default function ServersSettingsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [showToast, t]);
+    // showToast/t are only used for one error path. Including them would give
+    // loadServers a new identity whenever either changes, which re-fires the
+    // focus effect below — see the identity-stability note in ToastContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadPreferences = async () => {
     try {
@@ -226,7 +230,11 @@ export default function ServersSettingsScreen() {
     useCallback(() => {
       loadServers();
       loadPreferences();
-    }, [loadServers]),
+      // Reload on each focus only — loadServers/loadPreferences are stable
+      // enough for that, and depending on them risks re-firing this effect
+      // on unrelated re-renders.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
   );
 
   const savePreference = async <K extends keyof AppPreferences>(

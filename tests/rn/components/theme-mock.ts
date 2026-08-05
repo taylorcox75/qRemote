@@ -8,6 +8,7 @@ export const mockColors = {
   textSecondary: '#aaaaaa',
   primary: '#3366ff',
   primaryOpac: 'rgba(51,102,255,0.1)',
+  onAccent: '#ffffff',
   error: '#ff0000',
   success: '#00ff00',
   warning: '#ffaa00',

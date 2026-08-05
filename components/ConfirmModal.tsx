@@ -81,7 +81,7 @@ export function ConfirmModal({
                 onPress={() => handleButtonPress(button)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.buttonText, { color: colors.surface }]}>{button.label}</Text>
+                <Text style={[styles.buttonText, { color: colors.onAccent }]}>{button.label}</Text>
               </TouchableOpacity>
             ))}
             <TouchableOpacity

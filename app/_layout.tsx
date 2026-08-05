@@ -133,10 +133,15 @@ function StackNavigator() {
   // closes over the mount-time effect scope) sees the current value instead of
   // a stale `undefined` — otherwise a cold-launch magnet/.torrent open is
   // silently queued and never dispatched.
+  // Deliberately assigned during render, not in an effect: the async
+  // getInitialURL() continuation below can resolve after a commit but before
+  // React flushes passive effects, and it must see nav-readiness as of the
+  // render that already committed. Cold-launch "Open In" has regressed
+  // repeatedly on this path — don't move this into an effect to satisfy the
+  // lint rule without testing a real cold launch first.
   const rootNavReadyRef = useRef(false);
-  useEffect(() => {
-    rootNavReadyRef.current = !!rootNavigationState?.key;
-  }, [rootNavigationState?.key]);
+  // eslint-disable-next-line react-hooks/refs
+  rootNavReadyRef.current = !!rootNavigationState?.key;
 
   useEffect(() => {
     const navigateToMagnet = (magnetLink: string) => {
