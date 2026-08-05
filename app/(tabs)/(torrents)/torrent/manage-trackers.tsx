@@ -47,10 +47,6 @@ export default function ManageTrackersScreen() {
   const [editTrackerUrl, setEditTrackerUrl] = useState('');
   const [reannouncing, setReannouncing] = useState(false);
 
-  useEffect(() => {
-    fetchTrackers();
-  }, []);
-
   const fetchTrackers = async () => {
     if (!hash) return;
     try {
@@ -72,6 +68,12 @@ export default function ManageTrackersScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchTrackers();
+    // Only run once on mount — fetchTrackers isn't memoized.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRemoveTracker = async (tracker: Tracker) => {
     try {

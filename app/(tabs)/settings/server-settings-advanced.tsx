@@ -61,12 +61,6 @@ export default function ServerSettingsAdvancedScreen() {
     },
   ];
 
-  useFocusEffect(
-    useCallback(() => {
-      loadPreferences();
-    }, []),
-  );
-
   const loadPreferences = async () => {
     try {
       const prefs = (await applicationApi.getPreferences()) as Record<string, unknown>;
@@ -89,6 +83,12 @@ export default function ServerSettingsAdvancedScreen() {
       // Not connected / failed to load — leave defaults
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+    }, []),
+  );
 
   const setServerPreference = async <K extends keyof ApplicationPreferences>(
     key: K,

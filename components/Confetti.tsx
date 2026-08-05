@@ -45,7 +45,7 @@ export function Confetti({ active, duration = 2000 }: ConfettiProps) {
 
       Animated.stagger(30, animations).start();
     }
-  }, [active]);
+  }, [active, confettiPieces, duration]);
 
   if (!active) return null;
 

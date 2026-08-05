@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import { TouchableOpacity, Animated, ViewStyle, TouchableOpacityProps } from 'react-native';
 
 interface AnimatedButtonProps extends TouchableOpacityProps {
@@ -19,7 +19,7 @@ export function AnimatedButton({
   disabled,
   ...props
 }: AnimatedButtonProps) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
 
   const handlePressIn = () => {
     if (disabled) return;

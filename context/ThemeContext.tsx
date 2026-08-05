@@ -152,19 +152,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const effectiveSystem = systemColorScheme ?? initialSystemScheme ?? null;
   const isDark = resolveIsDark(themeMode, effectiveSystem);
 
-  useEffect(() => {
-    loadThemePreference();
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      loadCustomColors();
-    }
-    // Re-load custom color overrides when the effective palette flips
-    // (either user changed mode, or the OS toggled while in 'system').
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDark, isLoading]);
-
   const loadThemePreference = async () => {
     try {
       const preferences = await storageService.getPreferences();
@@ -188,6 +175,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // Ignore color loading errors
     }
   };
+
+  useEffect(() => {
+    loadThemePreference();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      loadCustomColors();
+    }
+    // Re-load custom color overrides when the effective palette flips
+    // (either user changed mode, or the OS toggled while in 'system').
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDark, isLoading]);
 
   const persistThemeMode = async (mode: ThemeMode, effectiveDark: boolean) => {
     try {

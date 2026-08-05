@@ -19,13 +19,13 @@ const COLLECTION_INTERVAL = 1000; // 1 second
 
 export function useSpeedTracker(enabled: boolean = true) {
   const [speedData, setSpeedData] = useState<SpeedDataPoint[]>([]);
-  const [stats, setStats] = useState<SpeedStats>({
+  const [stats, setStats] = useState<SpeedStats>(() => ({
     averageDownload: 0,
     averageUpload: 0,
     peakDownload: 0,
     peakUpload: 0,
     sessionStartTime: Date.now(),
-  });
+  }));
   const lastSpeedsRef = useRef<{ download: number; upload: number }>({ download: 0, upload: 0 });
   const statsRef = useRef<SpeedStats>(stats);
 

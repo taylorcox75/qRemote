@@ -83,13 +83,6 @@ export default function CategoryTagColorsScreen() {
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [colorTarget, setColorTarget] = useState<ColorTarget | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadColors();
-      loadCategories();
-    }, []),
-  );
-
   const loadColors = async () => {
     try {
       const prefs = await storageService.getPreferences();
@@ -112,6 +105,13 @@ export default function CategoryTagColorsScreen() {
       // Not connected / failed to load
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadColors();
+      loadCategories();
+    }, []),
+  );
 
   const openColorPicker = (target: ColorTarget) => {
     setColorTarget(target);

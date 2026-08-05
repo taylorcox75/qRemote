@@ -220,10 +220,6 @@ App Version: ${APP_VERSION}`;
     setTesting(false);
   };
 
-  useEffect(() => {
-    loadServer();
-  }, [id]);
-
   const loadServer = async () => {
     try {
       const server = await ServerManager.getServer(id!);
@@ -261,6 +257,12 @@ App Version: ${APP_VERSION}`;
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadServer();
+    // loadServer isn't memoized — only re-run when id changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleSave = async () => {
     if (!name.trim() || !host.trim()) {

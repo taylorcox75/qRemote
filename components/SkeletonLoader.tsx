@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Animated, StyleSheet, ViewStyle, DimensionValue } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -20,7 +20,7 @@ export function SkeletonLoader({
   style,
 }: SkeletonLoaderProps) {
   const { colors } = useTheme();
-  const animatedValue = useRef(new Animated.Value(0)).current;
+  const [animatedValue] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.loop(
@@ -37,7 +37,7 @@ export function SkeletonLoader({
         }),
       ]),
     ).start();
-  }, []);
+  }, [animatedValue]);
 
   const opacity = animatedValue.interpolate({
     inputRange: [0, 1],

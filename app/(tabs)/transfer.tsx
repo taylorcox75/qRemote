@@ -196,6 +196,11 @@ export default function TransferScreen() {
     if (transferInfo && isConnected) {
       addSpeedData(transferInfo.dl_info_speed || 0, transferInfo.up_info_speed || 0);
     }
+    // Deliberately depends on the individual speed fields, not the whole
+    // transferInfo object — that object is a new reference on every poll
+    // tick even when speeds haven't changed, which would sample every tick
+    // instead of only on an actual speed change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transferInfo?.dl_info_speed, transferInfo?.up_info_speed, isConnected, addSpeedData]);
 
   const downloadGraphData = useMemo(

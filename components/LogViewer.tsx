@@ -35,6 +35,22 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
   const [logs, setLogs] = useState<StoredLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const loadLogs = async () => {
+    setLoading(true);
+    try {
+      const storedLogs = await logStorage.getLogs();
+      if (storedLogs && storedLogs.length > 0) {
+        setLogs(storedLogs.sort((a, b) => b.id - a.id));
+      } else {
+        setLogs([]);
+      }
+    } catch {
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (visible) {
       // Small delay to ensure logs are stored before loading
@@ -46,24 +62,6 @@ export function LogViewer({ visible, onClose, onClear, refreshTrigger }: LogView
       // Don't clear logs when modal closes - keep them in storage
     }
   }, [visible, refreshTrigger]);
-
-  const loadLogs = async () => {
-    setLoading(true);
-    try {
-      const storedLogs = await logStorage.getLogs();
-      console.log('Loaded logs from storage:', storedLogs.length);
-      if (storedLogs && storedLogs.length > 0) {
-        setLogs(storedLogs.sort((a, b) => b.id - a.id));
-      } else {
-        setLogs([]);
-      }
-    } catch (error) {
-      console.error('Failed to load logs:', error);
-      setLogs([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleClear = async () => {
     try {

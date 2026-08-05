@@ -54,10 +54,10 @@ function SwipeableServerItem({
   isLast: boolean;
 }) {
   const { t } = useTranslation();
-  const translateX = useRef(new Animated.Value(0)).current;
+  const [translateX] = useState(() => new Animated.Value(0));
   const isSwipeOpen = useRef(false);
 
-  const panResponder = useRef(
+  const [panResponder] = useState(() =>
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 10,
       onPanResponderGrant: () => {
@@ -92,7 +92,7 @@ function SwipeableServerItem({
         }
       },
     }),
-  ).current;
+  );
 
   const handleDelete = () => {
     isSwipeOpen.current = false;
@@ -201,13 +201,6 @@ export default function ServersSettingsScreen() {
   // undone, so it goes through ConfirmModal like every other destructive action.
   const [pendingDelete, setPendingDelete] = useState<ServerConfig | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadServers();
-      loadPreferences();
-    }, []),
-  );
-
   const loadServers = useCallback(async () => {
     try {
       setLoading(true);
@@ -218,7 +211,7 @@ export default function ServersSettingsScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast, t]);
 
   const loadPreferences = async () => {
     try {
@@ -228,6 +221,13 @@ export default function ServersSettingsScreen() {
       // Use defaults
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadServers();
+      loadPreferences();
+    }, [loadServers]),
+  );
 
   const savePreference = async <K extends keyof AppPreferences>(
     key: K,

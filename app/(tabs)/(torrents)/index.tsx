@@ -880,58 +880,61 @@ export default function TorrentsScreen() {
   );
 
   // Scroll handler — header show/hide only
-  const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
-    const currentScrollY = event.nativeEvent.contentOffset.y;
-    const scrollDifference = currentScrollY - lastScrollY.current;
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      const currentScrollY = event.nativeEvent.contentOffset.y;
+      const scrollDifference = currentScrollY - lastScrollY.current;
 
-    if (currentScrollY <= 10) {
-      if (!isHeaderVisible.current) {
+      if (currentScrollY <= 10) {
+        if (!isHeaderVisible.current) {
+          isHeaderVisible.current = true;
+          Animated.timing(headerTranslateY, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      const minMovement = 15;
+      if (Math.abs(scrollDifference) < minMovement) {
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      if (isAnimating.current) {
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      if (scrollDifference < -minMovement && !isHeaderVisible.current) {
+        isAnimating.current = true;
         isHeaderVisible.current = true;
         Animated.timing(headerTranslateY, {
           toValue: 0,
           duration: 200,
           useNativeDriver: true,
-        }).start();
+        }).start(() => {
+          isAnimating.current = false;
+        });
+      } else if (scrollDifference > minMovement && isHeaderVisible.current) {
+        isAnimating.current = true;
+        isHeaderVisible.current = false;
+        Animated.timing(headerTranslateY, {
+          toValue: -200,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(() => {
+          isAnimating.current = false;
+        });
       }
+
       lastScrollY.current = currentScrollY;
-      return;
-    }
-
-    const minMovement = 15;
-    if (Math.abs(scrollDifference) < minMovement) {
-      lastScrollY.current = currentScrollY;
-      return;
-    }
-
-    if (isAnimating.current) {
-      lastScrollY.current = currentScrollY;
-      return;
-    }
-
-    if (scrollDifference < -minMovement && !isHeaderVisible.current) {
-      isAnimating.current = true;
-      isHeaderVisible.current = true;
-      Animated.timing(headerTranslateY, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => {
-        isAnimating.current = false;
-      });
-    } else if (scrollDifference > minMovement && isHeaderVisible.current) {
-      isAnimating.current = true;
-      isHeaderVisible.current = false;
-      Animated.timing(headerTranslateY, {
-        toValue: -200,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => {
-        isAnimating.current = false;
-      });
-    }
-
-    lastScrollY.current = currentScrollY;
-  }, []);
+    },
+    [headerTranslateY],
+  );
 
   // Whether any secondary (category/tag) filter is active
   const hasSecondaryFilter = categoryFilter !== null || tagFilters.length > 0;

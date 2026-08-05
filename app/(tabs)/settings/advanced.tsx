@@ -46,12 +46,6 @@ export default function AdvancedSettingsScreen() {
   const [debugMode, setDebugMode] = useState(false);
   const [connectionTimeout, setConnectionTimeout] = useState<number>(10000);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadPreferences();
-    }, []),
-  );
-
   const loadPreferences = async () => {
     try {
       const prefs = await storageService.getPreferences();
@@ -63,6 +57,12 @@ export default function AdvancedSettingsScreen() {
       // Use defaults
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+    }, []),
+  );
 
   const savePreference = async <K extends keyof AppPreferences>(
     key: K,

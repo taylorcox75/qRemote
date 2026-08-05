@@ -151,7 +151,7 @@ export default function SearchScreen() {
   // conditional), so a fixed guess would leave gaps or clip content.
   const [headerHeight, setHeaderHeight] = useState(0);
   const lastScrollY = useRef(0);
-  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const [headerTranslateY] = useState(() => new Animated.Value(0));
   const isHeaderVisible = useRef(true);
   const isAnimating = useRef(false);
 

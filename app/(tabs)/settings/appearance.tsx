@@ -38,12 +38,6 @@ export default function AppearanceSettingsScreen() {
     { label: 'Русский', value: 'ru', icon: 'language-outline' },
   ];
 
-  useFocusEffect(
-    useCallback(() => {
-      loadPreferences();
-    }, []),
-  );
-
   const loadPreferences = async () => {
     try {
       const prefs = await storageService.getPreferences();
@@ -55,6 +49,12 @@ export default function AppearanceSettingsScreen() {
       setCardViewMode('compact');
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+    }, []),
+  );
 
   const saveAutoRefreshInterval = async (interval: string) => {
     try {

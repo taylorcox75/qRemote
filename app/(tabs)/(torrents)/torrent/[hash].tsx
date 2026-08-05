@@ -192,6 +192,8 @@ export default function TorrentDetail() {
     if (hash && isConnected) {
       loadTorrentData();
     }
+    // loadTorrentData isn't memoized — only re-run when hash/isConnected change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash, isConnected]);
 
   const pushSpeedSample = (info: TorrentInfo | null | undefined) => {

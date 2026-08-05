@@ -224,16 +224,6 @@ export default function TorrentDefaultsScreen() {
     },
   ];
 
-  useFocusEffect(
-    useCallback(() => {
-      loadPreferences();
-      if (isConnected) {
-        loadDefaultSavePath();
-        loadCategories();
-      }
-    }, [isConnected]),
-  );
-
   const loadCategories = async () => {
     try {
       // The torrent list's rid-based sync only reports categories *added*
@@ -338,6 +328,16 @@ export default function TorrentDefaultsScreen() {
       // Ignore if not connected or API error
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+      if (isConnected) {
+        loadDefaultSavePath();
+        loadCategories();
+      }
+    }, [isConnected]),
+  );
 
   const savePreference = async <K extends keyof AppPreferences>(
     key: K,

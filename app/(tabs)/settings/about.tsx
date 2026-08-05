@@ -55,14 +55,6 @@ export default function AboutScreen() {
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
   const [loadingAppInfo, setLoadingAppInfo] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (isConnected) {
-        loadAppInfo();
-      }
-    }, [isConnected]),
-  );
-
   const loadAppInfo = async () => {
     try {
       setLoadingAppInfo(true);
@@ -78,6 +70,14 @@ export default function AboutScreen() {
       setLoadingAppInfo(false);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isConnected) {
+        loadAppInfo();
+      }
+    }, [isConnected]),
+  );
 
   return (
     <>

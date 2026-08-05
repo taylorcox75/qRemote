@@ -28,12 +28,6 @@ export default function NotificationsSettingsScreen() {
   const [toastDuration, setToastDuration] = useState<number>(3000);
   const [hapticFeedback, setHapticFeedback] = useState(true);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadPreferences();
-    }, []),
-  );
-
   const loadPreferences = async () => {
     try {
       const prefs = await storageService.getPreferences();
@@ -44,6 +38,12 @@ export default function NotificationsSettingsScreen() {
       // Use defaults
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+    }, []),
+  );
 
   const savePreference = async <K extends keyof AppPreferences>(
     key: K,

@@ -47,6 +47,9 @@ export default function ThemeSettingsScreen() {
 
   useEffect(() => {
     reloadCustomColors();
+    // Only run once on mount — reloadCustomColors isn't memoized in
+    // ThemeContext, so including it would re-fire this on every color change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleColorSelect = (key: keyof ColorTheme) => {

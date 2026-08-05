@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -22,8 +22,8 @@ export function AnimatedProgressBar({
   showGlow = false,
 }: AnimatedProgressBarProps) {
   const { colors } = useTheme();
-  const progressAnim = useRef(new Animated.Value(progress)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [progressAnim] = useState(() => new Animated.Value(progress));
+  const [pulseAnim] = useState(() => new Animated.Value(1));
 
   const barColor = color || colors.primary;
 
@@ -38,7 +38,7 @@ export function AnimatedProgressBar({
     } else {
       progressAnim.setValue(progress);
     }
-  }, [progress, animated]);
+  }, [progress, animated, progressAnim]);
 
   useEffect(() => {
     if (showGlow && progress < 100 && progress > 0) {
@@ -60,7 +60,7 @@ export function AnimatedProgressBar({
     } else {
       pulseAnim.setValue(1);
     }
-  }, [showGlow, progress]);
+  }, [showGlow, progress, pulseAnim]);
 
   const width = progressAnim.interpolate({
     inputRange: [0, 100],

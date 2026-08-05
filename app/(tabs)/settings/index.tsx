@@ -6,7 +6,7 @@
  * Sub-screens live alongside this file under app/(tabs)/settings/ so the
  * bottom tab bar stays visible while browsing settings.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -125,7 +125,7 @@ export default function SettingsScreen() {
     0.18,
   );
 
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [pulseAnim] = useState(() => new Animated.Value(1));
 
   useFocusEffect(
     useCallback(() => {
@@ -146,7 +146,7 @@ export default function SettingsScreen() {
     } else {
       pulseAnim.setValue(1);
     }
-  }, [isConnected]);
+  }, [isConnected, pulseAnim]);
 
   const handleDisconnect = async () => {
     // Swallowing a rejection here would leave the row showing "connected" with

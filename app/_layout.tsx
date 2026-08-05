@@ -134,7 +134,9 @@ function StackNavigator() {
   // a stale `undefined` — otherwise a cold-launch magnet/.torrent open is
   // silently queued and never dispatched.
   const rootNavReadyRef = useRef(false);
-  rootNavReadyRef.current = !!rootNavigationState?.key;
+  useEffect(() => {
+    rootNavReadyRef.current = !!rootNavigationState?.key;
+  }, [rootNavigationState?.key]);
 
   useEffect(() => {
     const navigateToMagnet = (magnetLink: string) => {
@@ -272,6 +274,11 @@ function StackNavigator() {
     return () => {
       subscription.remove();
     };
+    // showToast/t are only used for one edge-case error deep inside this
+    // handler — including them would tear down and re-register the Linking
+    // subscription whenever either identity changes, unrelated to the deep
+    // link state this effect actually cares about.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rootNavigationState?.key, router]);
 
   return (

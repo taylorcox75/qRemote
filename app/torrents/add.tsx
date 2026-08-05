@@ -215,6 +215,13 @@ export default function AddTorrentFullScreen() {
     [categories],
   );
 
+  // Closes over ~18 individual field values and is recreated every render,
+  // which forces handleSubmit's useCallback below to recreate every render
+  // too — a memoization miss, not a staleness bug (buildOptions is always
+  // the current-render closure). Enumerating its full dependency list on
+  // that useCallback risks introducing a real stale-closure bug for no
+  // functional benefit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const buildOptions = (): AddTorrentOptions & AddTorrentFileOptions => {
     const opts: Record<string, unknown> = {};
 
