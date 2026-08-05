@@ -19,6 +19,23 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.TESTFLIGHT',
+    date: '2026-08-XX',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+        
+        ],
+      },
+      {
+        title: 'Bugs Fixed',
+        items: [
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.35',
     date: '2026-08-04',
     sections: [
