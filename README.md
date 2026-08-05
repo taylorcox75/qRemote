@@ -8,6 +8,7 @@ qRemote puts your entire qBittorrent server in your pocket. Start, monitor, and 
 
 <p align="center">
   <img src="assets/appstore/iphone_1.jpg" width="300">
+  &nbsp;&nbsp;&nbsp;&nbsp;
   <img src="assets/appstore/iphone_2.jpg" width="300">
 </p>
 
