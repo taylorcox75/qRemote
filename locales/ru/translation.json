@@ -115,7 +115,8 @@
       "ratioLimit": "Лимит коэффициента раздачи",
       "seedingTimeLimit": "Лимит времени раздачи",
       "cookie": "Cookie",
-      "cookiePlaceholder": "Значение заголовка Cookie (необязательно)"
+      "cookiePlaceholder": "Значение заголовка Cookie (необязательно)",
+      "fromSearch": "Из поиска"
     },
     "settings": {
       "title": "Настройки",
@@ -379,7 +380,9 @@
         "category": "Категория",
         "progress": "Прогресс %",
         "addedTime": "Время"
-      }
+      },
+      "searchAddOpensDialogue": "+ в поиске открывает диалог",
+      "searchAddOpensDialogueHint": "Нажатие + на результате поиска открывает диалог добавления торрента вместо немедленного добавления."
     },
     "transfer": {
       "title": "Передача",
@@ -545,7 +548,15 @@
       "openSite": "Open site",
       "copyLink": "Copy link",
       "shareLink": "Share link",
-      "linkCopied": "Link copied"
+      "linkCopied": "Link copied",
+      "addToCart": "Добавить в очередь",
+      "removeFromCart": "Удалить из очереди",
+      "addNow": "Добавить сейчас со значениями по умолчанию",
+      "cartTitle": "Очередь добавления",
+      "cartEmpty": "В очереди пока ничего нет",
+      "cartClearAll": "Очистить всё",
+      "cartCheckout": "Продолжить ({{count}})",
+      "cartAccessibility": "Очередь добавления, {{count}} торрент(ов)"
     },
     "rss": {
       "feedsTitle": "RSS-ленты",

@@ -94,7 +94,8 @@
       "ratioLimit": "Límite de ratio",
       "seedingTimeLimit": "Límite de tiempo de compartición",
       "cookie": "Cookie",
-      "cookiePlaceholder": "Valor opcional de cabecera Cookie"
+      "cookiePlaceholder": "Valor opcional de cabecera Cookie",
+      "fromSearch": "Desde la búsqueda"
     },
     "settings": {
       "title": "Configuración",
@@ -358,7 +359,9 @@
         "category": "Categoría",
         "progress": "Progreso %",
         "addedTime": "Hora"
-      }
+      },
+      "searchAddOpensDialogue": "El + de búsqueda abre el diálogo",
+      "searchAddOpensDialogueHint": "Al tocar + en un resultado de búsqueda se abre el diálogo de añadir torrent en lugar de añadirlo directamente."
     },
     "transfer": {
       "title": "Transferencia",
@@ -524,7 +527,15 @@
       "openSite": "Open site",
       "copyLink": "Copy link",
       "shareLink": "Share link",
-      "linkCopied": "Link copied"
+      "linkCopied": "Link copied",
+      "addToCart": "Añadir a la cola",
+      "removeFromCart": "Quitar de la cola",
+      "addNow": "Añadir ahora con valores predeterminados",
+      "cartTitle": "Cola de adición",
+      "cartEmpty": "Aún no hay nada en cola",
+      "cartClearAll": "Borrar todo",
+      "cartCheckout": "Continuar ({{count}})",
+      "cartAccessibility": "Cola de adición, {{count}} torrent(s)"
     },
     "rss": {
       "feedsTitle": "Feeds RSS",

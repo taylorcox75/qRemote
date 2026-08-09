@@ -115,7 +115,8 @@
       "ratioLimit": "Share ratio limit",
       "seedingTimeLimit": "Seeding time limit",
       "cookie": "Cookie",
-      "cookiePlaceholder": "Optional cookie header value"
+      "cookiePlaceholder": "Optional cookie header value",
+      "fromSearch": "From search"
     },
     "settings": {
       "title": "Settings",
@@ -379,7 +380,9 @@
         "category": "Category",
         "progress": "Progress %",
         "addedTime": ""
-      }
+      },
+      "searchAddOpensDialogue": "Search + opens dialogue",
+      "searchAddOpensDialogueHint": "Tapping + on a search result opens the add-torrent dialogue instead of adding straight away."
     },
     "transfer": {
       "title": "Transfer",
@@ -545,7 +548,15 @@
       "openSite": "Open site",
       "copyLink": "Copy link",
       "shareLink": "Share link",
-      "linkCopied": "Link copied"
+      "linkCopied": "Link copied",
+      "addToCart": "Add to queue",
+      "removeFromCart": "Remove from queue",
+      "addNow": "Add now with defaults",
+      "cartTitle": "Add queue",
+      "cartEmpty": "Nothing queued yet",
+      "cartClearAll": "Clear all",
+      "cartCheckout": "Continue ({{count}})",
+      "cartAccessibility": "Add queue, {{count}} torrent(s)"
     },
     "rss": {
       "feedsTitle": "RSS Feeds",
