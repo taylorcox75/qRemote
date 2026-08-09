@@ -19,12 +19,12 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.8.TESTFLIGHT',
-    date: '2026-08-XX',
+    version: '3.8.36',
+    date: '2026-08-09',
     sections: [
       {
         title: 'New Features',
-        items: ['Added new add dialogue to the search page + queue'],
+        items: ['Added new add dialogue to the search page + cart like functionality'],
       },
       {
         title: 'Bugs Fixed',
