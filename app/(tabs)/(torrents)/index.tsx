@@ -86,6 +86,7 @@ export default function TorrentsScreen() {
     magnet?: string | string[];
     torrentFileUri?: string | string[];
     torrentFileName?: string | string[];
+    sourceUrl?: string | string[];
   }>();
 
   // State
@@ -136,6 +137,7 @@ export default function TorrentsScreen() {
 
   const lastAppliedMagnetRef = useRef<{ value: string; at: number } | null>(null);
   const lastAppliedTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
+  const lastAppliedSourceUrlRef = useRef<{ value: string; at: number } | null>(null);
 
   // Action menu state
   const [selectedTorrent, setSelectedTorrent] = useState<TorrentInfo | null>(null);
@@ -343,6 +345,31 @@ export default function TorrentsScreen() {
 
     void handleIncomingMagnet();
   }, [params.magnet, router]);
+
+  // Search tab's + button (#217), compact-dialogue branch — search.tsx has
+  // already decided the variant before navigating here, so unlike the magnet
+  // handoff above this never redirects to the full screen. Uses a distinct
+  // sourceUrl param (set verbatim, not run through extractMagnetLink) because
+  // Search results are often plain https:// download URLs, not magnets.
+  useEffect(() => {
+    const rawSourceUrl = Array.isArray(params.sourceUrl) ? params.sourceUrl[0] : params.sourceUrl;
+    const sourceUrl = rawSourceUrl?.trim();
+    if (!sourceUrl) return;
+
+    const now = Date.now();
+    if (
+      lastAppliedSourceUrlRef.current &&
+      lastAppliedSourceUrlRef.current.value === sourceUrl &&
+      now - lastAppliedSourceUrlRef.current.at < 1500
+    ) {
+      return;
+    }
+    lastAppliedSourceUrlRef.current = { value: sourceUrl, at: now };
+
+    setTorrentUrl(sourceUrl);
+    setShowAddModal(true);
+    router.setParams({ sourceUrl: undefined });
+  }, [params.sourceUrl, router]);
 
   useEffect(() => {
     const fileUri = Array.isArray(params.torrentFileUri)

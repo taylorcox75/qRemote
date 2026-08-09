@@ -28,6 +28,8 @@ import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { searchApi } from '@/services/api/search';
 import { SearchPlugin } from '@/types/api';
+import { storageService } from '@/services/storage';
+import { getSearchAddOpensDialogue } from '@/utils/add-torrent-dialogue';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
@@ -44,6 +46,7 @@ export default function PluginsScreen() {
   const [installModalVisible, setInstallModalVisible] = useState(false);
   const [busyName, setBusyName] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [searchOpensDialogue, setSearchOpensDialogue] = useState(true);
 
   const pluginsQuery = useQuery<SearchPlugin[]>({
     queryKey: ['search', 'plugins'],
@@ -58,6 +61,29 @@ export default function PluginsScreen() {
       void queryClient.invalidateQueries({ queryKey: ['search', 'plugins'] });
     }, [queryClient]),
   );
+
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const prefs = await storageService.getPreferences();
+          setSearchOpensDialogue(getSearchAddOpensDialogue(prefs));
+        } catch {
+          setSearchOpensDialogue(true);
+        }
+      })();
+    }, []),
+  );
+
+  const handleToggleSearchOpensDialogue = useCallback(async (value: boolean) => {
+    setSearchOpensDialogue(value);
+    try {
+      const prefs = await storageService.getPreferences();
+      await storageService.savePreferences({ ...prefs, searchAddOpensDialogue: value });
+    } catch {
+      // Ignore save errors — this is a convenience preference, not critical state.
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['search', 'plugins'] });
@@ -212,6 +238,29 @@ export default function PluginsScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Search add-dialogue behavior (#217) */}
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="albums-outline" size={22} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.searchAddOpensDialogue')}
+                  </Text>
+                  <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                    {t('screens.settings.searchAddOpensDialogueHint')}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={searchOpensDialogue}
+                onValueChange={(value) => void handleToggleSearchOpensDialogue(value)}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+              />
+            </View>
+          </View>
+
           {/* Plugin list */}
           {pluginsQuery.isLoading ? (
             <View style={styles.center}>
@@ -333,6 +382,23 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     gap: spacing.sm,
   },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    flexShrink: 1,
+    marginRight: spacing.md,
+  },
+  settingLabel: { fontSize: 16, fontWeight: '500', flexShrink: 1 },
+  settingHint: { fontSize: 12, marginTop: 1 },
   primaryButton: {
     flex: 1,
     flexDirection: 'row',

@@ -22,6 +22,7 @@ import { TorrentProvider } from '@/context/TorrentContext';
 import { TransferProvider } from '@/context/TransferContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { ToastProvider, useToast } from '@/context/ToastContext';
+import { SearchCartProvider } from '@/context/SearchCartContext';
 import { logStorage } from '@/services/log-storage';
 import { storageService } from '@/services/storage';
 import { apiClient } from '@/services/api/client';
@@ -351,7 +352,9 @@ export default function RootLayout() {
                 <ApiVersionProvider>
                   <TorrentProvider>
                     <TransferProvider>
-                      <StackNavigator />
+                      <SearchCartProvider>
+                        <StackNavigator />
+                      </SearchCartProvider>
                     </TransferProvider>
                   </TorrentProvider>
                 </ApiVersionProvider>

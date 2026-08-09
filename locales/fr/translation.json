@@ -94,7 +94,8 @@
       "ratioLimit": "Limite de ratio",
       "seedingTimeLimit": "Limite de temps de partage",
       "cookie": "Cookie",
-      "cookiePlaceholder": "Valeur optionnelle d'en-tête Cookie"
+      "cookiePlaceholder": "Valeur optionnelle d'en-tête Cookie",
+      "fromSearch": "Depuis la recherche"
     },
     "settings": {
       "title": "Paramètres",
@@ -358,7 +359,9 @@
         "category": "Catégorie",
         "progress": "Progression %",
         "addedTime": "Heure"
-      }
+      },
+      "searchAddOpensDialogue": "Le + de la recherche ouvre la boîte de dialogue",
+      "searchAddOpensDialogueHint": "Appuyer sur + sur un résultat de recherche ouvre la boîte de dialogue d'ajout au lieu d'ajouter directement."
     },
     "transfer": {
       "title": "Transfert",
@@ -524,7 +527,15 @@
       "openSite": "Open site",
       "copyLink": "Copy link",
       "shareLink": "Share link",
-      "linkCopied": "Link copied"
+      "linkCopied": "Link copied",
+      "addToCart": "Ajouter à la file",
+      "removeFromCart": "Retirer de la file",
+      "addNow": "Ajouter maintenant avec les valeurs par défaut",
+      "cartTitle": "File d'ajout",
+      "cartEmpty": "Rien en attente pour le moment",
+      "cartClearAll": "Tout effacer",
+      "cartCheckout": "Continuer ({{count}})",
+      "cartAccessibility": "File d'ajout, {{count}} torrent(s)"
     },
     "rss": {
       "feedsTitle": "Flux RSS",
