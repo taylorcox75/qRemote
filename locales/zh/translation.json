@@ -94,7 +94,8 @@
       "ratioLimit": "分享率限制",
       "seedingTimeLimit": "做种时间限制",
       "cookie": "Cookie",
-      "cookiePlaceholder": "可选 Cookie 头部值"
+      "cookiePlaceholder": "可选 Cookie 头部值",
+      "fromSearch": "来自搜索"
     },
     "settings": {
       "title": "设置",
@@ -358,7 +359,9 @@
         "category": "分类",
         "progress": "进度 %",
         "addedTime": "时间"
-      }
+      },
+      "searchAddOpensDialogue": "搜索中的 + 打开对话框",
+      "searchAddOpensDialogueHint": "点击搜索结果上的 + 将打开添加种子对话框，而不是直接添加。"
     },
     "transfer": {
       "title": "传输",
@@ -524,7 +527,15 @@
       "openSite": "Open site",
       "copyLink": "Copy link",
       "shareLink": "Share link",
-      "linkCopied": "Link copied"
+      "linkCopied": "Link copied",
+      "addToCart": "加入队列",
+      "removeFromCart": "从队列中移除",
+      "addNow": "立即使用默认设置添加",
+      "cartTitle": "添加队列",
+      "cartEmpty": "队列中还没有内容",
+      "cartClearAll": "清空全部",
+      "cartCheckout": "继续（{{count}}）",
+      "cartAccessibility": "添加队列，共 {{count}} 个种子"
     },
     "rss": {
       "feedsTitle": "RSS 订阅",

@@ -346,6 +346,11 @@ nested under `advanced`, not on the hub.
 - **`ThemeContext.tsx`** — `useTheme()`, the `colors` object, user overrides.
 - **`ApiVersionContext.tsx`** — detected qBittorrent API version → feature gating
   through `utils/apiVersion.ts`.
+- **`SearchCartContext.tsx`** — session-scoped queue of Search results the user
+  wants to add together (#217). Not persisted — plugin download URLs are often
+  session/token-bound. Dedupes by `fileUrl`. Consumed by `app/torrents/add.tsx`
+  (gated on the `fromCart` route param) and grouped for submission via
+  `utils/search-cart.ts`.
 
 ### Components (`components/`)
 
@@ -358,13 +363,15 @@ All PascalCase function components taking a `…Props` interface.
   qBit 5.0+ / WebAPI ≥ 2.11 — silent no-op when unsupported; also renders the
   browse button), `SavePathPickerModal` (filterable list of save paths already in
   use, derived from TorrentContext via `utils/save-paths.ts` — works on any
-  qBittorrent version).
+  qBittorrent version), `SearchCartModal` (review sheet for the Search tab's add
+  queue — list, per-item remove, Clear all, Checkout — see `SearchCartContext.tsx`).
 - **Torrent / search UI** — `TorrentCard` (`React.memo` with a **custom
   comparator — keep it in sync when you add a rendered field**, or the card
   silently stops updating; category/tag stickers use `categoryColors`/`tagColors`
   then defaults then the `avatarColor` fallback), `SearchResultRow` (+ internal
-  ActionPill), `FilterChip`, `EmptyState`, `SkeletonLoader` (+ `SkeletonTorrentCard`),
-  `PieceMap`.
+  ActionPill; the `+` button and the cart-toggle button are independent — see
+  its header comment), `FilterChip`, `EmptyState`, `SkeletonLoader`
+  (+ `SkeletonTorrentCard`), `PieceMap`.
 - **Visuals** — `SpeedGraph`, `CircularProgress`, `AnimatedProgressBar`,
   `AnimatedButton`, `Confetti`.
 - **Chrome / diagnostics** — `FocusAwareStatusBar`, `SettingRow`,
@@ -449,7 +456,11 @@ label, completion and ETA rules) · `limit-input.ts` (share-limit sentinels:
 (RSS tree flattening; paths join with `\`) · `searchResult.ts` (indexer-label
 heuristics) · `login-response.ts` (qBittorrent login body/cookie interpretation) ·
 `haptics.ts` (global toggle + wrappers) · `tags.ts` (CSV tag parsing) ·
-`add-torrent-dialogue.ts` (compact vs full variant) · `server-export.ts` (strips
+`add-torrent-dialogue.ts` (compact vs full variant, plus `getSearchAddOpensDialogue`
+for the Search tab's `+` behavior — #217) · `search-cart.ts`
+(`groupCartItemsForAdd` — splits a `SearchCartContext` cart into one
+`torrents/add` batch per indexer when auto-tag-by-tracker is on, since that
+endpoint applies one `tags` value per request) · `server-export.ts` (strips
 `password`/`basicAuthPassword`/`apiKey` on export, forces them empty on import) ·
 `save-paths.ts` (`getKnownSavePaths`, derived from live data — no API call) ·
 `version.ts` (`APP_VERSION`).

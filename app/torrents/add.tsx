@@ -26,6 +26,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
+import { useSearchCart } from '@/context/SearchCartContext';
 import { torrentsApi } from '@/services/api/torrents';
 import { categoriesApi } from '@/services/api/categories';
 import { tagsApi } from '@/services/api/tags';
@@ -36,6 +37,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { extractMagnetLink } from '@/utils/magnet';
+import { groupCartItemsForAdd } from '@/utils/search-cart';
 
 type AddTorrentOptions = Parameters<typeof torrentsApi.addTorrent>[1];
 type AddTorrentFileOptions = Parameters<typeof torrentsApi.addTorrentFile>[1];
@@ -48,13 +50,27 @@ export default function AddTorrentFullScreen() {
   const { showToast } = useToast();
   const { isConnected } = useServer();
   const { categories, tags } = useTorrents();
+  const cart = useSearchCart();
   const params = useLocalSearchParams<{
     magnet?: string | string[];
     torrentFileUri?: string | string[];
     torrentFileName?: string | string[];
+    sourceUrl?: string | string[];
+    fromCart?: string | string[];
   }>();
   const lastAppliedMagnetRef = useRef<{ value: string; at: number } | null>(null);
   const lastAppliedTorrentFileRef = useRef<{ value: string; at: number } | null>(null);
+  const lastAppliedSourceUrlRef = useRef<{ value: string; at: number } | null>(null);
+
+  // The Search tab's cart checkout (#217) — read live rather than snapshotted
+  // so removing an item here also removes it from the Search tab's cart (one
+  // source of truth). Gated on fromCart so a lingering cart from a prior
+  // Search-tab session doesn't leak into an add opened from elsewhere.
+  // Memoized so its identity is stable when fromCart is false (a bare `[]`
+  // ternary would otherwise be a new array every render, defeating the
+  // useCallback below it's a dependency of).
+  const fromCart = (Array.isArray(params.fromCart) ? params.fromCart[0] : params.fromCart) === '1';
+  const cartItems = useMemo(() => (fromCart ? cart.items : []), [fromCart, cart.items]);
 
   const [fieldVisibility, setFieldVisibility] = useState<Record<AddTorrentDialogField, boolean>>(
     DEFAULT_PREFERENCES.addTorrentDialogueFields,
@@ -277,7 +293,9 @@ export default function AddTorrentFullScreen() {
       .split('\n')
       .map((url) => url.trim())
       .filter(Boolean);
-    const sourceOk = (urls.length > 0 || selectedFiles.length > 0) && fieldVisibility.source;
+    const sourceOk =
+      (urls.length > 0 || selectedFiles.length > 0 || cartItems.length > 0) &&
+      fieldVisibility.source;
     if (!sourceOk) {
       showToast(t('errors.enterUrlOrMagnet'), 'error');
       return;
@@ -298,8 +316,30 @@ export default function AddTorrentFullScreen() {
       if (urls.length > 0) {
         tasks.push(torrentsApi.addTorrent(urls, opts));
       }
+      if (cartItems.length > 0) {
+        // Cart checkout always goes through torrents/add (#217) — the whole
+        // point of the batch dialogue is that savepath/category/tags apply,
+        // and search/downloadTorrent (used by the Search tab's instant-add
+        // for cookie-gated plugin URLs) takes no options at all.
+        const prefs = await storageService.getPreferences().catch(() => null);
+        const groups = groupCartItemsForAdd(cartItems, !!prefs?.autoCategorizeByTracker);
+        for (const group of groups) {
+          tasks.push(
+            torrentsApi.addTorrent(group.urls, {
+              ...opts,
+              tags: group.tag ? [...(opts?.tags ?? []), group.tag] : opts?.tags,
+            }),
+          );
+        }
+      }
       await Promise.all(tasks);
-      showToast(t('toast.torrentAdded', { count: urls.length + selectedFiles.length }), 'success');
+      showToast(
+        t('toast.torrentAdded', {
+          count: urls.length + selectedFiles.length + cartItems.length,
+        }),
+        'success',
+      );
+      if (cartItems.length > 0) cart.clear();
       router.back();
     } catch {
       showToast(t('errors.failedToAdd'), 'error');
@@ -308,6 +348,8 @@ export default function AddTorrentFullScreen() {
     }
   }, [
     buildOptions,
+    cart,
+    cartItems,
     fieldVisibility.source,
     isConnected,
     router,
@@ -342,6 +384,29 @@ export default function AddTorrentFullScreen() {
     lastAppliedMagnetRef.current = { value: magnetLink, at: now };
     setTorrentUrl(magnetLink);
   }, [params.magnet]);
+
+  // Search tab's + button (#217), full-dialogue branch. Assigned verbatim —
+  // NOT run through extractMagnetLink, which returns null for a plain
+  // https://…/file.torrent — Search results are frequently non-magnet direct
+  // download URLs, and this screen's textarea already accepts any URL typed
+  // by hand.
+  useEffect(() => {
+    const rawSourceUrl = Array.isArray(params.sourceUrl) ? params.sourceUrl[0] : params.sourceUrl;
+    const sourceUrl = rawSourceUrl?.trim();
+    if (!sourceUrl) return;
+
+    const now = Date.now();
+    if (
+      lastAppliedSourceUrlRef.current &&
+      lastAppliedSourceUrlRef.current.value === sourceUrl &&
+      now - lastAppliedSourceUrlRef.current.at < 1500
+    ) {
+      return;
+    }
+
+    lastAppliedSourceUrlRef.current = { value: sourceUrl, at: now };
+    setTorrentUrl(sourceUrl);
+  }, [params.sourceUrl]);
 
   useEffect(() => {
     const fileUri = Array.isArray(params.torrentFileUri)
@@ -408,6 +473,60 @@ export default function AddTorrentFullScreen() {
                   {t('screens.addTorrent.source').toUpperCase()}
                 </Text>
                 <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                  {cartItems.length > 0 && (
+                    <>
+                      <View style={styles.block}>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>
+                          {t('screens.addTorrent.fromSearch')}
+                        </Text>
+                        <View
+                          style={[
+                            styles.fileListContainer,
+                            { borderColor: colors.primary, backgroundColor: colors.background },
+                          ]}
+                        >
+                          <ScrollView style={styles.fileListScroll} nestedScrollEnabled>
+                            {cartItems.map((item, index) => (
+                              <View
+                                key={item.fileUrl}
+                                style={[
+                                  styles.fileListRow,
+                                  index > 0 && {
+                                    borderTopColor: colors.surfaceOutline,
+                                    borderTopWidth: 1,
+                                  },
+                                ]}
+                              >
+                                <Ionicons name="cart-outline" size={18} color={colors.primary} />
+                                <Text
+                                  style={[styles.fileListRowText, { color: colors.text }]}
+                                  numberOfLines={1}
+                                >
+                                  {item.fileName}
+                                </Text>
+                                <TouchableOpacity
+                                  onPress={() => cart.remove(item.fileUrl)}
+                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                  accessibilityLabel={t('common.remove')}
+                                >
+                                  <Ionicons
+                                    name="close-circle"
+                                    size={18}
+                                    color={colors.textSecondary}
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      </View>
+
+                      <View
+                        style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                    </>
+                  )}
+
                   <View style={styles.block}>
                     <Text style={[styles.label, { color: colors.textSecondary }]}>
                       {t('screens.torrents.urlOrMagnet')}

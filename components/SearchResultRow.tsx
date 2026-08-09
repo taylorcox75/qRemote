@@ -2,9 +2,14 @@
  * SearchResultRow.tsx — Search result card.
  *
  * Tap semantics (mirrors TorrentCard's "tap = explore, button = act"):
- *   - tap on the row      → expand/collapse inline details + action buttons
- *   - tap on the + button → add the torrent (the ONLY way to add)
- *   - long-press          → opens the parent's action sheet (full menu)
+ *   - tap on the row       → expand/collapse inline details + action buttons
+ *   - tap on the + button  → add the torrent (behavior depends on the
+ *                            searchAddOpensDialogue preference — see search.tsx)
+ *   - tap on the cart      → queue/unqueue this result for a batch add (#217)
+ *   - long-press           → opens the parent's action sheet (full menu)
+ *
+ * The + button and the cart button are independent affordances: + never
+ * touches the cart, and the cart button never adds anything by itself.
  *
  * Visuals mirror TorrentCard: surface card, colored "health dot", filename
  * on line 1, meta line on line 2. Expanded state reveals the un-truncated
@@ -32,6 +37,10 @@ interface SearchResultRowProps {
   onOpenLink?: (url: string) => void;
   onCopyUrl?: (url: string) => void;
   isAdding?: boolean;
+  /** True when this result is already queued in the cart (#217). */
+  inCart?: boolean;
+  /** Omit to hide the cart button entirely. */
+  onToggleCart?: (result: SearchResult) => void;
 }
 
 // Health dot mirrors the Torrents "state dot" convention:
@@ -52,6 +61,8 @@ export function SearchResultRow({
   onOpenLink,
   onCopyUrl,
   isAdding,
+  inCart,
+  onToggleCart,
 }: SearchResultRowProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -109,30 +120,60 @@ export function SearchResultRow({
           </View>
         </View>
 
-        {/* Right: the explicit add action. Inner TouchableOpacity does NOT
-            propagate to the outer one in React Native, so tapping it adds
-            the torrent without toggling the expand state. */}
-        <TouchableOpacity
-          onPress={() => {
-            haptics.medium();
-            onAdd(result);
-          }}
-          disabled={isAdding}
-          accessibilityLabel={t('screens.search.addToQueue')}
-          style={[
-            styles.addButton,
-            {
-              backgroundColor: isAdding ? colors.surfaceOutline : colors.primary,
-            },
-          ]}
-          activeOpacity={0.7}
-        >
-          {isAdding ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-          )}
-        </TouchableOpacity>
+        {/* Right: the explicit add action, plus the cart toggle underneath.
+            Inner TouchableOpacity does NOT propagate to the outer one in
+            React Native, so tapping either button acts without toggling the
+            expand state. */}
+        <View style={styles.actionColumn}>
+          <TouchableOpacity
+            onPress={() => {
+              haptics.medium();
+              onAdd(result);
+            }}
+            disabled={isAdding}
+            accessibilityLabel={t('screens.search.addToQueue')}
+            style={[
+              styles.addButton,
+              {
+                backgroundColor: isAdding ? colors.surfaceOutline : colors.primary,
+              },
+            ]}
+            activeOpacity={0.7}
+          >
+            {isAdding ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="add" size={20} color="#FFFFFF" />
+            )}
+          </TouchableOpacity>
+
+          {onToggleCart && result.fileUrl ? (
+            <TouchableOpacity
+              onPress={() => {
+                haptics.selection();
+                onToggleCart(result);
+              }}
+              accessibilityLabel={
+                inCart ? t('screens.search.removeFromCart') : t('screens.search.addToCart')
+              }
+              accessibilityState={{ selected: !!inCart }}
+              style={[
+                styles.cartButton,
+                {
+                  backgroundColor: inCart ? colors.primaryOpac : colors.background,
+                  borderColor: inCart ? colors.primary : colors.surfaceOutline,
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={inCart ? 'cart' : 'cart-outline'}
+                size={18}
+                color={inCart ? colors.primary : colors.textSecondary}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
       {/* Inline action row appears when expanded */}
@@ -241,10 +282,22 @@ const styles = StyleSheet.create({
   chevron: {
     marginLeft: spacing.xs,
   },
+  actionColumn: {
+    flexDirection: 'column',
+    gap: spacing.xs,
+  },
   addButton: {
     width: 36,
     height: 36,
     borderRadius: borderRadius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartButton: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.medium,
+    borderWidth: 0.5,
     alignItems: 'center',
     justifyContent: 'center',
   },

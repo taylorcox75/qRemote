@@ -31,12 +31,14 @@ import * as Clipboard from 'expo-clipboard';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { SearchResultRow } from '@/components/SearchResultRow';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
+import { SearchCartModal } from '@/components/SearchCartModal';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
 import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
+import { useSearchCart } from '@/context/SearchCartContext';
 import { useSearchJob } from '@/hooks/useSearchJob';
 import { searchApi } from '@/services/api/search';
 import { torrentsApi } from '@/services/api/torrents';
@@ -45,6 +47,10 @@ import { storageService } from '@/services/storage';
 import { clogDebug, clogWarn } from '@/services/connectivity-log';
 import { SearchPlugin, SearchResult } from '@/types/api';
 import { siteHost, resultTrackerLabel } from '@/utils/searchResult';
+import {
+  getAddTorrentDialogueVariant,
+  getSearchAddOpensDialogue,
+} from '@/utils/add-torrent-dialogue';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
@@ -140,6 +146,8 @@ export default function SearchScreen() {
   const { features } = useApiFeatures();
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
+  const cart = useSearchCart();
+  const [cartModalVisible, setCartModalVisible] = useState(false);
   const queryInputRef = useRef<TextInput>(null);
   const activeTagPollsRef = useRef(new Set<AbortController>());
 
@@ -510,7 +518,13 @@ export default function SearchScreen() {
     prevStatusRef.current = status;
   }, [status, total, showToast, t]);
 
-  const handleAddResult = useCallback(
+  // The escape hatch behind the new searchAddOpensDialogue pref (#217) and
+  // the long-press action sheet's "Add now" item — unchanged from before the
+  // cart/dialogue feature. Also the only path that still routes eligible
+  // results through search/downloadTorrent (see the isMagnet branch below),
+  // which cart checkout (torrents/add only, see app/torrents/add.tsx)
+  // deliberately does not use.
+  const instantAddResult = useCallback(
     async (result: SearchResult) => {
       if (!result.fileUrl) return;
       setPendingAddUrl(result.fileUrl);
@@ -564,6 +578,48 @@ export default function SearchScreen() {
       }
     },
     [features.supportsSearchDownloadTorrent, isAggregatedSource, showToast, t],
+  );
+
+  // + button handler (#217). Gated by searchAddOpensDialogue (default true):
+  // opens the add-torrent dialogue pre-filled with this one result instead of
+  // instantly adding, honoring the user's useFullAddTorrentDialogue variant
+  // choice the same way the existing magnet-deep-link handoff does. Falls
+  // back to instantAddResult if preferences can't be read or navigation
+  // fails, so a storage hiccup never leaves the + button doing nothing.
+  const handleAddResult = useCallback(
+    async (result: SearchResult) => {
+      if (!result.fileUrl) return;
+      try {
+        const prefs = await storageService.getPreferences();
+        if (!getSearchAddOpensDialogue(prefs)) {
+          await instantAddResult(result);
+          return;
+        }
+        const variant = getAddTorrentDialogueVariant(prefs);
+        if (variant === 'full') {
+          router.push({ pathname: '/torrents/add', params: { sourceUrl: result.fileUrl } });
+        } else {
+          router.push({ pathname: '/', params: { sourceUrl: result.fileUrl } });
+        }
+      } catch {
+        await instantAddResult(result);
+      }
+    },
+    [instantAddResult, router],
+  );
+
+  const handleToggleCart = useCallback(
+    (result: SearchResult) => {
+      if (!result.fileUrl) return;
+      cart.toggle({
+        fileUrl: result.fileUrl,
+        fileName: result.fileName,
+        fileSize: result.fileSize,
+        nbSeeders: result.nbSeeders ?? 0,
+        indexerLabel: resultTrackerLabel(result, isAggregatedSource),
+      });
+    },
+    [cart, isAggregatedSource],
   );
 
   const handleLongPressResult = useCallback((result: SearchResult) => {
@@ -620,11 +676,17 @@ export default function SearchScreen() {
   // Long-press action sheet items
   const actionItems: ActionMenuItemDef[] = useMemo(() => {
     if (!actionResult) return [];
+    const resultInCart = cart.has(actionResult.fileUrl);
     const items: ActionMenuItemDef[] = [
       {
-        label: t('screens.search.addToQueue'),
+        label: t('screens.search.addNow'),
         icon: 'add-circle-outline',
-        onPress: () => void handleAddResult(actionResult),
+        onPress: () => void instantAddResult(actionResult),
+      },
+      {
+        label: resultInCart ? t('screens.search.removeFromCart') : t('screens.search.addToCart'),
+        icon: resultInCart ? 'cart' : 'cart-outline',
+        onPress: () => handleToggleCart(actionResult),
       },
     ];
     if (actionResult.descrLink) {
@@ -654,7 +716,16 @@ export default function SearchScreen() {
       });
     }
     return items;
-  }, [actionResult, handleAddResult, handleCopyUrl, handleOpenLink, handleShareUrl, t]);
+  }, [
+    actionResult,
+    cart,
+    handleToggleCart,
+    instantAddResult,
+    handleCopyUrl,
+    handleOpenLink,
+    handleShareUrl,
+    t,
+  ]);
 
   // ────────────────────────────────────────────────── chip data ───────────
 
@@ -1116,6 +1187,8 @@ export default function SearchScreen() {
                 onOpenLink={handleOpenLink}
                 onCopyUrl={handleCopyUrl}
                 isAdding={pendingAddUrl === item.fileUrl}
+                inCart={cart.has(item.fileUrl)}
+                onToggleCart={handleToggleCart}
               />
             )}
             contentContainerStyle={{
@@ -1134,12 +1207,52 @@ export default function SearchScreen() {
             windowSize={10}
           />
         )}
+
+        {/* Floating cart button (#217) — appears once something is queued,
+            opens the review sheet rather than checking out directly so the
+            user can prune the batch first. */}
+        {cart.count > 0 && (
+          <TouchableOpacity
+            style={[styles.cartFab, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              haptics.medium();
+              setCartModalVisible(true);
+            }}
+            activeOpacity={0.85}
+            accessibilityLabel={t('screens.search.cartAccessibility', { count: cart.count })}
+          >
+            <Ionicons name="cart" size={24} color="#FFFFFF" />
+            <View
+              style={[
+                styles.cartFabBadge,
+                { backgroundColor: colors.error, borderColor: colors.background },
+              ]}
+            >
+              <Text style={styles.cartFabBadgeText}>{cart.count}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ActionMenu
         visible={actionResult !== null}
         onClose={() => setActionResult(null)}
         items={actionItems}
+      />
+
+      <SearchCartModal
+        visible={cartModalVisible}
+        items={cart.items}
+        onRemove={cart.remove}
+        onClearAll={() => {
+          cart.clear();
+          setCartModalVisible(false);
+        }}
+        onCheckout={() => {
+          setCartModalVisible(false);
+          router.push({ pathname: '/torrents/add', params: { fromCart: '1' } });
+        }}
+        onClose={() => setCartModalVisible(false)}
       />
     </>
   );
@@ -1304,5 +1417,32 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     ...typography.secondary,
     textAlign: 'center',
+  },
+  cartFab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.large,
+  },
+  cartFabBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartFabBadgeText: {
+    ...typography.captionSemibold,
+    color: '#FFFFFF',
   },
 });
