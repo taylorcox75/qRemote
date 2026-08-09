@@ -2,7 +2,7 @@ name: Publish update
 
 on:
   push:
-    branches: ['preview']
+    branches: ['preview-deploy']
 
 jobs:
   update_preview:
