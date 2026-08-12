@@ -1119,9 +1119,17 @@ export default function TorrentsScreen() {
   // data fetch), during background recovery, or while a fresh error is still
   // within its grace window — most poll failures self-heal within a couple
   // of seconds and shouldn't flash a hard error.
+  //
+  // Skip this entirely while the compact Add Torrent modal is open (#220):
+  // opening a magnet link foregrounds the app, which flips
+  // isRecoveringFromBackground true on the exact same tick the magnet
+  // handler is opening this modal. Returning the skeleton here unmounts the
+  // Modal along with the rest of the screen, so the dialogue flashes and is
+  // immediately dismissed. The modal already re-syncs on its own once
+  // submitted, so there's no correctness reason to interrupt it.
   if (
     (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) ||
-    (initialLoadComplete && (isRecoveringFromBackground || isPendingError))
+    (initialLoadComplete && !showAddModal && (isRecoveringFromBackground || isPendingError))
   ) {
     return (
       <>

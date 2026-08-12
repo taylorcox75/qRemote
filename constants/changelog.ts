@@ -19,6 +19,18 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.37',
+    date: '2026-08-12',
+    sections: [
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Fixed opening a magnet link from the background briefly showing the Add Torrent dialog before dismissing it',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.36',
     date: '2026-08-09',
     sections: [
