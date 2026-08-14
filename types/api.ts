@@ -344,6 +344,10 @@ export interface Tracker {
   url: string;
   status: number;
   tier: number;
+  num_peers: number;
+  num_seeds: number;
+  num_leeches: number;
+  num_downloaded: number;
   msg: string;
 }
 

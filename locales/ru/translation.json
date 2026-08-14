@@ -488,6 +488,8 @@
     },
     "trackers": {
       "title": "Трекеры",
+      "seeds": "Сиды",
+      "leeches": "Личи",
       "newTrackerUrl": "URL нового трекера",
       "editTrackerUrl": "Изменить URL трекера",
       "addNewTracker": "Добавить трекер",

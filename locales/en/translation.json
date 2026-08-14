@@ -488,6 +488,8 @@
     },
     "trackers": {
       "title": "Manage Trackers",
+      "seeds": "Seeds",
+      "leeches": "Leeches",
       "newTrackerUrl": "New Tracker URL",
       "editTrackerUrl": "Edit Tracker URL",
       "addNewTracker": "Add New Tracker",

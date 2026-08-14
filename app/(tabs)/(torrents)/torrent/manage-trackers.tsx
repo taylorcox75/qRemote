@@ -131,6 +131,10 @@ export default function ManageTrackersScreen() {
     }
   };
 
+  // qBittorrent reports -1 for seeds/leeches until the tracker has been
+  // contacted at least once — show a placeholder rather than "-1".
+  const formatTrackerCount = (count: number) => (count < 0 ? '—' : String(count));
+
   const handleCopyTracker = async (tracker: Tracker) => {
     await Clipboard.setStringAsync(tracker.url);
     showToast(t('screens.trackers.urlCopied'), 'success');
@@ -391,6 +395,22 @@ export default function ManageTrackersScreen() {
                         {getStatusText(tracker.status)}
                       </Text>
                     </View>
+                    <View style={styles.statsRow}>
+                      <Text style={[styles.statsText, { color: colors.textSecondary }]}>
+                        {t('screens.trackers.seeds')}
+                        {': '}
+                        <Text style={{ color: colors.success }}>
+                          {formatTrackerCount(tracker.num_seeds)}
+                        </Text>
+                      </Text>
+                      <Text style={[styles.statsText, { color: colors.textSecondary }]}>
+                        {t('screens.trackers.leeches')}
+                        {': '}
+                        <Text style={{ color: colors.text }}>
+                          {formatTrackerCount(tracker.num_leeches)}
+                        </Text>
+                      </Text>
+                    </View>
                     {tracker.msg && (
                       <Text style={[styles.errorText, { color: colors.error }]} numberOfLines={1}>
                         {tracker.msg}
@@ -504,6 +524,14 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs + 2,
   },
   statusText: {
+    ...typography.caption,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  statsText: {
     ...typography.caption,
   },
   errorText: {

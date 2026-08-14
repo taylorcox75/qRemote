@@ -467,6 +467,8 @@
     },
     "trackers": {
       "title": "Manage Trackers",
+      "seeds": "做种",
+      "leeches": "下载者",
       "newTrackerUrl": "New Tracker URL",
       "editTrackerUrl": "编辑 Tracker URL",
       "addNewTracker": "Add New Tracker",

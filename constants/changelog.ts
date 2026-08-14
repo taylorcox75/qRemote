@@ -19,6 +19,16 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.38',
+    date: '2026-08-14',
+    sections: [
+      {
+        title: 'New Features',
+        items: ['Trackers now show each tracker’s reported seed and leech counts'],
+      },
+    ],
+  },
+  {
     version: '3.8.37',
     date: '2026-08-12',
     sections: [

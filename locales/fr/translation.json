@@ -467,6 +467,8 @@
     },
     "trackers": {
       "title": "Manage Trackers",
+      "seeds": "Seeds",
+      "leeches": "Leechers",
       "newTrackerUrl": "New Tracker URL",
       "editTrackerUrl": "Modifier l'URL du tracker",
       "addNewTracker": "Add New Tracker",
