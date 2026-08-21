@@ -55,6 +55,9 @@ export const storageService = {
       // API key auth (key stored separately in SecureStore)
       useApiKey: s.useApiKey || false,
       apiKey: '', // Don't store API key in AsyncStorage
+      // Icon badge customization (#224)
+      icon: s.icon || undefined,
+      iconColor: s.iconColor || undefined,
     }));
 
     await AsyncStorage.setItem(STORAGE_KEYS.SERVERS, JSON.stringify(serversWithoutPasswords));

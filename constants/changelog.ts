@@ -19,6 +19,16 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.39',
+    date: '2026-08-21',
+    sections: [
+      {
+        title: 'New Features',
+        items: ['Servers can now be given a custom icon and badge color'],
+      },
+    ],
+  },
+  {
     version: '3.8.38',
     date: '2026-08-14',
     sections: [

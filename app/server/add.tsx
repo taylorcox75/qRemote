@@ -32,6 +32,7 @@ import { SuperDebugPanel } from '@/components/SuperDebugPanel';
 import { DebugRow } from '@/components/DebugRow';
 import { SettingRow } from '@/components/SettingRow';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
+import { ServerAppearanceSection } from '@/components/ServerAppearanceSection';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
@@ -48,6 +49,8 @@ export default function AddServerScreen() {
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('');
+  const [icon, setIcon] = useState('');
+  const [iconColor, setIconColor] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [authMode, setAuthMode] = useState<ServerAuthMode>('password');
@@ -278,6 +281,8 @@ App Version: ${APP_VERSION}`;
         fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
         fallbackPort: useFallback ? fallbackPortNum : undefined,
         fallbackUseHttps: useFallback ? fallbackUseHttps : false,
+        icon: icon || undefined,
+        iconColor: iconColor || undefined,
       };
 
       await ServerManager.saveServer(server);
@@ -537,6 +542,14 @@ App Version: ${APP_VERSION}`;
               </View>
             </View>
           </View>
+
+          <ServerAppearanceSection
+            name={name}
+            icon={icon}
+            iconColor={iconColor}
+            onIconChange={setIcon}
+            onIconColorChange={setIconColor}
+          />
 
           {/* Fallback URL Section */}
           <View style={styles.section}>

@@ -60,6 +60,8 @@ export function toExportedServer(server: ServerConfig): ServerConfig {
     basicAuthPassword: '',
     useApiKey: server.useApiKey === true,
     apiKey: '',
+    icon: optionalString(server.icon),
+    iconColor: optionalString(server.iconColor),
   };
 }
 

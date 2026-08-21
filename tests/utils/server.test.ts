@@ -6,7 +6,10 @@ import {
   resolveServerEndpoint,
   getServerEndpointLabel,
   getActiveEndpoint,
+  getServerIcon,
+  getServerIconColor,
 } from '@/utils/server';
+import { DEFAULT_SERVER_ICON } from '@/constants/serverIcons';
 import { ServerConfig } from '@/types/api';
 
 const baseServer: ServerConfig = {
@@ -186,5 +189,25 @@ describe('getActiveEndpoint', () => {
     const server = { ...baseServer, port: undefined };
     const activeServer: ServerConfig = { ...baseServer, port: 0 };
     expect(getActiveEndpoint(server, activeServer)).toBe('primary');
+  });
+});
+
+describe('getServerIcon', () => {
+  it('returns the default icon when unset', () => {
+    expect(getServerIcon(baseServer)).toBe(DEFAULT_SERVER_ICON);
+  });
+
+  it('returns the server-chosen icon when set', () => {
+    expect(getServerIcon({ ...baseServer, icon: 'home-outline' })).toBe('home-outline');
+  });
+});
+
+describe('getServerIconColor', () => {
+  it('falls back to avatarColor(name) when unset', () => {
+    expect(getServerIconColor(baseServer)).toBe(avatarColor(baseServer.name));
+  });
+
+  it('returns the server-chosen color when set', () => {
+    expect(getServerIconColor({ ...baseServer, iconColor: '#123456' })).toBe('#123456');
   });
 });

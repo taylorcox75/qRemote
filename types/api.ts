@@ -48,6 +48,11 @@ export interface ServerConfig {
   useApiKey?: boolean;
   /** qBittorrent API key, sent as `Authorization: Bearer <apiKey>` (in-memory only; stored in SecureStore). */
   apiKey?: string;
+
+  /** Ionicons glyph name used for this server's badge (see constants/serverIcons.ts). Falls back to DEFAULT_SERVER_ICON when unset. */
+  icon?: string;
+  /** Hex color for the server's icon badge. Falls back to utils/server.ts avatarColor(name) when unset. */
+  iconColor?: string;
 }
 
 export type ServerEndpointKind = 'primary' | 'fallback';

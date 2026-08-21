@@ -66,6 +66,12 @@ describe('toExportedServer', () => {
     expect(exported.port).toBeUndefined();
     expect(exported.fallbackPort).toBeUndefined();
   });
+
+  it('keeps icon customization (#224), which is not a secret', () => {
+    const exported = toExportedServer(makeServer({ icon: 'home-outline', iconColor: '#123456' }));
+    expect(exported.icon).toBe('home-outline');
+    expect(exported.iconColor).toBe('#123456');
+  });
 });
 
 describe('buildServerExport', () => {

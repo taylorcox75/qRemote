@@ -1,4 +1,5 @@
 import { ServerConfig, ServerEndpointKind } from '@/types/api';
+import { DEFAULT_SERVER_ICON, ServerIconName } from '@/constants/serverIcons';
 
 export const AVATAR_PALETTE = [
   '#0A84FF',
@@ -15,6 +16,16 @@ export function avatarColor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
+/** The icon a server's badge renders — its own choice, or DEFAULT_SERVER_ICON. */
+export function getServerIcon(server: Pick<ServerConfig, 'icon'>): ServerIconName {
+  return (server.icon as ServerIconName) || DEFAULT_SERVER_ICON;
+}
+
+/** The color a server's badge renders in — its own choice, or the name-derived fallback. */
+export function getServerIconColor(server: Pick<ServerConfig, 'name' | 'iconColor'>): string {
+  return server.iconColor || avatarColor(server.name);
 }
 
 export function serverAddress(server: ServerConfig): string {

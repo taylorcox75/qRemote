@@ -359,19 +359,27 @@ All PascalCase function components taking a `…Props` interface.
 - **Modals / pickers** — `ActionMenu` (anchored popover), `ConfirmModal` (themed
   confirm), `InputModal` (themed text input; optional `pathAutocomplete` prop),
   `OptionPicker`, `MultiSelectPicker`, `CategoryModal`, `TagsModal`, `ColorPicker`,
-  `PathAutocompleteInput` (live directory suggestions via `app/getDirectoryContent`,
-  qBit 5.0+ / WebAPI ≥ 2.11 — silent no-op when unsupported; also renders the
-  browse button), `SavePathPickerModal` (filterable list of save paths already in
-  use, derived from TorrentContext via `utils/save-paths.ts` — works on any
-  qBittorrent version), `SearchCartModal` (review sheet for the Search tab's add
-  queue — list, per-item remove, Clear all, Checkout — see `SearchCartContext.tsx`).
+  `IconPicker` (grid picker for a server's badge icon, previewed in its badge
+  color — see `constants/serverIcons.ts`), `PathAutocompleteInput` (live
+  directory suggestions via `app/getDirectoryContent`, qBit 5.0+ / WebAPI ≥
+  2.11 — silent no-op when unsupported; also renders the browse button),
+  `SavePathPickerModal` (filterable list of save paths already in use, derived
+  from TorrentContext via `utils/save-paths.ts` — works on any qBittorrent
+  version), `SearchCartModal` (review sheet for the Search tab's add queue —
+  list, per-item remove, Clear all, Checkout — see `SearchCartContext.tsx`).
 - **Torrent / search UI** — `TorrentCard` (`React.memo` with a **custom
   comparator — keep it in sync when you add a rendered field**, or the card
   silently stops updating; category/tag stickers use `categoryColors`/`tagColors`
   then defaults then the `avatarColor` fallback), `SearchResultRow` (+ internal
   ActionPill; the `+` button and the cart-toggle button are independent — see
   its header comment), `FilterChip`, `EmptyState`, `SkeletonLoader`
-  (+ `SkeletonTorrentCard`), `PieceMap`.
+  (+ `SkeletonTorrentCard`), `PieceMap`, `ServerIconBadge` (per-server tinted
+  icon badge — `ServerConfig.icon`/`iconColor` via `utils/server.ts`
+  `getServerIcon`/`getServerIconColor`, falling back to a default icon and
+  `avatarColor(name)`), `ServerAppearanceSection` (icon + badge-color editor
+  used by both `app/server/add.tsx` and `app/server/[id].tsx` — quick
+  `AVATAR_PALETTE` swatches plus a "custom color" swatch that opens the full
+  `ColorPicker`).
 - **Visuals** — `SpeedGraph`, `CircularProgress`, `AnimatedProgressBar`,
   `AnimatedButton`, `Confetti`.
 - **Chrome / diagnostics** — `FocusAwareStatusBar`, `SettingRow`,
@@ -450,7 +458,8 @@ and availability **FLOOR**, never round up) · `torrent-state.ts` (state → col
 label, completion and ETA rules) · `limit-input.ts` (share-limit sentinels:
 `-2` = follow global, `-1` = unlimited; own-vs-effective limit resolution) ·
 `error.ts` (`getErrorMessage`) · `apiVersion.ts` (parse + `ApiFeatures` gating) ·
-`server.ts` (endpoint resolution incl. fallback URL, avatar colors) ·
+`server.ts` (endpoint resolution incl. fallback URL, avatar colors, and
+`getServerIcon`/`getServerIconColor` for the per-server badge — #224) ·
 `authMode.ts` (derives `password`/`apiKey`/`none`) · `basicAuth.ts` ·
 `magnet.ts` / `torrent-file.ts` (incoming link and file parsing) · `rss.ts`
 (RSS tree flattening; paths join with `\`) · `searchResult.ts` (indexer-label
@@ -472,8 +481,9 @@ endpoint applies one `tags` value per request) · `server-export.ts` (strips
 - `types/preferences.ts` — typed preferences + defaults.
 - `constants/` — `changelog.ts` (don't edit unless asked; see
   [docs/RELEASING.md](docs/RELEASING.md)),
-  `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts`. **Use these tokens;
-  don't invent ad-hoc spacing.**
+  `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts`, `serverIcons.ts`
+  (`SERVER_ICON_OPTIONS`, `DEFAULT_SERVER_ICON` — the curated Ionicons set for
+  a server's badge, #224). **Use these tokens; don't invent ad-hoc spacing.**
 - `i18n/index.ts` initializes react-i18next. Each locale is ONE file,
   `locales/{en,es,zh,fr,de,ru}/translation.json`, holding every namespace:
   `common`, `states`, `screens`, `placeholders`, `actions`, `alerts`, `server`,
