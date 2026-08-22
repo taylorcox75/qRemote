@@ -160,6 +160,40 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     }
   }, [torrent, ensureConnection, sync, showToast, t]);
 
+  const handleIncreasePriority = useCallback(async () => {
+    if (!torrent) return;
+    if (!(await ensureConnection())) return;
+
+    setLoading(true);
+    try {
+      await torrentsApi.increasePriority([torrent.hash]);
+      sync().catch(() => {});
+      showToast(t('toast.priorityIncreased'), 'success');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : '';
+      showToast(msg || t('errors.failedToIncreasePriority'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [torrent, ensureConnection, sync, showToast, t]);
+
+  const handleDecreasePriority = useCallback(async () => {
+    if (!torrent) return;
+    if (!(await ensureConnection())) return;
+
+    setLoading(true);
+    try {
+      await torrentsApi.decreasePriority([torrent.hash]);
+      sync().catch(() => {});
+      showToast(t('toast.priorityDecreased'), 'success');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : '';
+      showToast(msg || t('errors.failedToDecreasePriority'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [torrent, ensureConnection, sync, showToast, t]);
+
   const handleSetDownloadLimit = useCallback(
     (value: string) => {
       if (!torrent) return;
@@ -264,6 +298,16 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
         onPress: handleToggleGlobalSpeedLimit,
       },
       {
+        label: t('actions.increasePriority'),
+        icon: 'arrow-up',
+        onPress: handleIncreasePriority,
+      },
+      {
+        label: t('actions.decreasePriority'),
+        icon: 'arrow-down',
+        onPress: handleDecreasePriority,
+      },
+      {
         label: t('actions.maxPriority'),
         icon: 'flag',
         onPress: handleMaxPriority,
@@ -307,6 +351,8 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     handlePauseResume,
     handleForceStart,
     handleToggleGlobalSpeedLimit,
+    handleIncreasePriority,
+    handleDecreasePriority,
     handleMaxPriority,
     handleVerifyData,
     handleReannounce,
@@ -326,6 +372,8 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     handleDelete,
     handleConfirmDelete,
     handleMaxPriority,
+    handleIncreasePriority,
+    handleDecreasePriority,
     handleSetDownloadLimit,
     handleSetUploadLimit,
     handleToggleGlobalSpeedLimit,

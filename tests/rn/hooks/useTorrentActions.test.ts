@@ -24,6 +24,8 @@ jest.mock('@/services/api/torrents', () => ({
     recheckTorrents: jest.fn(),
     reannounceTorrents: jest.fn(),
     deleteTorrents: jest.fn(),
+    increasePriority: jest.fn(),
+    decreasePriority: jest.fn(),
     setMaximalPriority: jest.fn(),
     setTorrentDownloadLimit: jest.fn(),
     setTorrentUploadLimit: jest.fn(),
@@ -101,12 +103,15 @@ describe('useTorrentActions', () => {
     expect(result.current.ulLimitDefaultValue).toBe('4');
   });
 
-  it('builds 10 action menu items for a non-paused torrent', async () => {
+  it('builds priority actions for a non-paused torrent', async () => {
     const { result } = await renderHook(() => useTorrentActions(baseTorrent));
-    expect(result.current.actionMenuItems).toHaveLength(10);
+    expect(result.current.actionMenuItems).toHaveLength(12);
     expect(result.current.actionMenuItems[0].label).toBe('actions.pause');
-    expect(result.current.actionMenuItems[4].label).toBe('actions.setDlLimit');
-    expect(result.current.actionMenuItems[5].label).toBe('actions.setUlLimit');
+    expect(result.current.actionMenuItems[3].label).toBe('actions.increasePriority');
+    expect(result.current.actionMenuItems[4].label).toBe('actions.decreasePriority');
+    expect(result.current.actionMenuItems[5].label).toBe('actions.maxPriority');
+    expect(result.current.actionMenuItems[6].label).toBe('actions.setDlLimit');
+    expect(result.current.actionMenuItems[7].label).toBe('actions.setUlLimit');
   });
 
   it('shows resume label when torrent is paused', async () => {
@@ -348,6 +353,44 @@ describe('useTorrentActions', () => {
         await result.current.handleMaxPriority();
       });
       expect(showToast).toHaveBeenCalledWith('prio fail', 'error');
+    });
+  });
+
+  describe('priority changes', () => {
+    it('increases priority and shows success toast', async () => {
+      const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+      await act(async () => {
+        await result.current.handleIncreasePriority();
+      });
+      expect(torrentsApi.increasePriority).toHaveBeenCalledWith(['abc123']);
+      expect(showToast).toHaveBeenCalledWith('toast.priorityIncreased', 'success');
+    });
+
+    it('decreases priority and shows success toast', async () => {
+      const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+      await act(async () => {
+        await result.current.handleDecreasePriority();
+      });
+      expect(torrentsApi.decreasePriority).toHaveBeenCalledWith(['abc123']);
+      expect(showToast).toHaveBeenCalledWith('toast.priorityDecreased', 'success');
+    });
+
+    it('shows an operation-specific error toast when increasing fails', async () => {
+      jest.mocked(torrentsApi.increasePriority).mockRejectedValue(new Error('increase fail'));
+      const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+      await act(async () => {
+        await result.current.handleIncreasePriority();
+      });
+      expect(showToast).toHaveBeenCalledWith('increase fail', 'error');
+    });
+
+    it('shows an operation-specific error toast when decreasing fails', async () => {
+      jest.mocked(torrentsApi.decreasePriority).mockRejectedValue(new Error('decrease fail'));
+      const { result } = await renderHook(() => useTorrentActions(baseTorrent));
+      await act(async () => {
+        await result.current.handleDecreasePriority();
+      });
+      expect(showToast).toHaveBeenCalledWith('decrease fail', 'error');
     });
   });
 

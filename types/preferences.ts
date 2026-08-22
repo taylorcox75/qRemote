@@ -1,6 +1,14 @@
 import { ColorTheme } from '@/services/color-theme-manager';
 
-export type SortField = 'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on';
+export type SortField =
+  | 'name'
+  | 'size'
+  | 'progress'
+  | 'dlspeed'
+  | 'upspeed'
+  | 'ratio'
+  | 'priority'
+  | 'added_on';
 
 export type ExpandedCardField =
   | 'dlSpeed'

@@ -50,7 +50,7 @@ export default function TorrentDefaultsScreen() {
   const { showToast } = useToast();
 
   const [defaultSortBy, setDefaultSortBy] = useState<
-    'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'
+    'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'priority' | 'added_on'
   >('added_on');
   const [defaultSortDirection, setDefaultSortDirection] = useState<'asc' | 'desc'>('desc');
   const [defaultFilter, setDefaultFilter] = useState<string>('all');
@@ -125,6 +125,7 @@ export default function TorrentDefaultsScreen() {
     { label: t('sort.size'), value: 'size', icon: 'disc-outline' },
     { label: t('sort.progress'), value: 'progress', icon: 'pie-chart-outline' },
     { label: t('sort.ulRatio'), value: 'ratio', icon: 'swap-horizontal-outline' },
+    { label: t('sort.priority'), value: 'priority', icon: 'list-outline' },
     { label: t('sort.dlSpeed'), value: 'dlspeed', icon: 'download-outline' },
     { label: t('sort.ulSpeed'), value: 'upspeed', icon: 'arrow-up-outline' },
     { label: t('sort.dateAdded'), value: 'added_on', icon: 'calendar-outline' },

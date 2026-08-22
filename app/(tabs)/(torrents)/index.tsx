@@ -108,7 +108,7 @@ export default function TorrentsScreen() {
   const [bulkTagMode, setBulkTagMode] = useState<'add' | 'remove' | null>(null);
   const [bulkTagDraft, setBulkTagDraft] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<
-    'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'added_on'
+    'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'priority' | 'added_on'
   >('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -508,6 +508,9 @@ export default function TorrentsScreen() {
           break;
         case 'ratio':
           comparison = (a.ratio ?? 0) - (b.ratio ?? 0);
+          break;
+        case 'priority':
+          comparison = a.priority - b.priority;
           break;
         case 'added_on':
           comparison = a.added_on - b.added_on;
@@ -1093,6 +1096,7 @@ export default function TorrentsScreen() {
     { key: 'size' as const, labelKey: 'sort.size', icon: 'albums-outline' as const },
     { key: 'progress' as const, labelKey: 'sort.progress', icon: 'stats-chart-outline' as const },
     { key: 'ratio' as const, labelKey: 'sort.ulRatio', icon: 'swap-horizontal-outline' as const },
+    { key: 'priority' as const, labelKey: 'sort.priority', icon: 'list-outline' as const },
     { key: 'dlspeed' as const, labelKey: 'sort.dlSpeed', icon: 'arrow-down-outline' as const },
     { key: 'upspeed' as const, labelKey: 'sort.ulSpeed', icon: 'arrow-up-outline' as const },
   ];
