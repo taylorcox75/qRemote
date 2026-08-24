@@ -115,6 +115,23 @@ describe('storageService', () => {
       expect(raw[0].apiKey).toBe('');
     });
 
+    it('persists customHeaders separately, storing them in SecureStore', async () => {
+      await storageService.saveServer(
+        makeServer({
+          useCustomHeaders: true,
+          customHeaders: [{ key: 'X-Pangolin-Token', value: 'tok_secret' }],
+        }),
+      );
+      const servers = await storageService.getServers();
+      expect(servers[0].useCustomHeaders).toBe(true);
+      expect(servers[0].customHeaders).toEqual([{ key: 'X-Pangolin-Token', value: 'tok_secret' }]);
+      const raw = JSON.parse(mockAsyncStorage['servers']);
+      expect(raw[0].customHeaders).toEqual([]);
+      expect(mockSecureStore['server_custom_headers_s1']).toBe(
+        JSON.stringify([{ key: 'X-Pangolin-Token', value: 'tok_secret' }]),
+      );
+    });
+
     it('getServers returns [] when nothing stored', async () => {
       const servers = await storageService.getServers();
       expect(servers).toEqual([]);
@@ -167,6 +184,17 @@ describe('storageService', () => {
       expect(raw.find((s: { id: string }) => s.id === 's2').apiKey).toBe('');
       const servers = await storageService.getServers();
       expect(servers.find((s) => s.id === 's2')?.apiKey).toBe('qbt_keepme1234567890123456789012');
+    });
+
+    it('removes the customHeaders secret on delete', async () => {
+      await storageService.saveServer(
+        makeServer({
+          useCustomHeaders: true,
+          customHeaders: [{ key: 'X-Token', value: 'secret' }],
+        }),
+      );
+      await storageService.deleteServer('s1');
+      expect(mockSecureStore['server_custom_headers_s1']).toBeUndefined();
     });
 
     it('clears currentServerId when deleting the current server', async () => {

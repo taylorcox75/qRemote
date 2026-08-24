@@ -106,6 +106,18 @@ class ApiClient {
         // Add Origin header for CORS/authentication
         config.headers.Origin = `${protocol}://${host}${portPart}`;
 
+        // Custom headers (#228) — for tunnels/proxies with their own
+        // header-based auth (e.g. Pangolin), independent of qBittorrent's
+        // own auth mode. Names are validated against the reserved set above
+        // at save time, so nothing here can override Authorization/Cookie/etc.
+        if (this.currentServer.useCustomHeaders && this.currentServer.customHeaders?.length) {
+          for (const header of this.currentServer.customHeaders) {
+            if (header.key && header.value) {
+              config.headers[header.key] = header.value;
+            }
+          }
+        }
+
         return config;
       },
       (error) => {

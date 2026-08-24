@@ -662,7 +662,9 @@
     "enterKbs": "Enter KiB/s",
     "fallbackHost": "Fallback host or IP",
     "proxyUsername": "Proxy Username",
-    "proxyPassword": "Proxy Password"
+    "proxyPassword": "Proxy Password",
+    "headerName": "Header Name",
+    "headerValue": "Header Value"
   },
   "actions": {
     "resume": "Resume",
@@ -775,6 +777,11 @@
     "useBasicAuth": "Basic Auth (Proxy)",
     "useBasicAuthHint": "Required when a password protected proxy protects the server",
     "apiKeyProxyConflict": "Proxy Basic Auth can't be combined with an API key — both use the Authorization header",
+    "customHeaders": "CUSTOM HEADERS",
+    "useCustomHeaders": "Custom HTTP Headers",
+    "useCustomHeadersHint": "Send extra headers with every request — for tunnels or proxies with their own header-based auth (e.g. Pangolin)",
+    "addHeader": "Add Header",
+    "removeHeader": "Remove header",
     "debugFullUrl": "Full URL",
     "debugProtocol": "Protocol",
     "debugHost": "Host",
@@ -1100,6 +1107,8 @@
     "fillNameAndHost": "Please fill in server name and host",
     "fillUsernamePassword": "Please fill in username and password",
     "fillBasicAuthUsername": "Please fill in the proxy username for Basic Auth",
+    "fillCustomHeaderFields": "Fill in both the name and value for each custom header, or remove the empty one",
+    "reservedHeaderName": "\"{{name}}\" is managed by qRemote and can't be used as a custom header",
     "fillApiKey": "Please enter an API key",
     "validPort": "Please enter a valid port number (1-65535)",
     "fillFallbackHost": "Please enter a fallback host",

@@ -33,12 +33,18 @@ import { DebugRow } from '@/components/DebugRow';
 import { SettingRow } from '@/components/SettingRow';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { ServerAppearanceSection } from '@/components/ServerAppearanceSection';
+import { CustomHeadersSection } from '@/components/CustomHeadersSection';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
 import { APP_VERSION } from '@/utils/version';
 import { getErrorMessage } from '@/utils/error';
 import { ServerAuthMode, applyServerAuthMode } from '@/utils/authMode';
+import {
+  CustomHeaderPair,
+  sanitizeCustomHeaders,
+  validateCustomHeaders,
+} from '@/utils/customHeaders';
 
 export default function AddServerScreen() {
   const router = useRouter();
@@ -61,6 +67,8 @@ export default function AddServerScreen() {
   const [useBasicAuth, setUseBasicAuth] = useState(false);
   const [basicAuthUsername, setBasicAuthUsername] = useState('');
   const [basicAuthPassword, setBasicAuthPassword] = useState('');
+  const [useCustomHeaders, setUseCustomHeaders] = useState(false);
+  const [customHeaders, setCustomHeaders] = useState<CustomHeaderPair[]>([]);
   const [useFallback, setUseFallback] = useState(false);
   const [fallbackHost, setFallbackHost] = useState('');
   const [fallbackPort, setFallbackPort] = useState('');
@@ -236,6 +244,21 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
+    if (useCustomHeaders) {
+      const headerValidation = validateCustomHeaders(customHeaders);
+      if (!headerValidation.valid) {
+        if (headerValidation.error === 'reserved') {
+          showToast(
+            t('errors.reservedHeaderName', { name: headerValidation.reservedName }),
+            'error',
+          );
+        } else {
+          showToast(t('errors.fillCustomHeaderFields'), 'error');
+        }
+        return;
+      }
+    }
+
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       showToast(t('errors.validPort'), 'error');
@@ -277,6 +300,8 @@ App Version: ${APP_VERSION}`;
         useBasicAuth: useProxyBasicAuth,
         basicAuthUsername: useProxyBasicAuth ? basicAuthUsername.trim() : '',
         basicAuthPassword: useProxyBasicAuth ? basicAuthPassword : '',
+        useCustomHeaders,
+        customHeaders: useCustomHeaders ? sanitizeCustomHeaders(customHeaders) : [],
         useFallback,
         fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
         fallbackPort: useFallback ? fallbackPortNum : undefined,
@@ -332,6 +357,21 @@ App Version: ${APP_VERSION}`;
       return;
     }
 
+    if (useCustomHeaders) {
+      const headerValidation = validateCustomHeaders(customHeaders);
+      if (!headerValidation.valid) {
+        if (headerValidation.error === 'reserved') {
+          showToast(
+            t('errors.reservedHeaderName', { name: headerValidation.reservedName }),
+            'error',
+          );
+        } else {
+          showToast(t('errors.fillCustomHeaderFields'), 'error');
+        }
+        return;
+      }
+    }
+
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       showToast(t('errors.validPort'), 'error');
@@ -369,6 +409,8 @@ App Version: ${APP_VERSION}`;
         useBasicAuth: useProxyBasicAuth,
         basicAuthUsername: useProxyBasicAuth ? basicAuthUsername.trim() : '',
         basicAuthPassword: useProxyBasicAuth ? basicAuthPassword : '',
+        useCustomHeaders,
+        customHeaders: useCustomHeaders ? sanitizeCustomHeaders(customHeaders) : [],
         useFallback,
         fallbackHost: useFallback ? stripProtocol(fallbackHost.trim()) : '',
         fallbackPort: useFallback ? fallbackPortNum : undefined,
@@ -854,6 +896,13 @@ App Version: ${APP_VERSION}`;
               )}
             </View>
           </View>
+
+          <CustomHeadersSection
+            useCustomHeaders={useCustomHeaders}
+            headers={customHeaders}
+            onUseCustomHeadersChange={setUseCustomHeaders}
+            onHeadersChange={setCustomHeaders}
+          />
 
           {/* Test Connection */}
           <View style={styles.section}>

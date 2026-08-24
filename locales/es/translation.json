@@ -641,7 +641,9 @@
     "enterKbs": "Introducir KiB/s",
     "fallbackHost": "Host o IP de respaldo",
     "proxyUsername": "Usuario del proxy",
-    "proxyPassword": "Contraseña del proxy"
+    "proxyPassword": "Contraseña del proxy",
+    "headerName": "Nombre de cabecera",
+    "headerValue": "Valor de cabecera"
   },
   "actions": {
     "resume": "Reanudar",
@@ -754,6 +756,11 @@
     "useBasicAuth": "Auth Básica (Proxy)",
     "useBasicAuthHint": "Necesario cuando un proxy protegido con contraseña protege el servidor",
     "apiKeyProxyConflict": "La Auth Básica del proxy no se puede combinar con una clave de API: ambas usan la cabecera Authorization",
+    "customHeaders": "CABECERAS PERSONALIZADAS",
+    "useCustomHeaders": "Cabeceras HTTP personalizadas",
+    "useCustomHeadersHint": "Envía cabeceras adicionales en cada solicitud, para túneles o proxies con su propia autenticación por cabecera (p. ej. Pangolin)",
+    "addHeader": "Añadir cabecera",
+    "removeHeader": "Eliminar cabecera",
     "debugFullUrl": "URL completa",
     "debugProtocol": "Protocolo",
     "debugHost": "Host",
@@ -1079,6 +1086,8 @@
     "fillNameAndHost": "Rellena el nombre y host del servidor",
     "fillUsernamePassword": "Rellena usuario y contraseña",
     "fillBasicAuthUsername": "Introduce el usuario del proxy para la Auth Básica",
+    "fillCustomHeaderFields": "Completa el nombre y el valor de cada cabecera personalizada, o elimina la que esté vacía",
+    "reservedHeaderName": "\"{{name}}\" está gestionada por qRemote y no se puede usar como cabecera personalizada",
     "fillApiKey": "Introduce una clave de API",
     "validPort": "Introduce un número de puerto válido (1-65535)",
     "fillFallbackHost": "Introduce un host de respaldo",

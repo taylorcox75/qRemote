@@ -662,7 +662,9 @@
     "enterKbs": "КиБ/с",
     "fallbackHost": "Резервный хост или IP",
     "proxyUsername": "Имя пользователя прокси",
-    "proxyPassword": "Пароль прокси"
+    "proxyPassword": "Пароль прокси",
+    "headerName": "Имя заголовка",
+    "headerValue": "Значение заголовка"
   },
   "actions": {
     "resume": "Запустить",
@@ -775,6 +777,11 @@
     "useBasicAuth": "Basic Auth (Прокси)",
     "useBasicAuthHint": "Требуется, если сервер защищён прокси с паролем",
     "apiKeyProxyConflict": "Basic Auth прокси нельзя использовать вместе с API-ключом — оба используют заголовок Authorization",
+    "customHeaders": "ПОЛЬЗОВАТЕЛЬСКИЕ ЗАГОЛОВКИ",
+    "useCustomHeaders": "Пользовательские HTTP-заголовки",
+    "useCustomHeadersHint": "Отправляет дополнительные заголовки с каждым запросом — для туннелей или прокси с собственной аутентификацией по заголовку (например, Pangolin)",
+    "addHeader": "Добавить заголовок",
+    "removeHeader": "Удалить заголовок",
     "debugFullUrl": "Полный URL",
     "debugProtocol": "Протокол",
     "debugHost": "Хост",
@@ -1100,6 +1107,8 @@
     "fillNameAndHost": "Укажите имя сервера и хост",
     "fillUsernamePassword": "Укажите имя пользователя и пароль",
     "fillBasicAuthUsername": "Укажите имя пользователя прокси для Basic Auth",
+    "fillCustomHeaderFields": "Укажите имя и значение для каждого пользовательского заголовка либо удалите пустой",
+    "reservedHeaderName": "«{{name}}» управляется qRemote и не может использоваться как пользовательский заголовок",
     "fillApiKey": "Введите API-ключ",
     "validPort": "Укажите порт от 1 до 65535",
     "fillFallbackHost": "Введите резервный хост",

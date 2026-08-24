@@ -53,6 +53,11 @@ export interface ServerConfig {
   icon?: string;
   /** Hex color for the server's icon badge. Falls back to utils/server.ts avatarColor(name) when unset. */
   iconColor?: string;
+
+  /** When true, send extra HTTP headers on every request (for tunnels/proxies with their own header-based auth, e.g. Pangolin). */
+  useCustomHeaders?: boolean;
+  /** Custom header name/value pairs (in-memory + SecureStore only — values are treated as secrets). */
+  customHeaders?: { key: string; value: string }[];
 }
 
 export type ServerEndpointKind = 'primary' | 'fallback';

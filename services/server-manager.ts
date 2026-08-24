@@ -116,8 +116,8 @@ export class ServerManager {
 
   /**
    * Build a shareable export of every saved server, with all secrets
-   * (password, proxy Basic Auth password, API key) stripped — see
-   * utils/server-export.ts.
+   * (password, proxy Basic Auth password, API key, custom headers) stripped
+   * — see utils/server-export.ts.
    */
   static async exportServers(): Promise<ServerExportFile> {
     const servers = await storageService.getServers();
@@ -151,6 +151,7 @@ export class ServerManager {
           password: current.password,
           basicAuthPassword: current.basicAuthPassword,
           apiKey: current.apiKey,
+          customHeaders: current.customHeaders,
         });
         updated++;
       } else {

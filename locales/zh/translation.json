@@ -641,7 +641,9 @@
     "enterKbs": "输入 KiB/s",
     "fallbackHost": "备用主机或 IP",
     "proxyUsername": "代理用户名",
-    "proxyPassword": "代理密码"
+    "proxyPassword": "代理密码",
+    "headerName": "请求头名称",
+    "headerValue": "请求头值"
   },
   "actions": {
     "resume": "恢复",
@@ -760,7 +762,12 @@
     "debugEmpty": "（空）",
     "debugDefaultPort": "默认（80/443）",
     "useBasicAuthHint": "当密码保护的代理保护服务器时需要启用",
-    "apiKeyProxyConflict": "代理 Basic 认证无法与 API 密钥同时使用，两者都使用 Authorization 请求头"
+    "apiKeyProxyConflict": "代理 Basic 认证无法与 API 密钥同时使用，两者都使用 Authorization 请求头",
+    "customHeaders": "自定义请求头",
+    "useCustomHeaders": "自定义 HTTP 请求头",
+    "useCustomHeadersHint": "在每次请求中附加额外的请求头，适用于使用自有请求头认证的隧道或代理（例如 Pangolin）",
+    "addHeader": "添加请求头",
+    "removeHeader": "删除请求头"
   },
   "torrentDetail": {
     "notFound": "未找到种子",
@@ -1079,6 +1086,8 @@
     "fillNameAndHost": "请填写服务器名称和主机",
     "fillUsernamePassword": "请填写用户名和密码",
     "fillBasicAuthUsername": "请填写 Basic 认证的代理用户名",
+    "fillCustomHeaderFields": "请为每个自定义请求头填写名称和值，或删除空白项",
+    "reservedHeaderName": "“{{name}}” 由 qRemote 管理，不能用作自定义请求头",
     "fillApiKey": "请输入 API 密钥",
     "validPort": "请输入有效端口号 (1-65535)",
     "fillFallbackHost": "请输入备用主机",

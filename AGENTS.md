@@ -276,6 +276,11 @@ per-server secret must follow:
 - `services/api/client.ts` reads it back off the in-memory `ServerConfig` to
   build the header via `utils/basicAuth.ts`.
 
+Custom headers (`useCustomHeaders`, #228) follow the same rule: the flag is
+plain, but the whole `customHeaders` array is a secret (values are tokens),
+JSON-stringified into `server_custom_headers_{id}` and forced to `[]` in
+AsyncStorage.
+
 Be deliberate whenever you touch code that persists a `ServerConfig` — including
 paths that rewrite the *whole* server list, such as add, edit, delete, and
 import. A secret must never reach AsyncStorage, and bulk rewrites are the easiest
@@ -379,7 +384,9 @@ All PascalCase function components taking a `…Props` interface.
   `avatarColor(name)`), `ServerAppearanceSection` (icon + badge-color editor
   used by both `app/server/add.tsx` and `app/server/[id].tsx` — quick
   `AVATAR_PALETTE` swatches plus a "custom color" swatch that opens the full
-  `ColorPicker`).
+  `ColorPicker`), `CustomHeadersSection` (per-server custom HTTP header
+  key/value rows, max 5, used by the same two screens — see
+  `utils/customHeaders.ts`).
 - **Visuals** — `SpeedGraph`, `CircularProgress`, `AnimatedProgressBar`,
   `AnimatedButton`, `Confetti`.
 - **Chrome / diagnostics** — `FocusAwareStatusBar`, `SettingRow`,
@@ -461,6 +468,9 @@ label, completion and ETA rules) · `limit-input.ts` (share-limit sentinels:
 `server.ts` (endpoint resolution incl. fallback URL, avatar colors, and
 `getServerIcon`/`getServerIconColor` for the per-server badge — #224) ·
 `authMode.ts` (derives `password`/`apiKey`/`none`) · `basicAuth.ts` ·
+`customHeaders.ts` (per-server custom HTTP headers — sanitize/validate, and the
+reserved-name set the app manages itself: Authorization, Cookie, Referer,
+Origin, Content-Type, Host — #228) ·
 `magnet.ts` / `torrent-file.ts` (incoming link and file parsing) · `rss.ts`
 (RSS tree flattening; paths join with `\`) · `searchResult.ts` (indexer-label
 heuristics) · `login-response.ts` (qBittorrent login body/cookie interpretation) ·

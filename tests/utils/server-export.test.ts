@@ -28,6 +28,8 @@ function makeServer(overrides: Partial<ServerConfig> = {}): ServerConfig {
     basicAuthPassword: 'proxy-secret',
     useApiKey: false,
     apiKey: 'key-secret',
+    useCustomHeaders: true,
+    customHeaders: [{ key: 'X-Pangolin-Token', value: 'header-secret' }],
     ...overrides,
   };
 }
@@ -38,6 +40,12 @@ describe('toExportedServer', () => {
     expect(exported.password).toBe('');
     expect(exported.basicAuthPassword).toBe('');
     expect(exported.apiKey).toBe('');
+    expect(exported.customHeaders).toEqual([]);
+  });
+
+  it('keeps the useCustomHeaders flag, which is not a secret', () => {
+    const exported = toExportedServer(makeServer());
+    expect(exported.useCustomHeaders).toBe(true);
   });
 
   it('keeps connection settings, auth flags, and usernames', () => {
@@ -89,6 +97,7 @@ describe('buildServerExport', () => {
     expect(json).not.toContain('super-secret');
     expect(json).not.toContain('proxy-secret');
     expect(json).not.toContain('key-secret');
+    expect(json).not.toContain('header-secret');
   });
 });
 
@@ -154,6 +163,7 @@ describe('parseServerImport', () => {
           password: 'injected',
           basicAuthPassword: 'injected',
           apiKey: 'injected',
+          customHeaders: [{ key: 'X-Injected', value: 'injected' }],
         },
       ],
     });
@@ -161,5 +171,6 @@ describe('parseServerImport', () => {
     expect(server.password).toBe('');
     expect(server.basicAuthPassword).toBe('');
     expect(server.apiKey).toBe('');
+    expect(server.customHeaders).toEqual([]);
   });
 });

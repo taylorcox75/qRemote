@@ -27,6 +27,7 @@ export const CHANGELOG: ChangelogRelease[] = [
         items: [
           'Torrents can now be sorted by priority',
           'Added Increase Priority and Decrease Priority actions to the torrent menu',
+          'Added support for custom HTTP headers per server, for tunnels and proxies with their own token-based authentication',
         ],
       },
     ],

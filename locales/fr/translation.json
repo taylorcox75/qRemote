@@ -641,7 +641,9 @@
     "enterKbs": "Entrer KiB/s",
     "fallbackHost": "Hôte ou IP de secours",
     "proxyUsername": "Nom d'utilisateur proxy",
-    "proxyPassword": "Mot de passe proxy"
+    "proxyPassword": "Mot de passe proxy",
+    "headerName": "Nom de l'en-tête",
+    "headerValue": "Valeur de l'en-tête"
   },
   "actions": {
     "resume": "Reprendre",
@@ -754,6 +756,11 @@
     "useBasicAuth": "Auth Basique (Proxy)",
     "useBasicAuthHint": "Requis quand un proxy protégé par mot de passe protège le serveur",
     "apiKeyProxyConflict": "L'auth basique du proxy ne peut pas être combinée avec une clé API : les deux utilisent l'en-tête Authorization",
+    "customHeaders": "EN-TÊTES PERSONNALISÉS",
+    "useCustomHeaders": "En-têtes HTTP personnalisés",
+    "useCustomHeadersHint": "Envoie des en-têtes supplémentaires à chaque requête, pour les tunnels ou proxys ayant leur propre authentification par en-tête (ex. Pangolin)",
+    "addHeader": "Ajouter un en-tête",
+    "removeHeader": "Supprimer l'en-tête",
     "debugFullUrl": "URL complète",
     "debugProtocol": "Protocole",
     "debugHost": "Hôte",
@@ -1079,6 +1086,8 @@
     "fillNameAndHost": "Remplissez le nom et l'hôte du serveur",
     "fillUsernamePassword": "Remplissez le nom d'utilisateur et le mot de passe",
     "fillBasicAuthUsername": "Remplissez le nom d'utilisateur proxy pour l'Auth Basique",
+    "fillCustomHeaderFields": "Renseignez le nom et la valeur de chaque en-tête personnalisé, ou supprimez celui qui est vide",
+    "reservedHeaderName": "« {{name}} » est géré par qRemote et ne peut pas être utilisé comme en-tête personnalisé",
     "fillApiKey": "Veuillez saisir une clé API",
     "validPort": "Entrez un numéro de port valide (1-65535)",
     "fillFallbackHost": "Saisissez un hôte de secours",

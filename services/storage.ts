@@ -55,6 +55,9 @@ export const storageService = {
       // API key auth (key stored separately in SecureStore)
       useApiKey: s.useApiKey || false,
       apiKey: '', // Don't store API key in AsyncStorage
+      // Custom headers (#228) — values are treated as secrets, stored separately in SecureStore
+      useCustomHeaders: s.useCustomHeaders || false,
+      customHeaders: [],
       // Icon badge customization (#224)
       icon: s.icon || undefined,
       iconColor: s.iconColor || undefined,
@@ -69,6 +72,10 @@ export const storageService = {
       server.basicAuthPassword ?? '',
     );
     await SecureStore.setItemAsync(`server_api_key_${server.id}`, server.apiKey ?? '');
+    await SecureStore.setItemAsync(
+      `server_custom_headers_${server.id}`,
+      JSON.stringify(server.customHeaders ?? []),
+    );
   },
 
   /**
@@ -102,11 +109,20 @@ export const storageService = {
           const password = await readSecret(`server_password_${server.id}`);
           const basicAuthPassword = await readSecret(`server_basic_auth_password_${server.id}`);
           const apiKey = await readSecret(`server_api_key_${server.id}`);
+          const customHeadersRaw = await readSecret(`server_custom_headers_${server.id}`);
+          let customHeaders: ServerConfig['customHeaders'] = [];
+          try {
+            const parsed = customHeadersRaw ? JSON.parse(customHeadersRaw) : [];
+            if (Array.isArray(parsed)) customHeaders = parsed;
+          } catch {
+            customHeaders = [];
+          }
           return {
             ...server,
             password,
             basicAuthPassword,
             apiKey,
+            customHeaders,
             host: stripProtocol(server.host || ''),
             fallbackHost: server.fallbackHost
               ? stripProtocol(server.fallbackHost)
@@ -144,7 +160,13 @@ export const storageService = {
     await AsyncStorage.setItem(
       STORAGE_KEYS.SERVERS,
       JSON.stringify(
-        filtered.map((s) => ({ ...s, password: '', basicAuthPassword: '', apiKey: '' })),
+        filtered.map((s) => ({
+          ...s,
+          password: '',
+          basicAuthPassword: '',
+          apiKey: '',
+          customHeaders: [],
+        })),
       ),
     );
 
@@ -152,6 +174,7 @@ export const storageService = {
     await SecureStore.deleteItemAsync(`server_password_${id}`);
     await SecureStore.deleteItemAsync(`server_basic_auth_password_${id}`);
     await SecureStore.deleteItemAsync(`server_api_key_${id}`);
+    await SecureStore.deleteItemAsync(`server_custom_headers_${id}`);
 
     // If this was the current server, clear it
     const currentId = await this.getCurrentServerId();
