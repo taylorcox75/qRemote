@@ -132,6 +132,41 @@ describe('storageService', () => {
       );
     });
 
+    // Backwards compatibility (#228): records written before custom headers
+    // existed have no useCustomHeaders/customHeaders keys in AsyncStorage and
+    // no server_custom_headers_{id} entry in SecureStore. There is no
+    // migration system, so these must keep loading untouched.
+    it('loads a legacy record that predates custom headers', async () => {
+      mockAsyncStorage['servers'] = JSON.stringify([
+        {
+          id: 'legacy',
+          name: 'Legacy',
+          host: 'old.example.com',
+          port: 8080,
+          basePath: '/',
+          username: 'admin',
+          password: '',
+          useHttps: false,
+          bypassAuth: false,
+        },
+      ]);
+      mockSecureStore['server_password_legacy'] = 'legacy-pass';
+
+      const servers = await storageService.getServers();
+      expect(servers).toHaveLength(1);
+      expect(servers[0].name).toBe('Legacy');
+      expect(servers[0].password).toBe('legacy-pass');
+      expect(servers[0].useCustomHeaders).toBeUndefined();
+      expect(servers[0].customHeaders).toEqual([]);
+    });
+
+    it('degrades to no custom headers when the stored secret is corrupt', async () => {
+      await storageService.saveServer(makeServer());
+      mockSecureStore['server_custom_headers_s1'] = '{not valid json';
+      const servers = await storageService.getServers();
+      expect(servers[0].customHeaders).toEqual([]);
+    });
+
     it('getServers returns [] when nothing stored', async () => {
       const servers = await storageService.getServers();
       expect(servers).toEqual([]);

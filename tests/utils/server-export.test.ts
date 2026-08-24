@@ -48,6 +48,17 @@ describe('toExportedServer', () => {
     expect(exported.useCustomHeaders).toBe(true);
   });
 
+  // Backwards compatibility (#228): configs and export files written before
+  // custom headers existed carry neither field.
+  it('handles a legacy config with no custom-header fields', () => {
+    const legacy = makeServer();
+    delete legacy.useCustomHeaders;
+    delete legacy.customHeaders;
+    const exported = toExportedServer(legacy);
+    expect(exported.useCustomHeaders).toBe(false);
+    expect(exported.customHeaders).toEqual([]);
+  });
+
   it('keeps connection settings, auth flags, and usernames', () => {
     const exported = toExportedServer(makeServer());
     expect(exported).toMatchObject({
@@ -113,6 +124,19 @@ describe('parseServerImport', () => {
     expect(servers).toHaveLength(2);
     expect(servers[0]).toMatchObject({ id: 's1', name: 'Home', host: 'nas.local' });
     expect(servers[1]).toMatchObject({ id: 's2', name: 'Remote' });
+  });
+
+  it('imports a legacy export file written before custom headers existed', () => {
+    const json = JSON.stringify({
+      kind: SERVER_EXPORT_KIND,
+      version: SERVER_EXPORT_VERSION,
+      exportedAt: '2026-07-26T00:00:00.000Z',
+      servers: [{ id: 'old', name: 'Old', host: 'old.example.com', username: 'admin' }],
+    });
+    const [server] = parseServerImport(json);
+    expect(server.name).toBe('Old');
+    expect(server.useCustomHeaders).toBe(false);
+    expect(server.customHeaders).toEqual([]);
   });
 
   it('rejects non-JSON text', () => {

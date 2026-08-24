@@ -94,6 +94,22 @@ describe('apiClient request interceptor — custom headers', () => {
     expect(headers['X-Pangolin-Token']).toBeUndefined();
   });
 
+  // Backwards compatibility (#228): a server saved before this feature has
+  // neither field set, and must behave exactly as it did before.
+  it('sends no extra headers for a legacy config with neither field set', () => {
+    const config = runRequestInterceptor(makeServer());
+    const headers = config.headers as Record<string, string>;
+    expect(Object.keys(headers).sort()).toEqual(['Origin', 'Referer']);
+  });
+
+  it('does NOT add custom headers when useCustomHeaders is undefined but headers exist', () => {
+    const config = runRequestInterceptor(
+      makeServer({ customHeaders: [{ key: 'X-Pangolin-Token', value: 'tok' }] }),
+    );
+    const headers = config.headers as Record<string, string>;
+    expect(headers['X-Pangolin-Token']).toBeUndefined();
+  });
+
   it('does NOT add custom headers when the list is empty', () => {
     const config = runRequestInterceptor(makeServer({ useCustomHeaders: true, customHeaders: [] }));
     const headers = config.headers as Record<string, string>;
