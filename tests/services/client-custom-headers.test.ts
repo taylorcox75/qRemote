@@ -146,6 +146,40 @@ describe('apiClient request interceptor — custom headers', () => {
     expect(Object.values(headers)).not.toContain('orphaned');
   });
 
+  // Custom headers are applied last, so without an explicit guard a header
+  // named Authorization/Cookie would clobber the real auth for the request.
+  // Save-time validation is not the only way data reaches a ServerConfig.
+  it('refuses to let a custom header override the real Authorization header', () => {
+    const config = runRequestInterceptor(
+      makeServer({
+        useApiKey: true,
+        apiKey: 'qbt_realkey1234567890123456789012',
+        useCustomHeaders: true,
+        customHeaders: [{ key: 'Authorization', value: 'Bearer attacker' }],
+      }),
+    );
+    const headers = config.headers as Record<string, string>;
+    expect(headers['Authorization']).toBe('Bearer qbt_realkey1234567890123456789012');
+  });
+
+  it('refuses to let a custom header override Cookie, Referer, or Origin', () => {
+    const config = runRequestInterceptor(
+      makeServer({
+        useCustomHeaders: true,
+        customHeaders: [
+          { key: 'Cookie', value: 'SID=attacker' },
+          { key: 'referer', value: 'https://evil.example.com/' },
+          { key: 'Origin', value: 'https://evil.example.com' },
+        ],
+      }),
+    );
+    const headers = config.headers as Record<string, string>;
+    expect(headers['Cookie']).toBeUndefined();
+    expect(headers['referer']).toBeUndefined();
+    expect(headers['Referer']).toBe('http://example.com:8080/');
+    expect(headers['Origin']).toBe('http://example.com:8080');
+  });
+
   it('still sets Authorization alongside custom headers when both apply', () => {
     const config = runRequestInterceptor(
       makeServer({

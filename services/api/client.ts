@@ -8,6 +8,7 @@ import { ServerConfig } from '@/types/api';
 import { clogDebug, clogInfo, clogWarn, clogError } from '@/services/connectivity-log';
 import { ApiFeatures, getApiFeatures } from '@/utils/apiVersion';
 import { basicAuthHeader } from '@/utils/basicAuth';
+import { isReservedHeaderName } from '@/utils/customHeaders';
 
 /** An error from the API client, carrying the HTTP status when the request got a response. */
 export interface ApiError extends Error {
@@ -108,11 +109,17 @@ class ApiClient {
 
         // Custom headers (#228) — for tunnels/proxies with their own
         // header-based auth (e.g. Pangolin), independent of qBittorrent's
-        // own auth mode. Names are validated against the reserved set above
-        // at save time, so nothing here can override Authorization/Cookie/etc.
+        // own auth mode.
+        //
+        // Reserved names are re-checked HERE rather than trusted from save-time
+        // validation. These are applied last, so a header named `Authorization`
+        // or `Cookie` would otherwise silently clobber the real auth this
+        // request depends on — and save-time validation is not the only way
+        // data reaches a ServerConfig (settings import spreads raw JSON).
+        // Enforce the invariant at the point where it actually matters.
         if (this.currentServer.useCustomHeaders && this.currentServer.customHeaders?.length) {
           for (const header of this.currentServer.customHeaders) {
-            if (header.key && header.value) {
+            if (header?.key && header?.value && !isReservedHeaderName(header.key)) {
               config.headers[header.key] = header.value;
             }
           }

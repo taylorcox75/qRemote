@@ -167,6 +167,31 @@ describe('storageService', () => {
       expect(servers[0].customHeaders).toEqual([]);
     });
 
+    it('drops malformed stored header entries instead of surfacing them', async () => {
+      await storageService.saveServer(makeServer());
+      mockSecureStore['server_custom_headers_s1'] =
+        '[{"key":123},{"key":"X-Ok","value":"ok"},null]';
+      const servers = await storageService.getServers();
+      expect(servers[0].customHeaders).toEqual([{ key: 'X-Ok', value: 'ok' }]);
+    });
+
+    // saveServer is the one chokepoint every write passes through, including
+    // settings import, which spreads unvalidated JSON into a ServerConfig.
+    it('sanitizes on write so a caller cannot persist a reserved or malformed header', async () => {
+      await storageService.saveServer(
+        makeServer({
+          useCustomHeaders: true,
+          customHeaders: [
+            { key: 'Authorization', value: 'Bearer attacker' },
+            { key: '  X-Token  ', value: '  secret  ' },
+            { key: '', value: 'orphaned' },
+          ],
+        }),
+      );
+      const servers = await storageService.getServers();
+      expect(servers[0].customHeaders).toEqual([{ key: 'X-Token', value: 'secret' }]);
+    });
+
     it('getServers returns [] when nothing stored', async () => {
       const servers = await storageService.getServers();
       expect(servers).toEqual([]);

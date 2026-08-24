@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { ServerConfig } from '@/types/api';
 import { AppPreferences } from '@/types/preferences';
+import { parseStoredCustomHeaders, sanitizeCustomHeaders } from '@/utils/customHeaders';
 
 const STORAGE_KEYS = {
   SERVERS: 'servers',
@@ -72,9 +73,12 @@ export const storageService = {
       server.basicAuthPassword ?? '',
     );
     await SecureStore.setItemAsync(`server_api_key_${server.id}`, server.apiKey ?? '');
+    // Sanitized at the chokepoint rather than trusting callers: settings import
+    // (app/(tabs)/settings/advanced.tsx) spreads arbitrary JSON into a
+    // ServerConfig, so this is the one place guaranteed to see every write.
     await SecureStore.setItemAsync(
       `server_custom_headers_${server.id}`,
-      JSON.stringify(server.customHeaders ?? []),
+      JSON.stringify(sanitizeCustomHeaders(server.customHeaders)),
     );
   },
 
@@ -109,14 +113,9 @@ export const storageService = {
           const password = await readSecret(`server_password_${server.id}`);
           const basicAuthPassword = await readSecret(`server_basic_auth_password_${server.id}`);
           const apiKey = await readSecret(`server_api_key_${server.id}`);
-          const customHeadersRaw = await readSecret(`server_custom_headers_${server.id}`);
-          let customHeaders: ServerConfig['customHeaders'] = [];
-          try {
-            const parsed = customHeadersRaw ? JSON.parse(customHeadersRaw) : [];
-            if (Array.isArray(parsed)) customHeaders = parsed;
-          } catch {
-            customHeaders = [];
-          }
+          const customHeaders = parseStoredCustomHeaders(
+            await readSecret(`server_custom_headers_${server.id}`),
+          );
           return {
             ...server,
             password,

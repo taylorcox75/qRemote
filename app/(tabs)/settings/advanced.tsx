@@ -150,6 +150,8 @@ export default function AdvancedSettingsScreen() {
             password: '',
             basicAuthPassword: '',
             apiKey: '',
+            // Imports never carry secrets — same rule as utils/server-export.ts.
+            customHeaders: [],
           });
         }
       }

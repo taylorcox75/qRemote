@@ -1,5 +1,6 @@
 import {
   isReservedHeaderName,
+  parseStoredCustomHeaders,
   sanitizeCustomHeaders,
   validateCustomHeaders,
 } from '@/utils/customHeaders';
@@ -40,6 +41,65 @@ describe('sanitizeCustomHeaders', () => {
       { key: '   ', value: '   ' },
     ]);
     expect(result).toEqual([{ key: 'X-Token', value: 'secret' }]);
+  });
+});
+
+describe('sanitizeCustomHeaders — hostile input', () => {
+  // The settings-import path spreads unvalidated JSON into a ServerConfig, so
+  // the declared type is not a runtime guarantee here.
+  it('returns [] for a non-array masquerading as the right type', () => {
+    expect(sanitizeCustomHeaders('nope' as never)).toEqual([]);
+    expect(sanitizeCustomHeaders({ key: 'X', value: 'y' } as never)).toEqual([]);
+  });
+
+  it('drops entries whose key or value is not a string, without throwing', () => {
+    expect(() => sanitizeCustomHeaders([{ key: 123, value: 'y' }] as never)).not.toThrow();
+    expect(
+      sanitizeCustomHeaders([
+        { key: 123, value: 'y' },
+        { key: 'X-Ok', value: 'ok' },
+        null,
+        'junk',
+      ] as never),
+    ).toEqual([{ key: 'X-Ok', value: 'ok' }]);
+  });
+
+  it('strips reserved names so an import cannot smuggle one in', () => {
+    expect(
+      sanitizeCustomHeaders([
+        { key: 'Authorization', value: 'Bearer attacker' },
+        { key: 'Cookie', value: 'SID=attacker' },
+        { key: 'X-Ok', value: 'ok' },
+      ]),
+    ).toEqual([{ key: 'X-Ok', value: 'ok' }]);
+  });
+});
+
+describe('parseStoredCustomHeaders', () => {
+  it('returns [] for empty, null, or undefined input', () => {
+    expect(parseStoredCustomHeaders('')).toEqual([]);
+    expect(parseStoredCustomHeaders(null)).toEqual([]);
+    expect(parseStoredCustomHeaders(undefined)).toEqual([]);
+  });
+
+  it('returns [] for corrupt JSON', () => {
+    expect(parseStoredCustomHeaders('{not valid json')).toEqual([]);
+  });
+
+  it('returns [] for well-formed JSON that is not an array', () => {
+    expect(parseStoredCustomHeaders('{"key":"X","value":"y"}')).toEqual([]);
+    expect(parseStoredCustomHeaders('"a string"')).toEqual([]);
+  });
+
+  it('drops malformed entries that would crash callers on .trim()', () => {
+    expect(parseStoredCustomHeaders('[{"key":123},{"key":"X-Ok","value":"ok"},null]')).toEqual([
+      { key: 'X-Ok', value: 'ok' },
+    ]);
+  });
+
+  it('round-trips a well-formed payload', () => {
+    const headers = [{ key: 'X-Pangolin-Token', value: 'secret' }];
+    expect(parseStoredCustomHeaders(JSON.stringify(headers))).toEqual(headers);
   });
 });
 
