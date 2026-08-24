@@ -19,6 +19,19 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.40',
+    date: '2026-08-23',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'Torrents can now be sorted by priority',
+          'Added Increase Priority and Decrease Priority actions to the torrent menu',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.39',
     date: '2026-08-21',
     sections: [
