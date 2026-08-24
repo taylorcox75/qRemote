@@ -23,6 +23,7 @@ import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { ServerManager } from '@/services/server-manager';
 import { APP_VERSION } from '@/utils/version';
 import { getErrorMessage } from '@/utils/error';
@@ -200,27 +201,40 @@ export default function SettingsScreen() {
             >
               <View style={styles.connectionRow}>
                 <View style={styles.connectionTitleRow}>
-                  <Animated.View
-                    style={[
-                      styles.statusDot,
-                      {
-                        backgroundColor: isConnected ? colors.success : colors.error,
-                        transform: [{ scale: isConnected ? pulseAnim : 1 }],
-                      },
-                    ]}
-                  />
+                  <View style={styles.badgeWrap}>
+                    <ServerIconBadge server={currentServer} size={40} />
+                    <Animated.View
+                      style={[
+                        styles.statusDot,
+                        {
+                          backgroundColor: isConnected ? colors.success : colors.error,
+                          borderColor: colors.surface,
+                          transform: [{ scale: isConnected ? pulseAnim : 1 }],
+                        },
+                      ]}
+                    />
+                  </View>
                   <View style={styles.connectionTextGroup}>
-                    <Text style={[styles.connectionTitle, { color: colors.text }]}>
+                    <Text
+                      style={[styles.connectionTitle, { color: colors.text }]}
+                      numberOfLines={1}
+                    >
                       {currentServer.name}
                     </Text>
-                    <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
+                    <Text
+                      style={[styles.connectionSubtitle, { color: colors.textSecondary }]}
+                      numberOfLines={1}
+                    >
                       {currentServer.host}
                       {currentServer.port != null && currentServer.port > 0
                         ? `:${currentServer.port}`
                         : ''}
                     </Text>
                     {isConnected && hasFallback(currentServer) && activeEndpoint && (
-                      <Text style={[styles.connectionSubtitle, { color: colors.textSecondary }]}>
+                      <Text
+                        style={[styles.connectionSubtitle, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
                         {activeEndpoint === 'fallback'
                           ? t('server.connectedViaFallback')
                           : t('server.connectedViaPrimary')}
@@ -432,10 +446,17 @@ const styles = StyleSheet.create({
   connectionTextGroup: {
     flex: 1,
   },
+  badgeWrap: {
+    position: 'relative',
+  },
   statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
   },
   connectionTitle: {
     ...typography.body,

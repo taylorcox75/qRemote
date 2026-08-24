@@ -146,8 +146,13 @@ function SwipeableServerItem({
               <View style={styles.listItemLeft}>
                 <ServerIconBadge server={server} size={36} />
                 <View style={styles.listItemText}>
-                  <Text style={[styles.listItemTitle, { color: colors.text }]}>{server.name}</Text>
-                  <Text style={[styles.listItemSubtitle, { color: colors.textSecondary }]}>
+                  <Text style={[styles.listItemTitle, { color: colors.text }]} numberOfLines={1}>
+                    {server.name}
+                  </Text>
+                  <Text
+                    style={[styles.listItemSubtitle, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
                     {serverAddress}
                   </Text>
                 </View>

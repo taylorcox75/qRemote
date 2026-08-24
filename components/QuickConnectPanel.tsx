@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { ServerConfig } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
-import { avatarColor, serverAddress } from '@/utils/server';
+import { getServerIconColor, serverAddress } from '@/utils/server';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { shadows } from '@/constants/shadows';
@@ -90,7 +90,7 @@ export function QuickConnectPanel({
           </Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             {savedServers.map((server, index) => {
-              const color = avatarColor(server.name);
+              const color = getServerIconColor(server);
               const addr = serverAddress(server);
               const isConnectingThis = connectingId === server.id;
               const errMsg = connectErrors[server.id];

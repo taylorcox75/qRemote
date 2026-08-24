@@ -712,20 +712,25 @@ export default function TorrentsScreen() {
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectErrors, setConnectErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (!isConnected) {
-      setServersLoaded(false);
-      ServerManager.getServers()
-        .then((s) => {
-          setSavedServers(s);
-          setServersLoaded(true);
-        })
-        .catch(() => {
-          setSavedServers([]);
-          setServersLoaded(true);
-        });
-    }
-  }, [isConnected]);
+  // Refetch on every focus (not just isConnected changes) so an icon/color
+  // edited in Settings while still disconnected shows up when this screen
+  // regains focus, instead of only refreshing on the next connect/disconnect.
+  useFocusEffect(
+    useCallback(() => {
+      if (!isConnected) {
+        setServersLoaded(false);
+        ServerManager.getServers()
+          .then((s) => {
+            setSavedServers(s);
+            setServersLoaded(true);
+          })
+          .catch(() => {
+            setSavedServers([]);
+            setServersLoaded(true);
+          });
+      }
+    }, [isConnected]),
+  );
 
   const handleQuickConnect = useCallback(
     async (server: ServerConfig) => {
