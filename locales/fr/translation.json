@@ -767,7 +767,10 @@
     "debugPort": "Port",
     "debugLoginApi": "API de connexion",
     "debugEmpty": "(vide)",
-    "debugDefaultPort": "par défaut (80/443)"
+    "debugDefaultPort": "par défaut (80/443)",
+    "debugCustomHeaders": "En-têtes personnalisés",
+    "debugCustomHeadersValue": "{{names}} (valeurs masquées)",
+    "debugCustomHeadersNone": "Aucun"
   },
   "torrentDetail": {
     "notFound": "Torrent introuvable",

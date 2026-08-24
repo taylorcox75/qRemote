@@ -28,6 +28,7 @@ import { getConnectivityLog, formatConnectivityLog } from '@/services/connectivi
 import { logsApi } from '@/services/api/logs';
 import { apiClient } from '@/services/api/client';
 import { getErrorMessage } from '@/utils/error';
+import { CustomHeaderPair, sanitizeCustomHeaders } from '@/utils/customHeaders';
 import { isLoginBodyFail, isLoginSuccess } from '@/utils/login-response';
 
 // ---------------------------------------------------------------------------
@@ -112,6 +113,9 @@ export interface SuperDebugPanelProps {
   useBasicAuth?: boolean;
   basicAuthUsername?: string;
   basicAuthPassword?: string;
+  /** Optional per-server custom headers (#228) — sent on every diagnostic request, mirroring the real client. */
+  useCustomHeaders?: boolean;
+  customHeaders?: CustomHeaderPair[];
 }
 
 type DiagnosticStep = 'REACH' | 'LOGIN' | 'COOKIE' | 'API' | 'INFO' | 'WARN' | 'ERROR';
@@ -159,6 +163,8 @@ export function SuperDebugPanel({
   useBasicAuth = false,
   basicAuthUsername = '',
   basicAuthPassword = '',
+  useCustomHeaders = false,
+  customHeaders = [],
 }: SuperDebugPanelProps) {
   const { colors } = useTheme();
   const [log, setLog] = useState<DiagnosticEntry[]>([]);
@@ -220,6 +226,23 @@ export function SuperDebugPanel({
     return 'Basic ' + b64;
   }, [useApiKey, apiKey, useBasicAuth, basicAuthUsername, basicAuthPassword]);
 
+  /** Serialized so an inline `customHeaders` array prop doesn't churn the
+   * callbacks below on every render. */
+  const customHeadersKey = JSON.stringify(
+    useCustomHeaders ? sanitizeCustomHeaders(customHeaders) : [],
+  );
+
+  /** Per-server custom headers (#228), attached to every diagnostic request so
+   * the diagnostic traverses the same proxy/tunnel the real client does —
+   * otherwise a header-gated server fails here while working in the app. */
+  const buildCustomHeaders = useCallback((): Record<string, string> => {
+    const result: Record<string, string> = {};
+    for (const header of JSON.parse(customHeadersKey) as CustomHeaderPair[]) {
+      result[header.key] = header.value;
+    }
+    return result;
+  }, [customHeadersKey]);
+
   /** Fingerprint of everything that affects the diagnostic's outcome, so a
    * validated session is only trusted for export while the form still
    * matches the config it was actually proven against. */
@@ -236,6 +259,7 @@ export function SuperDebugPanel({
       useBasicAuth,
       basicAuthUsername,
       basicAuthPassword,
+      customHeaders: customHeadersKey,
     });
   }, [
     host,
@@ -249,6 +273,7 @@ export function SuperDebugPanel({
     useBasicAuth,
     basicAuthUsername,
     basicAuthPassword,
+    customHeadersKey,
   ]);
 
   const addEntry = useCallback(
@@ -298,7 +323,7 @@ export function SuperDebugPanel({
 
     try {
       const authHeader = buildAuthHeader();
-      const reachHeaders: Record<string, string> = {};
+      const reachHeaders: Record<string, string> = { ...buildCustomHeaders() };
       if (authHeader) reachHeaders['Authorization'] = authHeader;
       let response: Response;
       try {
@@ -486,8 +511,14 @@ export function SuperDebugPanel({
       }, 15000);
 
       const authHeader = buildAuthHeader();
-      const diagHeaders: Record<string, string> = {};
+      const customHeaderMap = buildCustomHeaders();
+      const diagHeaders: Record<string, string> = { ...customHeaderMap };
       if (authHeader) diagHeaders['Authorization'] = authHeader;
+      const customHeaderNames = Object.keys(customHeaderMap);
+      if (customHeaderNames.length > 0) {
+        // Names only — values are tokens, and this log gets copied into issues.
+        addEntry('INFO', `Sending custom headers: ${customHeaderNames.join(', ')}`, 'info');
+      }
 
       try {
         let reachResp: Response;
@@ -581,6 +612,7 @@ export function SuperDebugPanel({
             `username=${encodeURIComponent(username.trim())}&password=${encodeURIComponent(password.trim())}`,
             {
               headers: {
+                ...customHeaderMap,
                 'Content-Type': 'application/x-www-form-urlencoded',
                 ...(authHeader ? { Authorization: authHeader } : {}),
               },
@@ -701,7 +733,7 @@ export function SuperDebugPanel({
       const versionUrl = `${baseUrl}/api/v2/app/version`;
       const apiStart = Date.now();
       try {
-        const headers: Record<string, string> = {};
+        const headers: Record<string, string> = { ...customHeaderMap };
         if (sessionCookie) {
           headers['Cookie'] = sessionCookie;
         }
@@ -947,7 +979,10 @@ export function SuperDebugPanel({
           : null;
 
       if (validatedSession) {
-        const logHeaders: Record<string, string> = {};
+        // Safe to rebuild rather than snapshot: buildConfigKey() covers the
+        // custom headers, so a validated session is already discarded above if
+        // they changed since it was proven.
+        const logHeaders: Record<string, string> = { ...buildCustomHeaders() };
         if (validatedSession.sessionCookie) logHeaders['Cookie'] = validatedSession.sessionCookie;
         if (validatedSession.authHeader) logHeaders['Authorization'] = validatedSession.authHeader;
 

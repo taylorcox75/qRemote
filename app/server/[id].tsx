@@ -192,11 +192,16 @@ export default function EditServerScreen() {
       baseUrl,
       loginEndpoint: `${baseUrl}/api/v2/auth/login`,
       versionEndpoint: `${baseUrl}/api/v2/app/version`,
+      // Names only — this whole block is copied to the clipboard and routinely
+      // pasted into public issue reports, and header values are auth tokens.
+      customHeaderNames: useCustomHeaders
+        ? sanitizeCustomHeaders(customHeaders).map((header) => header.key)
+        : [],
       warnings,
       hasErrors: warnings.some((w) => w.type === 'error'),
       hasWarnings: warnings.some((w) => w.type === 'warning'),
     };
-  }, [host, port, useHttps, authMode, username, password, apiKey]);
+  }, [host, port, useHttps, authMode, username, password, apiKey, useCustomHeaders, customHeaders]);
 
   // Copy debug info to clipboard
   const copyDebugInfo = async () => {
@@ -207,6 +212,7 @@ Host: ${debugInfo.cleanHost || '(empty)'}
 Port: ${debugInfo.portNum || 'default (80/443)'}
 HTTPS: ${useHttps ? 'Yes' : 'No'}
 Auth Method: ${authMode}
+Custom Headers: ${debugInfo.customHeaderNames.length > 0 ? debugInfo.customHeaderNames.join(', ') + ' (values hidden)' : 'None'}
 
 Login Endpoint: ${debugInfo.loginEndpoint}
 Version Endpoint: ${debugInfo.versionEndpoint}
@@ -755,6 +761,8 @@ App Version: ${APP_VERSION}`;
                     <Text
                       style={[styles.authMethodValueText, { color: colors.textSecondary }]}
                       numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.75}
                     >
                       {authMethodLabel}
                     </Text>
@@ -1067,6 +1075,17 @@ App Version: ${APP_VERSION}`;
                     debugInfo.portNum ? String(debugInfo.portNum) : t('server.debugDefaultPort')
                   }
                 />
+                <DebugRow
+                  label={t('server.debugCustomHeaders')}
+                  value={
+                    debugInfo.customHeaderNames.length > 0
+                      ? t('server.debugCustomHeadersValue', {
+                          names: debugInfo.customHeaderNames.join(', '),
+                        })
+                      : t('server.debugCustomHeadersNone')
+                  }
+                  numberOfLines={2}
+                />
 
                 <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
 
@@ -1148,6 +1167,8 @@ App Version: ${APP_VERSION}`;
                 useBasicAuth={authMode !== 'apiKey' && useBasicAuth}
                 basicAuthUsername={basicAuthUsername}
                 basicAuthPassword={basicAuthPassword}
+                useCustomHeaders={useCustomHeaders}
+                customHeaders={customHeaders}
               />
             </View>
           )}
@@ -1412,10 +1433,20 @@ const styles = StyleSheet.create({
   authMethodValue: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 4,
+    // SettingRow's label side is flex:1, so it only gets what's left over after
+    // this value is laid out at its intrinsic width. Unbounded, a long value
+    // ("Username & Password") starved the label until "Authentication Method"
+    // broke mid-word. Capping the value reserves enough room for the label to
+    // wrap on a word boundary; the value scales its font down to compensate.
+    maxWidth: '45%',
+    flexShrink: 1,
   },
   authMethodValueText: {
     fontSize: 16,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   hintText: {
     fontSize: 12,

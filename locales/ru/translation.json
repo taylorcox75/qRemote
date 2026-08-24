@@ -788,7 +788,10 @@
     "debugPort": "Порт",
     "debugLoginApi": "API входа",
     "debugEmpty": "(пусто)",
-    "debugDefaultPort": "по умолчанию (80/443)"
+    "debugDefaultPort": "по умолчанию (80/443)",
+    "debugCustomHeaders": "Пользовательские заголовки",
+    "debugCustomHeadersValue": "{{names}} (значения скрыты)",
+    "debugCustomHeadersNone": "Нет"
   },
   "torrentDetail": {
     "notFound": "Торрент не найден",
