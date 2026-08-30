@@ -1448,9 +1448,16 @@ export default function TorrentDetail() {
     }
   })();
 
+  // Prefer `private` (5.0+, null until metadata arrives) over `is_private`
+  // (4.6+, always torrent->isPrivate()) — the wiki's field name "isPrivate"
+  // doesn't exist on the wire at any version.
+  const apiPrivateValue: boolean | undefined = features.hasIsPrivate
+    ? (properties?.private ?? properties?.is_private)
+    : undefined;
+
   const isPrivateTorrent: boolean | null =
-    features.hasIsPrivate && properties?.isPrivate !== undefined
-      ? properties.isPrivate
+    apiPrivateValue !== undefined
+      ? apiPrivateValue
       : pseudoStates.dht && pseudoStates.pex && pseudoStates.lsd
         ? [pseudoStates.dht, pseudoStates.pex, pseudoStates.lsd].every((s) => s === 'disabled')
         : null;

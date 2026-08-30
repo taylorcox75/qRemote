@@ -324,8 +324,8 @@ About, then Community links (source / issues / Beer Fund / Rate). Notifications
 `category-tag-colors` ·
 `connection` (qBit-side network settings, live from `app/preferences` — listen
 port, random port, UPnP, global/per-torrent connection and upload-slot limits,
-proxy server incl. auth, IP filtering/banned IPs — #233. I2P is not exposed by
-the WebUI API, so it isn't here) ·
+proxy server incl. auth, IP filtering/banned IPs, I2P (qBit 5.0+ /
+`ApiFeatures.supportsI2p`) — #233) ·
 `detailed-card-fields` · `notifications` · `rss` ·
 `rss-rules` · `rss-rule` · `servers` (list + secret-free export/import) ·
 `server-settings-advanced` (qBit email/automation) · `theme` ·

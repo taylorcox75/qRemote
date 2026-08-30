@@ -109,9 +109,10 @@ export interface ApplicationPreferences {
    * - WebAPI ≥ 2.9.0 (qBit 4.6+, `ApiFeatures.hasModernProxyFields`): a
    *   STRING enum — 'None' | 'HTTP' | 'SOCKS5' | 'SOCKS4'. Authentication is
    *   the separate proxy_auth_enabled flag.
-   * - Below that: an INTEGER — -1 disabled, 1 HTTP, 2 SOCKS5, 3 HTTP w/ auth,
-   *   4 SOCKS5 w/ auth, 5 SOCKS4 (proxy_auth_enabled isn't settable there,
-   *   so auth is encoded into the type itself).
+   * - Below that: an INTEGER (Net::ProxyType, confirmed against source, not
+   *   the wiki's stale "-1 disabled" from the 3.x era) — 0 disabled, 1 HTTP,
+   *   2 SOCKS5, 3 HTTP w/ auth, 4 SOCKS5 w/ auth, 5 SOCKS4 (proxy_auth_enabled
+   *   isn't settable there, so auth is encoded into the type itself).
    */
   proxy_type?: number | string;
   /** Proxy IP address or domain name (#233). */
@@ -359,9 +360,14 @@ export interface ServerState {
   dl_rate_limit: number;
   free_space_on_disk: number;
   global_ratio: string;
-  /** Public/external IPv4 address as seen by the tracker (WebAPI 4.x+; may be absent). */
+  /**
+   * Public/external IPv4 address as seen by the tracker (confirmed against
+   * source: WebAPI ≥ 2.11.3 / qBit 5.1.0+ — absent on 5.0.x, whose WebAPI
+   * stayed at 2.11.2). No dedicated ApiFeatures gate; the field's own absence
+   * on older servers already falls through cleanly to "row hidden".
+   */
   last_external_address_v4?: string;
-  /** Public/external IPv6 address as seen by the tracker (WebAPI 4.x+; may be absent). */
+  /** Public/external IPv6 address as seen by the tracker — see last_external_address_v4. */
   last_external_address_v6?: string;
   queued_io_jobs: number;
   queueing: boolean;
@@ -433,8 +439,18 @@ export interface TorrentProperties {
   up_speed_avg: number;
   uploaded: number;
   uploaded_session: number;
-  /** True if the torrent is from a private tracker (qBit 5.0+ / WebAPI ≥ 2.11.0, camelCase per the API). */
-  isPrivate?: boolean;
+  /**
+   * True if the torrent is from a private tracker (qBit 4.6+ / WebAPI ≥ 2.9.0).
+   * Kept by qBittorrent for backward compatibility, always torrent->isPrivate() —
+   * prefer `private` when present. The wiki's field name "isPrivate" doesn't
+   * exist on the wire at any version; confirmed against source.
+   */
+  is_private?: boolean;
+  /**
+   * Same value as `is_private`, but `null` until the torrent has metadata
+   * (qBit 5.0+ / WebAPI ≥ 2.11.0). Prefer this over `is_private` when present.
+   */
+  private?: boolean | null;
 }
 
 export interface Tracker {

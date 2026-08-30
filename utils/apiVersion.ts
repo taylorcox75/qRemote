@@ -37,7 +37,14 @@ export interface ApiFeatures {
   supportsGetDirectoryContent: boolean;
   /** search/results includes a pubDate field per result, for sort-by-date (WebAPI ≥ 2.11.0 / qBit 5.0). */
   supportsSearchPubDate: boolean;
-  /** torrents/properties response includes the isPrivate field (WebAPI ≥ 2.11.0 / qBit 5.0). */
+  /**
+   * torrents/properties response includes a private-tracker field — confirmed
+   * against source, not the wiki, which documents a field named "isPrivate"
+   * that doesn't actually exist at any version. The real keys are "is_private"
+   * (WebAPI ≥ 2.9.0 / qBit 4.6+, always torrent->isPrivate()) and "private"
+   * (WebAPI ≥ 2.11.0 / qBit 5.0+, same value but null until metadata arrives).
+   * This flag covers the older, always-present "is_private" key.
+   */
   hasIsPrivate: boolean;
   /**
    * app/preferences' proxy_type is a string enum ("None"/"HTTP"/"SOCKS5"/"SOCKS4")
@@ -105,7 +112,7 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     useStoppedAddParam: isV5,
     supportsGetDirectoryContent: isV5,
     supportsSearchPubDate: isV5,
-    hasIsPrivate: isV5,
+    hasIsPrivate: gte(v, 2, 9),
     hasModernProxyFields: gte(v, 2, 9),
     supportsI2p: isV5,
   };

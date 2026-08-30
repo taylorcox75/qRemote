@@ -58,11 +58,19 @@ describe('getApiFeatures', () => {
     expect(features.useStoppedAddParam).toBe(false);
     expect(features.supportsGetDirectoryContent).toBe(false);
     expect(features.supportsSearchPubDate).toBe(false);
-    expect(features.hasIsPrivate).toBe(false);
     expect(features.supportsI2p).toBe(false);
-    // ratio limit fields only require 2.8+, modern proxy fields only require 2.9+
+    // ratio limit fields only require 2.8+, modern proxy fields and is_private only require 2.9+
     expect(features.hasRatioLimitFields).toBe(true);
     expect(features.hasModernProxyFields).toBe(true);
+    expect(features.hasIsPrivate).toBe(true);
+  });
+
+  it('gates hasIsPrivate off below 2.9 (is_private was added alongside the 4.6 proxy fields)', () => {
+    expect(getApiFeatures('2.8.5').hasIsPrivate).toBe(false);
+  });
+
+  it('enables hasIsPrivate at exactly 2.9.0', () => {
+    expect(getApiFeatures('2.9.0').hasIsPrivate).toBe(true);
   });
 
   it('gates hasRatioLimitFields off below 2.8', () => {

@@ -56,6 +56,10 @@ export default function ConnectionSettingsScreen() {
   const [listenPort, setListenPort] = useState('');
   const [lastSavedListenPort, setLastSavedListenPort] = useState<number | null>(null);
   const [randomPort, setRandomPort] = useState(false);
+  // qBittorrent reports listen_port as 0 while random_port is on, so there's
+  // no live value to read back once it's active. Remember the last real port
+  // we saw or saved, so turning randomization off has something to restore.
+  const [lastRealPort, setLastRealPort] = useState(6881);
   const [upnpEnabled, setUpnpEnabled] = useState(false);
 
   // Connection limits. -1 is qBittorrent's own sentinel for "unlimited" — there's
@@ -72,8 +76,10 @@ export default function ConnectionSettingsScreen() {
 
   // Proxy server. proxyType is kept as the server's own wire-format string —
   // 'None'/'HTTP'/'SOCKS5'/'SOCKS4' on hasModernProxyFields servers, or the
-  // legacy '-1'..'5' integer-as-string on older ones — since the two version
-  // tiers don't share a value space (see the proxy_type comment in types/api.ts).
+  // legacy '0'..'5' integer-as-string on older ones (Net::ProxyType::None is 0,
+  // not -1 — the wiki's -1 is stale 3.x-era documentation) — since the two
+  // version tiers don't share a value space (see the proxy_type comment in
+  // types/api.ts).
   const [proxyType, setProxyType] = useState('None');
   const [proxyTypePickerVisible, setProxyTypePickerVisible] = useState(false);
   const [proxyIp, setProxyIp] = useState('');
@@ -115,7 +121,7 @@ export default function ConnectionSettingsScreen() {
         { label: t('screens.settings.proxySocks4'), value: 'SOCKS4', icon: 'globe-outline' },
       ]
     : [
-        { label: t('screens.settings.proxyDisabled'), value: '-1', icon: 'close-circle-outline' },
+        { label: t('screens.settings.proxyDisabled'), value: '0', icon: 'close-circle-outline' },
         { label: t('screens.settings.proxyHttp'), value: '1', icon: 'globe-outline' },
         { label: t('screens.settings.proxySocks5'), value: '2', icon: 'globe-outline' },
         {
@@ -138,6 +144,7 @@ export default function ConnectionSettingsScreen() {
       const port = prefs.listen_port;
       setListenPort(port != null ? String(port) : '');
       setLastSavedListenPort(port ?? null);
+      if (port) setLastRealPort(port);
       setRandomPort(!!prefs.random_port);
       setUpnpEnabled(!!prefs.upnp);
 
@@ -155,7 +162,7 @@ export default function ConnectionSettingsScreen() {
           ? String(prefs.proxy_type)
           : features.hasModernProxyFields
             ? 'None'
-            : '-1',
+            : '0',
       );
       setProxyIp(prefs.proxy_ip || '');
       setProxyPort(prefs.proxy_port != null ? String(prefs.proxy_port) : '');
@@ -207,21 +214,27 @@ export default function ConnectionSettingsScreen() {
     }, [isConnected, features]),
   );
 
-  const setPref = async <K extends keyof ApplicationPreferences>(
-    key: K,
-    value: ApplicationPreferences[K],
+  const setPrefs = async (
+    patch: Partial<ApplicationPreferences>,
     applyLocally: () => void,
     rollback: () => void,
   ) => {
     applyLocally();
     try {
-      await applicationApi.setPreferences({ [key]: value });
+      await applicationApi.setPreferences(patch);
       showToast(t('toast.serverSettingUpdated'), 'success');
     } catch {
       rollback();
       showToast(t('errors.failedToUpdateServerSetting'), 'error');
     }
   };
+
+  const setPref = <K extends keyof ApplicationPreferences>(
+    key: K,
+    value: ApplicationPreferences[K],
+    applyLocally: () => void,
+    rollback: () => void,
+  ) => setPrefs({ [key]: value } as Partial<ApplicationPreferences>, applyLocally, rollback);
 
   /** Integer field with an onBlur commit, shared by the port/limit rows below. */
   const numericField = (
@@ -248,7 +261,10 @@ export default function ConnectionSettingsScreen() {
       setPref(
         key,
         num,
-        () => setLastSaved(num),
+        () => {
+          setLastSaved(num);
+          if (key === 'listen_port') setLastRealPort(num);
+        },
         () => {
           setLastSaved(prev);
           setValue(prev != null ? String(prev) : '');
@@ -274,7 +290,7 @@ export default function ConnectionSettingsScreen() {
     );
   };
 
-  const proxyEnabled = features.hasModernProxyFields ? proxyType !== 'None' : proxyType !== '-1';
+  const proxyEnabled = features.hasModernProxyFields ? proxyType !== 'None' : proxyType !== '0';
 
   return (
     <>
@@ -315,12 +331,33 @@ export default function ConnectionSettingsScreen() {
                   <Switch
                     value={randomPort}
                     onValueChange={(value) => {
-                      const prev = randomPort;
-                      setPref(
-                        'random_port',
-                        value,
-                        () => setRandomPort(value),
-                        () => setRandomPort(prev),
+                      const prevRandom = randomPort;
+                      if (value) {
+                        setPref(
+                          'random_port',
+                          true,
+                          () => setRandomPort(true),
+                          () => setRandomPort(prevRandom),
+                        );
+                        return;
+                      }
+                      // qBittorrent's setPreferences only turns randomization off
+                      // when a concrete listen_port arrives in the SAME request
+                      // as random_port:false — a bare {random_port:false} matches
+                      // neither branch of its handler and silently does nothing.
+                      const prevListenPort = listenPort;
+                      const restoredPort = lastRealPort;
+                      setPrefs(
+                        { random_port: false, listen_port: restoredPort },
+                        () => {
+                          setRandomPort(false);
+                          setListenPort(String(restoredPort));
+                          setLastSavedListenPort(restoredPort);
+                        },
+                        () => {
+                          setRandomPort(prevRandom);
+                          setListenPort(prevListenPort);
+                        },
                       );
                     }}
                     trackColor={{ false: colors.surfaceOutline, true: colors.success }}
