@@ -89,6 +89,12 @@ export interface BuildInfo {
 export type ScanDirOverride = 0 | 1 | string;
 
 export interface ApplicationPreferences {
+  /** Port for incoming connections (#233). Ignored by qBittorrent when random_port is true. */
+  listen_port?: number;
+  /** True if UPnP/NAT-PMP port forwarding is enabled (#233). */
+  upnp?: boolean;
+  /** True if listen_port is randomly selected on each qBittorrent start (#233). */
+  random_port?: boolean;
   save_path?: string;
   auto_tmm_enabled?: boolean;
   torrent_changed_tmm_enabled?: boolean;
@@ -280,6 +286,10 @@ export interface ServerState {
   dl_rate_limit: number;
   free_space_on_disk: number;
   global_ratio: string;
+  /** Public/external IPv4 address as seen by the tracker (WebAPI 4.x+; may be absent). */
+  last_external_address_v4?: string;
+  /** Public/external IPv6 address as seen by the tracker (WebAPI 4.x+; may be absent). */
+  last_external_address_v6?: string;
   queued_io_jobs: number;
   queueing: boolean;
   read_cache_hits: string;

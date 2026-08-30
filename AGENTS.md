@@ -323,7 +323,8 @@ nested under `advanced`, not on the hub.
 `about` · `add-torrent-dialogue` · `advanced` · `appearance` ·
 `category-tag-colors` · `detailed-card-fields` · `notifications` · `rss` ·
 `rss-rules` · `rss-rule` · `servers` (list + secret-free export/import) ·
-`server-settings-advanced` (qBit email/automation) · `theme` ·
+`server-settings-advanced` (qBit email/automation/network — listen port,
+random port, UPnP — #233) · `theme` ·
 `torrent-defaults` (nav label is **Server Settings**; route path unchanged) ·
 `whats-new`
 
@@ -342,6 +343,10 @@ nested under `advanced`, not on the hub.
   *keeps* `currentServer` for one-tap reconnect from Settings; call
   `forgetCurrentServer()` when that server is deleted, and `updateCurrentServer()`
   after editing it so one-tap Connect doesn't retry stale credentials.
+  `connectedAt` tracks when the current connection began (derived from
+  `isConnected` transitions, not each `setIsConnected` call site) for a
+  client-side "Connected For" display — qBittorrent's `server_state` has no
+  session-uptime field of its own (#232).
 - **`TorrentContext.tsx`** — rid-based incremental sync, plus the reactive
   auto-reconnect effect the other providers piggyback on.
 - **`TransferContext.tsx`** — transfer-info poll; relies on TorrentContext's reconnect.

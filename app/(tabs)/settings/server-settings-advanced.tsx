@@ -41,6 +41,11 @@ export default function ServerSettingsAdvancedScreen() {
   const [autorunEnabled, setAutorunEnabled] = useState(false);
   const [autorunProgram, setAutorunProgram] = useState('');
 
+  const [listenPort, setListenPort] = useState('');
+  const [lastSavedListenPort, setLastSavedListenPort] = useState<number | null>(null);
+  const [randomPort, setRandomPort] = useState(false);
+  const [upnpEnabled, setUpnpEnabled] = useState(false);
+
   const [encryptionPickerVisible, setEncryptionPickerVisible] = useState(false);
 
   const encryptionOptions: OptionPickerItem[] = [
@@ -79,6 +84,12 @@ export default function ServerSettingsAdvancedScreen() {
       setAutorunOnAddedProgram((prefs.autorun_on_torrent_added_program as string) || '');
       setAutorunEnabled(!!prefs.autorun_enabled);
       setAutorunProgram((prefs.autorun_program as string) || '');
+
+      const port = prefs.listen_port as number | undefined;
+      setListenPort(port != null ? String(port) : '');
+      setLastSavedListenPort(port ?? null);
+      setRandomPort(!!prefs.random_port);
+      setUpnpEnabled(!!prefs.upnp);
     } catch {
       // Not connected / failed to load — leave defaults
     }
@@ -329,6 +340,98 @@ export default function ServerSettingsAdvancedScreen() {
                   )}
                 </>
               )}
+            </View>
+          </View>
+
+          {/* Network */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.networkSection').toUpperCase()}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="shuffle-outline" size={22} color={colors.primary} />
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.randomPort')}
+                  </Text>
+                </View>
+                <Switch
+                  value={randomPort}
+                  onValueChange={(value) => {
+                    const prev = randomPort;
+                    setServerPreference(
+                      'random_port',
+                      value,
+                      () => setRandomPort(value),
+                      () => setRandomPort(prev),
+                    );
+                  }}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                  ios_backgroundColor={colors.surfaceOutline}
+                />
+              </View>
+              {!randomPort && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.fieldRow}>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                      {t('screens.settings.listeningPort')}
+                    </Text>
+                    <TextInput
+                      style={[styles.fieldInput, { color: colors.text }]}
+                      placeholder="6881"
+                      placeholderTextColor={colors.textSecondary}
+                      value={listenPort}
+                      onChangeText={setListenPort}
+                      keyboardType="number-pad"
+                      onBlur={() => {
+                        const num = parseInt(listenPort, 10);
+                        if (isNaN(num) || num < 1 || num > 65535) {
+                          setListenPort(
+                            lastSavedListenPort != null ? String(lastSavedListenPort) : '',
+                          );
+                          showToast(t('errors.invalidPort'), 'error');
+                          return;
+                        }
+                        const prev = lastSavedListenPort;
+                        setServerPreference(
+                          'listen_port',
+                          num,
+                          () => setLastSavedListenPort(num),
+                          () => {
+                            setLastSavedListenPort(prev);
+                            setListenPort(prev != null ? String(prev) : '');
+                          },
+                        );
+                      }}
+                    />
+                  </View>
+                </>
+              )}
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="swap-horizontal-outline" size={22} color={colors.primary} />
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.upnpEnabled')}
+                  </Text>
+                </View>
+                <Switch
+                  value={upnpEnabled}
+                  onValueChange={(value) => {
+                    const prev = upnpEnabled;
+                    setServerPreference(
+                      'upnp',
+                      value,
+                      () => setUpnpEnabled(value),
+                      () => setUpnpEnabled(prev),
+                    );
+                  }}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                  ios_backgroundColor={colors.surfaceOutline}
+                />
+              </View>
             </View>
           </View>
 

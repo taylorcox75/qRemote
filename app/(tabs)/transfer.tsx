@@ -66,7 +66,7 @@ export default function TransferScreen() {
     setAltDownloadLimit,
     setAltUploadLimit,
   } = useTransfer();
-  const { isConnected, isLoading: serverIsLoading, connectToServer } = useServer();
+  const { isConnected, connectedAt, isLoading: serverIsLoading, connectToServer } = useServer();
   const {
     torrents,
     serverState,
@@ -405,6 +405,8 @@ export default function TransferScreen() {
   };
 
   const diskSpaceInfo = serverState ? { free: serverState.free_space_on_disk || 0 } : null;
+  const externalIp =
+    serverState?.last_external_address_v4 || serverState?.last_external_address_v6 || null;
 
   // --- Early returns for disconnected / loading / error states ---
 
@@ -1102,6 +1104,22 @@ export default function TransferScreen() {
                   {formatSize(transferInfo.up_info_data)}
                 </Text>
               </View>
+
+              {connectedAt && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.connectedFor')}
+                    </Text>
+                    <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                      {formatTime(
+                        Math.max(1, Math.floor((Date.now() - connectedAt.getTime()) / 1000)),
+                      )}
+                    </Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
 
@@ -1206,6 +1224,20 @@ export default function TransferScreen() {
                     </Text>
                     <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
                       {formatSize(diskSpaceInfo.free)}
+                    </Text>
+                  </View>
+                </>
+              )}
+
+              {externalIp && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.externalIp')}
+                    </Text>
+                    <Text style={[styles.rowValue, { color: colors.textSecondary }]} selectable>
+                      {externalIp}
                     </Text>
                   </View>
                 </>
