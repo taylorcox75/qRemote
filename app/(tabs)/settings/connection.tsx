@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
+import { useApiFeatures } from '@/context/ApiVersionContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
@@ -37,8 +38,11 @@ const CONNECTION_LIMIT_KEYS: ConnectionLimitKey[] = [
 /**
  * connection.tsx — qBittorrent-side network settings, live from app/preferences
  * (#233): listen port, connection/upload-slot limits, proxy server, IP
- * filtering. I2P isn't here — it's not exposed by the WebUI API at all (no
- * i2p_* fields exist in app/preferences on either 4.1 or 5.0).
+ * filtering, I2P. Field shapes here are confirmed against qBittorrent's own
+ * source (src/webui/api/appcontroller.cpp), not just the wiki — the wiki
+ * never documents I2P at all, and documents proxy_type as an integer even
+ * though it became a string enum in qBit 4.6 (WebAPI 2.9.0). See
+ * ApiFeatures.hasModernProxyFields / supportsI2p in utils/apiVersion.ts.
  */
 export default function ConnectionSettingsScreen() {
   const { t } = useTranslation();
@@ -46,6 +50,7 @@ export default function ConnectionSettingsScreen() {
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
   const { isConnected } = useServer();
+  const { features } = useApiFeatures();
 
   // Peer connection protocol
   const [listenPort, setListenPort] = useState('');
@@ -65,8 +70,11 @@ export default function ConnectionSettingsScreen() {
   });
   const [activeLimitModal, setActiveLimitModal] = useState<ConnectionLimitKey | null>(null);
 
-  // Proxy server
-  const [proxyType, setProxyType] = useState(-1);
+  // Proxy server. proxyType is kept as the server's own wire-format string —
+  // 'None'/'HTTP'/'SOCKS5'/'SOCKS4' on hasModernProxyFields servers, or the
+  // legacy '-1'..'5' integer-as-string on older ones — since the two version
+  // tiers don't share a value space (see the proxy_type comment in types/api.ts).
+  const [proxyType, setProxyType] = useState('None');
   const [proxyTypePickerVisible, setProxyTypePickerVisible] = useState(false);
   const [proxyIp, setProxyIp] = useState('');
   const [proxyPort, setProxyPort] = useState('');
@@ -74,6 +82,12 @@ export default function ConnectionSettingsScreen() {
   const [proxyUsername, setProxyUsername] = useState('');
   const [proxyPassword, setProxyPassword] = useState('');
   const [proxyPeerConnections, setProxyPeerConnections] = useState(false);
+  const [proxyHostnameLookup, setProxyHostnameLookup] = useState(false);
+  // Modern (hasModernProxyFields) scope toggles — replace legacy proxyTorrentsOnly.
+  const [proxyBittorrent, setProxyBittorrent] = useState(false);
+  const [proxyRss, setProxyRss] = useState(false);
+  const [proxyMisc, setProxyMisc] = useState(false);
+  // Legacy-only single toggle.
   const [proxyTorrentsOnly, setProxyTorrentsOnly] = useState(false);
 
   // IP filtering
@@ -83,22 +97,39 @@ export default function ConnectionSettingsScreen() {
   const [bannedIPs, setBannedIPs] = useState('');
   const [bannedIPsModalVisible, setBannedIPsModalVisible] = useState(false);
 
-  const proxyTypeOptions: OptionPickerItem[] = [
-    { label: t('screens.settings.proxyDisabled'), value: '-1', icon: 'close-circle-outline' },
-    { label: t('screens.settings.proxyHttp'), value: '1', icon: 'globe-outline' },
-    { label: t('screens.settings.proxySocks5'), value: '2', icon: 'globe-outline' },
-    {
-      label: t('screens.settings.proxyHttpAuth'),
-      value: '3',
-      icon: 'lock-closed-outline',
-    },
-    {
-      label: t('screens.settings.proxySocks5Auth'),
-      value: '4',
-      icon: 'lock-closed-outline',
-    },
-    { label: t('screens.settings.proxySocks4'), value: '5', icon: 'globe-outline' },
-  ];
+  // I2P (supportsI2p only)
+  const [i2pEnabled, setI2pEnabled] = useState(false);
+  const [i2pAddress, setI2pAddress] = useState('');
+  const [i2pPort, setI2pPort] = useState('');
+  const [i2pMixedMode, setI2pMixedMode] = useState(false);
+  const [i2pInboundQuantity, setI2pInboundQuantity] = useState('');
+  const [i2pOutboundQuantity, setI2pOutboundQuantity] = useState('');
+  const [i2pInboundLength, setI2pInboundLength] = useState('');
+  const [i2pOutboundLength, setI2pOutboundLength] = useState('');
+
+  const proxyTypeOptions: OptionPickerItem[] = features.hasModernProxyFields
+    ? [
+        { label: t('screens.settings.proxyDisabled'), value: 'None', icon: 'close-circle-outline' },
+        { label: t('screens.settings.proxyHttp'), value: 'HTTP', icon: 'globe-outline' },
+        { label: t('screens.settings.proxySocks5'), value: 'SOCKS5', icon: 'globe-outline' },
+        { label: t('screens.settings.proxySocks4'), value: 'SOCKS4', icon: 'globe-outline' },
+      ]
+    : [
+        { label: t('screens.settings.proxyDisabled'), value: '-1', icon: 'close-circle-outline' },
+        { label: t('screens.settings.proxyHttp'), value: '1', icon: 'globe-outline' },
+        { label: t('screens.settings.proxySocks5'), value: '2', icon: 'globe-outline' },
+        {
+          label: t('screens.settings.proxyHttpAuth'),
+          value: '3',
+          icon: 'lock-closed-outline',
+        },
+        {
+          label: t('screens.settings.proxySocks5Auth'),
+          value: '4',
+          icon: 'lock-closed-outline',
+        },
+        { label: t('screens.settings.proxySocks4'), value: '5', icon: 'globe-outline' },
+      ];
 
   const loadPreferences = async () => {
     try {
@@ -119,19 +150,48 @@ export default function ConnectionSettingsScreen() {
           typeof prefs.max_uploads_per_torrent === 'number' ? prefs.max_uploads_per_torrent : -1,
       });
 
-      setProxyType(typeof prefs.proxy_type === 'number' ? prefs.proxy_type : -1);
+      setProxyType(
+        prefs.proxy_type != null
+          ? String(prefs.proxy_type)
+          : features.hasModernProxyFields
+            ? 'None'
+            : '-1',
+      );
       setProxyIp(prefs.proxy_ip || '');
       setProxyPort(prefs.proxy_port != null ? String(prefs.proxy_port) : '');
       setProxyAuthEnabled(!!prefs.proxy_auth_enabled);
       setProxyUsername(prefs.proxy_username || '');
       setProxyPassword(prefs.proxy_password || '');
       setProxyPeerConnections(!!prefs.proxy_peer_connections);
+      setProxyHostnameLookup(!!prefs.proxy_hostname_lookup);
+      setProxyBittorrent(!!prefs.proxy_bittorrent);
+      setProxyRss(!!prefs.proxy_rss);
+      setProxyMisc(!!prefs.proxy_misc);
       setProxyTorrentsOnly(!!prefs.proxy_torrents_only);
 
       setIpFilterEnabled(!!prefs.ip_filter_enabled);
       setIpFilterPath(prefs.ip_filter_path || '');
       setIpFilterTrackers(!!prefs.ip_filter_trackers);
       setBannedIPs(prefs.banned_IPs || '');
+
+      if (features.supportsI2p) {
+        setI2pEnabled(!!prefs.i2p_enabled);
+        setI2pAddress(prefs.i2p_address || '');
+        setI2pPort(prefs.i2p_port != null ? String(prefs.i2p_port) : '');
+        setI2pMixedMode(!!prefs.i2p_mixed_mode);
+        setI2pInboundQuantity(
+          prefs.i2p_inbound_quantity != null ? String(prefs.i2p_inbound_quantity) : '',
+        );
+        setI2pOutboundQuantity(
+          prefs.i2p_outbound_quantity != null ? String(prefs.i2p_outbound_quantity) : '',
+        );
+        setI2pInboundLength(
+          prefs.i2p_inbound_length != null ? String(prefs.i2p_inbound_length) : '',
+        );
+        setI2pOutboundLength(
+          prefs.i2p_outbound_length != null ? String(prefs.i2p_outbound_length) : '',
+        );
+      }
     } catch {
       // Not connected / failed to load — leave defaults
     }
@@ -142,7 +202,9 @@ export default function ConnectionSettingsScreen() {
       if (isConnected) {
         loadPreferences();
       }
-    }, [isConnected]),
+      // loadPreferences isn't memoized — only re-run when isConnected/features change.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isConnected, features]),
   );
 
   const setPref = async <K extends keyof ApplicationPreferences>(
@@ -212,7 +274,7 @@ export default function ConnectionSettingsScreen() {
     );
   };
 
-  const proxyEnabled = proxyType !== -1;
+  const proxyEnabled = features.hasModernProxyFields ? proxyType !== 'None' : proxyType !== '-1';
 
   return (
     <>
@@ -380,6 +442,182 @@ export default function ConnectionSettingsScreen() {
               </View>
             </View>
 
+            {/* I2P */}
+            {features.supportsI2p && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.settings.i2pSection').toUpperCase()}
+                </Text>
+                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingLeft}>
+                      <Ionicons name="flask-outline" size={22} color={colors.primary} />
+                      <Text style={[styles.settingLabel, { color: colors.text }]}>
+                        {t('screens.settings.i2pEnabled')}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={i2pEnabled}
+                      onValueChange={(value) => {
+                        const prev = i2pEnabled;
+                        setPref(
+                          'i2p_enabled',
+                          value,
+                          () => setI2pEnabled(value),
+                          () => setI2pEnabled(prev),
+                        );
+                      }}
+                      trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                      ios_backgroundColor={colors.surfaceOutline}
+                    />
+                  </View>
+                  {i2pEnabled && (
+                    <>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.fieldRow}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                          {t('screens.settings.i2pAddress')}
+                        </Text>
+                        <TextInput
+                          style={[styles.fieldInput, { color: colors.text }]}
+                          placeholder={t('screens.settings.i2pAddressPlaceholder')}
+                          placeholderTextColor={colors.textSecondary}
+                          value={i2pAddress}
+                          onChangeText={setI2pAddress}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          onBlur={() => {
+                            const prev = i2pAddress;
+                            setPref(
+                              'i2p_address',
+                              i2pAddress,
+                              () => {},
+                              () => setI2pAddress(prev),
+                            );
+                          }}
+                        />
+                      </View>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.fieldRow}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                          {t('screens.settings.i2pPort')}
+                        </Text>
+                        <TextInput
+                          style={[styles.fieldInput, { color: colors.text }]}
+                          placeholder="7656"
+                          placeholderTextColor={colors.textSecondary}
+                          keyboardType="number-pad"
+                          value={i2pPort}
+                          onChangeText={setI2pPort}
+                          onBlur={() => {
+                            const num = parseInt(i2pPort, 10);
+                            if (isNaN(num) || num < 1 || num > 65535) {
+                              showToast(t('errors.invalidPort'), 'error');
+                              return;
+                            }
+                            setPref(
+                              'i2p_port',
+                              num,
+                              () => {},
+                              () => {},
+                            );
+                          }}
+                        />
+                      </View>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.settingRow}>
+                        <View style={styles.settingLeft}>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.settings.i2pMixedMode')}
+                          </Text>
+                        </View>
+                        <Switch
+                          value={i2pMixedMode}
+                          onValueChange={(value) => {
+                            const prev = i2pMixedMode;
+                            setPref(
+                              'i2p_mixed_mode',
+                              value,
+                              () => setI2pMixedMode(value),
+                              () => setI2pMixedMode(prev),
+                            );
+                          }}
+                          trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                          ios_backgroundColor={colors.surfaceOutline}
+                        />
+                      </View>
+                      {(
+                        [
+                          [
+                            'i2pInboundQuantity',
+                            i2pInboundQuantity,
+                            setI2pInboundQuantity,
+                            'i2p_inbound_quantity',
+                          ],
+                          [
+                            'i2pOutboundQuantity',
+                            i2pOutboundQuantity,
+                            setI2pOutboundQuantity,
+                            'i2p_outbound_quantity',
+                          ],
+                          [
+                            'i2pInboundLength',
+                            i2pInboundLength,
+                            setI2pInboundLength,
+                            'i2p_inbound_length',
+                          ],
+                          [
+                            'i2pOutboundLength',
+                            i2pOutboundLength,
+                            setI2pOutboundLength,
+                            'i2p_outbound_length',
+                          ],
+                        ] as const
+                      ).map(([labelKey, value, setValue, prefKey]) => (
+                        <View key={prefKey}>
+                          <View
+                            style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                          />
+                          <View style={styles.fieldRow}>
+                            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                              {t(`screens.settings.${labelKey}`)}
+                            </Text>
+                            <TextInput
+                              style={[styles.fieldInput, { color: colors.text }]}
+                              placeholder="3"
+                              placeholderTextColor={colors.textSecondary}
+                              keyboardType="number-pad"
+                              value={value}
+                              onChangeText={setValue}
+                              onBlur={() => {
+                                const num = parseInt(value, 10);
+                                if (isNaN(num) || num < 1) {
+                                  showToast(t('errors.invalidNumber'), 'error');
+                                  return;
+                                }
+                                setPref(
+                                  prefKey,
+                                  num,
+                                  () => {},
+                                  () => {},
+                                );
+                              }}
+                            />
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  )}
+                </View>
+              </View>
+            )}
+
             {/* Proxy Server */}
             <View style={styles.section}>
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
@@ -399,7 +637,7 @@ export default function ConnectionSettingsScreen() {
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.pickerText, { color: colors.text }]}>
-                      {proxyTypeOptions.find((opt) => opt.value === String(proxyType))?.label}
+                      {proxyTypeOptions.find((opt) => opt.value === proxyType)?.label}
                     </Text>
                     <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                   </TouchableOpacity>
@@ -479,51 +717,168 @@ export default function ConnectionSettingsScreen() {
                         ios_backgroundColor={colors.surfaceOutline}
                       />
                     </View>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <View style={styles.settingRow}>
-                      <View style={styles.settingLeft}>
-                        <Text style={[styles.settingLabel, { color: colors.text }]}>
-                          {t('screens.settings.proxyTorrentsOnly')}
-                        </Text>
-                      </View>
-                      <Switch
-                        value={proxyTorrentsOnly}
-                        onValueChange={(value) => {
-                          const prev = proxyTorrentsOnly;
-                          setPref(
-                            'proxy_torrents_only',
-                            value,
-                            () => setProxyTorrentsOnly(value),
-                            () => setProxyTorrentsOnly(prev),
-                          );
-                        }}
-                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                        ios_backgroundColor={colors.surfaceOutline}
-                      />
-                    </View>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <View style={styles.settingRow}>
-                      <View style={styles.settingLeft}>
-                        <Text style={[styles.settingLabel, { color: colors.text }]}>
-                          {t('screens.settings.proxyAuthEnabled')}
-                        </Text>
-                      </View>
-                      <Switch
-                        value={proxyAuthEnabled}
-                        onValueChange={(value) => {
-                          const prev = proxyAuthEnabled;
-                          setPref(
-                            'proxy_auth_enabled',
-                            value,
-                            () => setProxyAuthEnabled(value),
-                            () => setProxyAuthEnabled(prev),
-                          );
-                        }}
-                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                        ios_backgroundColor={colors.surfaceOutline}
-                      />
-                    </View>
-                    {proxyAuthEnabled && (
+                    {features.hasModernProxyFields && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <View style={styles.settingRow}>
+                          <View style={styles.settingLeft}>
+                            <Text style={[styles.settingLabel, { color: colors.text }]}>
+                              {t('screens.settings.proxyHostnameLookup')}
+                            </Text>
+                          </View>
+                          <Switch
+                            value={proxyHostnameLookup}
+                            onValueChange={(value) => {
+                              const prev = proxyHostnameLookup;
+                              setPref(
+                                'proxy_hostname_lookup',
+                                value,
+                                () => setProxyHostnameLookup(value),
+                                () => setProxyHostnameLookup(prev),
+                              );
+                            }}
+                            trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                            ios_backgroundColor={colors.surfaceOutline}
+                          />
+                        </View>
+                      </>
+                    )}
+                    {features.hasModernProxyFields ? (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <View style={styles.settingRow}>
+                          <View style={styles.settingLeft}>
+                            <Text style={[styles.settingLabel, { color: colors.text }]}>
+                              {t('screens.settings.proxyBittorrent')}
+                            </Text>
+                          </View>
+                          <Switch
+                            value={proxyBittorrent}
+                            onValueChange={(value) => {
+                              const prev = proxyBittorrent;
+                              setPref(
+                                'proxy_bittorrent',
+                                value,
+                                () => setProxyBittorrent(value),
+                                () => setProxyBittorrent(prev),
+                              );
+                            }}
+                            trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                            ios_backgroundColor={colors.surfaceOutline}
+                          />
+                        </View>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <View style={styles.settingRow}>
+                          <View style={styles.settingLeft}>
+                            <Text style={[styles.settingLabel, { color: colors.text }]}>
+                              {t('screens.settings.proxyRss')}
+                            </Text>
+                          </View>
+                          <Switch
+                            value={proxyRss}
+                            onValueChange={(value) => {
+                              const prev = proxyRss;
+                              setPref(
+                                'proxy_rss',
+                                value,
+                                () => setProxyRss(value),
+                                () => setProxyRss(prev),
+                              );
+                            }}
+                            trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                            ios_backgroundColor={colors.surfaceOutline}
+                          />
+                        </View>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <View style={styles.settingRow}>
+                          <View style={styles.settingLeft}>
+                            <Text style={[styles.settingLabel, { color: colors.text }]}>
+                              {t('screens.settings.proxyMisc')}
+                            </Text>
+                          </View>
+                          <Switch
+                            value={proxyMisc}
+                            onValueChange={(value) => {
+                              const prev = proxyMisc;
+                              setPref(
+                                'proxy_misc',
+                                value,
+                                () => setProxyMisc(value),
+                                () => setProxyMisc(prev),
+                              );
+                            }}
+                            trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                            ios_backgroundColor={colors.surfaceOutline}
+                          />
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <View style={styles.settingRow}>
+                          <View style={styles.settingLeft}>
+                            <Text style={[styles.settingLabel, { color: colors.text }]}>
+                              {t('screens.settings.proxyTorrentsOnly')}
+                            </Text>
+                          </View>
+                          <Switch
+                            value={proxyTorrentsOnly}
+                            onValueChange={(value) => {
+                              const prev = proxyTorrentsOnly;
+                              setPref(
+                                'proxy_torrents_only',
+                                value,
+                                () => setProxyTorrentsOnly(value),
+                                () => setProxyTorrentsOnly(prev),
+                              );
+                            }}
+                            trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                            ios_backgroundColor={colors.surfaceOutline}
+                          />
+                        </View>
+                      </>
+                    )}
+                    {features.hasModernProxyFields && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <View style={styles.settingRow}>
+                          <View style={styles.settingLeft}>
+                            <Text style={[styles.settingLabel, { color: colors.text }]}>
+                              {t('screens.settings.proxyAuthEnabled')}
+                            </Text>
+                          </View>
+                          <Switch
+                            value={proxyAuthEnabled}
+                            onValueChange={(value) => {
+                              const prev = proxyAuthEnabled;
+                              setPref(
+                                'proxy_auth_enabled',
+                                value,
+                                () => setProxyAuthEnabled(value),
+                                () => setProxyAuthEnabled(prev),
+                              );
+                            }}
+                            trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                            ios_backgroundColor={colors.surfaceOutline}
+                          />
+                        </View>
+                      </>
+                    )}
+                    {(features.hasModernProxyFields
+                      ? proxyAuthEnabled
+                      : proxyType === '3' || proxyType === '4') && (
                       <>
                         <View
                           style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
@@ -713,15 +1068,17 @@ export default function ConnectionSettingsScreen() {
         visible={proxyTypePickerVisible}
         title={t('screens.settings.proxyType')}
         options={proxyTypeOptions}
-        selectedValue={String(proxyType)}
+        selectedValue={proxyType}
         onSelect={(value) => {
-          const type = Number(value);
+          // Wire format matches the picker's own option values: the real string
+          // enum on hasModernProxyFields servers, the legacy integer otherwise.
+          const wireValue: string | number = features.hasModernProxyFields ? value : Number(value);
           const prev = proxyType;
           setProxyTypePickerVisible(false);
           setPref(
             'proxy_type',
-            type,
-            () => setProxyType(type),
+            wireValue,
+            () => setProxyType(value),
             () => setProxyType(prev),
           );
         }}

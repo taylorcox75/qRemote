@@ -89,6 +89,9 @@ const COINCIDENTAL_MATCH_ALLOWLIST = new Set<string>([
   // "OK" is a universal computing term some translators intentionally keep
   // untranslated (de/fr/ru keep it; es/zh localize it — both are valid).
   'server.testEndpointOk',
+  // "Experimental" is spelled identically in Spanish — a genuine cognate,
+  // not an untranslated leftover.
+  'screens.settings.i2pSection',
 ]);
 
 /**

@@ -104,24 +104,62 @@ export interface ApplicationPreferences {
   /** Maximum number of upload slots per torrent (#233). */
   max_uploads_per_torrent?: number;
   /**
-   * Proxy type (#233): -1 disabled, 1 HTTP, 2 SOCKS5, 3 HTTP w/ auth,
-   * 4 SOCKS5 w/ auth, 5 SOCKS4.
+   * Proxy type (#233). Format is version-dependent — confirmed against
+   * qBittorrent source, since the wiki only documents the legacy shape:
+   * - WebAPI ≥ 2.9.0 (qBit 4.6+, `ApiFeatures.hasModernProxyFields`): a
+   *   STRING enum — 'None' | 'HTTP' | 'SOCKS5' | 'SOCKS4'. Authentication is
+   *   the separate proxy_auth_enabled flag.
+   * - Below that: an INTEGER — -1 disabled, 1 HTTP, 2 SOCKS5, 3 HTTP w/ auth,
+   *   4 SOCKS5 w/ auth, 5 SOCKS4 (proxy_auth_enabled isn't settable there,
+   *   so auth is encoded into the type itself).
    */
-  proxy_type?: number;
+  proxy_type?: number | string;
   /** Proxy IP address or domain name (#233). */
   proxy_ip?: string;
   /** Proxy port (#233). */
   proxy_port?: number;
   /** True if peer and web seed connections should be proxified (#233). */
   proxy_peer_connections?: boolean;
-  /** True if the proxy requires authentication; doesn't apply to SOCKS4 (#233). */
+  /**
+   * True if the proxy requires authentication (#233). Settable from WebAPI
+   * ≥ 2.9.0 (qBit 4.6+) — on older servers this key is read-only, and
+   * doesn't apply to SOCKS4 either way.
+   */
   proxy_auth_enabled?: boolean;
   /** Username for proxy authentication (#233). */
   proxy_username?: string;
   /** Password for proxy authentication (#233). Saved unencrypted by qBittorrent. */
   proxy_password?: string;
-  /** True if the proxy is only used for torrents, i.e. not for RSS/general use (#233). */
+  /** True if hostname lookups should go through the proxy too (#233, WebAPI ≥ ~2.8.18 / qBit 4.5+). */
+  proxy_hostname_lookup?: boolean;
+  /** True if the proxy is used for BitTorrent traffic (#233, `hasModernProxyFields`; replaces proxy_torrents_only). */
+  proxy_bittorrent?: boolean;
+  /** True if the proxy is used for RSS fetching (#233, `hasModernProxyFields`). */
+  proxy_rss?: boolean;
+  /** True if the proxy is used for general-purpose (non-BitTorrent) traffic (#233, `hasModernProxyFields`). */
+  proxy_misc?: boolean;
+  /**
+   * True if the proxy is only used for torrents (#233). Legacy single toggle,
+   * superseded by proxy_bittorrent/proxy_rss/proxy_misc from WebAPI 2.9.0 on
+   * (`ApiFeatures.hasModernProxyFields`) — only meaningful below that.
+   */
   proxy_torrents_only?: boolean;
+  /** True if I2P support is enabled (#233, WebAPI ≥ 2.11.0 / qBit 5.0 — `ApiFeatures.supportsI2p`). */
+  i2p_enabled?: boolean;
+  /** I2P SAM bridge address (#233, `supportsI2p`). */
+  i2p_address?: string;
+  /** I2P SAM bridge port (#233, `supportsI2p`). */
+  i2p_port?: number;
+  /** True if I2P mixed mode is enabled, allowing outgoing non-I2P connections (#233, `supportsI2p`). */
+  i2p_mixed_mode?: boolean;
+  /** I2P inbound tunnel quantity (#233, `supportsI2p`). */
+  i2p_inbound_quantity?: number;
+  /** I2P outbound tunnel quantity (#233, `supportsI2p`). */
+  i2p_outbound_quantity?: number;
+  /** I2P inbound tunnel length (#233, `supportsI2p`). */
+  i2p_inbound_length?: number;
+  /** I2P outbound tunnel length (#233, `supportsI2p`). */
+  i2p_outbound_length?: number;
   /** True if the external IP filter should be enabled (#233). */
   ip_filter_enabled?: boolean;
   /** Path to the IP filter file — .dat, .p2p, .p2b supported (#233). */

@@ -38,6 +38,8 @@ describe('getApiFeatures', () => {
       supportsGetDirectoryContent: true,
       supportsSearchPubDate: true,
       hasIsPrivate: true,
+      hasModernProxyFields: true,
+      supportsI2p: true,
     });
   });
 
@@ -57,13 +59,25 @@ describe('getApiFeatures', () => {
     expect(features.supportsGetDirectoryContent).toBe(false);
     expect(features.supportsSearchPubDate).toBe(false);
     expect(features.hasIsPrivate).toBe(false);
-    // ratio limit fields only require 2.8+
+    expect(features.supportsI2p).toBe(false);
+    // ratio limit fields only require 2.8+, modern proxy fields only require 2.9+
     expect(features.hasRatioLimitFields).toBe(true);
+    expect(features.hasModernProxyFields).toBe(true);
   });
 
   it('gates hasRatioLimitFields off below 2.8', () => {
     const features = getApiFeatures('2.7.0');
     expect(features.hasRatioLimitFields).toBe(false);
+  });
+
+  it('gates hasModernProxyFields off below 2.9 but keeps hasRatioLimitFields on', () => {
+    const features = getApiFeatures('2.8.5');
+    expect(features.hasModernProxyFields).toBe(false);
+    expect(features.hasRatioLimitFields).toBe(true);
+  });
+
+  it('enables hasModernProxyFields at exactly 2.9.0', () => {
+    expect(getApiFeatures('2.9.0').hasModernProxyFields).toBe(true);
   });
 
   it('enables all v5 features at exactly 2.11.0', () => {
@@ -78,6 +92,8 @@ describe('getApiFeatures', () => {
     expect(features.supportsGetDirectoryContent).toBe(true);
     expect(features.supportsSearchPubDate).toBe(true);
     expect(features.hasIsPrivate).toBe(true);
+    expect(features.hasModernProxyFields).toBe(true);
+    expect(features.supportsI2p).toBe(true);
   });
 
   it('enables v5 features above major version 2 (e.g. 3.0.0)', () => {
@@ -93,6 +109,7 @@ describe('getApiFeatures', () => {
     const features = getApiFeatures('1.9.0');
     expect(features.useStartStopEndpoints).toBe(false);
     expect(features.hasRatioLimitFields).toBe(false);
+    expect(features.hasModernProxyFields).toBe(false);
   });
 });
 
