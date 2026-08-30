@@ -37,6 +37,8 @@ export interface ApiFeatures {
   supportsGetDirectoryContent: boolean;
   /** search/results includes a pubDate field per result, for sort-by-date (WebAPI ≥ 2.11.0 / qBit 5.0). */
   supportsSearchPubDate: boolean;
+  /** torrents/properties response includes the isPrivate field (WebAPI ≥ 2.11.0 / qBit 5.0). */
+  hasIsPrivate: boolean;
 }
 
 export function parseApiVersion(raw: string): ParsedVersion | null {
@@ -69,6 +71,7 @@ const V5_FEATURES: ApiFeatures = {
   useStoppedAddParam: true,
   supportsGetDirectoryContent: true,
   supportsSearchPubDate: true,
+  hasIsPrivate: true,
 };
 
 export function getApiFeatures(apiVersion: string | null): ApiFeatures {
@@ -88,6 +91,7 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     useStoppedAddParam: isV5,
     supportsGetDirectoryContent: isV5,
     supportsSearchPubDate: isV5,
+    hasIsPrivate: isV5,
   };
 }
 

@@ -133,6 +133,8 @@ export interface ApplicationPreferences {
   max_seeding_time_enabled?: boolean;
   /** Global seeding time limit, in minutes. */
   max_seeding_time?: number;
+  /** Protocol encryption mode: 0 = Prefer encryption, 1 = Force encryption on, 2 = Force encryption off. */
+  encryption?: number;
   [key: string]: unknown;
 }
 
@@ -348,6 +350,8 @@ export interface TorrentProperties {
   up_speed_avg: number;
   uploaded: number;
   uploaded_session: number;
+  /** True if the torrent is from a private tracker (qBit 5.0+ / WebAPI ≥ 2.11.0, camelCase per the API). */
+  isPrivate?: boolean;
 }
 
 export interface Tracker {

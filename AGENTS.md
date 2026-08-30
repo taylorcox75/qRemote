@@ -490,7 +490,11 @@ for the Search tab's `+` behavior — #217) · `search-cart.ts`
 endpoint applies one `tags` value per request) · `server-export.ts` (strips
 `password`/`basicAuthPassword`/`apiKey` on export, forces them empty on import) ·
 `save-paths.ts` (`getKnownSavePaths`, derived from live data — no API call) ·
-`version.ts` (`APP_VERSION`).
+`version.ts` (`APP_VERSION`) · `trackers.ts` (`isRealTracker` — filters
+qBittorrent's DHT/PeX/LSD pseudo-tracker entries out of `torrents/trackers`;
+`getPseudoTrackerStates` reads each channel's on/off/working state from those
+same entries — #234, #236) · `sounds.ts` (global enabled flag + per-action
+sound assignment, mirrors `haptics.ts` — #231).
 
 ### Types, constants, i18n
 
