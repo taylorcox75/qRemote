@@ -316,12 +316,17 @@ Complete map. Trust it.
 | `app/server/add.tsx`, `app/server/[id].tsx` | Server add/edit, presented as native modal sheets → they mount `<ModalToast/>` locally. |
 
 **Settings sub-screens** — hub order on `index` is Servers → Appearance → Server
-Settings → RSS → Search Plugins → Advanced, then What's New → About, then
-Community links (source / issues / Beer Fund / Rate). Notifications & Feedback is
-nested under `advanced`, not on the hub.
+Settings → Connection → RSS → Search Plugins → Advanced, then What's New →
+About, then Community links (source / issues / Beer Fund / Rate). Notifications
+& Feedback is nested under `advanced`, not on the hub.
 
 `about` · `add-torrent-dialogue` · `advanced` · `appearance` ·
-`category-tag-colors` · `detailed-card-fields` · `notifications` · `rss` ·
+`category-tag-colors` ·
+`connection` (qBit-side network settings, live from `app/preferences` — listen
+port, random port, UPnP, global/per-torrent connection and upload-slot limits,
+proxy server incl. auth, IP filtering/banned IPs, I2P (qBit 5.0+ /
+`ApiFeatures.supportsI2p`) — #233) ·
+`detailed-card-fields` · `notifications` · `rss` ·
 `rss-rules` · `rss-rule` · `servers` (list + secret-free export/import) ·
 `server-settings-advanced` (qBit email/automation) · `theme` ·
 `torrent-defaults` (nav label is **Server Settings**; route path unchanged) ·
@@ -342,6 +347,10 @@ nested under `advanced`, not on the hub.
   *keeps* `currentServer` for one-tap reconnect from Settings; call
   `forgetCurrentServer()` when that server is deleted, and `updateCurrentServer()`
   after editing it so one-tap Connect doesn't retry stale credentials.
+  `connectedAt` tracks when the current connection began (derived from
+  `isConnected` transitions, not each `setIsConnected` call site) for a
+  client-side "Connected For" display — qBittorrent's `server_state` has no
+  session-uptime field of its own (#232).
 - **`TorrentContext.tsx`** — rid-based incremental sync, plus the reactive
   auto-reconnect effect the other providers piggyback on.
 - **`TransferContext.tsx`** — transfer-info poll; relies on TorrentContext's reconnect.
@@ -441,6 +450,14 @@ Thin objects over `apiClient`.
   challenge (Basic Auth, client cert) falls through to default handling
   unchanged. iOS only; requires `npm run xcode` to pick up (new native code,
   not just a generated-file patch).
+- **`ui-sounds`** — local Expo module (Swift) backing in-app sound effects
+  (#231). Plays short bundled `.wav` tones via `AudioServicesPlaySystemSound`
+  (System Sound Services), chosen over `expo-audio` because it respects the
+  ringer/silent switch and never takes over or ducks the audio session. Tones
+  live in `modules/ui-sounds/assets/*.wav`, bundled into the app via the
+  podspec's `s.resources` and loaded through `Bundle.main` at play time.
+  JS entry point exposes `playUiSound(name)`; `utils/sounds.ts` is the actual
+  call site apps should use. iOS only; requires `npm run xcode` to pick up.
 
 ### Hooks (`hooks/`)
 
@@ -482,7 +499,11 @@ for the Search tab's `+` behavior — #217) · `search-cart.ts`
 endpoint applies one `tags` value per request) · `server-export.ts` (strips
 `password`/`basicAuthPassword`/`apiKey` on export, forces them empty on import) ·
 `save-paths.ts` (`getKnownSavePaths`, derived from live data — no API call) ·
-`version.ts` (`APP_VERSION`).
+`version.ts` (`APP_VERSION`) · `trackers.ts` (`isRealTracker` — filters
+qBittorrent's DHT/PeX/LSD pseudo-tracker entries out of `torrents/trackers`;
+`getPseudoTrackerStates` reads each channel's on/off/working state from those
+same entries — #234, #236) · `sounds.ts` (global enabled flag + per-action
+sound assignment, mirrors `haptics.ts` — #231).
 
 ### Types, constants, i18n
 

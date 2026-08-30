@@ -33,6 +33,12 @@ import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useTorrents } from '@/context/TorrentContext';
+import {
+  isRealTracker,
+  getPseudoTrackerStates,
+  DiscoveryChannel,
+  ChannelState,
+} from '@/utils/trackers';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
 import { SpeedGraph, computeSpeedGraphMax, niceGraphCeiling } from '@/components/SpeedGraph';
@@ -47,6 +53,8 @@ import { torrentsApi } from '@/services/api/torrents';
 import { syncApi } from '@/services/api/sync';
 import { tagsApi } from '@/services/api/tags';
 import { categoriesApi } from '@/services/api/categories';
+import { applicationApi } from '@/services/api/application';
+import { useApiFeatures } from '@/context/ApiVersionContext';
 import { TorrentProperties, Tracker, TorrentFile, TorrentInfo } from '@/types/api';
 import {
   formatDate,
@@ -101,21 +109,12 @@ function trackerStatusColor(
   }
 }
 
-function isRealTracker(url: string): boolean {
-  return (
-    !!url &&
-    !url.includes('**') &&
-    !url.includes('DHT') &&
-    !url.includes('PEX') &&
-    !url.includes('LSD')
-  );
-}
-
 export default function TorrentDetail() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const router = useRouter();
   const navigation = useNavigation();
   const { isConnected, isLoading } = useServer();
+  const { features } = useApiFeatures();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
   const { categories, tags } = useTorrents();
@@ -184,6 +183,7 @@ export default function TorrentDetail() {
   const [optSuperSeeding, setOptSuperSeeding] = useState<boolean | null>(null);
   const [optForceStart, setOptForceStart] = useState<boolean | null>(null);
   const [optAutoTmm, setOptAutoTmm] = useState<boolean | null>(null);
+  const [encryptionMode, setEncryptionMode] = useState<number | null>(null);
 
   // ── Data loading ──────────────────────────────────────────────────────
 
@@ -195,6 +195,18 @@ export default function TorrentDetail() {
     // loadTorrentData isn't memoized — only re-run when hash/isConnected change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash, isConnected]);
+
+  // Encryption is a global qBittorrent setting, not per-torrent — fetch once
+  // per connection rather than on every poll tick.
+  useEffect(() => {
+    if (!isConnected) return;
+    applicationApi
+      .getPreferences()
+      .then((prefs) => {
+        setEncryptionMode(typeof prefs.encryption === 'number' ? prefs.encryption : null);
+      })
+      .catch(() => {});
+  }, [isConnected]);
 
   const pushSpeedSample = (info: TorrentInfo | null | undefined) => {
     const dl = info?.dlspeed ?? 0;
@@ -1147,6 +1159,39 @@ export default function TorrentDetail() {
     </View>
   );
 
+  const statusRow = (label: string, value: string, valueColor: string) => (
+    <View style={styles.row}>
+      <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+      <Text style={[styles.rowValue, { color: valueColor }]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+
+  const channelStateLabel = (state: ChannelState | null): string => {
+    switch (state) {
+      case 'working':
+        return t('torrentDetail.channelWorking');
+      case 'notWorking':
+        return t('torrentDetail.channelNotWorking');
+      case 'disabled':
+        return t('torrentDetail.channelDisabled');
+      default:
+        return t('torrentDetail.channelUnknown');
+    }
+  };
+
+  const channelStateColor = (state: ChannelState | null): string => {
+    switch (state) {
+      case 'working':
+        return colors.success;
+      case 'notWorking':
+        return colors.error;
+      default:
+        return colors.textSecondary;
+    }
+  };
+
   const tappableRow = (label: string, value: string, onPress: () => void) => (
     <TouchableOpacity style={styles.row} onPress={onPress} disabled={actionLoading}>
       <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
@@ -1384,6 +1429,47 @@ export default function TorrentDetail() {
       </TouchableOpacity>
     </View>
   );
+
+  // ── Privacy & discovery (#234) ──────────────────────────────────────
+
+  const pseudoStates: Record<DiscoveryChannel, ChannelState | null> =
+    getPseudoTrackerStates(trackers);
+
+  const encryptionLabel = (() => {
+    switch (encryptionMode) {
+      case 0:
+        return t('torrentDetail.encryptionPrefer');
+      case 1:
+        return t('torrentDetail.encryptionForceOn');
+      case 2:
+        return t('torrentDetail.encryptionForceOff');
+      default:
+        return t('torrentDetail.channelUnknown');
+    }
+  })();
+
+  // Prefer `private` (5.0+, null until metadata arrives) over `is_private`
+  // (4.6+, always torrent->isPrivate()) — the wiki's field name "isPrivate"
+  // doesn't exist on the wire at any version.
+  const apiPrivateValue: boolean | undefined = features.hasIsPrivate
+    ? (properties?.private ?? properties?.is_private)
+    : undefined;
+
+  const isPrivateTorrent: boolean | null =
+    apiPrivateValue !== undefined
+      ? apiPrivateValue
+      : pseudoStates.dht && pseudoStates.pex && pseudoStates.lsd
+        ? [pseudoStates.dht, pseudoStates.pex, pseudoStates.lsd].every((s) => s === 'disabled')
+        : null;
+
+  const privateLabel =
+    isPrivateTorrent === null
+      ? t('torrentDetail.channelUnknown')
+      : isPrivateTorrent
+        ? t('torrentDetail.privateYes')
+        : t('torrentDetail.privateNo');
+
+  const privateColor = isPrivateTorrent ? colors.primary : colors.textSecondary;
 
   // ── Main render ───────────────────────────────────────────────────────
 
@@ -1745,18 +1831,32 @@ export default function TorrentDetail() {
           </View>
 
           {/* ── NETWORK ─────────────────────────────────────────── */}
-          {torrent.popularity != null && (
-            <>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                {t('torrentDetail.network')}
-              </Text>
-              <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-                {renderRows([
-                  staticRow(t('torrentDetail.popularity'), torrent.popularity.toFixed(2)),
-                ])}
-              </View>
-            </>
-          )}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {t('torrentDetail.network')}
+          </Text>
+          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+            {renderRows([
+              torrent.popularity != null &&
+                staticRow(t('torrentDetail.popularity'), torrent.popularity.toFixed(2)),
+              statusRow(
+                t('torrentDetail.dht'),
+                channelStateLabel(pseudoStates.dht),
+                channelStateColor(pseudoStates.dht),
+              ),
+              statusRow(
+                t('torrentDetail.pex'),
+                channelStateLabel(pseudoStates.pex),
+                channelStateColor(pseudoStates.pex),
+              ),
+              statusRow(
+                t('torrentDetail.lsd'),
+                channelStateLabel(pseudoStates.lsd),
+                channelStateColor(pseudoStates.lsd),
+              ),
+              staticRow(t('torrentDetail.encryption'), encryptionLabel),
+              statusRow(t('torrentDetail.private'), privateLabel, privateColor),
+            ])}
+          </View>
 
           {/* ── CONTENT ─────────────────────────────────────────── */}
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -1771,7 +1871,9 @@ export default function TorrentDetail() {
               ),
               trackerNavRowWithReannounce(
                 t('torrentDetail.trackers'),
-                t('torrentDetail.trackersCount', { count: trackers.length }),
+                t('torrentDetail.trackersCount', {
+                  count: trackers.filter((tr) => isRealTracker(tr.url)).length,
+                }),
                 () => router.push(`/torrent/manage-trackers?hash=${hash}`),
               ),
             ])}

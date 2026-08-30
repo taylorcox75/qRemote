@@ -25,6 +25,13 @@ interface ServerContextType {
    * and the endpoint is unambiguous (callers can treat null as "primary").
    */
   activeEndpoint: ServerEndpointKind | null;
+  /**
+   * When the current connection was established, for a client-side "session
+   * length" display (#232) — qBittorrent's own server_state has no uptime or
+   * session-duration field, so this tracks the app's own connection instead.
+   * Null while disconnected.
+   */
+  connectedAt: Date | null;
   connectToServer: (server: ServerConfig) => Promise<boolean>;
   disconnect: () => Promise<void>;
   /** Drop the remembered last server (e.g. after it was deleted). */
@@ -44,9 +51,18 @@ const ServerContext = createContext<ServerContextType | undefined>(undefined);
 export function ServerProvider({ children }: { children: ReactNode }) {
   const [currentServer, setCurrentServer] = useState<ServerConfig | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectedAt, setConnectedAt] = useState<Date | null>(null);
   const [activeEndpoint, setActiveEndpoint] = useState<ServerEndpointKind | null>(null);
   const [initLoading, setInitLoading] = useState(true);
   const [reconnecting, setReconnecting] = useState(false);
+
+  // Tracks the current connection's start time from isConnected transitions
+  // rather than from each individual setIsConnected call site, so every
+  // connect path (initial connect, reconnect, checkAndReconnect) is covered
+  // by one source of truth.
+  useEffect(() => {
+    setConnectedAt((prev) => (isConnected ? (prev ?? new Date()) : null));
+  }, [isConnected]);
 
   // Derive the active endpoint from the server config + the endpoint the
   // apiClient ended up on after a (re)connect. Called from each connection
@@ -248,6 +264,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       value={{
         currentServer,
         isConnected,
+        connectedAt,
         isLoading,
         activeEndpoint,
         connectToServer,

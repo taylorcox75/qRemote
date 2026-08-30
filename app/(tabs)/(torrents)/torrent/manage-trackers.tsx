@@ -24,6 +24,7 @@ import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
 import { torrentsApi } from '@/services/api/torrents';
+import { isRealTracker } from '@/utils/trackers';
 import { Tracker } from '@/types/api';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -52,15 +53,7 @@ export default function ManageTrackersScreen() {
     try {
       setLoading(true);
       const trackersData = await torrentsApi.getTorrentTrackers(hash);
-      // Filter out DHT, PEX, LSD entries
-      const realTrackers = trackersData.filter(
-        (t) =>
-          t.url &&
-          !t.url.includes('**') &&
-          !t.url.includes('DHT') &&
-          !t.url.includes('PEX') &&
-          !t.url.includes('LSD'),
-      );
+      const realTrackers = trackersData.filter((t) => isRealTracker(t.url));
       setTrackers(realTrackers);
     } catch (error: unknown) {
       showToast(getErrorMessage(error), 'error');

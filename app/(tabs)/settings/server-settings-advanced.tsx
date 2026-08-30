@@ -12,8 +12,10 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { EmptyState } from '@/components/EmptyState';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { applicationApi } from '@/services/api/application';
 import { ApplicationPreferences } from '@/types/api';
@@ -25,6 +27,7 @@ export default function ServerSettingsAdvancedScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
+  const { isConnected } = useServer();
   const { showToast } = useToast();
 
   const [mailEnabled, setMailEnabled] = useState(false);
@@ -86,8 +89,10 @@ export default function ServerSettingsAdvancedScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadPreferences();
-    }, []),
+      if (isConnected) {
+        loadPreferences();
+      }
+    }, [isConnected]),
   );
 
   const setServerPreference = async <K extends keyof ApplicationPreferences>(
@@ -126,174 +131,62 @@ export default function ServerSettingsAdvancedScreen() {
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {/* Email Notifications */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.settings.emailNotifications').toUpperCase()}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="mail-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    {t('screens.settings.emailNotificationsEnabled')}
-                  </Text>
-                </View>
-                <Switch
-                  value={mailEnabled}
-                  onValueChange={(value) => {
-                    const prev = mailEnabled;
-                    setServerPreference(
-                      'mail_notification_enabled',
-                      value,
-                      () => setMailEnabled(value),
-                      () => setMailEnabled(prev),
-                    );
-                  }}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                  ios_backgroundColor={colors.surfaceOutline}
-                />
-              </View>
-              {mailEnabled && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      {t('screens.settings.emailFromAddress')}
-                    </Text>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text }]}
-                      placeholder={t('screens.settings.emailFromAddressPlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={mailSender}
-                      onChangeText={setMailSender}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onBlur={() => {
-                        const prev = mailSender;
-                        setServerPreference(
-                          'mail_notification_sender',
-                          mailSender,
-                          () => {},
-                          () => setMailSender(prev),
-                        );
-                      }}
-                    />
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      {t('screens.settings.emailToAddress')}
-                    </Text>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text }]}
-                      placeholder={t('screens.settings.emailToAddressPlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={mailRecipient}
-                      onChangeText={setMailRecipient}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onBlur={() => {
-                        const prev = mailRecipient;
-                        setServerPreference(
-                          'mail_notification_email',
-                          mailRecipient,
-                          () => {},
-                          () => setMailRecipient(prev),
-                        );
-                      }}
-                    />
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      {t('screens.settings.emailSmtpServer')}
-                    </Text>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text }]}
-                      placeholder={t('screens.settings.emailSmtpServerPlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={mailSmtp}
-                      onChangeText={setMailSmtp}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onBlur={() => {
-                        const prev = mailSmtp;
-                        setServerPreference(
-                          'mail_notification_smtp',
-                          mailSmtp,
-                          () => {},
-                          () => setMailSmtp(prev),
-                        );
-                      }}
-                    />
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+          {!isConnected ? (
+            <EmptyState subtitle={t('toast.notConnected')} />
+          ) : (
+            <>
+              {/* Email Notifications */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.settings.emailNotifications').toUpperCase()}
+                </Text>
+                <View style={[styles.card, { backgroundColor: colors.surface }]}>
                   <View style={styles.settingRow}>
                     <View style={styles.settingLeft}>
-                      <Ionicons name="shield-checkmark-outline" size={22} color={colors.primary} />
+                      <Ionicons name="mail-outline" size={22} color={colors.primary} />
                       <Text style={[styles.settingLabel, { color: colors.text }]}>
-                        {t('screens.settings.emailEncryption')}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.pickerButton}
-                      onPress={() => setEncryptionPickerVisible(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.pickerText, { color: colors.text }]}>
-                        {encryptionOptions.find((opt) => opt.value === mailEncryption)?.label}
-                      </Text>
-                      <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingLeft}>
-                      <Ionicons name="key-outline" size={22} color={colors.primary} />
-                      <Text style={[styles.settingLabel, { color: colors.text }]}>
-                        {t('screens.settings.emailAuthentication')}
+                        {t('screens.settings.emailNotificationsEnabled')}
                       </Text>
                     </View>
                     <Switch
-                      value={mailAuthEnabled}
+                      value={mailEnabled}
                       onValueChange={(value) => {
-                        const prev = mailAuthEnabled;
+                        const prev = mailEnabled;
                         setServerPreference(
-                          'mail_notification_auth_enabled',
+                          'mail_notification_enabled',
                           value,
-                          () => setMailAuthEnabled(value),
-                          () => setMailAuthEnabled(prev),
+                          () => setMailEnabled(value),
+                          () => setMailEnabled(prev),
                         );
                       }}
                       trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                       ios_backgroundColor={colors.surfaceOutline}
                     />
                   </View>
-                  {mailAuthEnabled && (
+                  {mailEnabled && (
                     <>
                       <View
                         style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
                       />
                       <View style={styles.fieldRow}>
                         <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                          {t('screens.settings.emailUsername')}
+                          {t('screens.settings.emailFromAddress')}
                         </Text>
                         <TextInput
                           style={[styles.fieldInput, { color: colors.text }]}
-                          placeholder={t('screens.settings.emailUsernamePlaceholder')}
+                          placeholder={t('screens.settings.emailFromAddressPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
-                          value={mailUsername}
-                          onChangeText={setMailUsername}
+                          value={mailSender}
+                          onChangeText={setMailSender}
                           autoCapitalize="none"
                           autoCorrect={false}
                           onBlur={() => {
-                            const prev = mailUsername;
+                            const prev = mailSender;
                             setServerPreference(
-                              'mail_notification_username',
-                              mailUsername,
+                              'mail_notification_sender',
+                              mailSender,
                               () => {},
-                              () => setMailUsername(prev),
+                              () => setMailSender(prev),
                             );
                           }}
                         />
@@ -303,140 +196,280 @@ export default function ServerSettingsAdvancedScreen() {
                       />
                       <View style={styles.fieldRow}>
                         <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                          {t('screens.settings.emailPassword')}
+                          {t('screens.settings.emailToAddress')}
                         </Text>
                         <TextInput
                           style={[styles.fieldInput, { color: colors.text }]}
-                          placeholder={t('screens.settings.emailPasswordPlaceholder')}
+                          placeholder={t('screens.settings.emailToAddressPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
-                          value={mailPassword}
-                          onChangeText={setMailPassword}
-                          secureTextEntry
+                          value={mailRecipient}
+                          onChangeText={setMailRecipient}
                           autoCapitalize="none"
                           autoCorrect={false}
                           onBlur={() => {
-                            const prev = mailPassword;
+                            const prev = mailRecipient;
                             setServerPreference(
-                              'mail_notification_password',
-                              mailPassword,
+                              'mail_notification_email',
+                              mailRecipient,
                               () => {},
-                              () => setMailPassword(prev),
+                              () => setMailRecipient(prev),
+                            );
+                          }}
+                        />
+                      </View>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.fieldRow}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                          {t('screens.settings.emailSmtpServer')}
+                        </Text>
+                        <TextInput
+                          style={[styles.fieldInput, { color: colors.text }]}
+                          placeholder={t('screens.settings.emailSmtpServerPlaceholder')}
+                          placeholderTextColor={colors.textSecondary}
+                          value={mailSmtp}
+                          onChangeText={setMailSmtp}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          onBlur={() => {
+                            const prev = mailSmtp;
+                            setServerPreference(
+                              'mail_notification_smtp',
+                              mailSmtp,
+                              () => {},
+                              () => setMailSmtp(prev),
+                            );
+                          }}
+                        />
+                      </View>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.settingRow}>
+                        <View style={styles.settingLeft}>
+                          <Ionicons
+                            name="shield-checkmark-outline"
+                            size={22}
+                            color={colors.primary}
+                          />
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.settings.emailEncryption')}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.pickerButton}
+                          onPress={() => setEncryptionPickerVisible(true)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.pickerText, { color: colors.text }]}>
+                            {encryptionOptions.find((opt) => opt.value === mailEncryption)?.label}
+                          </Text>
+                          <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.settingRow}>
+                        <View style={styles.settingLeft}>
+                          <Ionicons name="key-outline" size={22} color={colors.primary} />
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.settings.emailAuthentication')}
+                          </Text>
+                        </View>
+                        <Switch
+                          value={mailAuthEnabled}
+                          onValueChange={(value) => {
+                            const prev = mailAuthEnabled;
+                            setServerPreference(
+                              'mail_notification_auth_enabled',
+                              value,
+                              () => setMailAuthEnabled(value),
+                              () => setMailAuthEnabled(prev),
+                            );
+                          }}
+                          trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                          ios_backgroundColor={colors.surfaceOutline}
+                        />
+                      </View>
+                      {mailAuthEnabled && (
+                        <>
+                          <View
+                            style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                          />
+                          <View style={styles.fieldRow}>
+                            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                              {t('screens.settings.emailUsername')}
+                            </Text>
+                            <TextInput
+                              style={[styles.fieldInput, { color: colors.text }]}
+                              placeholder={t('screens.settings.emailUsernamePlaceholder')}
+                              placeholderTextColor={colors.textSecondary}
+                              value={mailUsername}
+                              onChangeText={setMailUsername}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              onBlur={() => {
+                                const prev = mailUsername;
+                                setServerPreference(
+                                  'mail_notification_username',
+                                  mailUsername,
+                                  () => {},
+                                  () => setMailUsername(prev),
+                                );
+                              }}
+                            />
+                          </View>
+                          <View
+                            style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                          />
+                          <View style={styles.fieldRow}>
+                            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                              {t('screens.settings.emailPassword')}
+                            </Text>
+                            <TextInput
+                              style={[styles.fieldInput, { color: colors.text }]}
+                              placeholder={t('screens.settings.emailPasswordPlaceholder')}
+                              placeholderTextColor={colors.textSecondary}
+                              value={mailPassword}
+                              onChangeText={setMailPassword}
+                              secureTextEntry
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              onBlur={() => {
+                                const prev = mailPassword;
+                                setServerPreference(
+                                  'mail_notification_password',
+                                  mailPassword,
+                                  () => {},
+                                  () => setMailPassword(prev),
+                                );
+                              }}
+                            />
+                          </View>
+                        </>
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
+
+              {/* Automation */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.settings.automationSection').toUpperCase()}
+                </Text>
+                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingLeft}>
+                      <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                      <Text style={[styles.settingLabel, { color: colors.text }]}>
+                        {t('screens.settings.runOnTorrentAdded')}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={autorunOnAddedEnabled}
+                      onValueChange={(value) => {
+                        const prev = autorunOnAddedEnabled;
+                        setServerPreference(
+                          'autorun_on_torrent_added_enabled',
+                          value,
+                          () => setAutorunOnAddedEnabled(value),
+                          () => setAutorunOnAddedEnabled(prev),
+                        );
+                      }}
+                      trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                      ios_backgroundColor={colors.surfaceOutline}
+                    />
+                  </View>
+                  {autorunOnAddedEnabled && (
+                    <>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.fieldRow}>
+                        <TextInput
+                          style={[styles.fieldInput, { color: colors.text, flex: 1 }]}
+                          placeholder={t('screens.settings.runProgramPlaceholder')}
+                          placeholderTextColor={colors.textSecondary}
+                          value={autorunOnAddedProgram}
+                          onChangeText={setAutorunOnAddedProgram}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          onBlur={() => {
+                            const prev = autorunOnAddedProgram;
+                            setServerPreference(
+                              'autorun_on_torrent_added_program',
+                              autorunOnAddedProgram,
+                              () => {},
+                              () => setAutorunOnAddedProgram(prev),
                             );
                           }}
                         />
                       </View>
                     </>
                   )}
-                </>
-              )}
-            </View>
-          </View>
-
-          {/* Automation */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.settings.automationSection').toUpperCase()}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    {t('screens.settings.runOnTorrentAdded')}
-                  </Text>
-                </View>
-                <Switch
-                  value={autorunOnAddedEnabled}
-                  onValueChange={(value) => {
-                    const prev = autorunOnAddedEnabled;
-                    setServerPreference(
-                      'autorun_on_torrent_added_enabled',
-                      value,
-                      () => setAutorunOnAddedEnabled(value),
-                      () => setAutorunOnAddedEnabled(prev),
-                    );
-                  }}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                  ios_backgroundColor={colors.surfaceOutline}
-                />
-              </View>
-              {autorunOnAddedEnabled && (
-                <>
                   <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text, flex: 1 }]}
-                      placeholder={t('screens.settings.runProgramPlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={autorunOnAddedProgram}
-                      onChangeText={setAutorunOnAddedProgram}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onBlur={() => {
-                        const prev = autorunOnAddedProgram;
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingLeft}>
+                      <Ionicons
+                        name="checkmark-done-circle-outline"
+                        size={22}
+                        color={colors.primary}
+                      />
+                      <Text style={[styles.settingLabel, { color: colors.text }]}>
+                        {t('screens.settings.runOnTorrentFinished')}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={autorunEnabled}
+                      onValueChange={(value) => {
+                        const prev = autorunEnabled;
                         setServerPreference(
-                          'autorun_on_torrent_added_program',
-                          autorunOnAddedProgram,
-                          () => {},
-                          () => setAutorunOnAddedProgram(prev),
+                          'autorun_enabled',
+                          value,
+                          () => setAutorunEnabled(value),
+                          () => setAutorunEnabled(prev),
                         );
                       }}
+                      trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                      ios_backgroundColor={colors.surfaceOutline}
                     />
                   </View>
-                </>
-              )}
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="checkmark-done-circle-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    {t('screens.settings.runOnTorrentFinished')}
-                  </Text>
+                  {autorunEnabled && (
+                    <>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.fieldRow}>
+                        <TextInput
+                          style={[styles.fieldInput, { color: colors.text, flex: 1 }]}
+                          placeholder={t('screens.settings.runProgramPlaceholder')}
+                          placeholderTextColor={colors.textSecondary}
+                          value={autorunProgram}
+                          onChangeText={setAutorunProgram}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          onBlur={() => {
+                            const prev = autorunProgram;
+                            setServerPreference(
+                              'autorun_program',
+                              autorunProgram,
+                              () => {},
+                              () => setAutorunProgram(prev),
+                            );
+                          }}
+                        />
+                      </View>
+                    </>
+                  )}
                 </View>
-                <Switch
-                  value={autorunEnabled}
-                  onValueChange={(value) => {
-                    const prev = autorunEnabled;
-                    setServerPreference(
-                      'autorun_enabled',
-                      value,
-                      () => setAutorunEnabled(value),
-                      () => setAutorunEnabled(prev),
-                    );
-                  }}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                  ios_backgroundColor={colors.surfaceOutline}
-                />
               </View>
-              {autorunEnabled && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text, flex: 1 }]}
-                      placeholder={t('screens.settings.runProgramPlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={autorunProgram}
-                      onChangeText={setAutorunProgram}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onBlur={() => {
-                        const prev = autorunProgram;
-                        setServerPreference(
-                          'autorun_program',
-                          autorunProgram,
-                          () => {},
-                          () => setAutorunProgram(prev),
-                        );
-                      }}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-          </View>
 
-          <View style={{ height: 40 }} />
+              <View style={{ height: 40 }} />
+            </>
+          )}
         </ScrollView>
       </View>
 

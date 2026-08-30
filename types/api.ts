@@ -89,6 +89,86 @@ export interface BuildInfo {
 export type ScanDirOverride = 0 | 1 | string;
 
 export interface ApplicationPreferences {
+  /** Port for incoming connections (#233). Ignored by qBittorrent when random_port is true. */
+  listen_port?: number;
+  /** True if UPnP/NAT-PMP port forwarding is enabled (#233). */
+  upnp?: boolean;
+  /** True if listen_port is randomly selected on each qBittorrent start (#233). */
+  random_port?: boolean;
+  /** Maximum global number of simultaneous connections (#233). */
+  max_connec?: number;
+  /** Maximum number of simultaneous connections per torrent (#233). */
+  max_connec_per_torrent?: number;
+  /** Maximum number of upload slots (#233). */
+  max_uploads?: number;
+  /** Maximum number of upload slots per torrent (#233). */
+  max_uploads_per_torrent?: number;
+  /**
+   * Proxy type (#233). Format is version-dependent — confirmed against
+   * qBittorrent source, since the wiki only documents the legacy shape:
+   * - WebAPI ≥ 2.9.0 (qBit 4.6+, `ApiFeatures.hasModernProxyFields`): a
+   *   STRING enum — 'None' | 'HTTP' | 'SOCKS5' | 'SOCKS4'. Authentication is
+   *   the separate proxy_auth_enabled flag.
+   * - Below that: an INTEGER (Net::ProxyType, confirmed against source, not
+   *   the wiki's stale "-1 disabled" from the 3.x era) — 0 disabled, 1 HTTP,
+   *   2 SOCKS5, 3 HTTP w/ auth, 4 SOCKS5 w/ auth, 5 SOCKS4 (proxy_auth_enabled
+   *   isn't settable there, so auth is encoded into the type itself).
+   */
+  proxy_type?: number | string;
+  /** Proxy IP address or domain name (#233). */
+  proxy_ip?: string;
+  /** Proxy port (#233). */
+  proxy_port?: number;
+  /** True if peer and web seed connections should be proxified (#233). */
+  proxy_peer_connections?: boolean;
+  /**
+   * True if the proxy requires authentication (#233). Settable from WebAPI
+   * ≥ 2.9.0 (qBit 4.6+) — on older servers this key is read-only, and
+   * doesn't apply to SOCKS4 either way.
+   */
+  proxy_auth_enabled?: boolean;
+  /** Username for proxy authentication (#233). */
+  proxy_username?: string;
+  /** Password for proxy authentication (#233). Saved unencrypted by qBittorrent. */
+  proxy_password?: string;
+  /** True if hostname lookups should go through the proxy too (#233, WebAPI ≥ ~2.8.18 / qBit 4.5+). */
+  proxy_hostname_lookup?: boolean;
+  /** True if the proxy is used for BitTorrent traffic (#233, `hasModernProxyFields`; replaces proxy_torrents_only). */
+  proxy_bittorrent?: boolean;
+  /** True if the proxy is used for RSS fetching (#233, `hasModernProxyFields`). */
+  proxy_rss?: boolean;
+  /** True if the proxy is used for general-purpose (non-BitTorrent) traffic (#233, `hasModernProxyFields`). */
+  proxy_misc?: boolean;
+  /**
+   * True if the proxy is only used for torrents (#233). Legacy single toggle,
+   * superseded by proxy_bittorrent/proxy_rss/proxy_misc from WebAPI 2.9.0 on
+   * (`ApiFeatures.hasModernProxyFields`) — only meaningful below that.
+   */
+  proxy_torrents_only?: boolean;
+  /** True if I2P support is enabled (#233, WebAPI ≥ 2.11.0 / qBit 5.0 — `ApiFeatures.supportsI2p`). */
+  i2p_enabled?: boolean;
+  /** I2P SAM bridge address (#233, `supportsI2p`). */
+  i2p_address?: string;
+  /** I2P SAM bridge port (#233, `supportsI2p`). */
+  i2p_port?: number;
+  /** True if I2P mixed mode is enabled, allowing outgoing non-I2P connections (#233, `supportsI2p`). */
+  i2p_mixed_mode?: boolean;
+  /** I2P inbound tunnel quantity (#233, `supportsI2p`). */
+  i2p_inbound_quantity?: number;
+  /** I2P outbound tunnel quantity (#233, `supportsI2p`). */
+  i2p_outbound_quantity?: number;
+  /** I2P inbound tunnel length (#233, `supportsI2p`). */
+  i2p_inbound_length?: number;
+  /** I2P outbound tunnel length (#233, `supportsI2p`). */
+  i2p_outbound_length?: number;
+  /** True if the external IP filter should be enabled (#233). */
+  ip_filter_enabled?: boolean;
+  /** Path to the IP filter file — .dat, .p2p, .p2b supported (#233). */
+  ip_filter_path?: string;
+  /** True if IP filters are applied to trackers (#233). */
+  ip_filter_trackers?: boolean;
+  /** Newline-separated list of manually banned IPs (#233). */
+  banned_IPs?: string;
   save_path?: string;
   auto_tmm_enabled?: boolean;
   torrent_changed_tmm_enabled?: boolean;
@@ -133,6 +213,8 @@ export interface ApplicationPreferences {
   max_seeding_time_enabled?: boolean;
   /** Global seeding time limit, in minutes. */
   max_seeding_time?: number;
+  /** Protocol encryption mode: 0 = Prefer encryption, 1 = Force encryption on, 2 = Force encryption off. */
+  encryption?: number;
   [key: string]: unknown;
 }
 
@@ -278,6 +360,15 @@ export interface ServerState {
   dl_rate_limit: number;
   free_space_on_disk: number;
   global_ratio: string;
+  /**
+   * Public/external IPv4 address as seen by the tracker (confirmed against
+   * source: WebAPI ≥ 2.11.3 / qBit 5.1.0+ — absent on 5.0.x, whose WebAPI
+   * stayed at 2.11.2). No dedicated ApiFeatures gate; the field's own absence
+   * on older servers already falls through cleanly to "row hidden".
+   */
+  last_external_address_v4?: string;
+  /** Public/external IPv6 address as seen by the tracker — see last_external_address_v4. */
+  last_external_address_v6?: string;
   queued_io_jobs: number;
   queueing: boolean;
   read_cache_hits: string;
@@ -348,6 +439,18 @@ export interface TorrentProperties {
   up_speed_avg: number;
   uploaded: number;
   uploaded_session: number;
+  /**
+   * True if the torrent is from a private tracker (qBit 4.6+ / WebAPI ≥ 2.9.0).
+   * Kept by qBittorrent for backward compatibility, always torrent->isPrivate() —
+   * prefer `private` when present. The wiki's field name "isPrivate" doesn't
+   * exist on the wire at any version; confirmed against source.
+   */
+  is_private?: boolean;
+  /**
+   * Same value as `is_private`, but `null` until the torrent has metadata
+   * (qBit 5.0+ / WebAPI ≥ 2.11.0). Prefer this over `is_private` when present.
+   */
+  private?: boolean | null;
 }
 
 export interface Tracker {

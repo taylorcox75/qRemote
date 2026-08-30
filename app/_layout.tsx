@@ -27,6 +27,8 @@ import { logStorage } from '@/services/log-storage';
 import { storageService } from '@/services/storage';
 import { apiClient } from '@/services/api/client';
 import { setHapticsEnabled } from '@/utils/haptics';
+import { setSoundEffectsEnabled, setSoundEffectActions } from '@/utils/sounds';
+import { DEFAULT_PREFERENCES } from '@/types/preferences';
 import {
   setDebugMode as setConnectivityDebugMode,
   clogInfo,
@@ -331,6 +333,8 @@ export default function RootLayout() {
       .getPreferences()
       .then((prefs) => {
         setHapticsEnabled(prefs.hapticFeedback !== false);
+        setSoundEffectsEnabled(prefs.soundEffectsEnabled === true);
+        setSoundEffectActions(prefs.soundEffectActions ?? DEFAULT_PREFERENCES.soundEffectActions);
         setConnectivityDebugMode(prefs.debugMode === true);
         apiClient.updateSettings({
           connectionTimeout: Number(prefs.connectionTimeout) || 10000,

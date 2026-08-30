@@ -73,6 +73,8 @@ const COINCIDENTAL_MATCH_ALLOWLIST = new Set<string>([
   'screens.settings.emailToAddressPlaceholder',
   'screens.settings.emailSmtpServerPlaceholder',
   'screens.settings.excludedFileNamesPlaceholder',
+  'screens.settings.proxyHostPlaceholder',
+  'screens.settings.ipFilterPathPlaceholder',
   // "tracker" is kept as an established loanword (not translated) throughout
   // es/fr, matching how it's used elsewhere in those same locale files
   // (e.g. errors.failedToFetchTracker keeps "tracker" untranslated inline).
@@ -87,6 +89,9 @@ const COINCIDENTAL_MATCH_ALLOWLIST = new Set<string>([
   // "OK" is a universal computing term some translators intentionally keep
   // untranslated (de/fr/ru keep it; es/zh localize it — both are valid).
   'server.testEndpointOk',
+  // "Experimental" is spelled identically in Spanish — a genuine cognate,
+  // not an untranslated leftover.
+  'screens.settings.i2pSection',
 ]);
 
 /**

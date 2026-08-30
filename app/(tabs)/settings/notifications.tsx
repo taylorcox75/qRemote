@@ -14,11 +14,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { storageService } from '@/services/storage';
-import { AppPreferences } from '@/types/preferences';
+import {
+  AppPreferences,
+  SoundActionKey,
+  SoundEffectChoice,
+  DEFAULT_PREFERENCES,
+} from '@/types/preferences';
 import { setHapticsEnabled } from '@/utils/haptics';
+import { setSoundEffectsEnabled, setSoundEffectActions } from '@/utils/sounds';
+import { playUiSound } from '@/modules/ui-sounds';
+import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
+
+const SOUND_ACTION_KEYS: SoundActionKey[] = [
+  'reannounce',
+  'pauseResume',
+  'forceStart',
+  'verifyData',
+  'actionError',
+];
 
 export default function NotificationsSettingsScreen() {
   const { t } = useTranslation();
@@ -27,6 +43,31 @@ export default function NotificationsSettingsScreen() {
 
   const [toastDuration, setToastDuration] = useState<number>(3000);
   const [hapticFeedback, setHapticFeedback] = useState(true);
+  const [soundEffectsEnabled, setSoundEffectsEnabledState] = useState(false);
+  const [soundActions, setSoundActions] = useState<Record<SoundActionKey, SoundEffectChoice>>(
+    DEFAULT_PREFERENCES.soundEffectActions,
+  );
+  const [activeSoundPicker, setActiveSoundPicker] = useState<SoundActionKey | null>(null);
+
+  const soundActionLabels: Record<SoundActionKey, string> = {
+    reannounce: t('screens.settings.soundActionReannounce'),
+    pauseResume: t('screens.settings.soundActionPauseResume'),
+    forceStart: t('screens.settings.soundActionForceStart'),
+    verifyData: t('screens.settings.soundActionVerifyData'),
+    actionError: t('screens.settings.soundActionError'),
+  };
+
+  const soundChoiceOptions: OptionPickerItem[] = [
+    { label: t('screens.settings.soundChoiceNone'), value: 'none', icon: 'volume-mute-outline' },
+    { label: t('screens.settings.soundChoiceTap'), value: 'tap', icon: 'radio-button-on-outline' },
+    {
+      label: t('screens.settings.soundChoiceFanfare'),
+      value: 'reannounce',
+      icon: 'megaphone-outline',
+    },
+    { label: t('screens.settings.soundChoiceChime'), value: 'success', icon: 'sparkles-outline' },
+    { label: t('screens.settings.soundChoiceAlert'), value: 'error', icon: 'warning-outline' },
+  ];
 
   const loadPreferences = async () => {
     try {
@@ -34,6 +75,8 @@ export default function NotificationsSettingsScreen() {
       setToastDuration(Number(prefs.toastDuration) || 3000);
       const hapticPref = prefs.hapticFeedback !== false;
       setHapticFeedback(hapticPref);
+      setSoundEffectsEnabledState(prefs.soundEffectsEnabled === true);
+      setSoundActions(prefs.soundEffectActions ?? DEFAULT_PREFERENCES.soundEffectActions);
     } catch {
       // Use defaults
     }
@@ -132,8 +175,94 @@ export default function NotificationsSettingsScreen() {
               </View>
             </View>
           </View>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.soundEffects').toUpperCase()}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="musical-notes-outline" size={22} color={colors.primary} />
+                  <Text style={[styles.settingLabel, { color: colors.text }]}>
+                    {t('screens.settings.soundEffects')}
+                  </Text>
+                </View>
+                <Switch
+                  value={soundEffectsEnabled}
+                  onValueChange={(value) => {
+                    setSoundEffectsEnabledState(value);
+                    setSoundEffectsEnabled(value);
+                    savePreference('soundEffectsEnabled', value);
+                  }}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                  ios_backgroundColor={colors.surfaceOutline}
+                />
+              </View>
+
+              {soundEffectsEnabled &&
+                SOUND_ACTION_KEYS.map((actionKey) => {
+                  const choice = soundActions[actionKey];
+                  const choiceLabel = soundChoiceOptions.find((opt) => opt.value === choice)?.label;
+                  return (
+                    <View key={actionKey}>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.settingRow}>
+                        <View style={styles.settingLeft}>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {soundActionLabels[actionKey]}
+                          </Text>
+                        </View>
+                        <View style={styles.soundActionControls}>
+                          <TouchableOpacity
+                            style={styles.pickerButton}
+                            onPress={() => setActiveSoundPicker(actionKey)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.pickerText, { color: colors.text }]}>
+                              {choiceLabel}
+                            </Text>
+                            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => choice !== 'none' && playUiSound(choice)}
+                            disabled={choice === 'none'}
+                            activeOpacity={0.7}
+                            accessibilityLabel={t('screens.settings.previewSound')}
+                          >
+                            <Ionicons
+                              name="play-circle-outline"
+                              size={24}
+                              color={choice === 'none' ? colors.textSecondary : colors.primary}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+            </View>
+          </View>
         </ScrollView>
       </View>
+
+      <OptionPicker
+        visible={activeSoundPicker !== null}
+        title={activeSoundPicker ? soundActionLabels[activeSoundPicker] : ''}
+        options={soundChoiceOptions}
+        selectedValue={activeSoundPicker ? soundActions[activeSoundPicker] : undefined}
+        onSelect={(value) => {
+          if (!activeSoundPicker) return;
+          const nextActions = { ...soundActions, [activeSoundPicker]: value as SoundEffectChoice };
+          setSoundActions(nextActions);
+          setSoundEffectActions(nextActions);
+          savePreference('soundEffectActions', nextActions);
+          setActiveSoundPicker(null);
+        }}
+        onClose={() => setActiveSoundPicker(null)}
+      />
     </>
   );
 }
@@ -182,4 +311,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     backgroundColor: 'transparent',
   },
+  pickerButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  pickerText: { fontSize: 16, fontWeight: '500' },
+  soundActionControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 });

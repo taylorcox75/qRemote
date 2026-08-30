@@ -37,6 +37,27 @@ export interface ApiFeatures {
   supportsGetDirectoryContent: boolean;
   /** search/results includes a pubDate field per result, for sort-by-date (WebAPI ≥ 2.11.0 / qBit 5.0). */
   supportsSearchPubDate: boolean;
+  /**
+   * torrents/properties response includes a private-tracker field — confirmed
+   * against source, not the wiki, which documents a field named "isPrivate"
+   * that doesn't actually exist at any version. The real keys are "is_private"
+   * (WebAPI ≥ 2.9.0 / qBit 4.6+, always torrent->isPrivate()) and "private"
+   * (WebAPI ≥ 2.11.0 / qBit 5.0+, same value but null until metadata arrives).
+   * This flag covers the older, always-present "is_private" key.
+   */
+  hasIsPrivate: boolean;
+  /**
+   * app/preferences' proxy_type is a string enum ("None"/"HTTP"/"SOCKS5"/"SOCKS4")
+   * and proxy_bittorrent/proxy_rss/proxy_misc/proxy_hostname_lookup exist
+   * (WebAPI ≥ 2.9.0 / qBit 4.6.0+, confirmed against qBittorrent source, not the
+   * wiki — the wiki's app/preferences page never documents this rename or I2P).
+   * Below this, proxy_type is an integer (-1/1/2/3/4/5, with 3/4 meaning "with
+   * authentication" since proxy_auth_enabled isn't settable pre-4.6) and the
+   * single proxy_torrents_only flag stands in for the three granular toggles.
+   */
+  hasModernProxyFields: boolean;
+  /** I2P settings (i2p_enabled etc.) exist in app/preferences (WebAPI ≥ 2.11.0 / qBit 5.0). */
+  supportsI2p: boolean;
 }
 
 export function parseApiVersion(raw: string): ParsedVersion | null {
@@ -69,6 +90,9 @@ const V5_FEATURES: ApiFeatures = {
   useStoppedAddParam: true,
   supportsGetDirectoryContent: true,
   supportsSearchPubDate: true,
+  hasIsPrivate: true,
+  hasModernProxyFields: true,
+  supportsI2p: true,
 };
 
 export function getApiFeatures(apiVersion: string | null): ApiFeatures {
@@ -88,6 +112,9 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     useStoppedAddParam: isV5,
     supportsGetDirectoryContent: isV5,
     supportsSearchPubDate: isV5,
+    hasIsPrivate: gte(v, 2, 9),
+    hasModernProxyFields: gte(v, 2, 9),
+    supportsI2p: isV5,
   };
 }
 
