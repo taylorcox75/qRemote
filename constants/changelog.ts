@@ -27,6 +27,16 @@ export const CHANGELOG: ChangelogRelease[] = [
         items: [
           'The disconnected screen now shows an animated ship instead of an icon',
           'Added optional sound effects for torrent actions, customizable per action in Settings',
+          'Torrent detail now shows DHT, PeX, LSD, encryption, and private-torrent status',
+          'Transfer tab now shows the server’s external IP and how long you’ve been connected',
+          'Added a Connection settings screen for listening port, connection limits, proxy server, IP filtering, and I2P',
+        ],
+      },
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Fixed the tracker count on the torrent detail screen showing double the real number',
+          'Fixed the proxy server type not actually saving to the server',
         ],
       },
     ],
