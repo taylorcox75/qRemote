@@ -128,6 +128,17 @@ export default function TransferScreen() {
 
   const [settingLimit, setSettingLimit] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [infoTooltip, setInfoTooltip] = useState<'connectedFor' | 'externalIp' | null>(null);
+
+  // Connected-For needs its own steady 1s clock — driving it off the data
+  // poll's refetch cadence instead made the displayed seconds jump irregularly
+  // (2s, then 3s, ...) rather than counting up one at a time.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!connectedAt) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [connectedAt]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Global seeding limits (server preferences)
@@ -685,6 +696,47 @@ export default function TransferScreen() {
           onClose={() => setMaxRatioActPickerVisible(false)}
         />
 
+        <Modal
+          visible={infoTooltip !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setInfoTooltip(null)}
+        >
+          <TouchableOpacity
+            style={styles.tooltipOverlay}
+            activeOpacity={1}
+            onPress={() => setInfoTooltip(null)}
+          >
+            <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+              <View style={styles.tooltipHeader}>
+                <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+                <Text style={[styles.tooltipTitle, { color: colors.text }]}>
+                  {infoTooltip &&
+                    t(
+                      infoTooltip === 'connectedFor'
+                        ? 'screens.transfer.connectedFor'
+                        : 'screens.transfer.externalIp',
+                    )}
+                </Text>
+              </View>
+              <Text style={[styles.tooltipText, { color: colors.text }]}>
+                {infoTooltip &&
+                  t(
+                    infoTooltip === 'connectedFor'
+                      ? 'screens.transfer.connectedForTooltip'
+                      : 'screens.transfer.externalIpTooltip',
+                  )}
+              </Text>
+              <TouchableOpacity
+                style={[styles.tooltipButton, { backgroundColor: colors.primary }]}
+                onPress={() => setInfoTooltip(null)}
+              >
+                <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -1112,11 +1164,22 @@ export default function TransferScreen() {
                     <Text style={[styles.rowLabel, { color: colors.text }]}>
                       {t('screens.transfer.connectedFor')}
                     </Text>
-                    <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                      {formatTime(
-                        Math.max(1, Math.floor((Date.now() - connectedAt.getTime()) / 1000)),
-                      )}
-                    </Text>
+                    <View style={styles.valueWithInfo}>
+                      <TouchableOpacity
+                        onPress={() => setInfoTooltip('connectedFor')}
+                        accessibilityLabel={t('common.moreInfo')}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons
+                          name="information-circle-outline"
+                          size={16}
+                          color={colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {formatTime(Math.max(1, Math.floor((now - connectedAt.getTime()) / 1000)))}
+                      </Text>
+                    </View>
                   </View>
                 </>
               )}
@@ -1236,9 +1299,22 @@ export default function TransferScreen() {
                     <Text style={[styles.rowLabel, { color: colors.text }]}>
                       {t('screens.transfer.externalIp')}
                     </Text>
-                    <Text style={[styles.rowValue, { color: colors.textSecondary }]} selectable>
-                      {externalIp}
-                    </Text>
+                    <View style={styles.valueWithInfo}>
+                      <TouchableOpacity
+                        onPress={() => setInfoTooltip('externalIp')}
+                        accessibilityLabel={t('common.moreInfo')}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons
+                          name="information-circle-outline"
+                          size={16}
+                          color={colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]} selectable>
+                        {externalIp}
+                      </Text>
+                    </View>
                   </View>
                 </>
               )}
@@ -1461,4 +1537,38 @@ const styles = StyleSheet.create({
   modalButtonLabel: {
     ...typography.bodySemibold,
   },
+  valueWithInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  tooltipOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  tooltipContainer: {
+    borderRadius: 16,
+    padding: 20,
+    maxWidth: 400,
+    width: '100%',
+  },
+  tooltipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  tooltipTitle: { fontSize: 20, fontWeight: '600' },
+  tooltipText: { fontSize: 15, lineHeight: 22 },
+  tooltipButton: {
+    marginTop: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  tooltipButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 });

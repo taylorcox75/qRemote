@@ -316,15 +316,19 @@ Complete map. Trust it.
 | `app/server/add.tsx`, `app/server/[id].tsx` | Server add/edit, presented as native modal sheets → they mount `<ModalToast/>` locally. |
 
 **Settings sub-screens** — hub order on `index` is Servers → Appearance → Server
-Settings → RSS → Search Plugins → Advanced, then What's New → About, then
-Community links (source / issues / Beer Fund / Rate). Notifications & Feedback is
-nested under `advanced`, not on the hub.
+Settings → Connection → RSS → Search Plugins → Advanced, then What's New →
+About, then Community links (source / issues / Beer Fund / Rate). Notifications
+& Feedback is nested under `advanced`, not on the hub.
 
 `about` · `add-torrent-dialogue` · `advanced` · `appearance` ·
-`category-tag-colors` · `detailed-card-fields` · `notifications` · `rss` ·
+`category-tag-colors` ·
+`connection` (qBit-side network settings, live from `app/preferences` — listen
+port, random port, UPnP, global/per-torrent connection and upload-slot limits,
+proxy server incl. auth, IP filtering/banned IPs — #233. I2P is not exposed by
+the WebUI API, so it isn't here) ·
+`detailed-card-fields` · `notifications` · `rss` ·
 `rss-rules` · `rss-rule` · `servers` (list + secret-free export/import) ·
-`server-settings-advanced` (qBit email/automation/network — listen port,
-random port, UPnP — #233) · `theme` ·
+`server-settings-advanced` (qBit email/automation) · `theme` ·
 `torrent-defaults` (nav label is **Server Settings**; route path unchanged) ·
 `whats-new`
 

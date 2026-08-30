@@ -73,6 +73,8 @@ const COINCIDENTAL_MATCH_ALLOWLIST = new Set<string>([
   'screens.settings.emailToAddressPlaceholder',
   'screens.settings.emailSmtpServerPlaceholder',
   'screens.settings.excludedFileNamesPlaceholder',
+  'screens.settings.proxyHostPlaceholder',
+  'screens.settings.ipFilterPathPlaceholder',
   // "tracker" is kept as an established loanword (not translated) throughout
   // es/fr, matching how it's used elsewhere in those same locale files
   // (e.g. errors.failedToFetchTracker keeps "tracker" untranslated inline).

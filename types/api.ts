@@ -95,6 +95,41 @@ export interface ApplicationPreferences {
   upnp?: boolean;
   /** True if listen_port is randomly selected on each qBittorrent start (#233). */
   random_port?: boolean;
+  /** Maximum global number of simultaneous connections (#233). */
+  max_connec?: number;
+  /** Maximum number of simultaneous connections per torrent (#233). */
+  max_connec_per_torrent?: number;
+  /** Maximum number of upload slots (#233). */
+  max_uploads?: number;
+  /** Maximum number of upload slots per torrent (#233). */
+  max_uploads_per_torrent?: number;
+  /**
+   * Proxy type (#233): -1 disabled, 1 HTTP, 2 SOCKS5, 3 HTTP w/ auth,
+   * 4 SOCKS5 w/ auth, 5 SOCKS4.
+   */
+  proxy_type?: number;
+  /** Proxy IP address or domain name (#233). */
+  proxy_ip?: string;
+  /** Proxy port (#233). */
+  proxy_port?: number;
+  /** True if peer and web seed connections should be proxified (#233). */
+  proxy_peer_connections?: boolean;
+  /** True if the proxy requires authentication; doesn't apply to SOCKS4 (#233). */
+  proxy_auth_enabled?: boolean;
+  /** Username for proxy authentication (#233). */
+  proxy_username?: string;
+  /** Password for proxy authentication (#233). Saved unencrypted by qBittorrent. */
+  proxy_password?: string;
+  /** True if the proxy is only used for torrents, i.e. not for RSS/general use (#233). */
+  proxy_torrents_only?: boolean;
+  /** True if the external IP filter should be enabled (#233). */
+  ip_filter_enabled?: boolean;
+  /** Path to the IP filter file — .dat, .p2p, .p2b supported (#233). */
+  ip_filter_path?: string;
+  /** True if IP filters are applied to trackers (#233). */
+  ip_filter_trackers?: boolean;
+  /** Newline-separated list of manually banned IPs (#233). */
+  banned_IPs?: string;
   save_path?: string;
   auto_tmm_enabled?: boolean;
   torrent_changed_tmm_enabled?: boolean;

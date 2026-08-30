@@ -324,6 +324,12 @@ export default function SettingsScreen() {
               colors={colors}
             />
             <NavRow
+              icon="git-network-outline"
+              label={t('screens.settings.connectionSettings')}
+              onPress={() => router.push('/settings/connection')}
+              colors={colors}
+            />
+            <NavRow
               icon="logo-rss"
               label={t('screens.settings.rss')}
               onPress={() => router.push('/settings/rss')}
