@@ -13,7 +13,9 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
+import { useServer } from '@/context/ServerContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { EmptyState } from '@/components/EmptyState';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { InputModal } from '@/components/InputModal';
 import { applicationApi } from '@/services/api/application';
@@ -43,6 +45,7 @@ export default function ConnectionSettingsScreen() {
   const router = useRouter();
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
+  const { isConnected } = useServer();
 
   // Peer connection protocol
   const [listenPort, setListenPort] = useState('');
@@ -136,8 +139,10 @@ export default function ConnectionSettingsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadPreferences();
-    }, []),
+      if (isConnected) {
+        loadPreferences();
+      }
+    }, [isConnected]),
   );
 
   const setPref = async <K extends keyof ApplicationPreferences>(
@@ -228,450 +233,456 @@ export default function ConnectionSettingsScreen() {
           <View style={styles.headerButton} />
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {/* Peer Connection Protocol */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.settings.peerConnectionProtocol').toUpperCase()}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="shuffle-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    {t('screens.settings.randomPort')}
-                  </Text>
-                </View>
-                <Switch
-                  value={randomPort}
-                  onValueChange={(value) => {
-                    const prev = randomPort;
-                    setPref(
-                      'random_port',
-                      value,
-                      () => setRandomPort(value),
-                      () => setRandomPort(prev),
-                    );
-                  }}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                  ios_backgroundColor={colors.surfaceOutline}
-                />
-              </View>
-              {!randomPort && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      {t('screens.settings.listeningPort')}
+        {!isConnected ? (
+          <EmptyState subtitle={t('toast.notConnected')} />
+        ) : (
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+            {/* Peer Connection Protocol */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {t('screens.settings.peerConnectionProtocol').toUpperCase()}
+              </Text>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingLeft}>
+                    <Ionicons name="shuffle-outline" size={22} color={colors.primary} />
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.randomPort')}
                     </Text>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text }]}
-                      placeholder="6881"
-                      placeholderTextColor={colors.textSecondary}
-                      keyboardType="number-pad"
-                      {...numericField(
-                        listenPort,
-                        setListenPort,
-                        lastSavedListenPort,
-                        setLastSavedListenPort,
-                        'listen_port',
-                        { min: 1, max: 65535 },
-                      )}
-                    />
                   </View>
-                </>
-              )}
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="swap-horizontal-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    {t('screens.settings.upnpEnabled')}
-                  </Text>
+                  <Switch
+                    value={randomPort}
+                    onValueChange={(value) => {
+                      const prev = randomPort;
+                      setPref(
+                        'random_port',
+                        value,
+                        () => setRandomPort(value),
+                        () => setRandomPort(prev),
+                      );
+                    }}
+                    trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                    ios_backgroundColor={colors.surfaceOutline}
+                  />
                 </View>
-                <Switch
-                  value={upnpEnabled}
-                  onValueChange={(value) => {
-                    const prev = upnpEnabled;
-                    setPref(
-                      'upnp',
-                      value,
-                      () => setUpnpEnabled(value),
-                      () => setUpnpEnabled(prev),
-                    );
-                  }}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                  ios_backgroundColor={colors.surfaceOutline}
-                />
+                {!randomPort && (
+                  <>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.fieldRow}>
+                      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                        {t('screens.settings.listeningPort')}
+                      </Text>
+                      <TextInput
+                        style={[styles.fieldInput, { color: colors.text }]}
+                        placeholder="6881"
+                        placeholderTextColor={colors.textSecondary}
+                        keyboardType="number-pad"
+                        {...numericField(
+                          listenPort,
+                          setListenPort,
+                          lastSavedListenPort,
+                          setLastSavedListenPort,
+                          'listen_port',
+                          { min: 1, max: 65535 },
+                        )}
+                      />
+                    </View>
+                  </>
+                )}
+                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                <View style={styles.settingRow}>
+                  <View style={styles.settingLeft}>
+                    <Ionicons name="swap-horizontal-outline" size={22} color={colors.primary} />
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.upnpEnabled')}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={upnpEnabled}
+                    onValueChange={(value) => {
+                      const prev = upnpEnabled;
+                      setPref(
+                        'upnp',
+                        value,
+                        () => setUpnpEnabled(value),
+                        () => setUpnpEnabled(prev),
+                      );
+                    }}
+                    trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                    ios_backgroundColor={colors.surfaceOutline}
+                  />
+                </View>
               </View>
             </View>
-          </View>
 
-          {/* Connection Limits */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.settings.connectionLimits').toUpperCase()}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              {CONNECTION_LIMIT_KEYS.map((key, index) => {
-                const value = limits[key];
-                const isLimited = value !== -1;
-                return (
-                  <View key={key}>
-                    {index > 0 && (
-                      <View
-                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+            {/* Connection Limits */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {t('screens.settings.connectionLimits').toUpperCase()}
+              </Text>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                {CONNECTION_LIMIT_KEYS.map((key, index) => {
+                  const value = limits[key];
+                  const isLimited = value !== -1;
+                  return (
+                    <View key={key}>
+                      {index > 0 && (
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                      )}
+                      <View style={styles.settingRow}>
+                        <View style={styles.settingLeft}>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {limitLabels[key]}
+                          </Text>
+                        </View>
+                        <Switch
+                          value={isLimited}
+                          onValueChange={(enabled) => {
+                            if (enabled) {
+                              setActiveLimitModal(key);
+                            } else {
+                              saveLimit(key, -1);
+                            }
+                          }}
+                          trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                          ios_backgroundColor={colors.surfaceOutline}
+                        />
+                      </View>
+                      {isLimited && (
+                        <>
+                          <View
+                            style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                          />
+                          <TouchableOpacity
+                            style={styles.settingRow}
+                            onPress={() => setActiveLimitModal(key)}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.settingLeft}>
+                              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                                {t('screens.settings.limitValue')}
+                              </Text>
+                            </View>
+                            <View style={styles.pickerButton}>
+                              <Text style={[styles.pickerText, { color: colors.text }]}>
+                                {value}
+                              </Text>
+                              <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                            </View>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Proxy Server */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {t('screens.settings.proxyServer').toUpperCase()}
+              </Text>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingLeft}>
+                    <Ionicons name="git-network-outline" size={22} color={colors.primary} />
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.proxyType')}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.pickerButton}
+                    onPress={() => setProxyTypePickerVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.pickerText, { color: colors.text }]}>
+                      {proxyTypeOptions.find((opt) => opt.value === String(proxyType))?.label}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                {proxyEnabled && (
+                  <>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.fieldRow}>
+                      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                        {t('screens.settings.proxyHost')}
+                      </Text>
+                      <TextInput
+                        style={[styles.fieldInput, { color: colors.text }]}
+                        placeholder={t('screens.settings.proxyHostPlaceholder')}
+                        placeholderTextColor={colors.textSecondary}
+                        value={proxyIp}
+                        onChangeText={setProxyIp}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        onBlur={() => {
+                          const prev = proxyIp;
+                          setPref(
+                            'proxy_ip',
+                            proxyIp,
+                            () => {},
+                            () => setProxyIp(prev),
+                          );
+                        }}
                       />
-                    )}
+                    </View>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.fieldRow}>
+                      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                        {t('screens.settings.proxyPort')}
+                      </Text>
+                      <TextInput
+                        style={[styles.fieldInput, { color: colors.text }]}
+                        placeholder="8080"
+                        placeholderTextColor={colors.textSecondary}
+                        keyboardType="number-pad"
+                        value={proxyPort}
+                        onChangeText={setProxyPort}
+                        onBlur={() => {
+                          const num = parseInt(proxyPort, 10);
+                          if (isNaN(num) || num < 1 || num > 65535) {
+                            showToast(t('errors.invalidPort'), 'error');
+                            return;
+                          }
+                          setPref(
+                            'proxy_port',
+                            num,
+                            () => {},
+                            () => {},
+                          );
+                        }}
+                      />
+                    </View>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                     <View style={styles.settingRow}>
                       <View style={styles.settingLeft}>
                         <Text style={[styles.settingLabel, { color: colors.text }]}>
-                          {limitLabels[key]}
+                          {t('screens.settings.proxyPeerConnections')}
                         </Text>
                       </View>
                       <Switch
-                        value={isLimited}
-                        onValueChange={(enabled) => {
-                          if (enabled) {
-                            setActiveLimitModal(key);
-                          } else {
-                            saveLimit(key, -1);
-                          }
+                        value={proxyPeerConnections}
+                        onValueChange={(value) => {
+                          const prev = proxyPeerConnections;
+                          setPref(
+                            'proxy_peer_connections',
+                            value,
+                            () => setProxyPeerConnections(value),
+                            () => setProxyPeerConnections(prev),
+                          );
                         }}
                         trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                         ios_backgroundColor={colors.surfaceOutline}
                       />
                     </View>
-                    {isLimited && (
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>
+                          {t('screens.settings.proxyTorrentsOnly')}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={proxyTorrentsOnly}
+                        onValueChange={(value) => {
+                          const prev = proxyTorrentsOnly;
+                          setPref(
+                            'proxy_torrents_only',
+                            value,
+                            () => setProxyTorrentsOnly(value),
+                            () => setProxyTorrentsOnly(prev),
+                          );
+                        }}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                        ios_backgroundColor={colors.surfaceOutline}
+                      />
+                    </View>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>
+                          {t('screens.settings.proxyAuthEnabled')}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={proxyAuthEnabled}
+                        onValueChange={(value) => {
+                          const prev = proxyAuthEnabled;
+                          setPref(
+                            'proxy_auth_enabled',
+                            value,
+                            () => setProxyAuthEnabled(value),
+                            () => setProxyAuthEnabled(prev),
+                          );
+                        }}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                        ios_backgroundColor={colors.surfaceOutline}
+                      />
+                    </View>
+                    {proxyAuthEnabled && (
                       <>
                         <View
                           style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
                         />
-                        <TouchableOpacity
-                          style={styles.settingRow}
-                          onPress={() => setActiveLimitModal(key)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.settingLeft}>
-                            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                              {t('screens.settings.limitValue')}
-                            </Text>
-                          </View>
-                          <View style={styles.pickerButton}>
-                            <Text style={[styles.pickerText, { color: colors.text }]}>{value}</Text>
-                            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                          </View>
-                        </TouchableOpacity>
+                        <View style={styles.fieldRow}>
+                          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                            {t('screens.settings.proxyUsername')}
+                          </Text>
+                          <TextInput
+                            style={[styles.fieldInput, { color: colors.text }]}
+                            placeholderTextColor={colors.textSecondary}
+                            value={proxyUsername}
+                            onChangeText={setProxyUsername}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            onBlur={() => {
+                              const prev = proxyUsername;
+                              setPref(
+                                'proxy_username',
+                                proxyUsername,
+                                () => {},
+                                () => setProxyUsername(prev),
+                              );
+                            }}
+                          />
+                        </View>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <View style={styles.fieldRow}>
+                          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                            {t('screens.settings.proxyPassword')}
+                          </Text>
+                          <TextInput
+                            style={[styles.fieldInput, { color: colors.text }]}
+                            placeholderTextColor={colors.textSecondary}
+                            value={proxyPassword}
+                            onChangeText={setProxyPassword}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            secureTextEntry
+                            onBlur={() => {
+                              const prev = proxyPassword;
+                              setPref(
+                                'proxy_password',
+                                proxyPassword,
+                                () => {},
+                                () => setProxyPassword(prev),
+                              );
+                            }}
+                          />
+                        </View>
+                        <Text style={[styles.hintText, { color: colors.textSecondary }]}>
+                          {t('screens.settings.proxyPasswordUnencryptedHint')}
+                        </Text>
                       </>
                     )}
-                  </View>
-                );
-              })}
+                  </>
+                )}
+              </View>
             </View>
-          </View>
 
-          {/* Proxy Server */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.settings.proxyServer').toUpperCase()}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="git-network-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    {t('screens.settings.proxyType')}
-                  </Text>
+            {/* IP Filtering */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                {t('screens.settings.ipFiltering').toUpperCase()}
+              </Text>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingLeft}>
+                    <Ionicons name="funnel-outline" size={22} color={colors.primary} />
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.ipFilterEnabled')}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={ipFilterEnabled}
+                    onValueChange={(value) => {
+                      const prev = ipFilterEnabled;
+                      setPref(
+                        'ip_filter_enabled',
+                        value,
+                        () => setIpFilterEnabled(value),
+                        () => setIpFilterEnabled(prev),
+                      );
+                    }}
+                    trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                    ios_backgroundColor={colors.surfaceOutline}
+                  />
                 </View>
+                {ipFilterEnabled && (
+                  <>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.fieldRow}>
+                      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                        {t('screens.settings.ipFilterPath')}
+                      </Text>
+                      <TextInput
+                        style={[styles.fieldInput, { color: colors.text }]}
+                        placeholder={t('screens.settings.ipFilterPathPlaceholder')}
+                        placeholderTextColor={colors.textSecondary}
+                        value={ipFilterPath}
+                        onChangeText={setIpFilterPath}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        onBlur={() => {
+                          const prev = ipFilterPath;
+                          setPref(
+                            'ip_filter_path',
+                            ipFilterPath,
+                            () => {},
+                            () => setIpFilterPath(prev),
+                          );
+                        }}
+                      />
+                    </View>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>
+                          {t('screens.settings.ipFilterTrackers')}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={ipFilterTrackers}
+                        onValueChange={(value) => {
+                          const prev = ipFilterTrackers;
+                          setPref(
+                            'ip_filter_trackers',
+                            value,
+                            () => setIpFilterTrackers(value),
+                            () => setIpFilterTrackers(prev),
+                          );
+                        }}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                        ios_backgroundColor={colors.surfaceOutline}
+                      />
+                    </View>
+                  </>
+                )}
+                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                 <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => setProxyTypePickerVisible(true)}
+                  style={styles.settingRow}
+                  onPress={() => setBannedIPsModalVisible(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.pickerText, { color: colors.text }]}>
-                    {proxyTypeOptions.find((opt) => opt.value === String(proxyType))?.label}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                  <View style={styles.settingLeft}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.bannedIPs')}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
-              {proxyEnabled && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      {t('screens.settings.proxyHost')}
-                    </Text>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text }]}
-                      placeholder={t('screens.settings.proxyHostPlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={proxyIp}
-                      onChangeText={setProxyIp}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onBlur={() => {
-                        const prev = proxyIp;
-                        setPref(
-                          'proxy_ip',
-                          proxyIp,
-                          () => {},
-                          () => setProxyIp(prev),
-                        );
-                      }}
-                    />
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      {t('screens.settings.proxyPort')}
-                    </Text>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text }]}
-                      placeholder="8080"
-                      placeholderTextColor={colors.textSecondary}
-                      keyboardType="number-pad"
-                      value={proxyPort}
-                      onChangeText={setProxyPort}
-                      onBlur={() => {
-                        const num = parseInt(proxyPort, 10);
-                        if (isNaN(num) || num < 1 || num > 65535) {
-                          showToast(t('errors.invalidPort'), 'error');
-                          return;
-                        }
-                        setPref(
-                          'proxy_port',
-                          num,
-                          () => {},
-                          () => {},
-                        );
-                      }}
-                    />
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingLeft}>
-                      <Text style={[styles.settingLabel, { color: colors.text }]}>
-                        {t('screens.settings.proxyPeerConnections')}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={proxyPeerConnections}
-                      onValueChange={(value) => {
-                        const prev = proxyPeerConnections;
-                        setPref(
-                          'proxy_peer_connections',
-                          value,
-                          () => setProxyPeerConnections(value),
-                          () => setProxyPeerConnections(prev),
-                        );
-                      }}
-                      trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                      ios_backgroundColor={colors.surfaceOutline}
-                    />
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingLeft}>
-                      <Text style={[styles.settingLabel, { color: colors.text }]}>
-                        {t('screens.settings.proxyTorrentsOnly')}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={proxyTorrentsOnly}
-                      onValueChange={(value) => {
-                        const prev = proxyTorrentsOnly;
-                        setPref(
-                          'proxy_torrents_only',
-                          value,
-                          () => setProxyTorrentsOnly(value),
-                          () => setProxyTorrentsOnly(prev),
-                        );
-                      }}
-                      trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                      ios_backgroundColor={colors.surfaceOutline}
-                    />
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingLeft}>
-                      <Text style={[styles.settingLabel, { color: colors.text }]}>
-                        {t('screens.settings.proxyAuthEnabled')}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={proxyAuthEnabled}
-                      onValueChange={(value) => {
-                        const prev = proxyAuthEnabled;
-                        setPref(
-                          'proxy_auth_enabled',
-                          value,
-                          () => setProxyAuthEnabled(value),
-                          () => setProxyAuthEnabled(prev),
-                        );
-                      }}
-                      trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                      ios_backgroundColor={colors.surfaceOutline}
-                    />
-                  </View>
-                  {proxyAuthEnabled && (
-                    <>
-                      <View
-                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
-                      />
-                      <View style={styles.fieldRow}>
-                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                          {t('screens.settings.proxyUsername')}
-                        </Text>
-                        <TextInput
-                          style={[styles.fieldInput, { color: colors.text }]}
-                          placeholderTextColor={colors.textSecondary}
-                          value={proxyUsername}
-                          onChangeText={setProxyUsername}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          onBlur={() => {
-                            const prev = proxyUsername;
-                            setPref(
-                              'proxy_username',
-                              proxyUsername,
-                              () => {},
-                              () => setProxyUsername(prev),
-                            );
-                          }}
-                        />
-                      </View>
-                      <View
-                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
-                      />
-                      <View style={styles.fieldRow}>
-                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                          {t('screens.settings.proxyPassword')}
-                        </Text>
-                        <TextInput
-                          style={[styles.fieldInput, { color: colors.text }]}
-                          placeholderTextColor={colors.textSecondary}
-                          value={proxyPassword}
-                          onChangeText={setProxyPassword}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          secureTextEntry
-                          onBlur={() => {
-                            const prev = proxyPassword;
-                            setPref(
-                              'proxy_password',
-                              proxyPassword,
-                              () => {},
-                              () => setProxyPassword(prev),
-                            );
-                          }}
-                        />
-                      </View>
-                      <Text style={[styles.hintText, { color: colors.textSecondary }]}>
-                        {t('screens.settings.proxyPasswordUnencryptedHint')}
-                      </Text>
-                    </>
-                  )}
-                </>
-              )}
             </View>
-          </View>
 
-          {/* IP Filtering */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.settings.ipFiltering').toUpperCase()}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="funnel-outline" size={22} color={colors.primary} />
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    {t('screens.settings.ipFilterEnabled')}
-                  </Text>
-                </View>
-                <Switch
-                  value={ipFilterEnabled}
-                  onValueChange={(value) => {
-                    const prev = ipFilterEnabled;
-                    setPref(
-                      'ip_filter_enabled',
-                      value,
-                      () => setIpFilterEnabled(value),
-                      () => setIpFilterEnabled(prev),
-                    );
-                  }}
-                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                  ios_backgroundColor={colors.surfaceOutline}
-                />
-              </View>
-              {ipFilterEnabled && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.fieldRow}>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                      {t('screens.settings.ipFilterPath')}
-                    </Text>
-                    <TextInput
-                      style={[styles.fieldInput, { color: colors.text }]}
-                      placeholder={t('screens.settings.ipFilterPathPlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={ipFilterPath}
-                      onChangeText={setIpFilterPath}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onBlur={() => {
-                        const prev = ipFilterPath;
-                        setPref(
-                          'ip_filter_path',
-                          ipFilterPath,
-                          () => {},
-                          () => setIpFilterPath(prev),
-                        );
-                      }}
-                    />
-                  </View>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingLeft}>
-                      <Text style={[styles.settingLabel, { color: colors.text }]}>
-                        {t('screens.settings.ipFilterTrackers')}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={ipFilterTrackers}
-                      onValueChange={(value) => {
-                        const prev = ipFilterTrackers;
-                        setPref(
-                          'ip_filter_trackers',
-                          value,
-                          () => setIpFilterTrackers(value),
-                          () => setIpFilterTrackers(prev),
-                        );
-                      }}
-                      trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                      ios_backgroundColor={colors.surfaceOutline}
-                    />
-                  </View>
-                </>
-              )}
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => setBannedIPsModalVisible(true)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.settingLeft}>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    {t('screens.settings.bannedIPs')}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        )}
       </View>
 
       <InputModal
