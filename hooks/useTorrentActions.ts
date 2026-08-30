@@ -7,6 +7,7 @@ import { useTorrents } from '@/context/TorrentContext';
 import { useTransfer } from '@/context/TransferContext';
 import { useToast } from '@/context/ToastContext';
 import { apiClient } from '@/services/api/client';
+import { sounds } from '@/utils/sounds';
 import * as Clipboard from 'expo-clipboard';
 import { ActionMenuItemDef } from '@/components/ActionMenu';
 
@@ -56,8 +57,10 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       } else {
         await torrentsApi.pauseTorrents([torrent.hash]);
       }
+      sounds.pauseResume();
       sync().catch(() => {});
     } catch (error: unknown) {
+      sounds.actionError();
       const msg = error instanceof Error ? error.message : '';
       showToast(
         msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')),
@@ -75,8 +78,10 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     setLoading(true);
     try {
       await torrentsApi.setForceStart([torrent.hash], true);
+      sounds.forceStart();
       sync().catch(() => {});
     } catch (error: unknown) {
+      sounds.actionError();
       const msg = error instanceof Error ? error.message : '';
       showToast(msg || t('errors.generic'), 'error');
     } finally {
@@ -88,9 +93,11 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     if (!torrent) return;
     try {
       await torrentsApi.recheckTorrents([torrent.hash]);
+      sounds.verifyData();
       showToast(t('toast.verificationStarted'), 'success');
       sync().catch(() => {});
     } catch (error: unknown) {
+      sounds.actionError();
       const msg = error instanceof Error ? error.message : '';
       showToast(msg || t('errors.failedToVerify'), 'error');
     }
@@ -100,8 +107,10 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
     if (!torrent) return;
     try {
       await torrentsApi.reannounceTorrents([torrent.hash]);
+      sounds.reannounce();
       showToast(t('toast.reannounceSent'), 'success');
     } catch (error: unknown) {
+      sounds.actionError();
       const msg = error instanceof Error ? error.message : '';
       showToast(msg || t('errors.failedToConnect'), 'error');
     }

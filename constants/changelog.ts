@@ -19,6 +19,19 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.41',
+    date: '2026-08-30',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'The disconnected screen now shows an animated ship instead of an icon',
+          'Added optional sound effects for torrent actions, customizable per action in Settings',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.40',
     date: '2026-08-23',
     sections: [

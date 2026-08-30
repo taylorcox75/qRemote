@@ -441,6 +441,14 @@ Thin objects over `apiClient`.
   challenge (Basic Auth, client cert) falls through to default handling
   unchanged. iOS only; requires `npm run xcode` to pick up (new native code,
   not just a generated-file patch).
+- **`ui-sounds`** — local Expo module (Swift) backing in-app sound effects
+  (#231). Plays short bundled `.wav` tones via `AudioServicesPlaySystemSound`
+  (System Sound Services), chosen over `expo-audio` because it respects the
+  ringer/silent switch and never takes over or ducks the audio session. Tones
+  live in `modules/ui-sounds/assets/*.wav`, bundled into the app via the
+  podspec's `s.resources` and loaded through `Bundle.main` at play time.
+  JS entry point exposes `playUiSound(name)`; `utils/sounds.ts` is the actual
+  call site apps should use. iOS only; requires `npm run xcode` to pick up.
 
 ### Hooks (`hooks/`)
 

@@ -1,14 +1,8 @@
 import { ColorTheme } from '@/services/color-theme-manager';
+import { UiSoundName } from '@/modules/ui-sounds';
 
 export type SortField =
-  | 'name'
-  | 'size'
-  | 'progress'
-  | 'dlspeed'
-  | 'upspeed'
-  | 'ratio'
-  | 'priority'
-  | 'added_on';
+  'name' | 'size' | 'progress' | 'dlspeed' | 'upspeed' | 'ratio' | 'priority' | 'added_on';
 
 export type ExpandedCardField =
   | 'dlSpeed'
@@ -51,6 +45,13 @@ export type AddTorrentDialogField =
   | 'cookie';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
+
+/** Torrent actions that can each be assigned their own sound effect (#231). */
+export type SoundActionKey =
+  'reannounce' | 'pauseResume' | 'forceStart' | 'verifyData' | 'actionError';
+
+/** A sound assigned to an action, or 'none' to play nothing for it. */
+export type SoundEffectChoice = UiSoundName | 'none';
 
 export interface AppPreferences {
   /**
@@ -117,6 +118,12 @@ export interface AppPreferences {
 
   /** Whether haptic feedback is enabled */
   hapticFeedback: boolean;
+
+  /** Master on/off for in-app sound effects (#231) */
+  soundEffectsEnabled: boolean;
+
+  /** Which sound plays for each action, when soundEffectsEnabled is true */
+  soundEffectActions: Record<SoundActionKey, SoundEffectChoice>;
 
   /** Auto-connect to the last used server on app launch */
   autoConnectLastServer: boolean;
@@ -195,6 +202,14 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultPriority: 0,
   toastDuration: 3000,
   hapticFeedback: true,
+  soundEffectsEnabled: false,
+  soundEffectActions: {
+    reannounce: 'reannounce',
+    pauseResume: 'tap',
+    forceStart: 'tap',
+    verifyData: 'success',
+    actionError: 'error',
+  },
   autoConnectLastServer: true,
   connectionTimeout: 10000,
   apiTimeout: 30000,
