@@ -37,6 +37,7 @@ export const CHANGELOG: ChangelogRelease[] = [
         items: [
           'Fixed the tracker count on the torrent detail screen showing double the real number',
           'Fixed the proxy server type not actually saving to the server',
+          'Fixed Email Notifications & Automation settings silently showing blank/off values instead of a "not connected" state when disconnected',
         ],
       },
     ],
