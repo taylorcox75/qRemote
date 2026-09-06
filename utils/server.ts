@@ -12,20 +12,31 @@ export const AVATAR_PALETTE = [
   '#FFD60A',
 ];
 
+/** Deterministic name-derived color, used for categories and tags (not servers —
+ * a server's color must never shift on its own; see DEFAULT_AVATAR_COLOR). */
 export function avatarColor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
+/**
+ * A server's badge color when it hasn't picked one — always this fixed
+ * swatch, never derived from the server's name. Deriving from the name meant
+ * the badge (and the Add/Edit preview) visibly changed color as the user
+ * typed or edited the name, which reads as the app changing the color on its
+ * own — the color should only ever change when the user picks one.
+ */
+export const DEFAULT_AVATAR_COLOR = AVATAR_PALETTE[0];
+
 /** The icon a server's badge renders — its own choice, or DEFAULT_SERVER_ICON. */
 export function getServerIcon(server: Pick<ServerConfig, 'icon'>): ServerIconName {
   return (server.icon as ServerIconName) || DEFAULT_SERVER_ICON;
 }
 
-/** The color a server's badge renders in — its own choice, or the name-derived fallback. */
-export function getServerIconColor(server: Pick<ServerConfig, 'name' | 'iconColor'>): string {
-  return server.iconColor || avatarColor(server.name);
+/** The color a server's badge renders in — its own choice, or the fixed default. */
+export function getServerIconColor(server: Pick<ServerConfig, 'iconColor'>): string {
+  return server.iconColor || DEFAULT_AVATAR_COLOR;
 }
 
 export function serverAddress(server: ServerConfig): string {

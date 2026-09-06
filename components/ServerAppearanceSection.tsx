@@ -16,11 +16,10 @@ import { IconPicker } from '@/components/IconPicker';
 import { ColorPicker } from '@/components/ColorPicker';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
-import { AVATAR_PALETTE, avatarColor } from '@/utils/server';
+import { AVATAR_PALETTE, DEFAULT_AVATAR_COLOR } from '@/utils/server';
 import { DEFAULT_SERVER_ICON, ServerIconName } from '@/constants/serverIcons';
 
 interface ServerAppearanceSectionProps {
-  name: string;
   icon: string;
   iconColor: string;
   onIconChange: (icon: string) => void;
@@ -28,7 +27,6 @@ interface ServerAppearanceSectionProps {
 }
 
 export function ServerAppearanceSection({
-  name,
   icon,
   iconColor,
   onIconChange,
@@ -40,7 +38,10 @@ export function ServerAppearanceSection({
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
 
   const effectiveIcon = (icon || DEFAULT_SERVER_ICON) as ServerIconName;
-  const effectiveColor = iconColor || avatarColor(name || 'qRemote');
+  // Never derived from the server's name — the badge color must only ever
+  // change when the user explicitly picks one, not as a side effect of
+  // typing or editing the name.
+  const effectiveColor = iconColor || DEFAULT_AVATAR_COLOR;
 
   return (
     <View style={styles.section}>

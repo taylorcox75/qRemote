@@ -41,6 +41,7 @@ import * as Clipboard from 'expo-clipboard';
 import { APP_VERSION } from '@/utils/version';
 import { getErrorMessage } from '@/utils/error';
 import { ServerAuthMode, getServerAuthMode, applyServerAuthMode } from '@/utils/authMode';
+import { withAlpha } from '@/utils/color';
 import {
   CustomHeaderPair,
   sanitizeCustomHeaders,
@@ -672,7 +673,6 @@ App Version: ${APP_VERSION}`;
           </View>
 
           <ServerAppearanceSection
-            name={name}
             icon={icon}
             iconColor={iconColor}
             onIconChange={setIcon}
@@ -1110,10 +1110,10 @@ App Version: ${APP_VERSION}`;
                           {
                             backgroundColor:
                               w.type === 'error'
-                                ? colors.error + '20'
+                                ? withAlpha(colors.error, 0.125)
                                 : w.type === 'warning'
-                                  ? colors.warning + '20'
-                                  : colors.primary + '15',
+                                  ? withAlpha(colors.warning, 0.125)
+                                  : withAlpha(colors.primary, 0.08),
                           },
                         ]}
                       >
@@ -1144,7 +1144,10 @@ App Version: ${APP_VERSION}`;
 
                 {debugInfo.warnings.length === 0 && (
                   <View
-                    style={[styles.debugWarningRow, { backgroundColor: colors.success + '20' }]}
+                    style={[
+                      styles.debugWarningRow,
+                      { backgroundColor: withAlpha(colors.success, 0.125) },
+                    ]}
                   >
                     <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                     <Text style={[styles.debugWarningText, { color: colors.text }]}>

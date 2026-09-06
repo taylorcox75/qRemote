@@ -80,7 +80,7 @@ export default function TorrentsScreen() {
     initialLoadComplete,
   } = useTorrents();
   const { graceError, isPendingError } = useGracefulError(error);
-  const { isConnected, isLoading: serverIsLoading, connectToServer } = useServer();
+  const { isConnected, isLoading: serverIsLoading, isConnecting, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
   const params = useLocalSearchParams<{
     magnet?: string | string[];
@@ -1137,6 +1137,7 @@ export default function TorrentsScreen() {
   // immediately dismissed. The modal already re-syncs on its own once
   // submitted, so there's no correctness reason to interrupt it.
   if (
+    (isConnecting && !showAddModal) ||
     (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) ||
     (initialLoadComplete && !showAddModal && (isRecoveringFromBackground || isPendingError))
   ) {
@@ -1595,78 +1596,111 @@ export default function TorrentsScreen() {
 
               let swipeRef: Swipeable | null = null;
 
-              const renderRightActions = (
-                _progress: Animated.AnimatedInterpolation<number>,
-                dragX: Animated.AnimatedInterpolation<number>,
-              ) => {
-                const pauseScale = dragX.interpolate({
-                  inputRange: [-120, -60, 0],
-                  outputRange: [0.6, 1, 0],
+              const swipeRadius =
+                cardViewMode === 'compact' ? borderRadius.medium : borderRadius.large;
+
+              // Canonical RNGH swipe-action pattern (matches the library's own
+              // examples): each action's content slides in with `progress`
+              // (0 = closed, 1 = fully open) from an offset equal to its
+              // distance from the reveal edge, arriving at 0 exactly when the
+              // row is fully open. This ties the visible reveal directly to
+              // the same drag progress RNGH uses to show/hide the panel,
+              // instead of guessing a scale timing against the card's
+              // position — which drifted out of sync and let pause and
+              // delete both flash before settling.
+              const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
+                const pauseTranslate = progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [160, 0],
                   extrapolate: 'clamp',
                 });
-                const deleteScale = dragX.interpolate({
-                  inputRange: [-240, -160, -120],
-                  outputRange: [1, 0.8, 0],
+                const deleteTranslate = progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [80, 0],
                   extrapolate: 'clamp',
                 });
 
                 return (
-                  <View style={styles.swipeActionsRight}>
-                    <RectButton
+                  <View
+                    style={[
+                      styles.swipeActionsRight,
+                      {
+                        borderTopRightRadius: swipeRadius,
+                        borderBottomRightRadius: swipeRadius,
+                      },
+                    ]}
+                  >
+                    <Animated.View
                       style={[
-                        styles.swipeAction,
-                        { backgroundColor: itemIsPaused ? colors.success : colors.warning },
+                        styles.swipeActionFlex,
+                        { transform: [{ translateX: pauseTranslate }] },
                       ]}
-                      onPress={() => handleSwipePauseResume(item, swipeRef)}
                     >
-                      <Animated.View
-                        style={[styles.swipeActionContent, { transform: [{ scale: pauseScale }] }]}
+                      <RectButton
+                        style={[
+                          styles.swipeAction,
+                          { backgroundColor: itemIsPaused ? colors.success : colors.warning },
+                        ]}
+                        onPress={() => handleSwipePauseResume(item, swipeRef)}
                       >
-                        <Ionicons
-                          name={itemIsPaused ? 'play' : 'pause'}
-                          size={22}
-                          color="#FFFFFF"
-                        />
-                        <Text style={styles.swipeActionText}>
-                          {itemIsPaused ? t('actions.resume') : t('actions.pause')}
-                        </Text>
-                      </Animated.View>
-                    </RectButton>
-                    <RectButton
-                      style={[styles.swipeAction, { backgroundColor: colors.error }]}
-                      onPress={() => handleSwipeDelete(item, swipeRef)}
+                        <View style={styles.swipeActionContent}>
+                          <Ionicons
+                            name={itemIsPaused ? 'play' : 'pause'}
+                            size={22}
+                            color="#FFFFFF"
+                          />
+                          <Text style={styles.swipeActionText}>
+                            {itemIsPaused ? t('actions.resume') : t('actions.pause')}
+                          </Text>
+                        </View>
+                      </RectButton>
+                    </Animated.View>
+                    <Animated.View
+                      style={[
+                        styles.swipeActionFlex,
+                        { transform: [{ translateX: deleteTranslate }] },
+                      ]}
                     >
-                      <Animated.View
-                        style={[styles.swipeActionContent, { transform: [{ scale: deleteScale }] }]}
+                      <RectButton
+                        style={[styles.swipeAction, { backgroundColor: colors.error }]}
+                        onPress={() => handleSwipeDelete(item, swipeRef)}
                       >
-                        <Ionicons name="trash" size={22} color="#FFFFFF" />
-                        <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
-                      </Animated.View>
-                    </RectButton>
+                        <View style={styles.swipeActionContent}>
+                          <Ionicons name="trash" size={22} color="#FFFFFF" />
+                          <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
+                        </View>
+                      </RectButton>
+                    </Animated.View>
                   </View>
                 );
               };
 
-              const renderLeftActions = (
-                _progress: Animated.AnimatedInterpolation<number>,
-                dragX: Animated.AnimatedInterpolation<number>,
-              ) => {
-                const scale = dragX.interpolate({
-                  inputRange: [0, 60, 120],
-                  outputRange: [0, 1, 1],
+              const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>) => {
+                const translate = progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-80, 0],
                   extrapolate: 'clamp',
                 });
 
                 return (
-                  <RectButton
-                    style={[styles.swipeActionLeft, { backgroundColor: colors.primary }]}
-                    onPress={() => handleSwipeForceStart(item, swipeRef)}
+                  <Animated.View
+                    style={[
+                      styles.swipeActionLeft,
+                      { backgroundColor: colors.primary },
+                      { borderTopLeftRadius: swipeRadius, borderBottomLeftRadius: swipeRadius },
+                      { transform: [{ translateX: translate }] },
+                    ]}
                   >
-                    <Animated.View style={[styles.swipeActionContent, { transform: [{ scale }] }]}>
-                      <Ionicons name="flash" size={22} color="#FFFFFF" />
-                      <Text style={styles.swipeActionText}>{t('actions.forceStart')}</Text>
-                    </Animated.View>
-                  </RectButton>
+                    <RectButton
+                      style={styles.swipeActionFill}
+                      onPress={() => handleSwipeForceStart(item, swipeRef)}
+                    >
+                      <View style={styles.swipeActionContent}>
+                        <Ionicons name="flash" size={22} color="#FFFFFF" />
+                        <Text style={styles.swipeActionText}>{t('actions.forceStart')}</Text>
+                      </View>
+                    </RectButton>
+                  </Animated.View>
                 );
               };
 
@@ -2507,16 +2541,26 @@ const styles = StyleSheet.create({
   swipeActionsRight: {
     flexDirection: 'row',
     width: 160,
+    marginVertical: spacing.xs,
+    overflow: 'hidden',
   },
   swipeAction: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  swipeActionLeft: {
-    width: 80,
+  swipeActionFlex: {
+    flex: 1,
+  },
+  swipeActionFill: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  swipeActionLeft: {
+    width: 80,
+    marginVertical: spacing.xs,
+    overflow: 'hidden',
   },
   swipeActionContent: {
     alignItems: 'center',

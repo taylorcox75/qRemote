@@ -19,6 +19,24 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.42',
+    date: '2026-09-06',
+    sections: [
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Fixed swipe actions not lining up with the torrent card',
+          'Fixed the delete icon not appearing until a row is swiped most of the way',
+          'Fixed the Connect button being unreadable after a connection error',
+          'Fixed the torrent list briefly showing "No Torrents" while still connecting',
+          'Fixed an authentication error when switching between servers',
+          "Fixed a server's badge color changing on every keystroke while typing its name",
+          'Feature flagged sound effects',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.41',
     date: '2026-08-30',
     sections: [

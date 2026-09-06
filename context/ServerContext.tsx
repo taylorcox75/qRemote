@@ -20,6 +20,12 @@ interface ServerContextType {
   isConnected: boolean;
   isLoading: boolean;
   /**
+   * True only while a connect attempt (connectToServer) is in flight — unlike
+   * `isLoading`, this excludes disconnects, so a disconnect still falls
+   * through to the "Not Connected" screen instead of showing the skeleton.
+   */
+  isConnecting: boolean;
+  /**
    * Which endpoint of `currentServer` is currently active in `apiClient`.
    * Null when not connected or when the server has no fallback configured
    * and the endpoint is unambiguous (callers can treat null as "primary").
@@ -140,8 +146,44 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     autoConnect();
   }, [refreshActiveEndpoint]);
 
+  // Set while a connect is in flight so reconnect()/checkAndReconnect() can
+  // no-op instead of racing it.
+  const connectInFlightRef = useRef(false);
+
+  // Multiple independent consumers (TorrentContext, useSearchJob) each call
+  // checkAndReconnect on their own AppState foreground listener, all firing
+  // off the same OS event. Without de-duping, two concurrent reconnect
+  // attempts race each other's login/cookie-refresh flow — one can see the
+  // other's in-progress state as a failure, flipping isConnected to false for
+  // a moment even though the session was actually fine, which then trips
+  // anything that clears state on disconnect (e.g. an active search job).
+  // Sharing one in-flight promise across callers avoids that — but only for
+  // callers reconnecting the *same* server: the promise is keyed by server id
+  // so a caller that shows up after a server switch starts its own run
+  // instead of being handed a stale promise whose closure would report
+  // isConnected/activeEndpoint for the wrong server.
+  const checkAndReconnectPromiseRef = useRef<{ id: string; promise: Promise<boolean> } | null>(
+    null,
+  );
+
   const connectMutation = useMutation({
     mutationFn: (server: ServerConfig) => ServerManager.connectToServer(server),
+    onMutate: () => {
+      connectInFlightRef.current = true;
+      // Drop the current connection state (and with it, every consumer's
+      // poll — e.g. TorrentContext's rid-sync) *before* the new server's
+      // login runs. Otherwise the old server's poll keeps firing through the
+      // switch, apiClient.setServer(newServer) clears its cookie for the new
+      // host, and a poll tick lands unauthenticated and 403s — which the
+      // shared 403 handler treats as a real auth failure and wipes the new
+      // server's just-issued session cookie right out from under it.
+      setIsConnected(false);
+      setActiveEndpoint(null);
+      // A reconnect/checkAndReconnect that was already in flight when this
+      // connect started is now stale — let it finish harmlessly rather than
+      // having it clobber the connect we're about to run.
+      checkAndReconnectPromiseRef.current = null;
+    },
     onSuccess: (success: boolean, server: ServerConfig) => {
       if (success) {
         setCurrentServer(server);
@@ -155,6 +197,9 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     onError: () => {
       setIsConnected(false);
       setActiveEndpoint(null);
+    },
+    onSettled: () => {
+      connectInFlightRef.current = false;
     },
   });
 
@@ -175,6 +220,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       // Keep currentServer so Settings can show it with a Connect action.
       setIsConnected(false);
       setActiveEndpoint(null);
+      checkAndReconnectPromiseRef.current = null;
     },
   });
 
@@ -186,6 +232,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     setCurrentServer(null);
     setIsConnected(false);
     setActiveEndpoint(null);
+    checkAndReconnectPromiseRef.current = null;
   }, []);
 
   const updateCurrentServer = useCallback((server: ServerConfig) => {
@@ -193,9 +240,15 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reconnect = useCallback(async (): Promise<boolean> => {
+    // A connect is already establishing a session — let it finish rather
+    // than racing it with a second login against the same or a different
+    // server (see connectMutation.onMutate for the failure this avoids).
+    if (connectInFlightRef.current) {
+      return false;
+    }
     try {
       setReconnecting(true);
-      const success = await ServerManager.reconnect();
+      const success = await ServerManager.reconnect(currentServer ?? undefined);
       setIsConnected(success);
       refreshActiveEndpoint(currentServer, success);
       return success;
@@ -208,19 +261,14 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     }
   }, [currentServer, refreshActiveEndpoint]);
 
-  // Multiple independent consumers (TorrentContext, useSearchJob) each call
-  // this on their own AppState foreground listener, all firing off the same
-  // OS event. Without de-duping, two concurrent reconnect attempts race each
-  // other's login/cookie-refresh flow — one can see the other's in-progress
-  // state as a failure, flipping isConnected to false for a moment even
-  // though the session was actually fine, which then trips anything that
-  // clears state on disconnect (e.g. an active search job). Sharing one
-  // in-flight promise across all callers avoids that entirely.
-  const checkAndReconnectPromiseRef = useRef<Promise<boolean> | null>(null);
-
   const checkAndReconnect = useCallback((): Promise<boolean> => {
-    if (checkAndReconnectPromiseRef.current) {
-      return checkAndReconnectPromiseRef.current;
+    if (connectInFlightRef.current) {
+      return Promise.resolve(false);
+    }
+
+    const cached = checkAndReconnectPromiseRef.current;
+    if (cached && cached.id === currentServer?.id) {
+      return cached.promise;
     }
 
     const run = async (): Promise<boolean> => {
@@ -231,7 +279,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const success = await ServerManager.reconnect();
+        const success = await ServerManager.reconnect(currentServer);
         setIsConnected(success);
         refreshActiveEndpoint(currentServer, success);
         return success;
@@ -249,15 +297,21 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const id = currentServer?.id;
     const promise = run().finally(() => {
-      checkAndReconnectPromiseRef.current = null;
+      if (checkAndReconnectPromiseRef.current?.id === id) {
+        checkAndReconnectPromiseRef.current = null;
+      }
     });
-    checkAndReconnectPromiseRef.current = promise;
+    if (id) {
+      checkAndReconnectPromiseRef.current = { id, promise };
+    }
     return promise;
   }, [currentServer, refreshActiveEndpoint]);
 
   const isLoading =
     initLoading || connectMutation.isPending || disconnectMutation.isPending || reconnecting;
+  const isConnecting = connectMutation.isPending || reconnecting;
 
   return (
     <ServerContext.Provider
@@ -266,6 +320,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         isConnected,
         connectedAt,
         isLoading,
+        isConnecting,
         activeEndpoint,
         connectToServer,
         disconnect,
