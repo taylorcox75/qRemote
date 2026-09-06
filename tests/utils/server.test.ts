@@ -1,6 +1,7 @@
 import {
   AVATAR_PALETTE,
   avatarColor,
+  DEFAULT_AVATAR_COLOR,
   serverAddress,
   hasFallback,
   resolveServerEndpoint,
@@ -203,8 +204,11 @@ describe('getServerIcon', () => {
 });
 
 describe('getServerIconColor', () => {
-  it('falls back to avatarColor(name) when unset', () => {
-    expect(getServerIconColor(baseServer)).toBe(avatarColor(baseServer.name));
+  it('falls back to the fixed default color when unset, regardless of name', () => {
+    expect(getServerIconColor(baseServer)).toBe(DEFAULT_AVATAR_COLOR);
+    expect(
+      getServerIconColor({ ...baseServer, name: 'a completely different name' } as ServerConfig),
+    ).toBe(DEFAULT_AVATAR_COLOR);
   });
 
   it('returns the server-chosen color when set', () => {

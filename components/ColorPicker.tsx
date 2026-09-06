@@ -118,13 +118,28 @@ export function ColorPicker({ visible, currentColor, onColorChange, onClose }: C
             <Text style={[styles.title, { color: colors.text }]}>
               {t('screens.settings.pickAColor')}
             </Text>
-            <TouchableOpacity
-              onPress={handleClose}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel={t('common.close')}
-            >
-              <Ionicons name="close" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              {/* Every selection already applies immediately (see
+                  handlePresetSelect/handleHexInput) — this button doesn't
+                  change that. It just gives closing a dedicated, deliberate
+                  affordance instead of only the X, since a bare X reads as
+                  "cancel" even though it keeps whatever was picked. */}
+              <TouchableOpacity
+                onPress={handleClose}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={[styles.saveButtonText, { color: colors.primary }]}>
+                  {t('common.save')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleClose}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel={t('common.close')}
+              >
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Current color preview */}
@@ -240,6 +255,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  saveButtonText: {
+    ...typography.bodySemibold,
   },
   title: {
     ...typography.h3,

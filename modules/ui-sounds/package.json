@@ -1,9 +1,0 @@
-{
-  "name": "ui-sounds",
-  "version": "1.0.0",
-  "description": "Local Expo module: plays short bundled UI tones through iOS System Sound Services (AudioServicesPlaySystemSound) for in-app sound effects.",
-  "main": "index.ts",
-  "types": "index.ts",
-  "license": "MIT",
-  "private": true
-}

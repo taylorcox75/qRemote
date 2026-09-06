@@ -390,7 +390,9 @@ All PascalCase function components taking a `…Props` interface.
   (+ `SkeletonTorrentCard`), `PieceMap`, `ServerIconBadge` (per-server tinted
   icon badge — `ServerConfig.icon`/`iconColor` via `utils/server.ts`
   `getServerIcon`/`getServerIconColor`, falling back to a default icon and
-  `avatarColor(name)`), `ServerAppearanceSection` (icon + badge-color editor
+  `DEFAULT_AVATAR_COLOR` — never the name-derived `avatarColor`, so a badge's
+  color only ever changes when the user picks one), `ServerAppearanceSection`
+  (icon + badge-color editor
   used by both `app/server/add.tsx` and `app/server/[id].tsx` — quick
   `AVATAR_PALETTE` swatches plus a "custom color" swatch that opens the full
   `ColorPicker`), `CustomHeadersSection` (per-server custom HTTP header
@@ -450,14 +452,6 @@ Thin objects over `apiClient`.
   challenge (Basic Auth, client cert) falls through to default handling
   unchanged. iOS only; requires `npm run xcode` to pick up (new native code,
   not just a generated-file patch).
-- **`ui-sounds`** — local Expo module (Swift) backing in-app sound effects
-  (#231). Plays short bundled `.wav` tones via `AudioServicesPlaySystemSound`
-  (System Sound Services), chosen over `expo-audio` because it respects the
-  ringer/silent switch and never takes over or ducks the audio session. Tones
-  live in `modules/ui-sounds/assets/*.wav`, bundled into the app via the
-  podspec's `s.resources` and loaded through `Bundle.main` at play time.
-  JS entry point exposes `playUiSound(name)`; `utils/sounds.ts` is the actual
-  call site apps should use. iOS only; requires `npm run xcode` to pick up.
 
 ### Hooks (`hooks/`)
 
@@ -502,8 +496,10 @@ endpoint applies one `tags` value per request) · `server-export.ts` (strips
 `version.ts` (`APP_VERSION`) · `trackers.ts` (`isRealTracker` — filters
 qBittorrent's DHT/PeX/LSD pseudo-tracker entries out of `torrents/trackers`;
 `getPseudoTrackerStates` reads each channel's on/off/working state from those
-same entries — #234, #236) · `sounds.ts` (global enabled flag + per-action
-sound assignment, mirrors `haptics.ts` — #231).
+same entries — #234, #236) · `color.ts` (`withAlpha` —
+applies an alpha channel to a hex/rgb/rgba color string; `colors.*` defaults
+mix formats, so appending a hex alpha suffix silently no-ops on an rgba()
+base).
 
 ### Types, constants, i18n
 

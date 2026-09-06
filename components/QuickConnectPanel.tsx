@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ServerConfig } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
 import { getServerIconColor, serverAddress } from '@/utils/server';
+import { withAlpha } from '@/utils/color';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { shadows } from '@/constants/shadows';
@@ -150,8 +151,8 @@ export function QuickConnectPanel({
                       style={[
                         styles.connectPill,
                         {
-                          backgroundColor: errMsg ? colors.error + '18' : color + '18',
-                          borderColor: errMsg ? colors.error + '40' : color + '40',
+                          backgroundColor: withAlpha(errMsg ? colors.error : color, 0.09),
+                          borderColor: withAlpha(errMsg ? colors.error : color, 0.25),
                         },
                       ]}
                     >

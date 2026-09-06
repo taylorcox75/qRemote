@@ -355,14 +355,18 @@ export class ServerManager {
   }
 
   /**
-   * Reconnect to current server (if one is set)
+   * Reconnect to a server. Prefer passing `server` explicitly — storage's
+   * "current server" isn't written until after a connect's login succeeds
+   * (see connectToEndpoint below), so during a connect-in-progress window it
+   * can still name the *previous* server, and a reconnect firing in that
+   * window would otherwise log back into the wrong one.
    */
-  static async reconnect(): Promise<boolean> {
-    const currentServer = await storageService.getCurrentServer();
-    if (!currentServer) {
+  static async reconnect(server?: ServerConfig): Promise<boolean> {
+    const target = server ?? (await storageService.getCurrentServer());
+    if (!target) {
       return false;
     }
-    return await this.connectToServer(currentServer);
+    return await this.connectToServer(target);
   }
 
   /**
