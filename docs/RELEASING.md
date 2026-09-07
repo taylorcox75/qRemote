@@ -23,24 +23,20 @@ speculative entries, no "while I'm here" additions, no entry per edit. When the
 user does ask, edit it as the **last step before the commit** — one pass covering
 everything in the session, not one entry per change.
 
-### Which entry to edit depends on the branch
+### Which entry to edit
 
-The app ships OTA through EAS Update, so the two branches track versions
-differently:
+All work now branches off `main` and returns by PR (`develop` and `preview` are
+retired — see AGENTS.md). Versions in the changelog are therefore always real;
+there is no `.TESTFLIGHT` placeholder flow any more.
 
-- **On `develop`** — the top entry is a placeholder whose version ends in
-  `.TESTFLIGHT` (`X.Y.TESTFLIGHT` — the `X.Y` moves with the release train, so
-  match on the **suffix**, never on a specific number). **Append** your line to
-  the matching section in that entry. Don't create an entry, don't renumber the
-  placeholder, don't invent a version. If the top entry *isn't* a `.TESTFLIGHT`
-  placeholder, stop and ask which entry to use rather than guessing.
-- **On `main`** — versions are real. Compare `package.json`'s `version` to
-  `CHANGELOG[0].version`:
-  - **They DIFFER** (changelog ahead) → an unreleased entry is already open.
-    **Append** to it. Don't create an entry, don't change its version.
-  - **They're EQUAL** → the top entry is already released. Add ONE new entry at
-    the top with a **patch bump only** and today's date. **Don't touch
-    `package.json`** — the release process owns the app version.
+Compare `package.json`'s `version` to `CHANGELOG[0].version`:
+
+- **They DIFFER** (changelog ahead) → an unreleased entry is already open.
+  **Append** to it. Don't create an entry, don't change its version.
+- **They're EQUAL** → the top entry is already released. Add ONE new entry at
+  the top with a **patch bump only** and today's date. **Don't touch
+  `package.json`** — the release process owns the app version, unless the user
+  explicitly asks you to bump it.
 
 Patch numbers are always two digits (`3.8.05`, never `3.8.5`).
 

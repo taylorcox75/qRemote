@@ -59,6 +59,14 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
   const [isRecoveringState, setIsRecoveringState] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
+  // Tracks the most recent successful sync timestamp, and the value it was
+  // at when a recovery window started — so the "clear recovery" effect below
+  // can tell a genuinely new fetch apart from the stale timestamp that was
+  // already sitting there when recovery began. See that effect for why this
+  // distinction matters.
+  const dataUpdatedAtRef = useRef(0);
+  const recoveryBaselineRef = useRef(0);
+
   const syncQueryFn = useCallback(async (): Promise<SyncState> => {
     const version = syncVersionRef.current;
     const currentRid = ridRef.current;
@@ -169,12 +177,34 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
     }
   }, [dataUpdatedAt, initialLoadComplete]);
 
-  // Clear recovery state after successful fetch
+  // Keep the latest successful-sync timestamp available to the AppState
+  // handler (below) without adding it to that effect's own deps.
   useEffect(() => {
-    if (dataUpdatedAt > 0 && isRecoveringState) {
+    dataUpdatedAtRef.current = dataUpdatedAt;
+  }, [dataUpdatedAt]);
+
+  // Clear recovery state only once a fetch *newer than the one already
+  // sitting there when recovery started* actually lands. `dataUpdatedAt`
+  // being merely nonzero isn't enough — it holds the last successful sync
+  // from potentially hours ago, so comparing against 0 cleared this on the
+  // very next render, before the foreground re-sync had a chance to run.
+  useEffect(() => {
+    if (isRecoveringState && dataUpdatedAt > recoveryBaselineRef.current) {
       setIsRecoveringState(false);
     }
   }, [dataUpdatedAt, isRecoveringState]);
+
+  // Safety cap: if a foreground recovery never resolves (e.g. the refetch
+  // below got deduped into an already-in-flight poll and no new data ever
+  // lands), don't leave the user on a skeleton forever. The normal exits are
+  // already bounded — a successful re-sync clears the flag above, and a
+  // genuine failure flips isConnected false, which routes to the
+  // not-connected screen regardless.
+  useEffect(() => {
+    if (!isRecoveringState) return undefined;
+    const timeout = setTimeout(() => setIsRecoveringState(false), 15000);
+    return () => clearTimeout(timeout);
+  }, [isRecoveringState]);
 
   // Reset sync state when disconnected
   useEffect(() => {
@@ -204,6 +234,10 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
         lastActiveTime.current = Date.now();
 
         if (isConnected) {
+          // Baseline against the last successful sync *before* flipping the
+          // flag, so the clear effect above can tell a genuinely new fetch
+          // apart from the stale timestamp already sitting there.
+          recoveryBaselineRef.current = dataUpdatedAtRef.current;
           setIsRecoveringState(true);
 
           // Deliberately NOT eagerly reconnecting here. checkAndReconnect
@@ -226,20 +260,15 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
               queryClient.invalidateQueries({ queryKey: ['torrents'] }).finally(() => resolve());
             });
           });
-          // Only clear the recovering flag once the re-sync actually
-          // succeeded. invalidateQueries settles regardless of whether the
-          // refetch itself failed (e.g. the qBittorrent session died while
-          // backgrounded), so clearing unconditionally here briefly exposed
-          // a real "Authentication failed" error before the reactive
-          // reconnect effect (which watches queryError, above) had a chance
-          // to re-login and succeed. Leaving it set on failure means the
-          // "clear after successful fetch" effect above is what turns it
-          // off, once a subsequent poll or reconnect actually goes through —
-          // and isConnected flipping false (genuine disconnect) still falls
+          // Deliberately not clearing the flag here — invalidateQueries
+          // settles regardless of whether the refetch itself failed (e.g.
+          // the qBittorrent session died while backgrounded). The baselined
+          // clear effect above is what turns recovery off, once a fetch
+          // newer than the pre-recovery baseline actually lands (either
+          // this re-sync succeeding outright, or a later poll succeeding
+          // after the reactive reconnect effect re-logs in) — and
+          // isConnected flipping false (genuine disconnect) still falls
           // through to the normal not-connected screen regardless.
-          if (queryClient.getQueryState(['torrents'])?.status !== 'error') {
-            setIsRecoveringState(false);
-          }
         }
       } else if (nextAppState === 'background') {
         lastActiveTime.current = Date.now();

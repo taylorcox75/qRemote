@@ -19,6 +19,19 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.43',
+    date: '2026-09-07',
+    sections: [
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Fixed the torrent list and torrent detail screen showing old data instead of a loading state while reconnecting after a long time in the background',
+          'Fixed an authentication error appearing when opening a torrent before the app finished reconnecting',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.42',
     date: '2026-09-06',
     sections: [

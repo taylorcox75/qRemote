@@ -6,6 +6,15 @@ qBittorrent servers over the WebUI API v2.
 Read this file top to bottom once. The **File Index** is a complete map — trust
 it instead of re-exploring, and open only the files you're actually changing.
 
+**This is a living document, not a snapshot.** It drifts — a rename lands and a
+File Index entry doesn't follow, a branch gets retired and the branching
+section still names it. [§8 Rule 8](#8-critical-rules) says not to trust it
+blindly; the flip side is: when you hit something it got wrong, or something
+that cost you real time because nothing here warned you, **fix it in the same
+change** — correct the stale claim where it lives, or add a line to
+[§10 Gotchas](#10-gotchas) if it doesn't have a natural home. A five-minute fix
+now is cheaper than every future session re-learning the same thing.
+
 ## How to work a task
 
 1. **Read it as an API question first** — [§1](#think-in-api-terms-first): which
@@ -14,13 +23,13 @@ it instead of re-exploring, and open only the files you're actually changing.
 3. **Copy the nearest sibling.** Whatever you're adding — a screen, a test, a
    settings row, a loading or empty state — one like it already exists. Match it
    instead of inventing a pattern.
-4. **Edit. Run nothing while you work.**
-5. **Verify narrowly** — the impacted suite only, and only if the change is
-   non-trivial ([§1](#dont-burn-runs)). **Skip this entirely if you're heading
-   straight to a commit** — step 7's full batch supersedes it. Never run both.
-6. **Reply in a few lines**: what changed, file links, anything surprising.
-7. **Stop.** Commit only when asked — and when asked, go all the way to a PR
-   ([§1](#when-asked-to-commit-go-all-the-way-to-a-pr)).
+4. **Edit, checking as you go.** Run the narrow thing for what you touched —
+   that one suite, or `tsc` after a type change — piped through `tail`
+   ([§1](#run-checks-freely-quietly)). Trivial edits need nothing.
+5. **Reply in a few lines**: what changed, file links, anything surprising.
+6. **Stop.** Commit only when asked — and when asked, go all the way to a PR
+   ([§1](#when-asked-to-commit-go-all-the-way-to-a-pr)), which starts with the
+   full [commit-time batch](#commit-time-checks).
 
 **Decide, don't ask.** When something's ambiguous, make the reasonable call and
 name it in your reply so it can be corrected. Stop only when genuinely blocked.
@@ -80,35 +89,43 @@ version rather than the qBittorrent version:
 > renames are per-site: handling one does not handle the others. When you add a
 > version-dependent parameter, gate it *and* verify against the older wiki.
 
-### Don't burn runs
+### Run checks freely, quietly
 
-Every typecheck / test / lint run costs real tokens and wall time. There are
-exactly **three** moments to run anything, and no others:
+**The checks are fast. The output is not.** Measured on this repo:
 
-**1. Mid-task → run nothing.** Never fire `tsc`, `jest`, or `eslint` after an
-individual edit or "just to be safe." Trust the edit and keep working.
-
-**2. Handing back a non-trivial change → the impacted suites only.** Never the
-full run here. Pick the narrowest command that covers what you actually touched:
-
-| What you changed | What to run |
+| Command | Wall time |
 |---|---|
-| One module that has a test | That one suite — `npm test -- tests/utils/format.test.ts` (~18s). Same form for `tests/services/…` and `tests/rn/…`. |
-| Pure logic — `utils/`, `services/`, locales | `npm test -- --selectProjects node` (skips the slow jest-expo project) |
-| Components, hooks, context | `npm test -- --selectProjects rn` |
-| Types, or a change that crosses many files | `npx tsc --noEmit` |
+| One suite — `npm test -- tests/utils/format.test.ts` | ~1s |
+| `npm test` (both projects, 1000+ tests) | ~5s |
+| `npx tsc --noEmit` | ~1s warm, ~3s cold (incremental via `.tsbuildinfo`) |
+| `npm run lint` | ~6s |
 
-**Trivial edits need nothing** — a comment, a copy tweak, a doc line, a single
-string. Use judgment; the point is to catch real breakage, not to perform rigor.
+So wall time is not the constraint — **context is**. `npm test` prints hundreds
+of lines of unrelated `act()` warnings and Animated stack traces from
+`Confetti` / `PathAutocompleteInput`, and every line of that stays in the
+conversation and is re-sent on every later turn.
 
-**3. Before a commit → the full batch.** See [Commit-time checks](#commit-time-checks).
+**Therefore: run whatever you need, but pipe it.**
+
+```bash
+npm test 2>&1 | tail -5          # summary only
+npx tsc --noEmit; echo "EXIT:$?" # silent when clean
+npm run lint 2>&1 | tail -3      # the problem count
+```
+
+Run the narrow thing while you work — one suite after touching one module,
+`tsc` after a type change. Catching a broken test one second after you write it
+is far cheaper than discovering it at commit time and re-deriving what you did.
+**Trivial edits still need nothing** — a comment, a copy tweak, a doc line.
+
+Only widen to a full unpiped run when something actually fails and you need the
+detail; then read the failure, not the whole log.
+
+**Before a commit → the full batch.** See [Commit-time checks](#commit-time-checks).
 
 ### Read narrowly
 
-Tool output is **permanent and recurring**: whatever a command prints stays in
-the conversation and is re-sent on every later turn. A single careless dump of a
-few hundred lines is a tax on the whole rest of the session, so the cost of
-reading too much is much higher than it looks at the moment you do it.
+Same reason as above — output is permanent and re-sent every turn:
 
 - **Never `cat` a whole file** to answer a narrow question. Use `grep -n` (with
   `-A`/`-B` for context) or a ranged read. Reach for the file's shape first —
@@ -129,10 +146,12 @@ Only now do you run the whole thing — once, as a batch:
 
 | Command | Bar |
 |---|---|
-| `npx tsc --noEmit` | Exit 0. Currently clean. Incremental via `.tsbuildinfo` (~25s warm, ~85s cold). |
+| `npx tsc --noEmit` | Exit 0. Currently clean. Incremental via `.tsbuildinfo`. |
 | `npm test` | All passing, both projects — see [Testing](#7-testing). |
-| `npm run lint` | **Zero errors.** Warnings are baseline noise; the count drifts, don't chase it. |
+| `npm run lint` | **Zero errors.** Warnings are baseline noise (currently 37); the count drifts, don't chase it. |
 | `npm run format` | Prettier. Run it last, so it also formats anything you just changed. |
+
+The whole batch is ~12s. Pipe each through `tail` unless it fails.
 
 Then, in the same pre-commit pass:
 
@@ -151,33 +170,37 @@ before.
 
 ### Branches — always work on one
 
-**Never commit to `main`. Never commit to `develop`.** Both are protected by
-convention: work reaches them only through a PR. There is no exception for a
-one-line fix or a "quick" change.
+**Never commit to `main`.** It's protected by convention: work reaches it only
+through a PR. There is no exception for a one-line fix or a "quick" change.
 
-Every change starts on its own branch cut from `develop`:
+Every change starts on its own branch cut from `main`:
 
 ```bash
-git switch develop && git pull && git switch -c bugfix/#123-short-description
+git switch main && git pull && git switch -c bugfix/#123-short-description
 ```
 
 Naming follows what's already in the repo — `feature/…`, `bugfix/…`, or `fix/…`,
 usually carrying the issue number (`bugfix/#177`, `feature/#121`). Agent-created
 branches use a `claude/…` prefix.
 
-**Always cut from `develop` — there is no hotfix exception.** However urgent a
-fix is, it goes branch → PR → `develop` → `main`. Never branch from `main`, and
-never shortcut a fix straight into it.
+**There is no hotfix exception.** However urgent a fix is, it goes branch → PR →
+`main`. Never commit straight to `main`.
 
 | Branch | Role |
 |---|---|
-| *your branch* | Where every commit goes. Cut from `develop`, merged back by PR. |
-| `develop` | Integration branch. Receives work by PR only. Its changelog entry is a `.TESTFLIGHT` placeholder — see [docs/RELEASING.md](docs/RELEASING.md). |
-| `main` | Release branch. Receives `develop` by PR. **Pushing it with `"easBuild": true` in `package.json` builds and submits to the App Store** — see [docs/RELEASING.md](docs/RELEASING.md). |
+| *your branch* | Where every commit goes. Cut from `main`, merged back by PR. |
+| `main` | The only long-lived branch. Receives work by PR. **Pushing it with `"easBuild": true` in `package.json` builds and submits to the App Store** — see [docs/RELEASING.md](docs/RELEASING.md). |
+| `release/vX.Y.ZZ` | Occasionally used to gather a release's work before one PR to `main`. Only when the user sets one up — don't create one on your own. |
+
+> **`develop` and `preview` are retired** (as of 2026-08-14). Neither branch
+> exists. Older PRs (#218 and earlier) targeted `preview`; everything since
+> #219 goes straight to `main`. If you find guidance anywhere referring to
+> either, it's stale.
 
 **Commit and push only when asked.** If you're asked to commit and you're sitting
-on `main` or `develop`, branch first, then commit — don't ask whether the rule
-applies this time.
+on `main`, branch first, then commit — don't ask whether the rule applies this
+time. If you're already on an unrelated branch (one cut for different work),
+cut a fresh one rather than mixing the histories.
 
 ### When asked to commit, go all the way to a PR
 
@@ -187,7 +210,7 @@ applies this time.
 2. Branch if you aren't already on one.
 3. Commit. **No `Co-Authored-By: Claude` trailer** on this repo.
 4. `git push -u origin <branch>`
-5. `gh pr create --base develop` with a short summary and a test-plan line
+5. `gh pr create --base main` with a short summary and a test-plan line
    covering what you ran.
 
 Stop there. **Never merge the PR** — review and merge are the user's.
@@ -350,9 +373,18 @@ proxy server incl. auth, IP filtering/banned IPs, I2P (qBit 5.0+ /
   `connectedAt` tracks when the current connection began (derived from
   `isConnected` transitions, not each `setIsConnected` call site) for a
   client-side "Connected For" display — qBittorrent's `server_state` has no
-  session-uptime field of its own (#232).
+  session-uptime field of its own (#232). `isReconnecting` is true only while
+  `checkAndReconnect()` is in flight, set by the run that owns the shared
+  promise — deliberately *not* folded into `isLoading`/`isConnecting`, whose
+  consumers shouldn't change behavior for an automatic recovery. It's what
+  lets the torrents list and torrent detail show a skeleton instead of stale
+  data or a raw auth error during that window.
 - **`TorrentContext.tsx`** — rid-based incremental sync, plus the reactive
   auto-reconnect effect the other providers piggyback on.
+  `isRecoveringFromBackground` covers the foreground re-sync; it's cleared only
+  once a fetch *newer than the pre-recovery `dataUpdatedAt`* lands, never by
+  that timestamp merely being nonzero (which cleared it instantly, since it
+  holds the last success from potentially hours ago).
 - **`TransferContext.tsx`** — transfer-info poll; relies on TorrentContext's reconnect.
 - **`ToastContext.tsx`** + `components/Toast.tsx` — the global toast is a plain
   view. **Never wrap it in an RN `<Modal>`** — a Modal captures all touches and
@@ -387,7 +419,9 @@ All PascalCase function components taking a `…Props` interface.
   then defaults then the `avatarColor` fallback), `SearchResultRow` (+ internal
   ActionPill; the `+` button and the cart-toggle button are independent — see
   its header comment), `FilterChip`, `EmptyState`, `SkeletonLoader`
-  (+ `SkeletonTorrentCard`), `PieceMap`, `ServerIconBadge` (per-server tinted
+  (+ `SkeletonTorrentCard`, `SkeletonTorrentDetail` — the latter covers the
+  detail screen while a dead session reconnects), `PieceMap`,
+  `ServerIconBadge` (per-server tinted
   icon badge — `ServerConfig.icon`/`iconColor` via `utils/server.ts`
   `getServerIcon`/`getServerIconColor`, falling back to a default icon and
   `DEFAULT_AVATAR_COLOR` — never the name-derived `avatarColor`, so a badge's
@@ -457,9 +491,12 @@ Thin objects over `apiClient`.
 
 - `useSearchJob.ts` — search job lifecycle: start/stop/delete, 2s status+results
   polling, unmount cleanup.
-- `useTorrentActions.ts` — builds the per-torrent action menu used by both list
-  and detail. Delete exposes `deleteConfirmVisible` for a caller-mounted
-  `ConfirmModal`.
+- `useTorrentActions.ts` — builds the per-torrent action menu for the **list
+  screen only**. Delete exposes `deleteConfirmVisible` for a caller-mounted
+  `ConfirmModal`. The **detail screen does not use this hook** — it hand-rolls
+  its own parallel `handlePauseResume`/`handleDelete`/etc. and its own
+  `deleteConfirmVisible` state. A new action (or a change to an existing one)
+  needs both places touched, or list and detail silently diverge.
 - `useReactiveReconnect.ts` — feeds query errors into ServerContext reconnect
   (`isReconnectableError`).
 - `useGracefulError.ts` — suppresses a transient error until it has persisted
@@ -546,10 +583,15 @@ branch on it. Remember a misspelled param is dropped silently, not rejected —
 see [§1](#1-working-agreement).
 
 **Add a torrent action**
-API method (above) → menu item in `hooks/useTorrentActions.ts` → strings in the
-`actions` / `toast` namespaces. For a destructive confirm, expose visibility
-state from the hook and mount `ConfirmModal` in the screen (see the torrents list
-and detail screens).
+API method (above), then **both** screens — they don't share this logic
+([see the hook's note](#hooks-hooks)):
+- List → menu item in `hooks/useTorrentActions.ts`. For a destructive confirm,
+  expose visibility state from the hook and mount `ConfirmModal` in the screen.
+- Detail (`torrent/[hash].tsx`) → its own `handle*` function and, for a
+  destructive confirm, its own `*ConfirmVisible` state + `ConfirmModal`,
+  following its existing `handleDelete`/`deleteConfirmVisible` pair.
+
+Strings go in the `actions` / `toast` namespaces either way.
 
 **Add a settings sub-screen**
 Create `app/(tabs)/settings/<name>.tsx` by copying a sibling's structure — the
@@ -576,6 +618,31 @@ already carry the right imports and mocks:
   ThemeContext.
 
 Import app code as `@/…` — both projects map it to the repo root.
+
+**Two `rn`-project traps that will cost you an hour each if you meet them cold:**
+
+- **Don't wrap a trigger call in synchronous `act(() => …)`.** In this
+  React/RTL version that *silently swallows* the state update — the component
+  never re-renders and your assertion sees the old value, with no warning. It
+  looks exactly like a product bug. Call the function bare and let `waitFor`
+  observe the result:
+
+  ```ts
+  const pending = getLatest().checkAndReconnect();     // NOT inside act()
+  await waitFor(() => expect(getLatest().isReconnecting).toBe(true));
+  await act(async () => { resolveIt(true); await pending; });   // async act is fine
+  ```
+
+  `await act(async () => …)` around a *fully awaited* operation works normally.
+  It's the sync form wrapping a promise-returning call that breaks.
+
+- **`render()` returns a promise here.** Tests `await render(...)`, and a
+  component that throws during render gives you a *rejected promise*, not a
+  synchronous throw. The "hook used outside its provider" test therefore reads:
+
+  ```ts
+  await expect(render(<BadConsumer />)).rejects.toThrow('must be used within');
+  ```
 
 ---
 
@@ -632,10 +699,11 @@ rather than a translation gap.
 5. **All user-facing strings go through i18n** — `const { t } = useTranslation()`.
 6. **Prefer themed dialogs**: `InputModal` over `Alert.prompt`, `ConfirmModal`
    over `Alert.alert`. Native alerts ignore the app theme. **Don't add a new
-   one.** *Known deviations* — eight existing sites: `settings/advanced`,
-   `settings/torrent-defaults` ×2, `search/plugins`, `server/[id]`, `TagsModal`,
-   `CategoryModal`, `SuperDebugPanel`. Converting one while you're already in
-   that file is welcome, but it's never required.
+   one.** *Known deviations* — nine existing calls across eight files:
+   `settings/advanced`, `settings/torrent-defaults` ×2, `search/plugins`,
+   `server/[id]`, `TagsModal`, `CategoryModal`, `SuperDebugPanel`, and
+   `ConfirmModal` itself. Converting one while you're already in that file is
+   welcome, but it's never required.
 7. **Delete superseded files in the same change.** When a component is replaced
    by a route-level screen or vice versa, remove the old one rather than leaving
    dead code. Precedent: `components/TorrentDetails.tsx` was deleted once its
@@ -667,3 +735,27 @@ rather than a translation gap.
 - **Verify with `npx tsc --noEmit` and `npm test`** instead, batched at commit
   time per [§1](#1-working-agreement). The bar is exit 0, tests passing, lint 0
   errors.
+
+---
+
+## 10. Gotchas
+
+Surprises that don't have a natural home in a specific recipe, rule, or File
+Index entry above — things that cost real time because nothing here flagged
+them, usually because they look exactly like a product bug until you dig in.
+
+**Append here, don't just fix and move on.** If you burn more than a few
+minutes on something that turned out to be a tooling quirk, an environment
+default, or a misleading error rather than an actual bug, add a short entry
+(2-4 lines: what it looks like, what's actually happening, the fix or
+workaround) so the next session doesn't pay the same cost. If the surprise
+belongs to one specific file, function, or recipe instead, put it there
+instead of here — this section is for things that don't fit anywhere else.
+Keep entries factual and current; if you find one that's no longer true
+(fixed upstream, no longer applies), remove it rather than leaving it to rot.
+
+- **A synchronous `act(() => …)` wrapping a promise-returning call in an RN
+  test can silently swallow the resulting state update** — no warning, the
+  component just never re-renders, and it looks exactly like a product bug.
+  Full detail and the working pattern live in [§6](#6-task-recipes)'s "Add a
+  test" recipe, under the `rn`-project traps.

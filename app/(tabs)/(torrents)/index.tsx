@@ -80,7 +80,13 @@ export default function TorrentsScreen() {
     initialLoadComplete,
   } = useTorrents();
   const { graceError, isPendingError } = useGracefulError(error);
-  const { isConnected, isLoading: serverIsLoading, isConnecting, connectToServer } = useServer();
+  const {
+    isConnected,
+    isLoading: serverIsLoading,
+    isConnecting,
+    isReconnecting,
+    connectToServer,
+  } = useServer();
   const { colors, isDark } = useTheme();
   const params = useLocalSearchParams<{
     magnet?: string | string[];
@@ -1139,7 +1145,9 @@ export default function TorrentsScreen() {
   if (
     (isConnecting && !showAddModal) ||
     (!initialLoadComplete && (serverIsLoading || !isConnected || isLoading)) ||
-    (initialLoadComplete && !showAddModal && (isRecoveringFromBackground || isPendingError))
+    (initialLoadComplete &&
+      !showAddModal &&
+      (isRecoveringFromBackground || isReconnecting || isPendingError))
   ) {
     return (
       <>
