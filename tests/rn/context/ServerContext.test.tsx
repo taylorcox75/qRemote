@@ -416,4 +416,65 @@ describe('ServerContext', () => {
     // reconnect should have only been triggered once despite two callers
     expect((ServerManager.reconnect as jest.Mock).mock.calls.length).toBe(1);
   });
+
+  it('isReconnecting is true while checkAndReconnect is in flight, then false on success', async () => {
+    (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
+    (ServerManager.connectToServer as jest.Mock).mockResolvedValue(true);
+    (apiClient.getServer as jest.Mock).mockReturnValue(server1);
+
+    const getLatest = await renderProvider();
+    await waitFor(() => expect(getLatest().isLoading).toBe(false));
+
+    let resolveReconnect: (value: boolean) => void;
+    (ServerManager.reconnect as jest.Mock).mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveReconnect = resolve;
+        }),
+    );
+
+    expect(getLatest().isReconnecting).toBe(false);
+
+    // Deliberately not wrapped in act() — checkAndReconnect's async run()
+    // suspends immediately on the still-pending ServerManager.reconnect
+    // promise, so the update this triggers is left for waitFor's own
+    // act-wrapped polling to observe rather than an outer act() scope.
+    const pending = getLatest().checkAndReconnect();
+    await waitFor(() => expect(getLatest().isReconnecting).toBe(true));
+
+    await act(async () => {
+      resolveReconnect(true);
+      await pending;
+    });
+    expect(getLatest().isReconnecting).toBe(false);
+  });
+
+  it('isReconnecting clears after checkAndReconnect fails (both reconnect and connectToServer)', async () => {
+    (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
+    (ServerManager.connectToServer as jest.Mock).mockResolvedValue(true);
+    (apiClient.getServer as jest.Mock).mockReturnValue(server1);
+
+    const getLatest = await renderProvider();
+    await waitFor(() => expect(getLatest().isLoading).toBe(false));
+
+    let rejectReconnect: (error: unknown) => void;
+    (ServerManager.reconnect as jest.Mock).mockImplementation(
+      () =>
+        new Promise<boolean>((_resolve, reject) => {
+          rejectReconnect = reject;
+        }),
+    );
+    (ServerManager.connectToServer as jest.Mock).mockRejectedValue(new Error('dead too'));
+
+    const pending = getLatest().checkAndReconnect();
+    await waitFor(() => expect(getLatest().isReconnecting).toBe(true));
+
+    let result: boolean | undefined;
+    await act(async () => {
+      rejectReconnect(new Error('dead'));
+      result = await pending;
+    });
+    expect(result).toBe(false);
+    expect(getLatest().isReconnecting).toBe(false);
+  });
 });

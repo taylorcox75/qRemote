@@ -33,6 +33,7 @@ import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useTorrents } from '@/context/TorrentContext';
+import { isReconnectableError } from '@/hooks/useReactiveReconnect';
 import {
   isRealTracker,
   getPseudoTrackerStates,
@@ -41,6 +42,7 @@ import {
 } from '@/utils/trackers';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
+import { SkeletonTorrentDetail } from '@/components/SkeletonLoader';
 import { SpeedGraph, computeSpeedGraphMax, niceGraphCeiling } from '@/components/SpeedGraph';
 import { PieceMap } from '@/components/PieceMap';
 import { InputModal, InputModalPreset } from '@/components/InputModal';
@@ -113,7 +115,7 @@ export default function TorrentDetail() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const { isConnected, isLoading } = useServer();
+  const { isConnected, isLoading, isReconnecting } = useServer();
   const { features } = useApiFeatures();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
@@ -137,6 +139,11 @@ export default function TorrentDetail() {
   const [pieceStates, setPieceStates] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // True while a load failed on what looks like a dead session (an
+  // auto-reconnect is already in flight, per useReactiveReconnect's
+  // classification) — suppresses the error toast and keeps the skeleton up
+  // instead of falling through to "Torrent not found". See loadTorrentData.
+  const [sessionRecovering, setSessionRecovering] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [optimisticPaused, setOptimisticPaused] = useState<boolean | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
@@ -195,6 +202,22 @@ export default function TorrentDetail() {
     // loadTorrentData isn't memoized — only re-run when hash/isConnected change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash, isConnected]);
+
+  // A load that failed on a dead session (sessionRecovering) doesn't get a
+  // fresh attempt until the next 2s silentRefresh tick, since isConnected
+  // never actually changes (true the whole time). Retry immediately once
+  // the auto-reconnect that was already in flight resolves, rather than
+  // waiting on that tick.
+  const wasReconnectingRef = useRef(isReconnecting);
+  useEffect(() => {
+    const wasReconnecting = wasReconnectingRef.current;
+    wasReconnectingRef.current = isReconnecting;
+    if (wasReconnecting && !isReconnecting && sessionRecovering && isConnected) {
+      loadTorrentData();
+    }
+    // loadTorrentData isn't memoized — only re-run on the isReconnecting transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReconnecting, sessionRecovering, isConnected]);
 
   // Encryption is a global qBittorrent setting, not per-torrent — fetch once
   // per connection rather than on every poll tick.
@@ -268,6 +291,7 @@ export default function TorrentDetail() {
         handleTorrentGone();
         return null;
       }
+      setSessionRecovering(false);
       setTorrent(next);
       setProperties(props);
       setTrackers(trackersData);
@@ -282,6 +306,15 @@ export default function TorrentDetail() {
       // gone rather than the endpoint being unsupported.
       if (getErrorStatus(error) === 404) {
         handleTorrentGone();
+        return null;
+      }
+      // A dead session (auto-reconnect already in flight, per the same
+      // classification useReactiveReconnect uses) self-heals within a
+      // couple of seconds — show the skeleton instead of a toast that's
+      // stale the moment it appears, and "Torrent not found" for what's
+      // actually an auth problem.
+      if (isReconnectableError(getErrorMessage(error))) {
+        setSessionRecovering(true);
         return null;
       }
       showToast(getErrorMessage(error), 'error');
@@ -321,6 +354,7 @@ export default function TorrentDetail() {
         handleTorrentGone();
         return;
       }
+      setSessionRecovering(false);
       setTorrent(next);
       setProperties(props);
       setTrackers(trackersData);
@@ -1016,13 +1050,11 @@ export default function TorrentDetail() {
     );
   }
 
-  if (loading && !torrent) {
+  if ((loading || sessionRecovering || isReconnecting) && !torrent) {
     return (
       <>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.center, { backgroundColor: colors.background }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <SkeletonTorrentDetail />
       </>
     );
   }

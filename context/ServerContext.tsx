@@ -38,6 +38,17 @@ interface ServerContextType {
    * Null while disconnected.
    */
   connectedAt: Date | null;
+  /**
+   * True while checkAndReconnect() (the reactive, error-driven auto-reconnect
+   * path) is in flight. Deliberately separate from `isConnecting` — that
+   * flag also covers a *manual* reconnect() and feeds `isLoading`, both of
+   * which are consumed in places that shouldn't change behavior for an
+   * automatic background recovery. Lets UI (e.g. the torrents list, torrent
+   * detail) show a soft "reconnecting" placeholder instead of stale data or
+   * a hard auth error during the window before an automatic reconnect
+   * resolves.
+   */
+  isReconnecting: boolean;
   connectToServer: (server: ServerConfig) => Promise<boolean>;
   disconnect: () => Promise<void>;
   /** Drop the remembered last server (e.g. after it was deleted). */
@@ -61,6 +72,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const [activeEndpoint, setActiveEndpoint] = useState<ServerEndpointKind | null>(null);
   const [initLoading, setInitLoading] = useState(true);
   const [reconnecting, setReconnecting] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // Tracks the current connection's start time from isConnected transitions
   // rather than from each individual setIsConnected call site, so every
@@ -272,6 +284,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     }
 
     const run = async (): Promise<boolean> => {
+      setIsReconnecting(true);
       if (!currentServer) {
         setIsConnected(false);
         setActiveEndpoint(null);
@@ -299,6 +312,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
 
     const id = currentServer?.id;
     const promise = run().finally(() => {
+      setIsReconnecting(false);
       if (checkAndReconnectPromiseRef.current?.id === id) {
         checkAndReconnectPromiseRef.current = null;
       }
@@ -321,6 +335,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         connectedAt,
         isLoading,
         isConnecting,
+        isReconnecting,
         activeEndpoint,
         connectToServer,
         disconnect,
