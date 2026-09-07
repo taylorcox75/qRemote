@@ -6,6 +6,15 @@ qBittorrent servers over the WebUI API v2.
 Read this file top to bottom once. The **File Index** is a complete map — trust
 it instead of re-exploring, and open only the files you're actually changing.
 
+**This is a living document, not a snapshot.** It drifts — a rename lands and a
+File Index entry doesn't follow, a branch gets retired and the branching
+section still names it. [§8 Rule 8](#8-critical-rules) says not to trust it
+blindly; the flip side is: when you hit something it got wrong, or something
+that cost you real time because nothing here warned you, **fix it in the same
+change** — correct the stale claim where it lives, or add a line to
+[§10 Gotchas](#10-gotchas) if it doesn't have a natural home. A five-minute fix
+now is cheaper than every future session re-learning the same thing.
+
 ## How to work a task
 
 1. **Read it as an API question first** — [§1](#think-in-api-terms-first): which
@@ -14,13 +23,13 @@ it instead of re-exploring, and open only the files you're actually changing.
 3. **Copy the nearest sibling.** Whatever you're adding — a screen, a test, a
    settings row, a loading or empty state — one like it already exists. Match it
    instead of inventing a pattern.
-4. **Edit. Run nothing while you work.**
-5. **Verify narrowly** — the impacted suite only, and only if the change is
-   non-trivial ([§1](#dont-burn-runs)). **Skip this entirely if you're heading
-   straight to a commit** — step 7's full batch supersedes it. Never run both.
-6. **Reply in a few lines**: what changed, file links, anything surprising.
-7. **Stop.** Commit only when asked — and when asked, go all the way to a PR
-   ([§1](#when-asked-to-commit-go-all-the-way-to-a-pr)).
+4. **Edit, checking as you go.** Run the narrow thing for what you touched —
+   that one suite, or `tsc` after a type change — piped through `tail`
+   ([§1](#run-checks-freely-quietly)). Trivial edits need nothing.
+5. **Reply in a few lines**: what changed, file links, anything surprising.
+6. **Stop.** Commit only when asked — and when asked, go all the way to a PR
+   ([§1](#when-asked-to-commit-go-all-the-way-to-a-pr)), which starts with the
+   full [commit-time batch](#commit-time-checks).
 
 **Decide, don't ask.** When something's ambiguous, make the reasonable call and
 name it in your reply so it can be corrected. Stop only when genuinely blocked.
@@ -80,7 +89,7 @@ version rather than the qBittorrent version:
 > renames are per-site: handling one does not handle the others. When you add a
 > version-dependent parameter, gate it *and* verify against the older wiki.
 
-### Run checks freely — but quietly
+### Run checks freely, quietly
 
 **The checks are fast. The output is not.** Measured on this repo:
 
@@ -482,9 +491,12 @@ Thin objects over `apiClient`.
 
 - `useSearchJob.ts` — search job lifecycle: start/stop/delete, 2s status+results
   polling, unmount cleanup.
-- `useTorrentActions.ts` — builds the per-torrent action menu used by both list
-  and detail. Delete exposes `deleteConfirmVisible` for a caller-mounted
-  `ConfirmModal`.
+- `useTorrentActions.ts` — builds the per-torrent action menu for the **list
+  screen only**. Delete exposes `deleteConfirmVisible` for a caller-mounted
+  `ConfirmModal`. The **detail screen does not use this hook** — it hand-rolls
+  its own parallel `handlePauseResume`/`handleDelete`/etc. and its own
+  `deleteConfirmVisible` state. A new action (or a change to an existing one)
+  needs both places touched, or list and detail silently diverge.
 - `useReactiveReconnect.ts` — feeds query errors into ServerContext reconnect
   (`isReconnectableError`).
 - `useGracefulError.ts` — suppresses a transient error until it has persisted
@@ -571,10 +583,15 @@ branch on it. Remember a misspelled param is dropped silently, not rejected —
 see [§1](#1-working-agreement).
 
 **Add a torrent action**
-API method (above) → menu item in `hooks/useTorrentActions.ts` → strings in the
-`actions` / `toast` namespaces. For a destructive confirm, expose visibility
-state from the hook and mount `ConfirmModal` in the screen (see the torrents list
-and detail screens).
+API method (above), then **both** screens — they don't share this logic
+([see the hook's note](#hooks-hooks)):
+- List → menu item in `hooks/useTorrentActions.ts`. For a destructive confirm,
+  expose visibility state from the hook and mount `ConfirmModal` in the screen.
+- Detail (`torrent/[hash].tsx`) → its own `handle*` function and, for a
+  destructive confirm, its own `*ConfirmVisible` state + `ConfirmModal`,
+  following its existing `handleDelete`/`deleteConfirmVisible` pair.
+
+Strings go in the `actions` / `toast` namespaces either way.
 
 **Add a settings sub-screen**
 Create `app/(tabs)/settings/<name>.tsx` by copying a sibling's structure — the
@@ -718,3 +735,27 @@ rather than a translation gap.
 - **Verify with `npx tsc --noEmit` and `npm test`** instead, batched at commit
   time per [§1](#1-working-agreement). The bar is exit 0, tests passing, lint 0
   errors.
+
+---
+
+## 10. Gotchas
+
+Surprises that don't have a natural home in a specific recipe, rule, or File
+Index entry above — things that cost real time because nothing here flagged
+them, usually because they look exactly like a product bug until you dig in.
+
+**Append here, don't just fix and move on.** If you burn more than a few
+minutes on something that turned out to be a tooling quirk, an environment
+default, or a misleading error rather than an actual bug, add a short entry
+(2-4 lines: what it looks like, what's actually happening, the fix or
+workaround) so the next session doesn't pay the same cost. If the surprise
+belongs to one specific file, function, or recipe instead, put it there
+instead of here — this section is for things that don't fit anywhere else.
+Keep entries factual and current; if you find one that's no longer true
+(fixed upstream, no longer applies), remove it rather than leaving it to rot.
+
+- **A synchronous `act(() => …)` wrapping a promise-returning call in an RN
+  test can silently swallow the resulting state update** — no warning, the
+  component just never re-renders, and it looks exactly like a product bug.
+  Full detail and the working pattern live in [§6](#6-task-recipes)'s "Add a
+  test" recipe, under the `rn`-project traps.
