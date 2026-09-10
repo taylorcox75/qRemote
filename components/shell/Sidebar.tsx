@@ -229,7 +229,7 @@ export function Sidebar({ style }: SidebarProps) {
   const { colors } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
-  const { listFilter, setListFilter } = useShell();
+  const { idiom, listFilter, setListFilter, toggleSidebar } = useShell();
   const { torrents, categories, tags } = useTorrents();
   const { currentServer, isConnected } = useServer();
 
@@ -277,17 +277,41 @@ export function Sidebar({ style }: SidebarProps) {
     router.navigate('/(tabs)/(torrents)');
   };
 
+  // Mac keeps the header (and its collapse chevron) visible even while
+  // disconnected - Pogona's transfersTable always has a titlebar. Regular
+  // (iPad) keeps the pre-existing behaviour untouched: no header at all
+  // until a server is connected, and no chevron - the sidebar toggle for
+  // regular already lives in the torrents list header (index.tsx,
+  // idiom !== 'compact'); a second one here would duplicate that control.
+  const showServerHeader = idiom === 'mac' || !!currentServer;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }, style]}>
-      {currentServer && (
+      {showServerHeader && (
         <View style={[styles.serverHeader, { borderBottomColor: colors.surfaceOutline }]}>
-          <ServerIconBadge server={currentServer} size={32} />
-          <Text
-            style={[typography.smallSemibold, styles.serverName, { color: colors.text }]}
-            numberOfLines={1}
-          >
-            {currentServer.name}
-          </Text>
+          {currentServer ? (
+            <>
+              <ServerIconBadge server={currentServer} size={32} />
+              <Text
+                style={[typography.smallSemibold, styles.serverName, { color: colors.text }]}
+                numberOfLines={1}
+              >
+                {currentServer.name}
+              </Text>
+            </>
+          ) : (
+            <View style={styles.serverName} />
+          )}
+          {idiom === 'mac' && (
+            <Pressable
+              onPress={toggleSidebar}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('sidebar.collapse')}
+            >
+              <Ionicons name="chevron-back-outline" size={16} color={colors.textSecondary} />
+            </Pressable>
+          )}
         </View>
       )}
 

@@ -78,7 +78,8 @@
       "selectMode": "Select",
       "selectTorrent": "Select torrent",
       "deselectTorrent": "Deselect torrent",
-      "selectTorrentHint": "Select a torrent to see its details"
+      "selectTorrentHint": "Select a torrent to see its details",
+      "macPanelResize": "Resize detail panel"
     },
     "addTorrent": {
       "none": "None",
@@ -413,6 +414,7 @@
       "hexColor": "Hex Color",
       "presets": "Presets",
       "detailedCardView": "Detailed Card View",
+      "macAlternatingRows": "Alternating Row Colors",
       "detailedCardFields": "Detailed Card Fields",
       "detailedCardFieldsDescription": "Choose which fields appear in detailed card view",
       "detailedCardGridColumns": "Grid Columns",
@@ -1140,6 +1142,37 @@
     "priority": "Priority",
     "dlSpeed": "DL Speed",
     "ulSpeed": "UL Speed"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "size": "Size",
+      "progress": "Progress",
+      "status": "Status",
+      "down": "Down",
+      "up": "Up",
+      "seeds": "Seeds",
+      "peers": "Peers",
+      "eta": "ETA",
+      "ratio": "Ratio",
+      "added": "Added"
+    },
+    "sortedAscending": "Sorted ascending",
+    "sortedDescending": "Sorted descending"
+  },
+  "statusBar": {
+    "dhtNodesLabel": "{{count}} DHT nodes",
+    "connection": {
+      "connected": "Connected",
+      "firewalled": "Firewalled",
+      "disconnected": "Disconnected"
+    },
+    "toggleAltSpeedOn": "Enable alternative speed limits",
+    "toggleAltSpeedOff": "Disable alternative speed limits",
+    "downloadSpeedLabel": "Download speed {{value}}",
+    "uploadSpeedLabel": "Upload speed {{value}}",
+    "freeSpaceLabel": "Free space {{value}}",
+    "globalRatioLabel": "Global ratio {{value}}"
   },
   "toast": {
     "notConnected": "Not connected to a server. Please connect to a server first.",

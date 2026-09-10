@@ -1,7 +1,7 @@
 # AGENTS.md
 
-qRemote is an iOS-only React Native (Expo SDK 57) app for remotely controlling
-qBittorrent servers over the WebUI API v2.
+qRemote is a React Native (Expo SDK 57) app for iPhone, iPad and Mac Catalyst,
+remotely controlling qBittorrent servers over the WebUI API v2.
 
 Read this file top to bottom once. The **File Index** is a complete map — trust
 it instead of re-exploring, and open only the files you're actually changing.
@@ -240,6 +240,34 @@ Consequences:
 Android support was removed entirely — no platform, no build target, no plan to
 re-add one without being asked.
 
+- **`plugins/withMacCatalyst.js`** patches the generated Podfile (via
+  `withPodfile`/`withPodfileProperties`/`withXcodeProject`) so Pods targets
+  build for Mac Catalyst: forces `PODS_MACOSX_DEPLOYMENT_TARGET` (12.0) and
+  `PODS_IPHONEOS_DEPLOYMENT_TARGET` (16.4, matching the app target) on every
+  Pods target, and flips `react_native_post_install`'s
+  `:mac_catalyst_enabled` from `false` to `true` so
+  `apply_mac_catalyst_patches` runs. Despite the plugin, the Catalyst build
+  still fails on this machine's toolchain (see §9) — it stops the Simulator
+  and device targets from regressing while that gets sorted out.
+
+Build commands (from the repo root):
+
+- **Full sequence from a clean checkout**: `npx expo prebuild -p ios
+  --no-install`, then `cd ios && LANG=en_US.UTF-8 pod install`, then one of
+  the two xcodebuild commands below.
+- **iOS Simulator (succeeds, confirmed working with this plugin present)**:
+  `xcodebuild -workspace ios/qRemote.xcworkspace -scheme qRemote
+  -configuration Debug -destination 'generic/platform=iOS Simulator'
+  CODE_SIGNING_ALLOWED=NO -derivedDataPath ios/build-ios build`
+- **Mac Catalyst (fails, reproducible)**: `xcodebuild -workspace
+  ios/qRemote.xcworkspace -scheme qRemote -configuration Debug -destination
+  'generic/platform=macOS,variant=Mac Catalyst' CODE_SIGNING_ALLOWED=NO
+  CODE_SIGN_IDENTITY= -derivedDataPath ios/build build` — see §9 for the
+  failure signature.
+
+`ios/` stays generated regardless of which of these you run: never commit it,
+never hand-edit it as a fix — fix `app.config.js` or the plugin instead.
+
 ---
 
 ## 4. Architecture
@@ -269,10 +297,20 @@ re-add one without being asked.
 Three idioms, computed by `hooks/useLayoutIdiom.ts` (`getLayoutIdiom`): `compact`
 (iPhone, and iPad under 700pt), `regular` (iPad at or above `REGULAR_MIN_WIDTH`
 = 700pt — sidebar layout via `SplitLayout`, detail pane once the window is also
-≥ 1000pt), `mac` (reserved for Mac Catalyst). An iPhone is never `regular`, even
-in landscape. **Every desktop behaviour is gated on the idiom being `regular` or
-`mac`** — on `compact` every code path must stay exactly what it is today, byte
-for byte.
+≥ 1000pt), `mac` (Mac Catalyst, `Platform.isMacCatalyst`). An iPhone is never
+`regular`, even in landscape. **Every desktop behaviour is gated on the idiom
+being `regular` or `mac`** — on `compact` every code path must stay exactly
+what it is today, byte for byte.
+
+The `mac` idiom swaps the torrent list for `components/TorrentTable.tsx` (dense
+sortable columns instead of `TorrentCard`/`TorrentRow`) and docks
+`components/MacStatusBar.tsx` at the bottom of the window. Menu-bar shortcuts
+(New Transfer, Refresh, Resume/Pause/Delete, queue moves, alternative speed,
+Preferences, …) come from `modules/mac-commands` via `hooks/useMacCommands.ts`,
+which subscribes on the `mac` idiom only and is a no-op on `compact`/`regular`.
+qRemote does not currently build as a Mac Catalyst target on this machine's
+toolchain (see §9) — the `mac` idiom code paths exist and are gated correctly,
+but are unverified on-device pending that build fix.
 
 ### Per-server secrets
 
@@ -448,6 +486,20 @@ All PascalCase function components taking a `…Props` interface.
   `embedded?`, `onDismiss?`). When `embedded` is true it hides the back button
   and calls `onDismiss` instead of `router.back()` — used both by the route's
   thin wrapper and by the `regular`/`mac` detail pane.
+- **`TorrentTable.tsx`** (`mac` idiom only) — dense 11-column desktop table
+  mirroring Pogona's `MacTransfersView.swift` `transfersTable`: 28pt rows, a
+  28pt artwork plate leading the name cell, right-aligned tabular-nums numeric
+  columns, sortable header. Props: `torrents`, `selectedHash`, `onSelect`,
+  `onContextMenu(hash, anchor)`, `sortBy` (`SortField`), `sortDirection`,
+  `onSortChange`, `alternatingRows`, `categoryColors?`, `topInset?` (reserves
+  space above the header for index.tsx's absolutely-positioned search/sort
+  header). Not rendered on `compact`/`regular` — `TorrentCard`/`TorrentRow`
+  stay untouched.
+- **`MacStatusBar.tsx`** (`mac` idiom only) — qBittorrent-style bottom status
+  bar mirroring Pogona's `MacStatusBar`: DHT node count, connection-state dot,
+  alternative-speed-limits toggle, down/up speed with session totals, free
+  disk space, global ratio. No props — reads `useTorrents().serverState` and
+  `useTransfer()` itself; renders nothing while `serverState` is unavailable.
 
 ### API wrappers (`services/api/`)
 
@@ -582,7 +634,12 @@ Sidebar.tsx`, a deliberate re-implementation of `index.tsx`'s local
 
 - `types/api.ts` — every qBittorrent API shape (`TorrentInfo`, `ServerConfig`,
   RSS types, preference fields).
-- `types/preferences.ts` — typed preferences + defaults.
+- `types/preferences.ts` — typed preferences + defaults, including
+  `macAlternatingRows` (`mac` idiom only: alternating row backgrounds in
+  `TorrentTable`, default `true`) and `macDetailPanelHeight` (`mac` idiom
+  only: height in px of the bottom-docked detail panel under `TorrentTable`,
+  default `280`). Both surfaced by an `idiom === 'mac'` toggle section in
+  `app/(tabs)/settings/appearance.tsx`.
 - `constants/` — `changelog.ts` (don't edit unless asked; see
   [docs/RELEASING.md](docs/RELEASING.md)),
   `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts`, `serverIcons.ts`
@@ -732,8 +789,25 @@ rather than a translation gap.
 
 ## 9. Environment & Headless Agents
 
-- **iPhone + iPad** (Mac Catalyst in progress). iOS-specific APIs
-  (`ActionSheetIOS`, `Alert.prompt`, …) are fine without platform gating.
+- **iPhone, iPad and Mac Catalyst.** iOS-specific APIs (`ActionSheetIOS`,
+  `Alert.prompt`, …) are fine without platform gating.
+- **Mac Catalyst does not currently build on this machine's toolchain.** The
+  Catalyst xcodebuild command (§3) fails at `CreateBuildDescription` — before
+  any real compilation — with 90 repeats of:
+
+  ```
+  error: The macOS deployment target 'MACOSX_DEPLOYMENT_TARGET' is set to
+  10.15, but the range of supported deployment target versions is 12.0 to
+  27.0.x. (in target 'X' from project 'Pods')
+  ```
+
+  across effectively every Pods target, despite `plugins/withMacCatalyst.js`
+  forcing the deployment target on those same targets — something upstream
+  (Xcode 27's Catalyst deployment-target mapping, or a pod's own build
+  settings) still resolves to 10.15 for at least one target before the fix
+  lands. The iOS Simulator build (§3) succeeds with this plugin present.
+  Treat `mac`-idiom code as gated-correctly-but-unverified-on-device until
+  this is resolved.
 - **`expo-*` packages are pre-approved**, even ones needing `expo-dev-client`.
   Third-party native modules (e.g. `react-native-ios-context-menu`,
   `lottie-react-native`) need explicit approval first.

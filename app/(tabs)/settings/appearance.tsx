@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { useShell } from '@/context/ShellContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { storageService } from '@/services/storage';
@@ -24,9 +25,11 @@ export default function AppearanceSettingsScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
+  const { idiom } = useShell();
 
   const [autoRefreshInterval, setAutoRefreshInterval] = useState('1000');
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
+  const [macAlternatingRows, setMacAlternatingRows] = useState(true);
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
 
   const languageOptions: OptionPickerItem[] = [
@@ -44,9 +47,11 @@ export default function AppearanceSettingsScreen() {
       const interval = Number(prefs.autoRefreshInterval) || 1000;
       setAutoRefreshInterval(interval.toString());
       setCardViewMode(prefs.cardViewMode || 'compact');
+      setMacAlternatingRows(prefs.macAlternatingRows ?? true);
     } catch {
       setAutoRefreshInterval('1000');
       setCardViewMode('compact');
+      setMacAlternatingRows(true);
     }
   };
 
@@ -72,6 +77,17 @@ export default function AppearanceSettingsScreen() {
       prefs.cardViewMode = mode;
       await storageService.savePreferences(prefs);
       setCardViewMode(mode);
+    } catch {
+      // Ignore save errors
+    }
+  };
+
+  const saveMacAlternatingRows = async (value: boolean) => {
+    try {
+      const prefs = await storageService.getPreferences();
+      prefs.macAlternatingRows = value;
+      await storageService.savePreferences(prefs);
+      setMacAlternatingRows(value);
     } catch {
       // Ignore save errors
     }
@@ -190,6 +206,25 @@ export default function AppearanceSettingsScreen() {
                   ios_backgroundColor={colors.surfaceOutline}
                 />
               </View>
+              {idiom === 'mac' && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingLeft}>
+                      <Ionicons name="reorder-four-outline" size={22} color={colors.primary} />
+                      <Text style={[styles.settingLabel, { color: colors.text }]}>
+                        {t('screens.settings.macAlternatingRows')}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={macAlternatingRows}
+                      onValueChange={(value) => void saveMacAlternatingRows(value)}
+                      trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                      ios_backgroundColor={colors.surfaceOutline}
+                    />
+                  </View>
+                </>
+              )}
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <TouchableOpacity
                 style={styles.settingRow}

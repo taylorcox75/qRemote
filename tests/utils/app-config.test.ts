@@ -103,3 +103,12 @@ describe('app.config torrent file registration', () => {
     expect(torrentDoc.LSHandlerRank).toBe('Owner');
   });
 });
+
+describe('app.config Mac Catalyst plugin', () => {
+  const config = require('../../app.config.js');
+  const expoConfig = config.expo;
+
+  it('registers the withMacCatalyst plugin', () => {
+    expect(expoConfig?.plugins).toContain('./plugins/withMacCatalyst');
+  });
+});

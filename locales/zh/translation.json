@@ -57,7 +57,8 @@
       "selectMode": "选择",
       "selectTorrent": "选择种子",
       "deselectTorrent": "取消选择种子",
-      "selectTorrentHint": "选择一个种子以查看详情"
+      "selectTorrentHint": "选择一个种子以查看详情",
+      "macPanelResize": "调整详情面板大小"
     },
     "addTorrent": {
       "none": "无",
@@ -392,6 +393,7 @@
       "hexColor": "Hex Color",
       "presets": "Presets",
       "detailedCardView": "详细卡片视图",
+      "macAlternatingRows": "交替行颜色",
       "detailedCardFields": "详细卡片字段",
       "detailedCardFieldsDescription": "选择在详细卡片视图中显示的字段",
       "detailedCardGridColumns": "网格列数",
@@ -1119,6 +1121,37 @@
     "priority": "优先级",
     "dlSpeed": "下载速度",
     "ulSpeed": "上传速度"
+  },
+  "table": {
+    "columns": {
+      "name": "名称",
+      "size": "大小",
+      "progress": "进度",
+      "status": "状态",
+      "down": "下载",
+      "up": "上传",
+      "seeds": "做种",
+      "peers": "节点",
+      "eta": "ETA",
+      "ratio": "比率",
+      "added": "添加时间"
+    },
+    "sortedAscending": "升序排列",
+    "sortedDescending": "降序排列"
+  },
+  "statusBar": {
+    "dhtNodesLabel": "{{count}} 个 DHT 节点",
+    "connection": {
+      "connected": "已连接",
+      "firewalled": "防火墙",
+      "disconnected": "已断开"
+    },
+    "toggleAltSpeedOn": "启用备用速度限制",
+    "toggleAltSpeedOff": "禁用备用速度限制",
+    "downloadSpeedLabel": "下载速度 {{value}}",
+    "uploadSpeedLabel": "上传速度 {{value}}",
+    "freeSpaceLabel": "剩余空间 {{value}}",
+    "globalRatioLabel": "全局分享率 {{value}}"
   },
   "toast": {
     "notConnected": "未连接服务器，请先连接。",

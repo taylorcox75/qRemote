@@ -117,6 +117,7 @@ module.exports = {
       'expo-sharing',
       'expo-status-bar',
       './plugins/withNativeTorrentFileCopy',
+      './plugins/withMacCatalyst',
     ],
     extra: {
       router: {},

@@ -78,7 +78,8 @@
       "selectMode": "Выбрать",
       "selectTorrent": "Выбрать торрент",
       "deselectTorrent": "Снять выбор торрента",
-      "selectTorrentHint": "Выберите торрент, чтобы увидеть подробности"
+      "selectTorrentHint": "Выберите торрент, чтобы увидеть подробности",
+      "macPanelResize": "Изменить размер панели сведений"
     },
     "addTorrent": {
       "none": "Нет",
@@ -413,6 +414,7 @@
       "hexColor": "Цвет HEX",
       "presets": "Пресеты",
       "detailedCardView": "Подробные карточки",
+      "macAlternatingRows": "Чередование цвета строк",
       "detailedCardFields": "Поля подробной карточки",
       "detailedCardFieldsDescription": "Выберите, какие поля отображаются в подробной карточке",
       "detailedCardGridColumns": "Столбцы сетки",
@@ -1140,6 +1142,37 @@
     "priority": "Приоритет",
     "dlSpeed": "Скорость загрузки",
     "ulSpeed": "Скорость отдачи"
+  },
+  "table": {
+    "columns": {
+      "name": "Имя",
+      "size": "Размер",
+      "progress": "Прогресс",
+      "status": "Статус",
+      "down": "Загрузка",
+      "up": "Отдача",
+      "seeds": "Сиды",
+      "peers": "Пиры",
+      "eta": "ETA",
+      "ratio": "Коэфф.",
+      "added": "Добавлен"
+    },
+    "sortedAscending": "Сортировка по возрастанию",
+    "sortedDescending": "Сортировка по убыванию"
+  },
+  "statusBar": {
+    "dhtNodesLabel": "DHT-узлов: {{count}}",
+    "connection": {
+      "connected": "Подключено",
+      "firewalled": "За файрволом",
+      "disconnected": "Отключено"
+    },
+    "toggleAltSpeedOn": "Включить альтернативные лимиты скорости",
+    "toggleAltSpeedOff": "Отключить альтернативные лимиты скорости",
+    "downloadSpeedLabel": "Скорость загрузки {{value}}",
+    "uploadSpeedLabel": "Скорость отдачи {{value}}",
+    "freeSpaceLabel": "Свободно {{value}}",
+    "globalRatioLabel": "Общее соотношение {{value}}"
   },
   "toast": {
     "notConnected": "Нет подключения к серверу. Сначала подключитесь.",

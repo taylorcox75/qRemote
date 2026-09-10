@@ -189,6 +189,12 @@ export interface AppPreferences {
    * parsed release title/year is ever sent to TMDB (services/artwork-store.ts).
    */
   tmdbPostersEnabled: boolean;
+
+  /** Mac idiom only: alternating row backgrounds in the dense TorrentTable. */
+  macAlternatingRows: boolean;
+
+  /** Mac idiom only: height in px of the bottom-docked detail panel under TorrentTable. */
+  macDetailPanelHeight: number;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -274,4 +280,6 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   lastCategoryFilter: null,
   lastTagFilters: [],
   tmdbPostersEnabled: false,
+  macAlternatingRows: true,
+  macDetailPanelHeight: 280,
 };

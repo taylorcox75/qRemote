@@ -132,6 +132,45 @@ describe('Sidebar', () => {
     expect(screen.getByText('Home Server')).toBeTruthy();
   });
 
+  it('does not render the collapse chevron on regular (iPad)', async () => {
+    await render(<Sidebar />);
+    expect(screen.queryByLabelText('sidebar.collapse')).toBeNull();
+  });
+
+  it('hides the server header entirely on regular when there is no current server', async () => {
+    jest.mocked(useServer).mockReturnValue({
+      currentServer: null,
+      isConnected: false,
+    } as unknown as ReturnType<typeof useServer>);
+    await render(<Sidebar />);
+    expect(screen.queryByText('Home Server')).toBeNull();
+    expect(screen.queryByLabelText('sidebar.collapse')).toBeNull();
+  });
+
+  it('renders the collapse chevron on mac', async () => {
+    mockShell({ idiom: 'mac' });
+    await render(<Sidebar />);
+    expect(screen.getByLabelText('sidebar.collapse')).toBeTruthy();
+  });
+
+  it('keeps the server header (with chevron) visible on mac even without a current server', async () => {
+    mockShell({ idiom: 'mac' });
+    jest.mocked(useServer).mockReturnValue({
+      currentServer: null,
+      isConnected: false,
+    } as unknown as ReturnType<typeof useServer>);
+    await render(<Sidebar />);
+    expect(screen.getByLabelText('sidebar.collapse')).toBeTruthy();
+  });
+
+  it('calls toggleSidebar when the mac chevron is pressed', async () => {
+    const toggleSidebar = jest.fn();
+    mockShell({ idiom: 'mac', toggleSidebar });
+    await render(<Sidebar />);
+    fireEvent.press(screen.getByLabelText('sidebar.collapse'));
+    expect(toggleSidebar).toHaveBeenCalledTimes(1);
+  });
+
   it('renders the always-shown destinations', async () => {
     await render(<Sidebar />);
     expect(screen.getByText('screens.torrents.tabTitle')).toBeTruthy();

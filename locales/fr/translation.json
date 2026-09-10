@@ -57,7 +57,8 @@
       "selectMode": "Sélectionner",
       "selectTorrent": "Sélectionner le torrent",
       "deselectTorrent": "Désélectionner le torrent",
-      "selectTorrentHint": "Sélectionnez un torrent pour voir ses détails"
+      "selectTorrentHint": "Sélectionnez un torrent pour voir ses détails",
+      "macPanelResize": "Redimensionner le panneau de détails"
     },
     "addTorrent": {
       "none": "Aucun",
@@ -392,6 +393,7 @@
       "hexColor": "Hex Color",
       "presets": "Presets",
       "detailedCardView": "Vue détaillée",
+      "macAlternatingRows": "Couleurs de rangées alternées",
       "detailedCardFields": "Champs de la carte détaillée",
       "detailedCardFieldsDescription": "Choisissez les champs affichés dans la vue détaillée",
       "detailedCardGridColumns": "Colonnes de la grille",
@@ -1119,6 +1121,37 @@
     "priority": "Priorité",
     "dlSpeed": "Vit. DL",
     "ulSpeed": "Vit. UL"
+  },
+  "table": {
+    "columns": {
+      "name": "Nom",
+      "size": "Taille",
+      "progress": "Progression",
+      "status": "Statut",
+      "down": "Vit. DL",
+      "up": "Vit. UL",
+      "seeds": "Seeds",
+      "peers": "Pairs",
+      "eta": "ETA",
+      "ratio": "Ratio",
+      "added": "Ajouté"
+    },
+    "sortedAscending": "Trié en ordre croissant",
+    "sortedDescending": "Trié en ordre décroissant"
+  },
+  "statusBar": {
+    "dhtNodesLabel": "{{count}} nœuds DHT",
+    "connection": {
+      "connected": "Connecté",
+      "firewalled": "Pare-feu",
+      "disconnected": "Déconnecté"
+    },
+    "toggleAltSpeedOn": "Activer les limites de vitesse alternatives",
+    "toggleAltSpeedOff": "Désactiver les limites de vitesse alternatives",
+    "downloadSpeedLabel": "Vitesse de téléchargement {{value}}",
+    "uploadSpeedLabel": "Vitesse d'envoi {{value}}",
+    "freeSpaceLabel": "Espace libre {{value}}",
+    "globalRatioLabel": "Ratio global {{value}}"
   },
   "toast": {
     "notConnected": "Non connecté à un serveur. Connectez-vous d'abord.",

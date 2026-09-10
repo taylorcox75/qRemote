@@ -22,6 +22,7 @@ import {
   LayoutAnimation,
   InteractionManager,
   GestureResponderEvent,
+  PanResponder,
   useWindowDimensions,
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
@@ -37,6 +38,8 @@ import { useToast } from '@/context/ToastContext';
 import { TorrentInfo, ServerConfig } from '@/types/api';
 import { TorrentCard } from '@/components/TorrentCard';
 import { TorrentRow } from '@/components/TorrentRow';
+import { TorrentTable } from '@/components/TorrentTable';
+import { MacStatusBar } from '@/components/MacStatusBar';
 import { TorrentDetailBody } from '@/components/torrent-detail/TorrentDetailBody';
 import { SkeletonTorrentCard } from '@/components/SkeletonLoader';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
@@ -49,7 +52,7 @@ import { torrentsApi } from '@/services/api/torrents';
 import { applicationApi } from '@/services/api/application';
 import { apiClient } from '@/services/api/client';
 import { storageService } from '@/services/storage';
-import { ExpandedCardField, DEFAULT_PREFERENCES } from '@/types/preferences';
+import { ExpandedCardField, SortField, DEFAULT_PREFERENCES } from '@/types/preferences';
 import { ServerManager } from '@/services/server-manager';
 import { getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
 import { formatSpeed, kbToBytes } from '@/utils/format';
@@ -68,6 +71,7 @@ import { isTorrentCompleted } from '@/utils/torrent-state';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSelectPicker';
 import { torrentHasAnyTag, UNTAGGED_FILTER } from '@/utils/tags';
+import { clampMacDetailPanelHeight } from '@/utils/mac-detail-panel';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -136,6 +140,14 @@ export default function TorrentsScreen() {
     DEFAULT_PREFERENCES.categoryColors,
   );
   const [tagColors, setTagColors] = useState<Record<string, string>>(DEFAULT_PREFERENCES.tagColors);
+  // Mac idiom only: dense TorrentTable row striping and the bottom-docked
+  // detail panel's height (persisted on splitter-drag release below).
+  const [macAlternatingRows, setMacAlternatingRows] = useState<boolean>(
+    DEFAULT_PREFERENCES.macAlternatingRows,
+  );
+  const [macDetailPanelHeight, setMacDetailPanelHeight] = useState<number>(
+    DEFAULT_PREFERENCES.macDetailPanelHeight,
+  );
   // Category/tag filter state (null = all categories, '' = uncategorized)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [tagFilters, setTagFilters] = useState<string[]>([]);
@@ -180,6 +192,60 @@ export default function TorrentsScreen() {
   // Swipeable refs for closing open rows
   const openSwipeableRef = useRef<Swipeable | null>(null);
   const swipeHapticFired = useRef(false);
+
+  // Mac idiom only: draggable splitter between TorrentTable and the
+  // bottom-docked detail panel (mirrors Pogona's PanelSplitter).
+  //
+  // macDetailPanelHeightAnim drives the panel's actual height during a drag
+  // via .setValue() (Animated.View below), so every pointer-move frame only
+  // touches that one native view instead of re-rendering this whole screen
+  // (and, transitively, every visible TorrentTable row - see onSelect below
+  // for the same class of fix). macDetailPanelHeightRef is written directly
+  // in onPanResponderMove so it always holds the live drag position (not
+  // just the last *committed* height); onPanResponderRelease is the only
+  // place that commits to React state (for re-renders that read the height,
+  // e.g. on idiom change) and to storage.
+  const macDetailPanelHeightAnim = useRef(new Animated.Value(macDetailPanelHeight)).current;
+  const macDetailPanelHeightRef = useRef(macDetailPanelHeight);
+  useEffect(() => {
+    macDetailPanelHeightRef.current = macDetailPanelHeight;
+    macDetailPanelHeightAnim.setValue(macDetailPanelHeight);
+  }, [macDetailPanelHeight, macDetailPanelHeightAnim]);
+  const macSplitterDragStartHeight = useRef(macDetailPanelHeight);
+  const macSplitterPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_evt, gestureState) => Math.abs(gestureState.dy) > 2,
+        onPanResponderGrant: () => {
+          macSplitterDragStartHeight.current = macDetailPanelHeightRef.current;
+        },
+        onPanResponderMove: (_evt, gestureState) => {
+          // The splitter sits above the panel, so dragging it up (negative
+          // dy) grows the panel and dragging it down shrinks it.
+          const next = clampMacDetailPanelHeight(
+            macSplitterDragStartHeight.current - gestureState.dy,
+          );
+          macDetailPanelHeightRef.current = next;
+          macDetailPanelHeightAnim.setValue(next);
+        },
+        onPanResponderRelease: () => {
+          setMacDetailPanelHeight(macDetailPanelHeightRef.current);
+          void (async () => {
+            try {
+              const prefs = await storageService.getPreferences();
+              await storageService.savePreferences({
+                ...prefs,
+                macDetailPanelHeight: macDetailPanelHeightRef.current,
+              });
+            } catch {
+              // best-effort
+            }
+          })();
+        },
+      }),
+    [macDetailPanelHeightAnim],
+  );
 
   // Track last known default filter so we only sync when user changes it in Settings
   const lastDefaultFilterRef = useRef<string | null>(null);
@@ -245,6 +311,10 @@ export default function TorrentsScreen() {
           setDefaultTagColor(prefs.defaultTagColor || DEFAULT_PREFERENCES.defaultTagColor);
           setCategoryColors(prefs.categoryColors || {});
           setTagColors(prefs.tagColors || {});
+          setMacAlternatingRows(prefs.macAlternatingRows ?? DEFAULT_PREFERENCES.macAlternatingRows);
+          setMacDetailPanelHeight(
+            prefs.macDetailPanelHeight ?? DEFAULT_PREFERENCES.macDetailPanelHeight,
+          );
         } catch {
           // ignore
         }
@@ -294,6 +364,10 @@ export default function TorrentsScreen() {
           prefs.expandedCardGridColumns === 3 || prefs.expandedCardGridColumns === 5
             ? prefs.expandedCardGridColumns
             : 4,
+        );
+        setMacAlternatingRows(prefs.macAlternatingRows ?? DEFAULT_PREFERENCES.macAlternatingRows);
+        setMacDetailPanelHeight(
+          prefs.macDetailPanelHeight ?? DEFAULT_PREFERENCES.macDetailPanelHeight,
         );
       } catch {
         // Use defaults if loading fails
@@ -609,6 +683,35 @@ export default function TorrentsScreen() {
 
     return filtered;
   }, [torrents, filter, categoryFilter, tagFilters, searchQuery, sortBy, sortDirection]);
+
+  // Mac idiom only: stable so TorrentTableRow's memo comparator
+  // (prev.onSelect === next.onSelect) doesn't fail - and every visible row
+  // re-render - on renders this screen makes for unrelated reasons.
+  // shell.setSelectedHash is itself a raw useState setter (stable identity).
+  const handleMacTableSelect = useCallback(
+    (hash: string) => shell.setSelectedHash(hash),
+    [shell.setSelectedHash],
+  );
+
+  // Mac idiom only: TorrentTable's header-click sort writes back into the
+  // same sortBy/sortDirection state the FlatList branch already sorts by.
+  const handleMacSortChange = useCallback((field: SortField, direction: 'asc' | 'desc') => {
+    setSortBy(field);
+    setSortDirection(direction);
+  }, []);
+
+  // Mac idiom only: TorrentTable's right-click/long-press opens the same
+  // ActionMenu the FlatList's per-row long-press uses.
+  const handleMacContextMenu = useCallback(
+    (hash: string, anchor: { x: number; y: number }) => {
+      const torrent = filteredTorrents.find((t) => t.hash === hash);
+      if (!torrent) return;
+      setSelectedTorrent(torrent);
+      setMenuAnchor(anchor);
+      setMenuVisible(true);
+    },
+    [filteredTorrents],
+  );
 
   // Selection handlers
   const toggleSelectMode = () => {
@@ -1277,7 +1380,7 @@ export default function TorrentsScreen() {
   // (1024) -- only the 13-inch (1366) would clear 1000 with the sidebar
   // open. The list column still shrinks with the sidebar open (down to
   // 574pt on the 11-inch), which TorrentRow's middle-ellipsis handles.
-  const showDetailPane = idiom !== 'compact' && windowWidth >= 1000;
+  const showDetailPane = idiom === 'regular' && windowWidth >= 1000;
 
   const mainContent = (
     <>
@@ -1394,45 +1497,53 @@ export default function TorrentsScreen() {
               contentContainerStyle={styles.filterRowContainer}
               style={styles.filterScrollView}
             >
-              {/* Checkbox that scrolls with filters */}
-              <TouchableOpacity
-                style={styles.selectCheckbox}
-                onPress={() => {
-                  if (selectMode) {
-                    if (selectedHashes.size === filteredTorrents.length) {
-                      clearSelection();
+              {/* Checkbox that scrolls with filters. Hidden on mac idiom:
+                  TorrentTable does not yet render a selection column or take
+                  selectMode/selectedHashes/onToggleSelection props, so the
+                  only functional path through select mode on mac would be
+                  select-all with no way to toggle individual rows. iPhone
+                  and iPad are unaffected - this only removes the entry point
+                  on mac until TorrentTable supports selection. */}
+              {idiom !== 'mac' && (
+                <TouchableOpacity
+                  style={styles.selectCheckbox}
+                  onPress={() => {
+                    if (selectMode) {
+                      if (selectedHashes.size === filteredTorrents.length) {
+                        clearSelection();
+                      } else {
+                        selectAll();
+                      }
                     } else {
-                      selectAll();
+                      toggleSelectMode();
                     }
-                  } else {
-                    toggleSelectMode();
-                  }
-                }}
-                activeOpacity={0.7}
-                accessibilityLabel={
-                  selectMode
-                    ? selectedHashes.size === filteredTorrents.length
-                      ? t('screens.torrents.deselectAll')
-                      : t('screens.torrents.selectAll')
-                    : t('screens.torrents.selectMode')
-                }
-              >
-                <Ionicons
-                  name={
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityLabel={
                     selectMode
                       ? selectedHashes.size === filteredTorrents.length
-                        ? 'checkbox'
+                        ? t('screens.torrents.deselectAll')
+                        : t('screens.torrents.selectAll')
+                      : t('screens.torrents.selectMode')
+                  }
+                >
+                  <Ionicons
+                    name={
+                      selectMode
+                        ? selectedHashes.size === filteredTorrents.length
+                          ? 'checkbox'
+                          : 'square-outline'
                         : 'square-outline'
-                      : 'square-outline'
-                  }
-                  size={24}
-                  color={
-                    selectMode && selectedHashes.size === filteredTorrents.length
-                      ? colors.primary
-                      : colors.textSecondary
-                  }
-                />
-              </TouchableOpacity>
+                    }
+                    size={24}
+                    color={
+                      selectMode && selectedHashes.size === filteredTorrents.length
+                        ? colors.primary
+                        : colors.textSecondary
+                    }
+                  />
+                </TouchableOpacity>
+              )}
 
               {!selectMode &&
                 filterOptions.map((item) => (
@@ -1703,6 +1814,19 @@ export default function TorrentsScreen() {
             </TouchableOpacity>
           )}
         </View>
+      ) : idiom === 'mac' ? (
+        <TorrentTable
+          torrents={filteredTorrents}
+          selectedHash={shell.selectedHash}
+          onSelect={handleMacTableSelect}
+          onContextMenu={handleMacContextMenu}
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleMacSortChange}
+          alternatingRows={macAlternatingRows}
+          categoryColors={categoryColors}
+          topInset={styles.listContent.paddingTop}
+        />
       ) : (
         <FlatList
           data={filteredTorrents}
@@ -1935,7 +2059,7 @@ export default function TorrentsScreen() {
         />
       )}
 
-      {selectMode && selectedHashes.size > 0 && (
+      {idiom !== 'mac' && selectMode && selectedHashes.size > 0 && (
         <View
           style={[
             styles.bulkActionsBar,
@@ -2244,7 +2368,48 @@ export default function TorrentsScreen() {
     );
   }
 
-  // Regular/mac: keep the same parent chain (container -> detailSplitList ->
+  // Mac idiom: bottom-docked detail panel instead of the regular idiom's
+  // width-gated right-hand pane, mirroring Pogona's MacTransfersView column
+  // stack (transfersTable -> PanelSplitter -> bottomPanel -> MacStatusBar).
+  // Always docked regardless of window width -- there is no showDetailPane
+  // gate here. mainContent already renders TorrentTable in place of the
+  // FlatList for this idiom (see the branch above).
+  if (idiom === 'mac') {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={styles.macTableArea}>{mainContent}</View>
+          <View
+            style={[styles.macSplitter, { backgroundColor: colors.surfaceOutline }]}
+            accessibilityRole="adjustable"
+            accessibilityLabel={t('screens.torrents.macPanelResize')}
+            {...macSplitterPanResponder.panHandlers}
+          />
+          <Animated.View
+            style={[
+              styles.macDetailPanel,
+              { height: macDetailPanelHeightAnim, borderTopColor: colors.surfaceOutline },
+            ]}
+          >
+            {shell.selectedHash ? (
+              <TorrentDetailBody
+                key={shell.selectedHash}
+                hash={shell.selectedHash}
+                embedded
+                onDismiss={() => shell.setSelectedHash(null)}
+              />
+            ) : (
+              <EmptyState icon="albums-outline" title={t('screens.torrents.selectTorrentHint')} />
+            )}
+          </Animated.View>
+          <MacStatusBar />
+        </View>
+      </>
+    );
+  }
+
+  // Regular: keep the same parent chain (container -> detailSplitList ->
   // mainContent) whether or not showDetailPane is currently true, so crossing
   // the 1000pt threshold on a live resize only mounts/unmounts the sibling
   // detail pane instead of tearing down and rebuilding the list subtree.
@@ -2282,8 +2447,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Regular/mac detail-pane split (showDetailPane) only — the compact
-  // (iPhone) path never applies these.
+  // Regular idiom's width-gated detail-pane split (showDetailPane) only:
+  // compact (iPhone) never applies these, and mac uses the bottom-docked
+  // macTableArea/macSplitter/macDetailPanel styles below instead.
   detailSplitRow: {
     flexDirection: 'row',
   },
@@ -2293,6 +2459,17 @@ const styles = StyleSheet.create({
   detailSplitPane: {
     width: 380,
     borderLeftWidth: StyleSheet.hairlineWidth,
+  },
+  // Mac idiom bottom-docked detail panel (table -> splitter -> panel ->
+  // MacStatusBar); the 'regular' side-pane styles above don't apply here.
+  macTableArea: {
+    flex: 1,
+  },
+  macSplitter: {
+    height: 6,
+  },
+  macDetailPanel: {
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   center: {
     flex: 1,
