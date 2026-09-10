@@ -116,8 +116,11 @@ module.exports = {
       'expo-secure-store',
       'expo-sharing',
       'expo-status-bar',
-      './plugins/withNativeTorrentFileCopy',
+      // withMacCatalyst is listed first on purpose: Expo runs AppDelegate mods
+      // in reverse registration order, and its UIScene step must see the
+      // launch method AFTER withNativeTorrentFileCopy has rewritten it.
       './plugins/withMacCatalyst',
+      './plugins/withNativeTorrentFileCopy',
     ],
     extra: {
       router: {},

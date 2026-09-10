@@ -3,7 +3,12 @@ const {
   withPodfileProperties,
   withXcodeProject,
   withAppDelegate,
+  withInfoPlist,
+  withDangerousMod,
+  IOSConfig,
 } = require('@expo/config-plugins');
+const fs = require('fs');
+const path = require('path');
 
 // The app's own build target inside the generated Xcode project. Must match
 // the PBXNativeTarget "name" in ios/qRemote.xcodeproj/project.pbxproj (see
@@ -165,6 +170,161 @@ const POST_INSTALL_BLOCK = `  ${POST_INSTALL_MARKER}
  *     -destination 'generic/platform=macOS,variant=Mac Catalyst' \
  *     CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY= -derivedDataPath ios/build build
  */
+
+// ---------------------------------------------------------------------------
+// UIScene lifecycle (required by the Xcode 27 / macOS 27 SDK).
+//
+// Expo SDK 57's template still uses the legacy UIWindow lifecycle (the
+// AppDelegate creates its own UIWindow in didFinishLaunching). UIKit linked
+// against the 27 SDK traps at scene creation when an app has not adopted
+// scenes (crash in __UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption,
+// EXC_BREAKPOINT, observed on the Mac Catalyst build 2026-09-10). The three
+// steps below add a UIApplicationSceneManifest, a SceneDelegate that creates
+// the window and starts React Native through the same factory, and patch the
+// AppDelegate so it no longer creates a window when a scene manifest exists.
+// Everything is inside the QREMOTE_MAC_CATALYST gate, so the iOS project is
+// untouched until that opt-in.
+// ---------------------------------------------------------------------------
+const SCENE_DELEGATE_FILE = 'SceneDelegate.swift';
+const SCENE_DELEGATE_SOURCE = `import UIKit
+import React
+
+// Added by plugins/withMacCatalyst.js (UIScene lifecycle). Creates the window
+// for the connecting scene and starts React Native through the factory the
+// AppDelegate built in didFinishLaunching. URL opens (magnet:, .torrent) are
+// forwarded to the AppDelegate's existing open-url path so the native copy
+// of security-scoped files keeps happening.
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+  var window: UIWindow?
+
+  func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    guard let windowScene = scene as? UIWindowScene else { return }
+    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
+    let window = UIWindow(windowScene: windowScene)
+    self.window = window
+    appDelegate.window = window
+    appDelegate.startReactNative(in: window)
+    for context in connectionOptions.urlContexts {
+      _ = appDelegate.application(UIApplication.shared, open: context.url, options: [:])
+    }
+  }
+
+  func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
+    for context in URLContexts {
+      _ = appDelegate.application(UIApplication.shared, open: context.url, options: [:])
+    }
+  }
+}
+`;
+
+// Matches the template's window-creation block whether or not another plugin
+// (plugins/withNativeTorrentFileCopy.js) has already renamed launchOptions.
+const APPDELEGATE_WINDOW_BLOCK_RE =
+  /#if os\(iOS\) \|\| os\(tvOS\)\n    window = UIWindow\(frame: UIScreen\.main\.bounds\)\n    factory\.startReactNative\(\n      withModuleName: "main",\n      in: window,\n      launchOptions: (\w+)\)\n#endif\n/;
+const APPDELEGATE_SCENE_MARKER = '// withMacCatalyst: UIScene lifecycle';
+const appDelegateWindowReplacement = (launchOptionsVar) => `#if os(iOS) || os(tvOS)
+    ${APPDELEGATE_SCENE_MARKER}: when a UIApplicationSceneManifest is
+    // present, SceneDelegate creates the window and calls startReactNative(in:)
+    // once the scene connects; creating a UIWindow here would never be shown.
+    pendingLaunchOptions = ${launchOptionsVar}
+    if Bundle.main.object(forInfoDictionaryKey: "UIApplicationSceneManifest") == nil {
+      window = UIWindow(frame: UIScreen.main.bounds)
+      startReactNative(in: window!)
+    }
+#endif
+`;
+const APPDELEGATE_SCENE_METHODS = `
+  ${APPDELEGATE_SCENE_MARKER}: shared by the legacy path above and by
+  // SceneDelegate.scene(_:willConnectTo:options:).
+  private var pendingLaunchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  private var reactNativeStarted = false
+
+  func startReactNative(in window: UIWindow) {
+    guard !reactNativeStarted, let factory = reactNativeFactory else { return }
+    reactNativeStarted = true
+    factory.startReactNative(
+      withModuleName: "main",
+      in: window,
+      launchOptions: pendingLaunchOptions)
+  }
+
+`;
+
+function withUIScene(config) {
+  config = withInfoPlist(config, (config) => {
+    config.modResults.UIApplicationSceneManifest = {
+      UIApplicationSupportsMultipleScenes: false,
+      UISceneConfigurations: {
+        UIWindowSceneSessionRoleApplication: [
+          {
+            UISceneConfigurationName: 'Default Configuration',
+            UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
+          },
+        ],
+      },
+    };
+    return config;
+  });
+
+  config = withDangerousMod(config, [
+    'ios',
+    (config) => {
+      const dir = path.join(config.modRequest.platformProjectRoot, APP_TARGET_NAME);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, SCENE_DELEGATE_FILE), SCENE_DELEGATE_SOURCE);
+      return config;
+    },
+  ]);
+
+  config = withXcodeProject(config, (config) => {
+    const project = config.modResults;
+    const relPath = APP_TARGET_NAME + '/' + SCENE_DELEGATE_FILE;
+    if (!project.hasFile(relPath)) {
+      IOSConfig.XcodeUtils.addBuildSourceFileToGroup({
+        filepath: relPath,
+        groupName: APP_TARGET_NAME,
+        project,
+      });
+    }
+    return config;
+  });
+
+  config = withAppDelegate(config, (config) => {
+    let contents = config.modResults.contents;
+    if (contents.includes(APPDELEGATE_SCENE_MARKER)) {
+      return config;
+    }
+    const windowMatch = contents.match(APPDELEGATE_WINDOW_BLOCK_RE);
+    if (!windowMatch) {
+      throw new Error(
+        'withMacCatalyst: expected AppDelegate.swift window creation block not found. ' +
+          'The Expo template likely changed. Update plugins/withMacCatalyst.js to match.',
+      );
+    }
+    contents = contents.replace(
+      APPDELEGATE_WINDOW_BLOCK_RE,
+      appDelegateWindowReplacement(windowMatch[1]),
+    );
+    const classEndIndex = contents.indexOf(APPDELEGATE_CLASS_END_ANCHOR);
+    if (classEndIndex === -1) {
+      throw new Error(
+        'withMacCatalyst: AppDelegate class end anchor not found for the UIScene step.',
+      );
+    }
+    contents =
+      contents.slice(0, classEndIndex) + APPDELEGATE_SCENE_METHODS + contents.slice(classEndIndex);
+    config.modResults.contents = contents;
+    return config;
+  });
+
+  return config;
+}
+
 module.exports = function withMacCatalyst(config) {
   // Opt-in gate: the Catalyst-specific Podfile and Xcode-project changes are
   // only applied when QREMOTE_MAC_CATALYST=1 is set at prebuild time. Without
@@ -318,6 +478,8 @@ module.exports = function withMacCatalyst(config) {
     config.modResults.contents = contents;
     return config;
   });
+
+  config = withUIScene(config);
 
   return config;
 };
