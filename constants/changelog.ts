@@ -19,6 +19,26 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.44',
+    date: '2026-09-09',
+    sections: [
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Fixed turning off "Create root folder" in the add torrent dialog having no effect',
+          'Fixed losing the login session behind some reverse proxies that set their own cookies',
+          'Fixed the connection timeout and retry settings being ignored on the first connect after launch',
+          'Fixed the retry attempts setting resetting to 3 when set to 0',
+          'Fixed a loading screen flashing every time the app was reopened after a quick switch to another app',
+        ],
+      },
+      {
+        title: 'Maintenance',
+        items: ['Connecting to a server is slightly faster'],
+      },
+    ],
+  },
+  {
     version: '3.8.43',
     date: '2026-09-07',
     sections: [

@@ -33,6 +33,13 @@ export interface ApiFeatures {
    * boundary, and only the preference one was handled previously.
    */
   useStoppedAddParam: boolean;
+  /**
+   * torrents/add takes "contentLayout" (Original/Subfolder/NoSubfolder) — WebAPI ≥ 2.7.0 /
+   * qBit 4.3.2. The wiki still documents "root_folder", but qBittorrent's
+   * torrentscontroller.cpp has not read that field since 4.3.x (verified against
+   * release-4.6.0 and release-5.0.0) — it is silently dropped with HTTP 200.
+   */
+  useContentLayoutAddParam: boolean;
   /** app/getDirectoryContent endpoint exists, for path autocomplete (WebAPI ≥ 2.11.0 / qBit 5.0). */
   supportsGetDirectoryContent: boolean;
   /** search/results includes a pubDate field per result, for sort-by-date (WebAPI ≥ 2.11.0 / qBit 5.0). */
@@ -88,6 +95,7 @@ const V5_FEATURES: ApiFeatures = {
   supportsSearchDownloadTorrent: true,
   useAddStoppedEnabledPreference: true,
   useStoppedAddParam: true,
+  useContentLayoutAddParam: true,
   supportsGetDirectoryContent: true,
   supportsSearchPubDate: true,
   hasIsPrivate: true,
@@ -110,6 +118,7 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     supportsSearchDownloadTorrent: isV5,
     useAddStoppedEnabledPreference: isV5,
     useStoppedAddParam: isV5,
+    useContentLayoutAddParam: gte(v, 2, 7),
     supportsGetDirectoryContent: isV5,
     supportsSearchPubDate: isV5,
     hasIsPrivate: gte(v, 2, 9),

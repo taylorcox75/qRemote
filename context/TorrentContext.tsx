@@ -20,6 +20,7 @@ import { syncApi } from '@/services/api/sync';
 import { useServer } from './ServerContext';
 import { getErrorMessage } from '@/utils/error';
 import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
+import { LONG_BACKGROUND_THRESHOLD_MS } from '@/constants/timing';
 
 interface TorrentContextType {
   torrents: TorrentInfo[];
@@ -231,15 +232,10 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
       setIsAppActive(nextAppState === 'active');
 
       if (previousAppState === 'background' && nextAppState === 'active') {
+        const backgroundedMs = Date.now() - lastActiveTime.current;
         lastActiveTime.current = Date.now();
 
         if (isConnected) {
-          // Baseline against the last successful sync *before* flipping the
-          // flag, so the clear effect above can tell a genuinely new fetch
-          // apart from the stale timestamp already sitting there.
-          recoveryBaselineRef.current = dataUpdatedAtRef.current;
-          setIsRecoveringState(true);
-
           // Deliberately NOT eagerly reconnecting here. checkAndReconnect
           // always performs a fresh login (server-manager.ts has no
           // lightweight "is my session still valid" path) — calling it on
@@ -251,6 +247,21 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
           // will fail naturally and the reactive effect above (which
           // watches queryError) picks it up and reconnects — but only when
           // it's actually needed.
+
+          if (backgroundedMs < LONG_BACKGROUND_THRESHOLD_MS) {
+            // Quick app-switch — nudge an immediate incremental refresh
+            // (rid-based, not a full resync) without blocking on it or
+            // showing the recovery skeleton. The normal 2s poll would catch
+            // this shortly anyway; this just makes it feel instant.
+            queryClient.invalidateQueries({ queryKey: ['torrents'] });
+            return;
+          }
+
+          // Baseline against the last successful sync *before* flipping the
+          // flag, so the clear effect above can tell a genuinely new fetch
+          // apart from the stale timestamp already sitting there.
+          recoveryBaselineRef.current = dataUpdatedAtRef.current;
+          setIsRecoveringState(true);
 
           // Force full re-sync on foreground
           syncVersionRef.current++;

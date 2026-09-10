@@ -9,12 +9,13 @@ export const applicationApi = {
    * Get application version
    */
   async getVersion(signal?: AbortSignal): Promise<ApplicationVersion> {
-    const version = await apiClient.get(`/api/${API_VERSION}/app/version`, undefined, signal);
-    const apiVersion = await apiClient.get(
-      `/api/${API_VERSION}/app/webapiVersion`,
-      undefined,
-      signal,
-    );
+    // Independent reads — run them concurrently instead of sequentially so a
+    // connect (cold launch, reconnect) doesn't pay for two round trips where
+    // one would do.
+    const [version, apiVersion] = await Promise.all([
+      apiClient.get(`/api/${API_VERSION}/app/version`, undefined, signal),
+      apiClient.get(`/api/${API_VERSION}/app/webapiVersion`, undefined, signal),
+    ]);
     return {
       version: version as string,
       apiVersion: apiVersion as string,

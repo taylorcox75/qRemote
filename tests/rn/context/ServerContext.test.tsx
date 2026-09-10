@@ -22,6 +22,7 @@ jest.mock('@/services/api/client', () => ({
   apiClient: {
     getServer: jest.fn(),
     setServer: jest.fn(),
+    updateSettings: jest.fn(),
   },
 }));
 
