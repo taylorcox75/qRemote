@@ -36,6 +36,7 @@ import {
   useWindowDimensions,
   GestureResponderEvent,
   LayoutChangeEvent,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useNavigation } from 'expo-router';
@@ -130,6 +131,13 @@ interface TorrentDetailBodyProps {
 }
 
 export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBodyProps) {
+  // Embedded in the mac/regular split-pane detail column on Mac Catalyst,
+  // the hero reads as a Pogona-style inspector panel instead of a big
+  // rounded card - smaller name, a secondary meta line, a slim progress
+  // capsule, no outer card padding/border. Route (compact/iPhone) and
+  // regular-iPad embedded rendering are untouched: this only swaps a
+  // handful of style entries, never the JSX structure or behaviour.
+  const isMacEmbedded = !!embedded && Platform.OS === 'ios' && (Platform.isMacCatalyst ?? false);
   const router = useRouter();
   const navigation = useNavigation();
   const { isConnected, isLoading } = useServer();
@@ -1572,11 +1580,22 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
           }
         >
           {/* ── Hero ────────────────────────────────────────────── */}
-          <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
+          <View
+            style={[
+              isMacEmbedded ? styles.heroCardMac : styles.heroCard,
+              !isMacEmbedded && { backgroundColor: colors.surface },
+            ]}
+          >
             <View style={styles.heroHeaderRow}>
               {/* Self-fetching, opt-in TMDB poster - null when inactive. */}
               <ArtworkThumbnail name={torrent.name} width={44} placeholderIcon="film-outline" />
-              <Text style={[styles.heroName, { color: colors.text }]} numberOfLines={3}>
+              <Text
+                style={[
+                  isMacEmbedded ? styles.heroNameMac : styles.heroName,
+                  { color: colors.text },
+                ]}
+                numberOfLines={3}
+              >
                 {torrent.name}
               </Text>
               <View style={styles.heroBadge}>
@@ -1594,7 +1613,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
                 <AnimatedProgressBar
                   progress={Math.min(progress, 100)}
                   color={stateColor}
-                  height={5}
+                  height={isMacEmbedded ? 4 : 5}
                 />
               </View>
               <TouchableOpacity
@@ -1610,7 +1629,10 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
             </View>
 
             <Text
-              style={[styles.heroSizeLine, { color: colors.textSecondary }]}
+              style={[
+                isMacEmbedded ? styles.heroSizeLineMac : styles.heroSizeLine,
+                { color: colors.textSecondary },
+              ]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.8}
@@ -2393,6 +2415,25 @@ const styles = StyleSheet.create({
   heroSizeLine: {
     fontSize: 13,
     fontWeight: '500',
+    marginBottom: 6,
+  },
+
+  // Mac Catalyst, embedded detail pane only (isMacEmbedded) - Pogona-style
+  // inspector: no outer card chrome, denser name/meta type. Route rendering
+  // and the regular-idiom embedded pane keep the styles above untouched.
+  heroCardMac: {
+    padding: 0,
+    marginBottom: 10,
+  },
+  heroNameMac: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 19,
+    flex: 1,
+  },
+  heroSizeLineMac: {
+    fontSize: 13,
+    fontWeight: '400',
     marginBottom: 6,
   },
   sparklineRow: {

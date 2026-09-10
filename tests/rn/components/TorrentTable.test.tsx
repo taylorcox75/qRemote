@@ -6,6 +6,8 @@ import { TorrentInfo } from '@/types/api';
 import { formatSize, formatRatio } from '@/utils/format';
 import { hexToRgba } from '@/utils/color';
 import { mockColors } from './theme-mock';
+import { useArtworkSettings } from '@/context/ArtworkContext';
+import { useArtwork } from '@/hooks/useArtwork';
 
 jest.mock('@/context/ThemeContext', () => ({
   useTheme: () => ({ colors: require('./theme-mock').mockColors }),
@@ -15,9 +17,10 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
 
-// Same rationale as TorrentRow.test.tsx: ArtworkThumbnail reads the artwork
-// feature flag directly, not via props. Default to inactive; the name cell
-// still renders its 28pt placeholder plate via showPlaceholderWhenInactive.
+// Same rationale as TorrentRow.test.tsx: ArtworkThumbnail/the name cell read
+// the artwork feature flag directly, not via props. Default to inactive; the
+// name cell falls back to its state glyph (see the "artwork" describe block
+// below for the active/poster-present cases).
 jest.mock('@/context/ArtworkContext', () => ({
   useArtworkSettings: jest.fn(() => ({
     enabled: false,
@@ -230,5 +233,83 @@ describe('TorrentTable context menu', () => {
     // Tapping the menu button must not also select the row.
     expect(onSelect).not.toHaveBeenCalled();
     measureInWindow.mockReset();
+  });
+});
+
+describe('TorrentTable name-cell leading glyph', () => {
+  afterEach(() => {
+    (useArtworkSettings as jest.Mock).mockReturnValue({
+      enabled: false,
+      hasKey: false,
+      active: false,
+      refresh: jest.fn(),
+    });
+    (useArtwork as jest.Mock).mockReturnValue({ artwork: undefined, loading: false });
+  });
+
+  it('renders a state glyph instead of the artwork plate when artwork is inactive', async () => {
+    await render(<TorrentTable {...baseProps()} />);
+    expect(screen.queryAllByTestId('artwork-thumbnail-plate')).toHaveLength(0);
+  });
+
+  it('renders a state glyph instead of the artwork plate when active but no poster matched', async () => {
+    (useArtworkSettings as jest.Mock).mockReturnValue({
+      enabled: true,
+      hasKey: true,
+      active: true,
+      refresh: jest.fn(),
+    });
+    (useArtwork as jest.Mock).mockReturnValue({ artwork: null, loading: false });
+    await render(<TorrentTable {...baseProps()} />);
+    expect(screen.queryAllByTestId('artwork-thumbnail-plate')).toHaveLength(0);
+  });
+
+  it('renders the artwork plate instead of the state glyph once a poster is matched', async () => {
+    (useArtworkSettings as jest.Mock).mockReturnValue({
+      enabled: true,
+      hasKey: true,
+      active: true,
+      refresh: jest.fn(),
+    });
+    (useArtwork as jest.Mock).mockReturnValue({
+      artwork: { posterPath: '/poster.jpg', backdropPath: null },
+      loading: false,
+    });
+    await render(<TorrentTable {...baseProps()} />);
+    expect(screen.getAllByTestId('artwork-thumbnail-plate').length).toBe(TORRENTS.length);
+  });
+});
+
+describe('TorrentTable added-date formatting', () => {
+  it('omits the year when added_on falls in the current year', async () => {
+    const now = new Date();
+    const thisYear = new Date(now.getFullYear(), 5, 15).getTime() / 1000;
+    await render(
+      <TorrentTable
+        {...baseProps()}
+        torrents={[torrent({ hash: 'h1', name: 'Alpha Torrent', added_on: thisYear })]}
+      />,
+    );
+    const expected = new Date(thisYear * 1000).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    });
+    expect(screen.getAllByText(expected).length).toBeGreaterThan(0);
+  });
+
+  it('includes the year when added_on falls in a past year', async () => {
+    const pastYear = new Date(2020, 5, 15).getTime() / 1000;
+    await render(
+      <TorrentTable
+        {...baseProps()}
+        torrents={[torrent({ hash: 'h1', name: 'Alpha Torrent', added_on: pastYear })]}
+      />,
+    );
+    const expected = new Date(pastYear * 1000).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    expect(screen.getAllByText(expected).length).toBeGreaterThan(0);
   });
 });

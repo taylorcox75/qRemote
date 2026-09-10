@@ -2,9 +2,11 @@
  * TorrentTable.tsx - dense 11-column desktop table for the 'mac' idiom,
  * mirroring Pogona's Features/Main/MacTransfersView.swift `transfersTable`
  * anatomy: a desktopMetrics('mac')-tall row per torrent (26pt), a 20pt
- * square artwork plate leading the name cell, right-aligned tabular-nums
- * numeric columns, and a header row whose cells double as sort toggles -
- * 24pt tall, 11pt semibold secondary labels, a hairline bottom border and
+ * square leading slot (TMDB poster art when active and matched, else a
+ * tinted Ionicons state glyph - see getStateIcon) before the name cell,
+ * right-aligned tabular-nums numeric columns, and a header row whose cells
+ * double as sort toggles - 24pt tall, 11pt medium sentence-case secondary
+ * labels (Finder-style, not uppercase), a hairline bottom border and
  * hairline separators between header cells only.
  *
  * Only rendered on the 'mac' layout idiom - the iPhone ('compact') and iPad
@@ -25,6 +27,8 @@ import { useTranslation } from 'react-i18next';
 import { TorrentInfo } from '@/types/api';
 import { SortField } from '@/types/preferences';
 import { useTheme } from '@/context/ThemeContext';
+import { useArtworkSettings } from '@/context/ArtworkContext';
+import { useArtwork } from '@/hooks/useArtwork';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
 import { ArtworkThumbnail } from '@/components/ArtworkThumbnail';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -78,17 +82,17 @@ interface ColumnDef {
   align: 'left' | 'right';
 }
 
-const NAME_MIN_WIDTH = 240;
-const SIZE_WIDTH = 84;
-const PROGRESS_WIDTH = 112;
-const STATUS_WIDTH = 108;
-const DOWN_WIDTH = 88;
-const UP_WIDTH = 88;
-const SEEDS_WIDTH = 64;
-const PEERS_WIDTH = 64;
-const ETA_WIDTH = 72;
-const RATIO_WIDTH = 56;
-const ADDED_WIDTH = 108;
+const NAME_MIN_WIDTH = 180;
+const SIZE_WIDTH = 80;
+const PROGRESS_WIDTH = 104;
+const STATUS_WIDTH = 100;
+const DOWN_WIDTH = 84;
+const UP_WIDTH = 84;
+const SEEDS_WIDTH = 60;
+const PEERS_WIDTH = 60;
+const ETA_WIDTH = 68;
+const RATIO_WIDTH = 52;
+const ADDED_WIDTH = 96;
 // Trailing per-row context-menu button. Not a COLUMNS entry (no sortable
 // field, no header label) - onPointerDown/onHoverIn/onHoverOut right-click
 // below never fire on this RN/Fabric build (RCTGetDispatchW3CPointerEvents
@@ -119,29 +123,92 @@ const COLUMNS: ColumnDef[] = [
 ];
 
 const FIXED_COLUMNS_WIDTH = COLUMNS.reduce((sum, col) => sum + (col.width ?? 0), 0);
-// +1 gap and MENU_WIDTH for the trailing menu button/spacer, which sits
-// after the last COLUMNS entry (see TableHeader/TorrentTableRowInner).
-const TABLE_MIN_WIDTH =
-  FIXED_COLUMNS_WIDTH +
-  NAME_MIN_WIDTH +
-  MENU_WIDTH +
-  COLUMN_GAP * COLUMNS.length +
-  ROW_PADDING_HORIZONTAL * 2;
+// Sum of the fixed columns plus the flexible Name column's minWidth - tuned
+// so a 1060pt content width (the mac shell's default window) fits every
+// column with no horizontal scroll; narrower windows still scroll via the
+// ScrollView above.
+const TABLE_MIN_WIDTH = FIXED_COLUMNS_WIDTH + NAME_MIN_WIDTH;
 
-// Short date ("Sep 10, 2026"), mirroring Pogona's dense technical/tabular
-// table columns. utils/format.ts's formatDate returns a full locale
-// datetime string (too long for a 108px column), so this formats locally
-// with the device's own locale/calendar rather than forcing en-US.
+// Short date ("Sep 10" for the current year, "Sep 10, 2026" otherwise),
+// mirroring Pogona's dense technical/tabular table columns. utils/format.ts's
+// formatDate returns a full locale datetime string (too long for a 96px
+// column), so this formats locally with the device's own locale/calendar
+// rather than forcing en-US.
 function formatShortDate(epochSeconds: number | undefined | null): string {
   if (epochSeconds == null || isNaN(epochSeconds) || epochSeconds <= 0) return '-';
   const d = new Date(epochSeconds * 1000);
   if (isNaN(d.getTime())) return '-';
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const currentYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString(
+    undefined,
+    currentYear
+      ? { month: 'short', day: 'numeric' }
+      : { month: 'short', day: 'numeric', year: 'numeric' },
+  );
 }
 
 // "connected | swarm total" pair, mirroring Fmt.pair ("2 | 40").
 function formatPair(connected: number, total: number): string {
   return `${Math.max(0, connected)} | ${Math.max(0, total)}`;
+}
+
+// State glyph for the name-cell leading slot when there's no poster to show
+// (artwork inactive, or no TMDB match/poster for this row). Mirrors
+// getStateColor's grouping (utils/torrent-state.ts) 1:1 so the glyph and the
+// tint it's drawn in (getStateColor) always agree on which state group a row
+// is in.
+function getStateIcon(
+  state: string,
+  progress: number,
+  dlspeed: number,
+  upspeed: number,
+): keyof typeof Ionicons.glyphMap {
+  const downloading = dlspeed > 0;
+  const uploading = upspeed > 0;
+
+  if (downloading && uploading) return 'arrow-down-circle';
+  if (uploading && !downloading) return 'arrow-up-circle';
+
+  if (state === 'stalledUP' && progress >= 1) return 'checkmark-circle';
+  if ((state === 'stoppedDL' || state === 'pausedDL') && progress >= 1) {
+    return 'checkmark-circle';
+  }
+
+  switch (state) {
+    case 'downloading':
+    case 'forcedDL':
+      return 'arrow-down-circle';
+    case 'metaDL':
+    case 'forcedMetaDL':
+      return 'ellipsis-horizontal-circle';
+    case 'uploading':
+    case 'forcedUP':
+      return 'arrow-up-circle';
+    case 'pausedDL':
+    case 'stoppedDL':
+      return 'pause-circle';
+    case 'pausedUP':
+    case 'stoppedUP':
+      return 'checkmark-circle';
+    case 'error':
+    case 'missingFiles':
+      return 'alert-circle';
+    case 'checkingDL':
+    case 'checkingUP':
+      return 'sync-circle';
+    case 'queuedDL':
+    case 'queuedUP':
+      return 'time';
+    case 'stalledDL':
+    case 'stalledUP':
+      return 'ellipsis-horizontal-circle';
+    case 'allocating':
+    case 'checkingResumeData':
+    case 'moving':
+    case 'unknown':
+    default:
+      return 'ellipsis-horizontal-circle';
+  }
 }
 
 interface HeaderCellProps {
@@ -272,12 +339,16 @@ function TorrentTableRowInner({
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
   const menuButtonRef = useRef<React.ComponentRef<typeof Pressable>>(null);
+  const { active: artworkActive } = useArtworkSettings();
+  const { artwork } = useArtwork(torrent.name);
+  const hasPoster = artworkActive && !!artwork?.posterPath;
 
   const dlspeed = torrent.dlspeed ?? 0;
   const upspeed = torrent.upspeed ?? 0;
   const progress = torrent.progress ?? 0;
   const stateColor = getStateColor(torrent.state, progress, dlspeed, upspeed, colors);
   const stateLabel = getStateLabel(torrent.state, progress, dlspeed, upspeed, t);
+  const stateIcon = getStateIcon(torrent.state, progress, dlspeed, upspeed);
   const etaVisible = hasEta(torrent.eta, progress);
   const totalSize = torrent.total_size > 0 ? torrent.total_size : torrent.size || 0;
   const categoryDotColor = torrent.category ? categoryColors?.[torrent.category] : undefined;
@@ -339,13 +410,19 @@ function TorrentTableRowInner({
     >
       {/* Name */}
       <View style={[styles.nameCell, { flex: 1, minWidth: NAME_MIN_WIDTH }]}>
-        <ArtworkThumbnail
-          name={torrent.name}
-          width={POSTER_SIZE}
-          square
-          placeholderIcon="film-outline"
-          showPlaceholderWhenInactive
-        />
+        {hasPoster ? (
+          <ArtworkThumbnail
+            name={torrent.name}
+            width={POSTER_SIZE}
+            square
+            placeholderIcon="film-outline"
+            showPlaceholderWhenInactive
+          />
+        ) : (
+          <View style={styles.stateGlyphSlot}>
+            <Ionicons name={stateIcon} size={14} color={stateColor} />
+          </View>
+        )}
         {categoryDotColor && (
           <View style={[styles.categoryDot, { backgroundColor: categoryDotColor }]} />
         )}
@@ -566,7 +643,7 @@ const styles = StyleSheet.create({
   },
   headerLabel: {
     fontSize: METRICS.tableHeaderFontSize,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   headerChevron: {
     marginLeft: 2,
@@ -595,6 +672,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  stateGlyphSlot: {
+    width: POSTER_SIZE,
+    height: POSTER_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   numericText: {
     fontVariant: ['tabular-nums'],

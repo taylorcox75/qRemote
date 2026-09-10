@@ -1,3 +1,4 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +11,7 @@ import { applicationApi } from '@/services/api/application';
 import { useShell } from '@/context/ShellContext';
 import { SplitLayout } from '@/components/shell/SplitLayout';
 import { Sidebar } from '@/components/shell/Sidebar';
+import { DesktopColumn } from '@/components/shell/DesktopColumn';
 
 export default function TabsLayout() {
   const { t } = useTranslation();
@@ -39,8 +41,17 @@ export default function TabsLayout() {
   // stays exactly as it always has been: no sidebar, no split layout, the
   // tab bar visible. Everything below this line is unconditional for that
   // path - the hidden tab bar only ever applies on 'regular'/'mac' idiom.
+  // Regular/mac only: form-style tabs (Transfer, Search, RSS, Settings) are
+  // centered in a macOS-width column; the torrents tab keeps the full width
+  // for its table. Left undefined on iPhone so the compact tree is untouched.
+  const desktopScreenLayout = isShellHost
+    ? ({ route, children }: { route: { name: string }; children: React.ReactNode }) =>
+        route.name === '(torrents)' ? <>{children}</> : <DesktopColumn>{children}</DesktopColumn>
+    : undefined;
+
   const tabs = (
     <Tabs
+      screenLayout={desktopScreenLayout}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,

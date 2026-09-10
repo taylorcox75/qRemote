@@ -3,7 +3,7 @@
  * used for toggle/switch settings across server and settings screens.
  */
 import React, { ReactNode } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { spacing } from '@/constants/spacing';
@@ -23,7 +23,12 @@ export function SettingRow({ icon, iconColor, label, hint, children }: SettingRo
     <View style={styles.row}>
       <View style={styles.left}>
         {icon && (
-          <Ionicons name={icon} size={20} color={iconColor ?? colors.primary} style={styles.icon} />
+          <Ionicons
+            name={icon}
+            size={isMac ? 16 : 20}
+            color={iconColor ?? colors.primary}
+            style={styles.icon}
+          />
         )}
         <View style={styles.textContainer}>
           <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
@@ -35,13 +40,17 @@ export function SettingRow({ icon, iconColor, label, hint, children }: SettingRo
   );
 }
 
+// Mac Catalyst uses macOS form metrics (13pt labels, ~30pt rows) like
+// constants/typography.ts; iPhone and iPad keep the iOS values.
+const isMac = Platform.OS === 'ios' && (Platform.isMacCatalyst ?? false);
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: isMac ? 12 : 16,
+    paddingVertical: isMac ? 7 : 12,
   },
   left: {
     flexDirection: 'row',
@@ -56,10 +65,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   label: {
-    fontSize: 16,
+    fontSize: isMac ? 13 : 16,
   },
   hint: {
-    fontSize: 12,
+    fontSize: isMac ? 11 : 12,
     marginTop: 1,
   },
 });

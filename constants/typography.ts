@@ -1,9 +1,11 @@
+import { Platform } from 'react-native';
+
 /**
  * Typography system for consistent text styles
  * Based on iOS Human Interface Guidelines and Material Design
  */
 
-export const typography = {
+const baseTypography = {
   // iOS large title (navigation bars, hero sections)
   largeTitle: {
     fontSize: 34,
@@ -123,3 +125,49 @@ export const typography = {
     letterSpacing: 0.5,
   },
 };
+
+/**
+ * Mac Catalyst renders with macOS type metrics (HIG: 13pt body, 11pt
+ * captions) instead of the iOS ramp above. The scale is decided once at
+ * module load from Platform.isMacCatalyst, so every screen that spreads
+ * typography.* gets the desktop ramp without per-screen changes, and
+ * iPhone/iPad keep the exact values above (Platform.isMacCatalyst is false
+ * there). Point sizes map to the closest macOS text style; line heights
+ * are recomputed at 1.3x and rounded.
+ */
+const MAC_FONT_SIZE: Record<number, number> = {
+  34: 26,
+  28: 22,
+  24: 20,
+  22: 17,
+  20: 15,
+  18: 14,
+  17: 13,
+  16: 13,
+  15: 12,
+  14: 12,
+  13: 11,
+  12: 11,
+  11: 10,
+  10: 10,
+};
+
+type TextStyleToken = { fontSize: number; lineHeight?: number; [key: string]: unknown };
+
+function scaleForMac<T extends Record<string, TextStyleToken>>(ramp: T): T {
+  const out: Record<string, TextStyleToken> = {};
+  for (const key of Object.keys(ramp)) {
+    const token = ramp[key];
+    const fontSize = MAC_FONT_SIZE[token.fontSize] ?? Math.round(token.fontSize * 0.8);
+    out[key] = {
+      ...token,
+      fontSize,
+      ...(token.lineHeight !== undefined ? { lineHeight: Math.round(fontSize * 1.3) } : {}),
+    };
+  }
+  return out as T;
+}
+
+const isMacCatalyst = Platform.OS === 'ios' && (Platform.isMacCatalyst ?? false);
+
+export const typography = isMacCatalyst ? scaleForMac(baseTypography) : baseTypography;

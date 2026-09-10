@@ -8,10 +8,20 @@
  * Sizing/typography come from desktopMetrics(idiom) (constants/desktop.ts)
  * so mac reads as stock macOS (13pt/26pt rows, 11pt caps section headers,
  * solid accent selection) and regular keeps iPadOS conventions (17pt/44pt
- * rows, tint-fill selection). Selection/hover styling is idiom-specific:
- * mac uses a solid colors.primary fill with onAccent text/icon/count and a
- * subtle hover wash; regular uses colors.primaryOpac fill with colors.primary
- * text/icon and no hover (touch has no hover state).
+ * rows, tint-fill selection). Selection/hover styling is idiom-specific, and
+ * on mac also depends on the row's Row.variant:
+ * - mac 'solid' (destinations only) - solid colors.primary fill with
+ *   onAccent text/icon/count. Only one destination row is ever active, so
+ *   this is the sole solid-fill row on screen at a time.
+ * - mac 'quiet' (status/category/tag filters) - a quiet selection instead of
+ *   a second solid fill: hexToRgba(colors.text, 0.08) background,
+ *   colors.text label, colors.textSecondary count, the icon keeps its normal
+ *   state tint (not overridden), plus a 3pt colors.primary bar at the row's
+ *   left edge inside the rounded highlight (Finder-style tag emphasis).
+ * - regular ignores variant entirely: colors.primaryOpac fill with
+ *   colors.primary text/icon for both destinations and filters, no hover
+ *   (touch has no hover state).
+ * mac also gets a subtle hover wash regardless of variant.
  *
  * Key exports: Sidebar
  */
@@ -185,7 +195,7 @@ function Section({ title, expanded, onToggle, children }: SectionProps) {
       >
         <Ionicons
           name={expanded ? 'chevron-down' : 'chevron-forward'}
-          size={12}
+          size={idiom === 'mac' ? 10 : 12}
           color={colors.textSecondary}
         />
         <Text
@@ -215,28 +225,50 @@ interface RowProps {
   iconSize?: number;
   count?: number;
   active?: boolean;
+  /**
+   * 'solid' (default) is the destination look: on mac a solid colors.primary
+   * fill with onAccent text/icon/count. 'quiet' is the status/category/tag
+   * filter look: on mac a hexToRgba(colors.text, 0.08) wash with colors.text
+   * label, the icon's normal state tint kept as-is, and a 3pt colors.primary
+   * bar at the row's left edge instead of a second solid fill. Ignored on
+   * regular, which always uses colors.primaryOpac + colors.primary text/icon.
+   */
+  variant?: 'solid' | 'quiet';
   onPress: () => void;
 }
 
-function Row({ label, icon, iconColor, iconSize, count, active, onPress }: RowProps) {
+function Row({
+  label,
+  icon,
+  iconColor,
+  iconSize,
+  count,
+  active,
+  variant = 'solid',
+  onPress,
+}: RowProps) {
   const { colors } = useTheme();
   const { idiom } = useShell();
   const metrics = desktopMetrics(idiom);
   const isMac = idiom === 'mac';
+  const isQuiet = isMac && variant === 'quiet';
   const [hovered, setHovered] = useState(false);
 
   const backgroundColor = active
     ? isMac
-      ? colors.primary
+      ? isQuiet
+        ? hexToRgba(colors.text, 0.08)
+        : colors.primary
       : colors.primaryOpac
     : hovered && isMac
       ? hexToRgba(colors.text, 0.06)
       : 'transparent';
 
   const activeContentColor = isMac ? colors.onAccent : colors.primary;
-  const labelColor = active ? activeContentColor : colors.text;
-  const rowIconColor = active ? activeContentColor : (iconColor ?? colors.textSecondary);
-  const countColor = active && isMac ? colors.onAccent : colors.textSecondary;
+  const labelColor = active ? (isQuiet ? colors.text : activeContentColor) : colors.text;
+  const rowIconColor =
+    active && !isQuiet ? activeContentColor : (iconColor ?? colors.textSecondary);
+  const countColor = active && isMac && !isQuiet ? colors.onAccent : colors.textSecondary;
 
   return (
     <Pressable
@@ -256,6 +288,18 @@ function Row({ label, icon, iconColor, iconSize, count, active, onPress }: RowPr
       accessibilityRole="button"
       accessibilityState={{ selected: !!active }}
     >
+      {active && isQuiet && (
+        <View
+          style={[
+            styles.filterBar,
+            {
+              backgroundColor: colors.primary,
+              borderTopLeftRadius: metrics.selectionRadius,
+              borderBottomLeftRadius: metrics.selectionRadius,
+            },
+          ]}
+        />
+      )}
       {icon && (
         <Ionicons
           name={icon}
@@ -393,7 +437,10 @@ export function Sidebar({ style }: SidebarProps) {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, isMac && styles.scrollContentMac]}
+      >
         <Section
           title={t('sidebar.sections.destinations')}
           expanded={destinationsExpanded}
@@ -426,6 +473,7 @@ export function Sidebar({ style }: SidebarProps) {
               iconColor={statusFilterTint(id, colors)}
               count={torrents.filter((torrent) => matchesStatusFilter(torrent, id)).length}
               active={listFilter.status === id}
+              variant="quiet"
               onPress={() => selectStatus(id)}
             />
           ))}
@@ -441,6 +489,7 @@ export function Sidebar({ style }: SidebarProps) {
             icon="folder-outline"
             iconSize={categoryTagIconSize}
             active={listFilter.category === null}
+            variant="quiet"
             onPress={() => selectCategory(null)}
           />
           {uncategorizedCount > 0 && (
@@ -450,6 +499,7 @@ export function Sidebar({ style }: SidebarProps) {
               iconSize={categoryTagIconSize}
               count={uncategorizedCount}
               active={listFilter.category === ''}
+              variant="quiet"
               onPress={() => selectCategory('')}
             />
           )}
@@ -461,6 +511,7 @@ export function Sidebar({ style }: SidebarProps) {
               iconSize={categoryTagIconSize}
               count={torrents.filter((torrent) => torrent.category === name).length}
               active={listFilter.category === name}
+              variant="quiet"
               onPress={() => selectCategory(name)}
             />
           ))}
@@ -478,6 +529,7 @@ export function Sidebar({ style }: SidebarProps) {
               iconSize={categoryTagIconSize}
               count={untaggedCount}
               active={listFilter.tags.includes(UNTAGGED_FILTER)}
+              variant="quiet"
               onPress={() => toggleTag(UNTAGGED_FILTER)}
             />
           )}
@@ -489,6 +541,7 @@ export function Sidebar({ style }: SidebarProps) {
               iconSize={categoryTagIconSize}
               count={torrents.filter((torrent) => parseTagsCsv(torrent.tags).includes(tag)).length}
               active={listFilter.tags.includes(tag)}
+              variant="quiet"
               onPress={() => toggleTag(tag)}
             />
           ))}
@@ -512,8 +565,17 @@ const styles = StyleSheet.create({
   serverName: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     paddingBottom: spacing.xl,
+  },
+  // Mac's sidebar is a denser column that can overflow the window sooner
+  // than regular's; Pogona-style sidebars use a tight 8pt bottom gutter
+  // rather than spacing.xl's roomier iPad-derived padding.
+  scrollContentMac: {
+    paddingBottom: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -528,6 +590,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    overflow: 'hidden',
+  },
+  filterBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
   },
   rowIcon: {
     flexShrink: 0,
