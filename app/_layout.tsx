@@ -21,6 +21,7 @@ import { ApiVersionProvider } from '@/context/ApiVersionContext';
 import { TorrentProvider } from '@/context/TorrentContext';
 import { TransferProvider } from '@/context/TransferContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { ArtworkProvider } from '@/context/ArtworkContext';
 import { ToastProvider, useToast } from '@/context/ToastContext';
 import { SearchCartProvider } from '@/context/SearchCartContext';
 import { logStorage } from '@/services/log-storage';
@@ -351,19 +352,21 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
-            <ToastProvider>
-              <ServerProvider>
-                <ApiVersionProvider>
-                  <TorrentProvider>
-                    <TransferProvider>
-                      <SearchCartProvider>
-                        <StackNavigator />
-                      </SearchCartProvider>
-                    </TransferProvider>
-                  </TorrentProvider>
-                </ApiVersionProvider>
-              </ServerProvider>
-            </ToastProvider>
+            <ArtworkProvider>
+              <ToastProvider>
+                <ServerProvider>
+                  <ApiVersionProvider>
+                    <TorrentProvider>
+                      <TransferProvider>
+                        <SearchCartProvider>
+                          <StackNavigator />
+                        </SearchCartProvider>
+                      </TransferProvider>
+                    </TorrentProvider>
+                  </ApiVersionProvider>
+                </ServerProvider>
+              </ToastProvider>
+            </ArtworkProvider>
           </QueryClientProvider>
         </ThemeProvider>
       </SafeAreaProvider>

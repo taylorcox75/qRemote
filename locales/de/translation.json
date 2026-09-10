@@ -423,7 +423,9 @@
         "addedTime": "Uhrzeit"
       },
       "searchAddOpensDialogue": "+ in der Suche öffnet den Dialog",
-      "searchAddOpensDialogueHint": "Ein Tippen auf + bei einem Suchergebnis öffnet den Torrent-Hinzufügen-Dialog, statt sofort hinzuzufügen."
+      "searchAddOpensDialogueHint": "Ein Tippen auf + bei einem Suchergebnis öffnet den Torrent-Hinzufügen-Dialog, statt sofort hinzuzufügen.",
+      "integrations": "Integrationen",
+      "tmdbAttribution": "Dieses Produkt verwendet die TMDB-API, wird jedoch nicht von TMDB unterstützt oder zertifiziert."
     },
     "transfer": {
       "title": "Übertragung",
@@ -692,6 +694,29 @@
       "ruleSavedToast": "Regel gespeichert",
       "ruleDeletedToast": "Regel gelöscht",
       "ruleRenamedToast": "Regel umbenannt"
+    },
+    "integrations": {
+      "tmdbSection": "TMDB",
+      "showPosters": "TMDB-Poster anzeigen",
+      "apiKeyLabel": "TMDB-API-Schlüssel (v3)",
+      "apiKeyPlaceholder": "TMDB-API-Schlüssel eingeben",
+      "apiKeyPlaceholderSaved": "Schlüssel gespeichert. Neuen Schlüssel eingeben, um ihn zu ersetzen",
+      "status": "Status",
+      "statusEnabled": "Aktiviert",
+      "keySavedDisabled": "Schlüssel gespeichert (deaktiviert)",
+      "noKey": "Kein Schlüssel",
+      "footer": "Poster werden für erkannte Filme und Serien anhand des Übertragungsnamens von TMDB abgerufen. An TMDB wird ausschließlich der ermittelte Titel gesendet.",
+      "getKeyLink": "Kostenlosen API-Schlüssel auf themoviedb.org holen",
+      "clearCache": "Poster-Cache leeren",
+      "clearCachePrompt": "Poster-Cache leeren?",
+      "clearCacheHint": "Entfernt alle zwischengespeicherten Poster und Suchergebnisse. Poster werden bei Bedarf erneut abgerufen.",
+      "removeKey": "TMDB-API-Schlüssel entfernen",
+      "removeKeyPrompt": "TMDB-API-Schlüssel entfernen?",
+      "removeKeyHint": "Löscht den gespeicherten Schlüssel aus dem sicheren Speicher. Poster werden erst wieder abgerufen, wenn ein neuer Schlüssel hinzugefügt wird.",
+      "keySavedToast": "TMDB-API-Schlüssel gespeichert",
+      "keyRemovedToast": "TMDB-API-Schlüssel entfernt",
+      "cacheClearedToast": "Poster-Cache geleert",
+      "attribution": "Dieses Produkt verwendet die TMDB-API, wird jedoch nicht von TMDB unterstützt oder zertifiziert."
     }
   },
   "placeholders": {

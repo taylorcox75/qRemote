@@ -444,7 +444,9 @@
         "addedTime": "Время"
       },
       "searchAddOpensDialogue": "+ в поиске открывает диалог",
-      "searchAddOpensDialogueHint": "Нажатие + на результате поиска открывает диалог добавления торрента вместо немедленного добавления."
+      "searchAddOpensDialogueHint": "Нажатие + на результате поиска открывает диалог добавления торрента вместо немедленного добавления.",
+      "integrations": "Интеграции",
+      "tmdbAttribution": "Этот продукт использует API TMDB, но не одобрен и не сертифицирован TMDB."
     },
     "transfer": {
       "title": "Передача",
@@ -713,6 +715,29 @@
       "ruleSavedToast": "Правило сохранено",
       "ruleDeletedToast": "Правило удалено",
       "ruleRenamedToast": "Правило переименовано"
+    },
+    "integrations": {
+      "tmdbSection": "TMDB",
+      "showPosters": "Показывать постеры TMDB",
+      "apiKeyLabel": "Ключ API TMDB (v3)",
+      "apiKeyPlaceholder": "Введите ключ API TMDB",
+      "apiKeyPlaceholderSaved": "Ключ сохранён. Введите новый, чтобы заменить его",
+      "status": "Статус",
+      "statusEnabled": "Включено",
+      "keySavedDisabled": "Ключ сохранён (выключено)",
+      "noKey": "Нет ключа",
+      "footer": "Постеры для распознанных фильмов и сериалов загружаются из TMDB по названию раздачи. В TMDB отправляется только разобранное название.",
+      "getKeyLink": "Получите бесплатный ключ API на themoviedb.org",
+      "clearCache": "Очистить кэш постеров",
+      "clearCachePrompt": "Очистить кэш постеров?",
+      "clearCacheHint": "Удаляет все сохранённые постеры и результаты поиска. При необходимости они будут запрошены заново.",
+      "removeKey": "Удалить ключ API TMDB",
+      "removeKeyPrompt": "Удалить ключ API TMDB?",
+      "removeKeyHint": "Удаляет сохранённый ключ из защищённого хранилища. Постеры не будут загружаться, пока вы не добавите новый ключ.",
+      "keySavedToast": "Ключ API TMDB сохранён",
+      "keyRemovedToast": "Ключ API TMDB удалён",
+      "cacheClearedToast": "Кэш постеров очищен",
+      "attribution": "Этот продукт использует API TMDB, но не одобрен и не сертифицирован TMDB."
     }
   },
   "placeholders": {

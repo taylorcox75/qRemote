@@ -423,7 +423,9 @@
         "addedTime": "时间"
       },
       "searchAddOpensDialogue": "搜索中的 + 打开对话框",
-      "searchAddOpensDialogueHint": "点击搜索结果上的 + 将打开添加种子对话框，而不是直接添加。"
+      "searchAddOpensDialogueHint": "点击搜索结果上的 + 将打开添加种子对话框，而不是直接添加。",
+      "integrations": "集成",
+      "tmdbAttribution": "本产品使用 TMDB API，但未获得 TMDB 的认可或认证。"
     },
     "transfer": {
       "title": "传输",
@@ -692,6 +694,29 @@
       "ruleSavedToast": "规则已保存",
       "ruleDeletedToast": "规则已删除",
       "ruleRenamedToast": "规则已重命名"
+    },
+    "integrations": {
+      "tmdbSection": "TMDB",
+      "showPosters": "显示 TMDB 海报",
+      "apiKeyLabel": "TMDB API 密钥（v3）",
+      "apiKeyPlaceholder": "输入你的 TMDB API 密钥",
+      "apiKeyPlaceholderSaved": "密钥已保存。输入新密钥以替换",
+      "status": "状态",
+      "statusEnabled": "已启用",
+      "keySavedDisabled": "密钥已保存（已停用）",
+      "noKey": "无密钥",
+      "footer": "对于识别出的电影和剧集，海报会根据传输名称从 TMDB 获取。仅会把解析出的标题发送给 TMDB。",
+      "getKeyLink": "在 themoviedb.org 获取免费 API 密钥",
+      "clearCache": "清除海报缓存",
+      "clearCachePrompt": "清除海报缓存？",
+      "clearCacheHint": "移除所有已缓存的海报和查询结果，之后会按需重新获取。",
+      "removeKey": "移除 TMDB API 密钥",
+      "removeKeyPrompt": "移除 TMDB API 密钥？",
+      "removeKeyHint": "从安全存储中删除已保存的密钥。在添加新密钥之前将不再获取海报。",
+      "keySavedToast": "TMDB API 密钥已保存",
+      "keyRemovedToast": "TMDB API 密钥已移除",
+      "cacheClearedToast": "海报缓存已清除",
+      "attribution": "本产品使用 TMDB API，但未获得 TMDB 的认可或认证。"
     }
   },
   "placeholders": {

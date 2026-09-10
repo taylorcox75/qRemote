@@ -20,6 +20,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { ArtworkThumbnail } from '@/components/ArtworkThumbnail';
 import { SearchResult } from '@/types/api';
 import { formatSize, formatDate } from '@/utils/format';
 import { resultTrackerLabel } from '@/utils/searchResult';
@@ -84,6 +85,9 @@ export function SearchResultRow({
       style={[styles.card, { backgroundColor: colors.surface }]}
     >
       <View style={styles.topRow}>
+        {/* Self-fetching, opt-in TMDB poster (returns null when the feature
+            is inactive, so layout is unchanged for users with it off). */}
+        <ArtworkThumbnail name={result.fileName || ''} width={44} placeholderIcon="film-outline" />
         <View style={styles.body}>
           {/* Line 1: filename — truncate when collapsed, full when expanded */}
           <Text

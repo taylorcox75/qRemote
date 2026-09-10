@@ -444,7 +444,9 @@
         "addedTime": ""
       },
       "searchAddOpensDialogue": "Search + opens dialogue",
-      "searchAddOpensDialogueHint": "Tapping + on a search result opens the add-torrent dialogue instead of adding straight away."
+      "searchAddOpensDialogueHint": "Tapping + on a search result opens the add-torrent dialogue instead of adding straight away.",
+      "integrations": "Integrations",
+      "tmdbAttribution": "This product uses the TMDB API but is not endorsed or certified by TMDB."
     },
     "transfer": {
       "title": "Transfer",
@@ -713,6 +715,29 @@
       "ruleSavedToast": "Rule saved",
       "ruleDeletedToast": "Rule deleted",
       "ruleRenamedToast": "Rule renamed"
+    },
+    "integrations": {
+      "tmdbSection": "TMDB",
+      "showPosters": "Show TMDB posters",
+      "apiKeyLabel": "TMDB API key (v3)",
+      "apiKeyPlaceholder": "Enter your TMDB API key",
+      "apiKeyPlaceholderSaved": "Key saved. Enter a new key to replace it",
+      "status": "Status",
+      "statusEnabled": "Enabled",
+      "keySavedDisabled": "Key saved (disabled)",
+      "noKey": "No key",
+      "footer": "Posters are fetched from TMDB for recognised movies and series based on the transfer name. Only the parsed title is ever sent to TMDB.",
+      "getKeyLink": "Get a free API key at themoviedb.org",
+      "clearCache": "Clear poster cache",
+      "clearCachePrompt": "Clear poster cache?",
+      "clearCacheHint": "Removes every cached poster and lookup result. Posters will be looked up again as needed.",
+      "removeKey": "Remove TMDB API key",
+      "removeKeyPrompt": "Remove TMDB API key?",
+      "removeKeyHint": "Deletes the saved key from secure storage. Posters will stop being fetched until you add a new key.",
+      "keySavedToast": "TMDB API key saved",
+      "keyRemovedToast": "TMDB API key removed",
+      "cacheClearedToast": "Poster cache cleared",
+      "attribution": "This product uses the TMDB API but is not endorsed or certified by TMDB."
     }
   },
   "placeholders": {

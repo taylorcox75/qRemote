@@ -292,6 +292,16 @@ A server's auth mode is *derived*, not stored — see `utils/authMode.ts`
 (`password` | `apiKey` | `none`). Legacy records that only ever set `bypassAuth`
 keep working; when both `useApiKey` and `bypassAuth` are set, API key wins.
 
+### Artwork (TMDB)
+
+Opt-in poster/backdrop art for recognised movies and series, off by default
+(`tmdbPostersEnabled`). Requires a user-supplied TMDB v3 API key, stored in
+`expo-secure-store` (`services/tmdb.ts`, `TMDB_KEY_STORAGE`), never
+AsyncStorage. Only the parsed title (and year) from `utils/release-name.ts`
+ever leaves the device — never the raw torrent name. `services/artwork-store.ts`
+caches lookups in memory and AsyncStorage, including a negative cache for
+"looked up, no match", and caps concurrent TMDB requests at 4.
+
 ---
 
 ## 5. File Index
@@ -316,9 +326,9 @@ Complete map. Trust it.
 | `app/server/add.tsx`, `app/server/[id].tsx` | Server add/edit, presented as native modal sheets → they mount `<ModalToast/>` locally. |
 
 **Settings sub-screens** — hub order on `index` is Servers → Appearance → Server
-Settings → Connection → RSS → Search Plugins → Advanced, then What's New →
-About, then Community links (source / issues / Beer Fund / Rate). Notifications
-& Feedback is nested under `advanced`, not on the hub.
+Settings → Connection → RSS → Search Plugins → Integrations → Advanced, then
+What's New → About, then Community links (source / issues / Beer Fund / Rate).
+Notifications & Feedback is nested under `advanced`, not on the hub.
 
 `about` · `add-torrent-dialogue` · `advanced` · `appearance` ·
 `category-tag-colors` ·
@@ -326,7 +336,9 @@ About, then Community links (source / issues / Beer Fund / Rate). Notifications
 port, random port, UPnP, global/per-torrent connection and upload-slot limits,
 proxy server incl. auth, IP filtering/banned IPs, I2P (qBit 5.0+ /
 `ApiFeatures.supportsI2p`) — #233) ·
-`detailed-card-fields` · `notifications` · `rss` ·
+`detailed-card-fields` · `integrations` (TMDB opt-in toggle, API key entry,
+clear poster cache — see Architecture §4 "Artwork (TMDB)") ·
+`notifications` · `rss` ·
 `rss-rules` · `rss-rule` · `servers` (list + secret-free export/import) ·
 `server-settings-advanced` (qBit email/automation) · `theme` ·
 `torrent-defaults` (nav label is **Server Settings**; route path unchanged) ·
@@ -365,6 +377,8 @@ proxy server incl. auth, IP filtering/banned IPs, I2P (qBit 5.0+ /
   session/token-bound. Dedupes by `fileUrl`. Consumed by `app/torrents/add.tsx`
   (gated on the `fromCart` route param) and grouped for submission via
   `utils/search-cart.ts`.
+- **`ArtworkContext.tsx`** — `useArtworkSettings()`: exposes `tmdbPostersEnabled`
+  and whether a TMDB key is stored, backing the `integrations` settings screen.
 
 ### Components (`components/`)
 
@@ -397,7 +411,9 @@ All PascalCase function components taking a `…Props` interface.
   key/value rows, max 5, used by the same two screens — see
   `utils/customHeaders.ts`).
 - **Visuals** — `SpeedGraph`, `CircularProgress`, `AnimatedProgressBar`,
-  `AnimatedButton`, `Confetti`.
+  `AnimatedButton`, `Confetti`, `ArtworkThumbnail` (poster/backdrop image for a
+  torrent row via `useArtwork`; renders nothing when disabled, no key, or no
+  match — see Architecture §4 "Artwork (TMDB)").
 - **Chrome / diagnostics** — `FocusAwareStatusBar`, `SettingRow`,
   `QuickConnectPanel`, `LogViewer`, `DebugRow`, `SuperDebugPanel`.
 
@@ -435,6 +451,14 @@ Thin objects over `apiClient`.
 - **`color-theme-manager.ts`** — save/load/apply user color themes.
 - **`connectivity-log.ts`** — in-memory ring log (`clogDebug/Info/Warn/Error(tag, msg)`).
 - **`log-storage.ts`** — persisted entries for the Logs screen.
+- **`tmdb.ts`** — TMDB v3 API client: key storage/retrieval (`expo-secure-store`),
+  `searchArtwork`/`pickBest`, poster/backdrop URL builders, `TmdbRateLimitError`
+  on HTTP 429. Returns `null` on no key or any failure otherwise.
+- **`artwork-store.ts`** — lookup cache in front of `tmdb.ts`: parses the raw
+  release name, checks memory then AsyncStorage (`ARTWORK_CACHE_STORAGE_KEY`)
+  before calling TMDB, dedupes in-flight lookups by raw name, caps 4 concurrent
+  requests, retries once on rate-limit then gives up without caching a negative
+  entry. `peekArtwork()` is the sync memory-only read for render paths.
 
 ### Native modules (`modules/`)
 
@@ -472,6 +496,9 @@ Thin objects over `apiClient`.
   ~2.5s, so a self-healing poll failure doesn't flash error UI.
 - `useRssFeeds.ts` / `useRssRules.ts` — RSS tree and auto-download rule state.
 - `useSpeedTracker.ts` / `useSpeedHistory.ts` — sampling for `SpeedGraph`.
+- `useArtwork.ts` — resolves `ArtworkEntry` for a raw release name via
+  `services/artwork-store.ts` (`peekArtwork` for an immediate sync value, then
+  `lookupArtwork` if unknown); no-ops when `tmdbPostersEnabled` is off.
 
 ### Utils (`utils/`)
 
@@ -503,7 +530,11 @@ endpoint applies one `tags` value per request) · `server-export.ts` (strips
 qBittorrent's DHT/PeX/LSD pseudo-tracker entries out of `torrents/trackers`;
 `getPseudoTrackerStates` reads each channel's on/off/working state from those
 same entries — #234, #236) · `sounds.ts` (global enabled flag + per-action
-sound assignment, mirrors `haptics.ts` — #231).
+sound assignment, mirrors `haptics.ts` — #231) · `release-name.ts`
+(`parseReleaseName` — title/year/season/episode/resolution/source/codec/group/
+languages heuristics from a raw torrent name; `rowTitle` formats a display
+string with the `·` middle dot, e.g. "Nashville · S01E15" — see Architecture
+§4 "Artwork (TMDB)").
 
 ### Types, constants, i18n
 

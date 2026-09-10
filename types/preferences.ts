@@ -181,6 +181,14 @@ export interface AppPreferences {
 
   /** Last active tag filters on the torrents tab (OR semantics). */
   lastTagFilters?: string[];
+
+  /**
+   * Whether TMDB posters/backdrops are shown for recognised movies and series.
+   * Opt-in, default false: requires a user-supplied TMDB v3 API key (stored
+   * separately in expo-secure-store, see services/tmdb.ts) and only the
+   * parsed release title/year is ever sent to TMDB (services/artwork-store.ts).
+   */
+  tmdbPostersEnabled: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -265,4 +273,5 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   lastSearchCategory: 'all',
   lastCategoryFilter: null,
   lastTagFilters: [],
+  tmdbPostersEnabled: false,
 };

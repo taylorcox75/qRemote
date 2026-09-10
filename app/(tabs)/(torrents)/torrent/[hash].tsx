@@ -41,6 +41,7 @@ import {
 } from '@/utils/trackers';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
+import { ArtworkThumbnail } from '@/components/ArtworkThumbnail';
 import { SpeedGraph, computeSpeedGraphMax, niceGraphCeiling } from '@/components/SpeedGraph';
 import { PieceMap } from '@/components/PieceMap';
 import { InputModal, InputModalPreset } from '@/components/InputModal';
@@ -1520,6 +1521,8 @@ export default function TorrentDetail() {
           {/* ── Hero ────────────────────────────────────────────── */}
           <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
             <View style={styles.heroHeaderRow}>
+              {/* Self-fetching, opt-in TMDB poster - null when inactive. */}
+              <ArtworkThumbnail name={torrent.name} width={44} placeholderIcon="film-outline" />
               <Text style={[styles.heroName, { color: colors.text }]} numberOfLines={3}>
                 {torrent.name}
               </Text>

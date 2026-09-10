@@ -423,7 +423,9 @@
         "addedTime": "Heure"
       },
       "searchAddOpensDialogue": "Le + de la recherche ouvre la boîte de dialogue",
-      "searchAddOpensDialogueHint": "Appuyer sur + sur un résultat de recherche ouvre la boîte de dialogue d'ajout au lieu d'ajouter directement."
+      "searchAddOpensDialogueHint": "Appuyer sur + sur un résultat de recherche ouvre la boîte de dialogue d'ajout au lieu d'ajouter directement.",
+      "integrations": "Intégrations",
+      "tmdbAttribution": "Ce produit utilise l'API TMDB, mais n'est ni approuvé ni certifié par TMDB."
     },
     "transfer": {
       "title": "Transfert",
@@ -692,6 +694,29 @@
       "ruleSavedToast": "Règle enregistrée",
       "ruleDeletedToast": "Règle supprimée",
       "ruleRenamedToast": "Règle renommée"
+    },
+    "integrations": {
+      "tmdbSection": "TMDB",
+      "showPosters": "Afficher les affiches TMDB",
+      "apiKeyLabel": "Clé API TMDB (v3)",
+      "apiKeyPlaceholder": "Entrez votre clé API TMDB",
+      "apiKeyPlaceholderSaved": "Clé enregistrée. Entrez une nouvelle clé pour la remplacer",
+      "status": "Statut",
+      "statusEnabled": "Activé",
+      "keySavedDisabled": "Clé enregistrée (désactivé)",
+      "noKey": "Aucune clé",
+      "footer": "Les affiches sont récupérées depuis TMDB pour les films et séries reconnus d'après le nom du transfert. Seul le titre analysé est envoyé à TMDB.",
+      "getKeyLink": "Obtenez une clé API gratuite sur themoviedb.org",
+      "clearCache": "Vider le cache des affiches",
+      "clearCachePrompt": "Vider le cache des affiches?",
+      "clearCacheHint": "Retire toutes les affiches et tous les résultats de recherche mis en cache. Ils seront récupérés à nouveau au besoin.",
+      "removeKey": "Retirer la clé API TMDB",
+      "removeKeyPrompt": "Retirer la clé API TMDB?",
+      "removeKeyHint": "Supprime la clé enregistrée du stockage sécurisé. Les affiches ne seront plus récupérées tant qu'une nouvelle clé n'est pas ajoutée.",
+      "keySavedToast": "Clé API TMDB enregistrée",
+      "keyRemovedToast": "Clé API TMDB retirée",
+      "cacheClearedToast": "Cache des affiches vidé",
+      "attribution": "Ce produit utilise l'API TMDB, mais n'est ni approuvé ni certifié par TMDB."
     }
   },
   "placeholders": {

@@ -342,6 +342,12 @@ export default function SettingsScreen() {
               colors={colors}
             />
             <NavRow
+              icon="film-outline"
+              label={t('screens.settings.integrations')}
+              onPress={() => router.push('/settings/integrations')}
+              colors={colors}
+            />
+            <NavRow
               icon="construct-outline"
               label={t('screens.settings.advanced')}
               onPress={() => router.push('/settings/advanced')}

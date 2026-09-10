@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { TorrentInfo } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
+import { ArtworkThumbnail } from '@/components/ArtworkThumbnail';
 import { haptics } from '@/utils/haptics';
 import { getStateColor, getStateLabel, hasEta } from '@/utils/torrent-state';
 import { avatarColor } from '@/utils/server';
@@ -324,8 +325,22 @@ function TorrentCardInner({
         isPaused && styles.cardPaused,
       ]}
     >
-      {/* Line 1: Torrent name + tinted state badge + three-dot menu */}
+      {/* Line 1: TMDB poster (self-fetching, opt-in) + Torrent name + tinted
+          state badge + three-dot menu. Shared by both compact and expanded
+          layouts - there's only one headerRow, gated by `compact` elsewhere. */}
       <View style={styles.headerRow}>
+        {/* Not passed as a prop: ArtworkThumbnail reads the artwork context
+            and its own TanStack Query cache directly, keyed off `torrent.name`
+            (already covered by the memo comparator below). Adding it as a
+            prop would force every card to re-render whenever any artwork
+            result resolves; the component itself already returns null when
+            the feature is inactive, so the layout stays byte-identical. */}
+        <ArtworkThumbnail
+          name={torrent.name}
+          width={44}
+          placeholderIcon="film-outline"
+          style={styles.artworkThumbnail}
+        />
         <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
           {torrent.name}
         </Text>
@@ -538,6 +553,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 2,
+  },
+  artworkThumbnail: {
+    marginRight: spacing.sm,
   },
   name: {
     fontSize: 15,

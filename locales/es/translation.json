@@ -423,7 +423,9 @@
         "addedTime": "Hora"
       },
       "searchAddOpensDialogue": "El + de búsqueda abre el diálogo",
-      "searchAddOpensDialogueHint": "Al tocar + en un resultado de búsqueda se abre el diálogo de añadir torrent en lugar de añadirlo directamente."
+      "searchAddOpensDialogueHint": "Al tocar + en un resultado de búsqueda se abre el diálogo de añadir torrent en lugar de añadirlo directamente.",
+      "integrations": "Integraciones",
+      "tmdbAttribution": "Este producto utiliza la API de TMDB, pero no está avalado ni certificado por TMDB."
     },
     "transfer": {
       "title": "Transferencia",
@@ -692,6 +694,29 @@
       "ruleSavedToast": "Regla guardada",
       "ruleDeletedToast": "Regla eliminada",
       "ruleRenamedToast": "Regla renombrada"
+    },
+    "integrations": {
+      "tmdbSection": "TMDB",
+      "showPosters": "Mostrar carátulas de TMDB",
+      "apiKeyLabel": "Clave de API de TMDB (v3)",
+      "apiKeyPlaceholder": "Introduce tu clave de API de TMDB",
+      "apiKeyPlaceholderSaved": "Clave guardada. Introduce una nueva para reemplazarla",
+      "status": "Estado",
+      "statusEnabled": "Activado",
+      "keySavedDisabled": "Clave guardada (desactivado)",
+      "noKey": "Sin clave",
+      "footer": "Las carátulas se obtienen de TMDB para las películas y series reconocidas a partir del nombre de la transferencia. Solo se envía el título analizado a TMDB.",
+      "getKeyLink": "Obtén una clave de API gratuita en themoviedb.org",
+      "clearCache": "Borrar caché de carátulas",
+      "clearCachePrompt": "¿Borrar la caché de carátulas?",
+      "clearCacheHint": "Elimina todas las carátulas y resultados guardados en caché. Se volverán a buscar cuando sea necesario.",
+      "removeKey": "Eliminar clave de API de TMDB",
+      "removeKeyPrompt": "¿Eliminar la clave de API de TMDB?",
+      "removeKeyHint": "Elimina la clave guardada del almacenamiento seguro. Las carátulas dejarán de obtenerse hasta que añadas una nueva clave.",
+      "keySavedToast": "Clave de API de TMDB guardada",
+      "keyRemovedToast": "Clave de API de TMDB eliminada",
+      "cacheClearedToast": "Caché de carátulas borrada",
+      "attribution": "Este producto utiliza la API de TMDB, pero no está avalado ni certificado por TMDB."
     }
   },
   "placeholders": {

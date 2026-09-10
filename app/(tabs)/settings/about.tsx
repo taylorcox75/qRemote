@@ -192,6 +192,10 @@ export default function AboutScreen() {
             </View>
           )}
 
+          <Text style={[styles.attributionText, { color: colors.textSecondary }]}>
+            {t('screens.settings.tmdbAttribution')}
+          </Text>
+
           <View style={{ height: 40 }} />
         </ScrollView>
       </View>
@@ -228,4 +232,11 @@ const styles = StyleSheet.create({
   infoLabel: { ...typography.secondary },
   infoValue: { ...typography.secondaryMedium },
   loadingState: { paddingVertical: spacing.xxl, alignItems: 'center' },
+  attributionText: {
+    fontSize: 11,
+    lineHeight: 15,
+    textAlign: 'center',
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
 });

@@ -17,6 +17,31 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
 
+// ArtworkThumbnail (rendered at the leading edge of the header row) reads
+// the artwork feature flag and its own query hook directly rather than via
+// props (see the comment in TorrentCard.tsx). Default to the feature being
+// inactive - the same as the real app's default - so it renders null and
+// every existing assertion below stays byte-identical.
+jest.mock('@/context/ArtworkContext', () => ({
+  useArtworkSettings: jest.fn(() => ({
+    enabled: false,
+    hasKey: false,
+    active: false,
+    refresh: jest.fn(),
+  })),
+}));
+jest.mock('@/hooks/useArtwork', () => ({
+  useArtwork: jest.fn(() => ({ artwork: undefined, loading: false })),
+}));
+// Real services/tmdb.ts isn't needed here (posterUrl is only reached in the
+// active-thumbnail test below) - stub it the same way ArtworkThumbnail's own
+// test does, to avoid pulling in axios/expo-secure-store.
+jest.mock('@/services/tmdb', () => ({
+  posterUrl: jest.fn((path: string | null, size: string) =>
+    path ? `https://image.tmdb.org/t/p/${size}${path}` : null,
+  ),
+}));
+
 const baseTorrent: TorrentInfo = {
   hash: 'abc123',
   name: 'Sample Torrent',
@@ -132,6 +157,34 @@ describe('TorrentCard state badge', () => {
       return s?.width === 6 && s?.height === 6 && s?.borderRadius === 3;
     });
     expect(dot).toBeUndefined();
+  });
+});
+
+describe('TorrentCard artwork thumbnail', () => {
+  it('renders nothing extra when the artwork feature is inactive (default)', async () => {
+    await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} />);
+
+    expect(screen.queryByTestId('artwork-thumbnail-plate')).toBeNull();
+  });
+
+  it('renders the 44pt thumbnail leading the title row when the feature is active', async () => {
+    const { useArtworkSettings } = jest.requireMock('@/context/ArtworkContext');
+    const { useArtwork } = jest.requireMock('@/hooks/useArtwork');
+    (useArtworkSettings as jest.Mock).mockReturnValueOnce({
+      enabled: true,
+      hasKey: true,
+      active: true,
+      refresh: jest.fn(),
+    });
+    (useArtwork as jest.Mock).mockReturnValueOnce({ artwork: null, loading: false });
+
+    await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} />);
+
+    const plate = screen.getByTestId('artwork-thumbnail-plate');
+    expect(StyleSheet.flatten(plate.props.style)).toMatchObject({ width: 44, height: 66 });
+    // Sits before the title Text in the header row.
+    const name = screen.getByText('Sample Torrent');
+    expect(name.parent?.children[0]).toBe(plate);
   });
 });
 
