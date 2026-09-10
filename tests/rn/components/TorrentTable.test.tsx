@@ -4,6 +4,7 @@ import { render, fireEvent, screen } from '@testing-library/react-native';
 import { TorrentTable } from '@/components/TorrentTable';
 import { TorrentInfo } from '@/types/api';
 import { formatSize, formatRatio } from '@/utils/format';
+import { hexToRgba } from '@/utils/color';
 import { mockColors } from './theme-mock';
 
 jest.mock('@/context/ThemeContext', () => ({
@@ -161,18 +162,21 @@ describe('TorrentTable', () => {
     const row0 = screen.getByText('Alpha Torrent').parent?.parent;
     const row1 = screen.getByText('Beta Torrent').parent?.parent;
     expect(StyleSheet.flatten(row0?.props.style)).toMatchObject({
-      backgroundColor: mockColors.surface,
+      backgroundColor: mockColors.background,
     });
     expect(StyleSheet.flatten(row1?.props.style)).toMatchObject({
-      backgroundColor: mockColors.background,
+      backgroundColor: hexToRgba(mockColors.text, 0.03),
     });
   });
 
-  it('uses the theme primaryOpac background for the selected row', async () => {
+  it('uses a solid theme primary background for the selected row', async () => {
     await render(<TorrentTable {...baseProps()} selectedHash="h1" />);
     const row0 = screen.getByText('Alpha Torrent').parent?.parent;
     expect(StyleSheet.flatten(row0?.props.style)).toMatchObject({
-      backgroundColor: mockColors.primaryOpac,
+      backgroundColor: mockColors.primary,
+    });
+    expect(StyleSheet.flatten(screen.getByText('Alpha Torrent').props.style)).toMatchObject({
+      color: mockColors.onAccent,
     });
   });
 

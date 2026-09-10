@@ -11,7 +11,7 @@
  * Only rendered on the 'mac' layout idiom - the iPhone ('compact') and
  * iPad ('regular') layouts are untouched by this component.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -20,15 +20,20 @@ import { useTorrents } from '@/context/TorrentContext';
 import { useTransfer } from '@/context/TransferContext';
 import { formatSpeed, formatSize } from '@/utils/format';
 import { spacing } from '@/constants/spacing';
-import { typography } from '@/constants/typography';
+import { desktopMetrics } from '@/constants/desktop';
+import { hexToRgba } from '@/utils/color';
 
-const BAR_HEIGHT = 24;
+const METRICS = desktopMetrics('mac');
+const SEGMENT_GAP = 12;
+const ICON_SIZE = 12;
+const ALT_SPEED_BUTTON_SIZE = 18;
 
 export function MacStatusBar() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { serverState } = useTorrents();
   const { toggleAlternativeSpeedLimits } = useTransfer();
+  const [altSpeedHovered, setAltSpeedHovered] = useState(false);
 
   if (!serverState) {
     return null;
@@ -66,10 +71,8 @@ export function MacStatusBar() {
         style={styles.segment}
         accessibilityLabel={t('statusBar.dhtNodesLabel', { count: dhtNodes })}
       >
-        <Ionicons name="git-network-outline" size={14} color={colors.textSecondary} />
-        <Text style={[typography.caption, styles.segmentText, { color: colors.textSecondary }]}>
-          {dhtNodes}
-        </Text>
+        <Ionicons name="git-network-outline" size={ICON_SIZE} color={colors.textSecondary} />
+        <Text style={[styles.segmentText, { color: colors.textSecondary }]}>{dhtNodes}</Text>
       </View>
 
       <View
@@ -81,15 +84,21 @@ export function MacStatusBar() {
       <Pressable
         testID="mac-status-bar-alt-speed"
         onPress={toggleAlternativeSpeedLimits}
+        onHoverIn={() => setAltSpeedHovered(true)}
+        onHoverOut={() => setAltSpeedHovered(false)}
         accessibilityRole="button"
         accessibilityState={{ selected: altSpeedActive }}
         accessibilityLabel={t(
           altSpeedActive ? 'statusBar.toggleAltSpeedOff' : 'statusBar.toggleAltSpeedOn',
         )}
+        style={[
+          styles.altSpeedButton,
+          altSpeedHovered && { backgroundColor: hexToRgba(colors.text, 0.08) },
+        ]}
       >
         <Ionicons
           name={altSpeedActive ? 'speedometer' : 'speedometer-outline'}
-          size={14}
+          size={ICON_SIZE}
           color={altSpeedActive ? colors.warning : colors.textSecondary}
         />
       </Pressable>
@@ -100,20 +109,16 @@ export function MacStatusBar() {
         style={styles.segment}
         accessibilityLabel={t('statusBar.downloadSpeedLabel', { value: downloadText })}
       >
-        <Ionicons name="arrow-down" size={14} color={colors.stateDownloading} />
-        <Text style={[typography.caption, styles.segmentText, { color: colors.textSecondary }]}>
-          {downloadText}
-        </Text>
+        <Ionicons name="arrow-down" size={ICON_SIZE} color={colors.stateDownloading} />
+        <Text style={[styles.segmentText, { color: colors.textSecondary }]}>{downloadText}</Text>
       </View>
 
       <View
         style={styles.segment}
         accessibilityLabel={t('statusBar.uploadSpeedLabel', { value: uploadText })}
       >
-        <Ionicons name="arrow-up" size={14} color={colors.stateSeeding} />
-        <Text style={[typography.caption, styles.segmentText, { color: colors.textSecondary }]}>
-          {uploadText}
-        </Text>
+        <Ionicons name="arrow-up" size={ICON_SIZE} color={colors.stateSeeding} />
+        <Text style={[styles.segmentText, { color: colors.textSecondary }]}>{uploadText}</Text>
       </View>
 
       <View style={styles.spacer} />
@@ -122,8 +127,8 @@ export function MacStatusBar() {
         style={styles.segment}
         accessibilityLabel={t('statusBar.freeSpaceLabel', { value: formatSize(freeSpace) })}
       >
-        <Ionicons name="server-outline" size={14} color={colors.textSecondary} />
-        <Text style={[typography.caption, styles.segmentText, { color: colors.textSecondary }]}>
+        <Ionicons name="server-outline" size={ICON_SIZE} color={colors.textSecondary} />
+        <Text style={[styles.segmentText, { color: colors.textSecondary }]}>
           {formatSize(freeSpace)}
         </Text>
       </View>
@@ -132,10 +137,8 @@ export function MacStatusBar() {
         style={styles.segment}
         accessibilityLabel={t('statusBar.globalRatioLabel', { value: globalRatio })}
       >
-        <Ionicons name="swap-vertical-outline" size={14} color={colors.textSecondary} />
-        <Text style={[typography.caption, styles.segmentText, { color: colors.textSecondary }]}>
-          {globalRatio}
-        </Text>
+        <Ionicons name="swap-vertical-outline" size={ICON_SIZE} color={colors.textSecondary} />
+        <Text style={[styles.segmentText, { color: colors.textSecondary }]}>{globalRatio}</Text>
       </View>
     </View>
   );
@@ -145,10 +148,10 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: BAR_HEIGHT,
-    borderTopWidth: 1,
+    height: METRICS.statusBarHeight,
+    borderTopWidth: METRICS.hairline,
     paddingHorizontal: spacing.md,
-    gap: spacing.md,
+    gap: SEGMENT_GAP,
   },
   segment: {
     flexDirection: 'row',
@@ -156,7 +159,15 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   segmentText: {
+    fontSize: METRICS.statusBarFontSize,
     fontVariant: ['tabular-nums'],
+  },
+  altSpeedButton: {
+    width: ALT_SPEED_BUTTON_SIZE,
+    height: ALT_SPEED_BUTTON_SIZE,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   connectionDot: {
     width: 8,

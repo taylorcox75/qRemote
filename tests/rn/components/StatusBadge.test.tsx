@@ -42,4 +42,39 @@ describe('StatusBadge', () => {
     const label = screen.getByText('Stalled Downloading');
     expect(label.props.numberOfLines).toBe(1);
   });
+
+  it('defaults to the compact size, unchanged for existing call sites', async () => {
+    await render(<StatusBadge label="Downloading" tint="#0af" />);
+    const label = screen.getByText('Downloading');
+    const badge = label.parent;
+    expect(StyleSheet.flatten(badge?.props.style)).toMatchObject({
+      borderRadius: 6,
+      paddingHorizontal: 7,
+    });
+  });
+
+  it('applies the desktop size: 18pt tall, radius 4, 6pt horizontal padding', async () => {
+    await render(<StatusBadge label="Downloading" tint="#0af" size="desktop" />);
+    const label = screen.getByText('Downloading');
+    const badge = label.parent;
+    expect(StyleSheet.flatten(badge?.props.style)).toMatchObject({
+      height: 18,
+      borderRadius: 4,
+      paddingHorizontal: 6,
+    });
+    expect(StyleSheet.flatten(label.props.style)).toMatchObject({ fontSize: 11 });
+  });
+
+  it('switches the label to onAccent when selected, keeping the tint fill/border', async () => {
+    await render(<StatusBadge label="Downloading" tint="#00ff00" size="desktop" selected />);
+    const label = screen.getByText('Downloading');
+    const badge = label.parent;
+    expect(StyleSheet.flatten(label.props.style)).toMatchObject({
+      color: require('./theme-mock').mockColors.onAccent,
+    });
+    expect(StyleSheet.flatten(badge?.props.style)).toMatchObject({
+      backgroundColor: 'rgba(0, 255, 0, 0.14)',
+      borderColor: 'rgba(0, 255, 0, 0.22)',
+    });
+  });
 });

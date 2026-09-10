@@ -225,7 +225,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 // Matches the template's window-creation block whether or not another plugin
 // (plugins/withNativeTorrentFileCopy.js) has already renamed launchOptions.
 const APPDELEGATE_WINDOW_BLOCK_RE =
-  /#if os\(iOS\) \|\| os\(tvOS\)\n    window = UIWindow\(frame: UIScreen\.main\.bounds\)\n    factory\.startReactNative\(\n      withModuleName: "main",\n      in: window,\n      launchOptions: (\w+)\)\n#endif\n/;
+  /#if os\(iOS\) \|\| os\(tvOS\)\n {4}window = UIWindow\(frame: UIScreen\.main\.bounds\)\n {4}factory\.startReactNative\(\n {6}withModuleName: "main",\n {6}in: window,\n {6}launchOptions: (\w+)\)\n#endif\n/;
 const APPDELEGATE_SCENE_MARKER = '// withMacCatalyst: UIScene lifecycle';
 const appDelegateWindowReplacement = (launchOptionsVar) => `#if os(iOS) || os(tvOS)
     ${APPDELEGATE_SCENE_MARKER}: when a UIApplicationSceneManifest is

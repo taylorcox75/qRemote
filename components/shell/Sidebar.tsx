@@ -5,6 +5,14 @@
  * Only rendered on 'regular'/'mac' layouts - 'compact' (iPhone) screens
  * never mount this component.
  *
+ * Sizing/typography come from desktopMetrics(idiom) (constants/desktop.ts)
+ * so mac reads as stock macOS (13pt/26pt rows, 11pt caps section headers,
+ * solid accent selection) and regular keeps iPadOS conventions (17pt/44pt
+ * rows, tint-fill selection). Selection/hover styling is idiom-specific:
+ * mac uses a solid colors.primary fill with onAccent text/icon/count and a
+ * subtle hover wash; regular uses colors.primaryOpac fill with colors.primary
+ * text/icon and no hover (touch has no hover state).
+ *
  * Key exports: Sidebar
  */
 import React, { useState } from 'react';
@@ -27,8 +35,10 @@ import { useTorrents } from '@/context/TorrentContext';
 import { useServer } from '@/context/ServerContext';
 import { applicationApi } from '@/services/api/application';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
-import { spacing, borderRadius } from '@/constants/spacing';
+import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
+import { desktopMetrics } from '@/constants/desktop';
+import { hexToRgba } from '@/utils/color';
 import { STATUS_FILTER_IDS, matchesStatusFilter, StatusFilterId } from '@/utils/torrent-filters';
 import { parseTagsCsv, UNTAGGED_FILTER } from '@/utils/tags';
 
@@ -152,13 +162,23 @@ interface SectionProps {
 
 function Section({ title, expanded, onToggle, children }: SectionProps) {
   const { colors } = useTheme();
+  const { idiom } = useShell();
+  const metrics = desktopMetrics(idiom);
   return (
     <View>
       <TouchableOpacity
-        style={styles.sectionHeader}
+        style={[
+          styles.sectionHeader,
+          {
+            height: metrics.sectionHeaderHeight,
+            paddingHorizontal: metrics.sidebarInsetHorizontal,
+          },
+        ]}
         onPress={onToggle}
-        // sectionHeader keeps its compact 28pt visual height; hitSlop pads
-        // the actual touch target out to the iPadOS HIG 44pt minimum.
+        // sectionHeader keeps its metrics-driven visual height (mac 22pt /
+        // regular 32pt); hitSlop pads the actual touch target out to the
+        // iPadOS HIG 44pt minimum on regular (mac's own 22pt row is already
+        // within Apple's pointer-target guidance).
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
@@ -168,7 +188,17 @@ function Section({ title, expanded, onToggle, children }: SectionProps) {
           size={12}
           color={colors.textSecondary}
         />
-        <Text style={[typography.label, styles.sectionTitle, { color: colors.textSecondary }]}>
+        <Text
+          style={[
+            typography.label,
+            styles.sectionTitle,
+            {
+              fontSize: metrics.sectionHeaderFontSize,
+              letterSpacing: 0.5,
+              color: colors.textSecondary,
+            },
+          ]}
+        >
           {title}
         </Text>
       </TouchableOpacity>
@@ -181,22 +211,45 @@ interface RowProps {
   label: string;
   icon?: IoniconName;
   iconColor?: string;
+  /** Overrides metrics.sidebarIconSize - used for category dots / tag icons. */
+  iconSize?: number;
   count?: number;
   active?: boolean;
   onPress: () => void;
 }
 
-function Row({ label, icon, iconColor, count, active, onPress }: RowProps) {
+function Row({ label, icon, iconColor, iconSize, count, active, onPress }: RowProps) {
   const { colors } = useTheme();
+  const { idiom } = useShell();
+  const metrics = desktopMetrics(idiom);
+  const isMac = idiom === 'mac';
   const [hovered, setHovered] = useState(false);
+
   const backgroundColor = active
-    ? colors.primaryOpac
-    : hovered
-      ? colors.surfaceOutline
+    ? isMac
+      ? colors.primary
+      : colors.primaryOpac
+    : hovered && isMac
+      ? hexToRgba(colors.text, 0.06)
       : 'transparent';
+
+  const activeContentColor = isMac ? colors.onAccent : colors.primary;
+  const labelColor = active ? activeContentColor : colors.text;
+  const rowIconColor = active ? activeContentColor : (iconColor ?? colors.textSecondary);
+  const countColor = active && isMac ? colors.onAccent : colors.textSecondary;
+
   return (
     <Pressable
-      style={[styles.row, { backgroundColor }]}
+      style={[
+        styles.row,
+        {
+          height: metrics.sidebarRowHeight,
+          paddingHorizontal: metrics.sidebarInsetHorizontal,
+          marginHorizontal: metrics.sidebarRowMargin,
+          borderRadius: metrics.selectionRadius,
+          backgroundColor,
+        },
+      ]}
       onPress={onPress}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
@@ -206,19 +259,31 @@ function Row({ label, icon, iconColor, count, active, onPress }: RowProps) {
       {icon && (
         <Ionicons
           name={icon}
-          size={16}
-          color={active ? colors.primary : (iconColor ?? colors.textSecondary)}
+          size={iconSize ?? metrics.sidebarIconSize}
+          color={rowIconColor}
           style={styles.rowIcon}
         />
       )}
       <Text
-        style={[typography.body, styles.rowLabel, { color: active ? colors.primary : colors.text }]}
+        style={[
+          typography.body,
+          styles.rowLabel,
+          { fontSize: metrics.sidebarFontSize, color: labelColor },
+        ]}
         numberOfLines={1}
       >
         {label}
       </Text>
       {count !== undefined && (
-        <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>{count}</Text>
+        <Text
+          style={[
+            typography.captionMedium,
+            styles.rowCount,
+            { fontSize: metrics.sectionHeaderFontSize, color: countColor },
+          ]}
+        >
+          {count}
+        </Text>
       )}
     </Pressable>
   );
@@ -232,6 +297,11 @@ export function Sidebar({ style }: SidebarProps) {
   const { idiom, listFilter, setListFilter, toggleSidebar } = useShell();
   const { torrents, categories, tags } = useTorrents();
   const { currentServer, isConnected } = useServer();
+  const metrics = desktopMetrics(idiom);
+  const isMac = idiom === 'mac';
+  // Category dots / tag icons read a dedicated size, not metrics.sidebarIconSize
+  // (which sizes the destination/status glyphs): 8pt on mac, 15pt on regular.
+  const categoryTagIconSize = metrics.sidebarCategoryIconSize;
 
   const preferencesQuery = useQuery({
     queryKey: ['application', 'preferences'],
@@ -291,9 +361,13 @@ export function Sidebar({ style }: SidebarProps) {
         <View style={[styles.serverHeader, { borderBottomColor: colors.surfaceOutline }]}>
           {currentServer ? (
             <>
-              <ServerIconBadge server={currentServer} size={32} />
+              <ServerIconBadge server={currentServer} size={metrics.sidebarServerBadgeSize} />
               <Text
-                style={[typography.smallSemibold, styles.serverName, { color: colors.text }]}
+                style={[
+                  typography.smallSemibold,
+                  styles.serverName,
+                  { fontSize: metrics.sidebarFontSize, color: colors.text },
+                ]}
                 numberOfLines={1}
               >
                 {currentServer.name}
@@ -302,14 +376,18 @@ export function Sidebar({ style }: SidebarProps) {
           ) : (
             <View style={styles.serverName} />
           )}
-          {idiom === 'mac' && (
+          {isMac && (
             <Pressable
               onPress={toggleSidebar}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityRole="button"
               accessibilityLabel={t('sidebar.collapse')}
             >
-              <Ionicons name="chevron-back-outline" size={16} color={colors.textSecondary} />
+              <Ionicons
+                name="chevron-back-outline"
+                size={metrics.sidebarCollapseIconSize}
+                color={colors.textSecondary}
+              />
             </Pressable>
           )}
         </View>
@@ -361,6 +439,7 @@ export function Sidebar({ style }: SidebarProps) {
           <Row
             label={t('filters.allCategories')}
             icon="folder-outline"
+            iconSize={categoryTagIconSize}
             active={listFilter.category === null}
             onPress={() => selectCategory(null)}
           />
@@ -368,6 +447,7 @@ export function Sidebar({ style }: SidebarProps) {
             <Row
               label={t('filters.uncategorized')}
               icon="folder-outline"
+              iconSize={categoryTagIconSize}
               count={uncategorizedCount}
               active={listFilter.category === ''}
               onPress={() => selectCategory('')}
@@ -378,6 +458,7 @@ export function Sidebar({ style }: SidebarProps) {
               key={name}
               label={name}
               icon="folder"
+              iconSize={categoryTagIconSize}
               count={torrents.filter((torrent) => torrent.category === name).length}
               active={listFilter.category === name}
               onPress={() => selectCategory(name)}
@@ -394,6 +475,7 @@ export function Sidebar({ style }: SidebarProps) {
             <Row
               label={t('filters.untagged')}
               icon="pricetag-outline"
+              iconSize={categoryTagIconSize}
               count={untaggedCount}
               active={listFilter.tags.includes(UNTAGGED_FILTER)}
               onPress={() => toggleTag(UNTAGGED_FILTER)}
@@ -404,6 +486,7 @@ export function Sidebar({ style }: SidebarProps) {
               key={tag}
               label={tag}
               icon="pricetag"
+              iconSize={categoryTagIconSize}
               count={torrents.filter((torrent) => parseTagsCsv(torrent.tags).includes(tag)).length}
               active={listFilter.tags.includes(tag)}
               onPress={() => toggleTag(tag)}
@@ -436,8 +519,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    height: 28,
-    paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
   sectionTitle: {
@@ -446,11 +527,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.small,
-    marginHorizontal: spacing.sm,
     gap: spacing.sm,
   },
   rowIcon: {
@@ -458,5 +534,8 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     flex: 1,
+  },
+  rowCount: {
+    fontVariant: ['tabular-nums'],
   },
 });

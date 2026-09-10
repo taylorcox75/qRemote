@@ -63,6 +63,8 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { buttonStyles, buttonText } from '@/constants/buttons';
 import { typography } from '@/constants/typography';
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
+import { DesktopToolbar } from '@/components/shell/DesktopToolbar';
+import { desktopMetrics } from '@/constants/desktop';
 import { useTorrentActions } from '@/hooks/useTorrentActions';
 import { useMacCommands } from '@/hooks/useMacCommands';
 import type { MacCommandId } from '@/modules/mac-commands';
@@ -271,17 +273,23 @@ export default function TorrentsScreen() {
     tagFiltersRef.current = tagFilters;
   }, [categoryFilter, tagFilters]);
 
-  // This screen's search/sort/add header overlays the top of the list (see
+  // Compact: the search/sort/add header overlays the top of the list (see
   // headerContainer/listContent below) rather than taking up its own layout
   // space, so the toast's default safe-area offset lands on top of it. Push
   // the toast down past the header — a bit further than listContent's own
   // paddingTop so it clears the header with room to spare — while this tab
-  // is focused.
+  // is focused. regular/mac: DesktopToolbar sits in normal document flow
+  // instead (not absolutely positioned), so only its own height needs
+  // clearing, not the compact header's much taller overlay.
   useFocusEffect(
     useCallback(() => {
-      setToastTopOffset(styles.listContent.paddingTop + spacing.xxl);
+      setToastTopOffset(
+        idiom === 'compact'
+          ? styles.listContent.paddingTop + spacing.xxl
+          : desktopMetrics(idiom).toolbarHeight + spacing.sm,
+      );
       return () => setToastTopOffset(null);
-    }, [setToastTopOffset]),
+    }, [setToastTopOffset, idiom]),
   );
 
   // Check for filter + card view mode preference changes on screen focus
@@ -1414,6 +1422,12 @@ export default function TorrentsScreen() {
     { key: 'upspeed' as const, labelKey: 'sort.ulSpeed', icon: 'arrow-up-outline' as const },
   ];
 
+  // regular/mac only: DesktopToolbar's title, the active status-filter
+  // label (same labelKey set as filterOptions above).
+  const activeFilterLabel = t(
+    filterOptions.find((option) => option.key === filter)?.labelKey ?? 'filters.all',
+  );
+
   // Early returns
   // Show the "Not Connected" quick-connect screen whenever there is no live
   // connection (check this FIRST). currentServer intentionally survives a
@@ -1494,130 +1508,187 @@ export default function TorrentsScreen() {
   // 574pt on the 11-inch), which TorrentRow's middle-ellipsis handles.
   const showDetailPane = idiom === 'regular' && windowWidth >= 1000;
 
+  // Shared option list for the sort dropdown, rendered from two different
+  // gated spots below (compact header vs. desktop toolbar) so the JSX isn't
+  // duplicated. See the two `sortDropdown` renders inside mainContent.
+  const sortOptionsList = (
+    <>
+      {sortOptions.map((option) => (
+        <TouchableOpacity
+          key={option.key}
+          style={[
+            styles.sortOption,
+            sortBy === option.key && {
+              backgroundColor: isDark ? colors.primaryOpac : colors.primary,
+            },
+          ]}
+          onPress={() => {
+            haptics.light();
+            if (sortBy === option.key) {
+              // Toggle direction if clicking the same sort option
+              setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+            } else {
+              // Set new sort option with default direction (desc for most, asc for name)
+              setSortBy(option.key);
+              setSortDirection(option.key === 'name' ? 'asc' : 'desc');
+            }
+            setShowSortMenu(false);
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={option.icon}
+            size={18}
+            color={
+              sortBy === option.key
+                ? isDark
+                  ? colors.primary
+                  : '#FFFFFF'
+                : isDark
+                  ? colors.textSecondary
+                  : colors.text
+            }
+          />
+          <Text
+            style={[
+              styles.sortOptionText,
+              {
+                color:
+                  sortBy === option.key
+                    ? isDark
+                      ? colors.primary
+                      : '#FFFFFF'
+                    : isDark
+                      ? colors.textSecondary
+                      : colors.text,
+                fontWeight: sortBy === option.key ? '600' : '400',
+              },
+            ]}
+          >
+            {t(option.labelKey)}
+          </Text>
+          {sortBy === option.key && (
+            <Ionicons
+              name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
+              size={18}
+              color={
+                sortBy === option.key
+                  ? isDark
+                    ? colors.primary
+                    : '#FFFFFF'
+                  : isDark
+                    ? colors.textSecondary
+                    : colors.text
+              }
+            />
+          )}
+        </TouchableOpacity>
+      ))}
+    </>
+  );
+
   const mainContent = (
     <>
-      <Animated.View
-        style={[
-          styles.headerContainer,
-          {
-            backgroundColor: 'transparent',
-            transform: [{ translateY: headerTranslateY }],
-          },
-        ]}
-      >
-        <View style={[styles.searchCard, { backgroundColor: 'transparent' }]}>
-          {/* Search bar with Sort button */}
-          <View style={styles.searchRow}>
-            {/* LEFT: Sidebar toggle - regular/mac only, fixed 42x42. Never
-                rendered on compact (iPhone), so this is a no-op there. */}
-            {!selectMode && idiom !== 'compact' && (
-              <TouchableOpacity
-                style={[
-                  styles.searchSortButton,
-                  { backgroundColor: colors.background, borderColor: colors.surface },
-                ]}
-                onPress={shell.toggleSidebar}
-                activeOpacity={0.7}
-                accessibilityLabel={
-                  shell.sidebarCollapsed ? t('sidebar.expand') : t('sidebar.collapse')
-                }
-              >
-                <Ionicons
-                  name={shell.sidebarCollapsed ? 'chevron-forward-outline' : 'chevron-back-outline'}
-                  size={18}
-                  color={colors.text}
-                />
-              </TouchableOpacity>
-            )}
+      {/* Compact (iPhone) only: the original absolutely-positioned Animated
+          header, byte-identical to before. regular/mac render DesktopToolbar
+          instead (below) - see components/shell/DesktopToolbar.tsx. */}
+      {idiom === 'compact' && (
+        <Animated.View
+          style={[
+            styles.headerContainer,
+            {
+              backgroundColor: 'transparent',
+              transform: [{ translateY: headerTranslateY }],
+            },
+          ]}
+        >
+          <View style={[styles.searchCard, { backgroundColor: 'transparent' }]}>
+            {/* Search bar with Sort button */}
+            <View style={styles.searchRow}>
+              {/* LEFT: Sort button - fixed 42×42 */}
+              {!selectMode && (
+                <TouchableOpacity
+                  style={[
+                    styles.searchSortButton,
+                    {
+                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
+                      borderColor: colors.surface,
+                    },
+                  ]}
+                  onPress={() => setShowSortMenu(!showSortMenu)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.settings.sortBy')}
+                >
+                  <Ionicons
+                    name="swap-vertical"
+                    size={18}
+                    color={showSortMenu ? colors.primary : colors.text}
+                  />
+                </TouchableOpacity>
+              )}
 
-            {/* LEFT: Sort button - fixed 42×42 */}
-            {!selectMode && (
-              <TouchableOpacity
+              {/* CENTER: Search input - flex:1, loading indicator inside */}
+              <View
                 style={[
-                  styles.searchSortButton,
+                  styles.searchInputContainer,
                   {
-                    backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
-                    borderColor: colors.surface,
+                    backgroundColor: colors.surface,
+                    borderWidth: 0.1,
+                    borderColor: colors.surfaceOutline,
                   },
                 ]}
-                onPress={() => setShowSortMenu(!showSortMenu)}
-                activeOpacity={0.7}
-                accessibilityLabel={t('screens.settings.sortBy')}
               >
                 <Ionicons
-                  name="swap-vertical"
+                  name="search"
                   size={18}
-                  color={showSortMenu ? colors.primary : colors.text}
+                  color={colors.textSecondary}
+                  style={styles.searchIcon}
                 />
-              </TouchableOpacity>
-            )}
+                <TextInput
+                  ref={searchInputRef}
+                  style={[styles.searchInputCompact, { color: colors.text }]}
+                  placeholder={t('placeholders.searchTorrents')}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholderTextColor={colors.textSecondary}
+                />
+                {isLoading && (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.primary}
+                    style={{ marginLeft: spacing.xs }}
+                  />
+                )}
+              </View>
 
-            {/* CENTER: Search input - flex:1, loading indicator inside */}
-            <View
-              style={[
-                styles.searchInputContainer,
-                {
-                  backgroundColor: colors.surface,
-                  borderWidth: 0.1,
-                  borderColor: colors.surfaceOutline,
-                },
-              ]}
-            >
-              <Ionicons
-                name="search"
-                size={18}
-                color={colors.textSecondary}
-                style={styles.searchIcon}
-              />
-              <TextInput
-                ref={searchInputRef}
-                style={[styles.searchInputCompact, { color: colors.text }]}
-                placeholder={t('placeholders.searchTorrents')}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholderTextColor={colors.textSecondary}
-              />
-              {isLoading && (
-                <ActivityIndicator
-                  size="small"
-                  color={colors.primary}
-                  style={{ marginLeft: spacing.xs }}
-                />
+              {/* RIGHT: Add torrent button - fixed 42×42 */}
+              {!selectMode && (
+                <TouchableOpacity
+                  style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    void handleOpenAddTorrent();
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.torrents.addTorrent')}
+                >
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
               )}
             </View>
 
-            {/* RIGHT: Add torrent button - fixed 42×42 */}
-            {!selectMode && (
-              <TouchableOpacity
-                style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
-                onPress={() => {
-                  void handleOpenAddTorrent();
-                }}
-                activeOpacity={0.7}
-                accessibilityLabel={t('screens.torrents.addTorrent')}
+            {/* Filter row */}
+            <View style={[styles.filterRow, { backgroundColor: 'transparent' }]}>
+              {/* Scrollable filter options */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterRowContainer}
+                style={styles.filterScrollView}
               >
-                <Ionicons name="add" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Filter row */}
-          <View style={[styles.filterRow, { backgroundColor: 'transparent' }]}>
-            {/* Scrollable filter options */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRowContainer}
-              style={styles.filterScrollView}
-            >
-              {/* Checkbox that scrolls with filters. Hidden on mac idiom:
-                  TorrentTable does not yet render a selection column or take
-                  selectMode/selectedHashes/onToggleSelection props, so the
-                  only functional path through select mode on mac would be
-                  select-all with no way to toggle individual rows. iPhone
-                  and iPad are unaffected - this only removes the entry point
-                  on mac until TorrentTable supports selection. */}
-              {idiom !== 'mac' && (
+                {/* Checkbox that scrolls with filters. This whole header is
+                  compact-only now (regular/mac render DesktopToolbar
+                  instead, which owns select-mode via its own button, not
+                  select-all), so no idiom check is needed here any more. */}
                 <TouchableOpacity
                   style={styles.selectCheckbox}
                   onPress={() => {
@@ -1656,90 +1727,96 @@ export default function TorrentsScreen() {
                     }
                   />
                 </TouchableOpacity>
-              )}
 
-              {!selectMode &&
-                filterOptions.map((item) => (
-                  <FilterChip
-                    key={item.key}
-                    label={t(item.labelKey)}
-                    icon={item.icon}
-                    active={filter === item.key}
-                    onPress={() => {
-                      haptics.light();
-                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                      if (filter === item.key) {
-                        // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
-                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-                        if (item.key === 'downloading') setSortBy('dlspeed');
-                        else if (item.key === 'uploading') setSortBy('upspeed');
-                      } else {
-                        setFilter(item.key);
-                        pushListFilterToShell(item.key, categoryFilter, tagFilters);
-                        if (item.key === 'downloading') setSortBy('dlspeed');
-                        else if (item.key === 'uploading') setSortBy('upspeed');
+                {!selectMode &&
+                  filterOptions.map((item) => (
+                    <FilterChip
+                      key={item.key}
+                      label={t(item.labelKey)}
+                      icon={item.icon}
+                      active={filter === item.key}
+                      onPress={() => {
+                        haptics.light();
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        if (filter === item.key) {
+                          // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
+                          setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                          if (item.key === 'downloading') setSortBy('dlspeed');
+                          else if (item.key === 'uploading') setSortBy('upspeed');
+                        } else {
+                          setFilter(item.key);
+                          pushListFilterToShell(item.key, categoryFilter, tagFilters);
+                          if (item.key === 'downloading') setSortBy('dlspeed');
+                          else if (item.key === 'uploading') setSortBy('upspeed');
+                        }
+                      }}
+                    />
+                  ))}
+
+                {!selectMode && (
+                  <>
+                    {/* Visual separator */}
+                    <View
+                      style={[
+                        styles.filterChipSeparator,
+                        { backgroundColor: colors.surfaceOutline },
+                      ]}
+                    />
+
+                    {/* Category filter chip */}
+                    <FilterChip
+                      icon="folder-outline"
+                      active={categoryFilter !== null}
+                      onPress={() => {
+                        haptics.light();
+                        setShowCategoryPicker(true);
+                      }}
+                      accessibilityLabel={t('filters.category')}
+                      label={
+                        categoryFilter === null
+                          ? t('filters.category')
+                          : categoryFilter === ''
+                            ? t('filters.uncategorized')
+                            : categoryFilter
                       }
-                    }}
-                  />
-                ))}
+                    />
 
-              {!selectMode && (
-                <>
-                  {/* Visual separator */}
-                  <View
-                    style={[styles.filterChipSeparator, { backgroundColor: colors.surfaceOutline }]}
-                  />
+                    {/* Tags filter chip */}
+                    <FilterChip
+                      icon="pricetag-outline"
+                      active={tagFilters.length > 0}
+                      onPress={() => {
+                        haptics.light();
+                        setShowTagPicker(true);
+                      }}
+                      accessibilityLabel={t('filters.tags')}
+                      label={
+                        tagFilters.length > 0
+                          ? t('filters.tagsCount', { count: tagFilters.length })
+                          : t('filters.tags')
+                      }
+                    />
+                  </>
+                )}
 
-                  {/* Category filter chip */}
+                {selectMode && (
                   <FilterChip
-                    icon="folder-outline"
-                    active={categoryFilter !== null}
-                    onPress={() => {
-                      haptics.light();
-                      setShowCategoryPicker(true);
-                    }}
-                    accessibilityLabel={t('filters.category')}
-                    label={
-                      categoryFilter === null
-                        ? t('filters.category')
-                        : categoryFilter === ''
-                          ? t('filters.uncategorized')
-                          : categoryFilter
-                    }
+                    icon="close"
+                    active
+                    activeColor={colors.error}
+                    onPress={toggleSelectMode}
+                    label={t('common.close')}
+                    style={{ marginLeft: 8 }}
                   />
-
-                  {/* Tags filter chip */}
-                  <FilterChip
-                    icon="pricetag-outline"
-                    active={tagFilters.length > 0}
-                    onPress={() => {
-                      haptics.light();
-                      setShowTagPicker(true);
-                    }}
-                    accessibilityLabel={t('filters.tags')}
-                    label={
-                      tagFilters.length > 0
-                        ? t('filters.tagsCount', { count: tagFilters.length })
-                        : t('filters.tags')
-                    }
-                  />
-                </>
-              )}
-
-              {selectMode && (
-                <FilterChip
-                  icon="close"
-                  active
-                  activeColor={colors.error}
-                  onPress={toggleSelectMode}
-                  label={t('common.close')}
-                  style={{ marginLeft: 8 }}
-                />
-              )}
-            </ScrollView>
+                )}
+              </ScrollView>
+            </View>
           </View>
 
-          {/* Sort options dropdown - positioned near search bar */}
+          {/* Sort options dropdown - lives inside the Animated header so it
+              rides along with headerTranslateY when the header scroll-hides;
+              a sibling outside this transform would stay pinned in place
+              while the header slides away underneath it. */}
           {showSortMenu && !selectMode && (
             <View
               style={[
@@ -1750,81 +1827,58 @@ export default function TorrentsScreen() {
                 },
               ]}
             >
-              {sortOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.key}
-                  style={[
-                    styles.sortOption,
-                    sortBy === option.key && {
-                      backgroundColor: isDark ? colors.primaryOpac : colors.primary,
-                    },
-                  ]}
-                  onPress={() => {
-                    haptics.light();
-                    if (sortBy === option.key) {
-                      // Toggle direction if clicking the same sort option
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      // Set new sort option with default direction (desc for most, asc for name)
-                      setSortBy(option.key);
-                      setSortDirection(option.key === 'name' ? 'asc' : 'desc');
-                    }
-                    setShowSortMenu(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={option.icon}
-                    size={18}
-                    color={
-                      sortBy === option.key
-                        ? isDark
-                          ? colors.primary
-                          : '#FFFFFF'
-                        : isDark
-                          ? colors.textSecondary
-                          : colors.text
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.sortOptionText,
-                      {
-                        color:
-                          sortBy === option.key
-                            ? isDark
-                              ? colors.primary
-                              : '#FFFFFF'
-                            : isDark
-                              ? colors.textSecondary
-                              : colors.text,
-                        fontWeight: sortBy === option.key ? '600' : '400',
-                      },
-                    ]}
-                  >
-                    {t(option.labelKey)}
-                  </Text>
-                  {sortBy === option.key && (
-                    <Ionicons
-                      name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
-                      size={18}
-                      color={
-                        sortBy === option.key
-                          ? isDark
-                            ? colors.primary
-                            : '#FFFFFF'
-                          : isDark
-                            ? colors.textSecondary
-                            : colors.text
-                      }
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {sortOptionsList}
             </View>
           )}
+        </Animated.View>
+      )}
+
+      {/* regular/mac only: single-row desktop toolbar in normal flow,
+          replacing the compact header above. Settings and Add live in the
+          sidebar / File menu; the sidebar also owns category/tag filters -
+          this toolbar only owns search, sort, add and select-mode. */}
+      {idiom !== 'compact' && (
+        <DesktopToolbar
+          idiom={idiom}
+          title={activeFilterLabel}
+          resultCount={filteredTorrents.length}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onClearSearch={() => setSearchQuery('')}
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortPress={() => setShowSortMenu(!showSortMenu)}
+          onAddPress={() => {
+            void handleOpenAddTorrent();
+          }}
+          selectMode={selectMode}
+          onToggleSelectMode={toggleSelectMode}
+          searchInputRef={searchInputRef}
+          sidebarCollapsed={shell.sidebarCollapsed}
+          onToggleSidebar={shell.toggleSidebar}
+        />
+      )}
+
+      {/* regular/mac only: sort options dropdown for DesktopToolbar's sort
+          control (same showSortMenu state and onPress handler as above:
+          () => setShowSortMenu(!showSortMenu)), anchored under its button at
+          the right edge via styles.sortDropdownDesktop. The compact copy
+          lives inside the Animated header above so it rides along with
+          headerTranslateY - see the comment there. */}
+      {idiom !== 'compact' && showSortMenu && !selectMode && (
+        <View
+          style={[
+            styles.sortDropdown,
+            styles.sortDropdownDesktop,
+            {
+              backgroundColor: isDark ? colors.surface : colors.background,
+              borderColor: colors.surfaceOutline,
+            },
+          ]}
+        >
+          {sortOptionsList}
         </View>
-      </Animated.View>
+      )}
 
       {/* Category filter picker */}
       <OptionPicker
@@ -1938,7 +1992,7 @@ export default function TorrentsScreen() {
           onSortChange={handleMacSortChange}
           alternatingRows={macAlternatingRows}
           categoryColors={categoryColors}
-          topInset={styles.listContent.paddingTop}
+          topInset={0}
         />
       ) : (
         <FlatList
@@ -2162,7 +2216,9 @@ export default function TorrentsScreen() {
           refreshControl={
             <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={colors.primary} />
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={
+            idiom === 'compact' ? styles.listContent : styles.listContentDesktop
+          }
           onScroll={handleScroll}
           scrollEventThrottle={50}
           removeClippedSubviews={false}
@@ -2577,6 +2633,11 @@ const styles = StyleSheet.create({
   // MacStatusBar); the 'regular' side-pane styles above don't apply here.
   macTableArea: {
     flex: 1,
+    // The horizontal ScrollView + FlatList inside would otherwise report
+    // their content height and push the panel and status bar off screen.
+    flexShrink: 1,
+    minHeight: 0,
+    overflow: 'hidden',
   },
   macSplitter: {
     height: 6,
@@ -2824,6 +2885,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.large,
   },
+  // regular idiom's FlatList: DesktopToolbar sits in normal flow above the
+  // list (no absolutely-positioned header), so there is no top inset to
+  // reserve. mac renders TorrentTable instead of this FlatList.
+  listContentDesktop: {
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.large,
+  },
   skeletonList: {
     paddingTop: 100,
     paddingHorizontal: spacing.md,
@@ -3040,6 +3108,12 @@ const styles = StyleSheet.create({
     ...shadows.large,
     zIndex: 1000,
     overflow: 'hidden',
+  },
+  // regular/mac only: anchors under DesktopToolbar's sort button (right
+  // edge) instead of the compact header's left edge.
+  sortDropdownDesktop: {
+    left: undefined,
+    right: spacing.md,
   },
   sortOption: {
     flexDirection: 'row',
