@@ -56,7 +56,8 @@
       "deselectAll": "Alle abwählen",
       "selectMode": "Auswählen",
       "selectTorrent": "Torrent auswählen",
-      "deselectTorrent": "Torrent abwählen"
+      "deselectTorrent": "Torrent abwählen",
+      "selectTorrentHint": "Torrent auswählen, um Details anzuzeigen"
     },
     "addTorrent": {
       "none": "Keiner",
@@ -1098,6 +1099,16 @@
     "tags": "Tags",
     "tagsCount": "Tags ({{count}})",
     "untagged": "Ohne Tags"
+  },
+  "sidebar": {
+    "collapse": "Seitenleiste einklappen",
+    "expand": "Seitenleiste ausklappen",
+    "sections": {
+      "destinations": "Navigation",
+      "status": "Status",
+      "categories": "Kategorien",
+      "tags": "Tags"
+    }
   },
   "sort": {
     "dateAdded": "Datum",

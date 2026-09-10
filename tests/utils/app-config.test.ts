@@ -15,6 +15,33 @@ describe('app.config magnet registration', () => {
   });
 });
 
+describe('app.config iPad orientation', () => {
+  const config = require('../../app.config.js');
+  const expoConfig = config.expo;
+
+  it('keeps iPhone orientation locked to portrait', () => {
+    expect(expoConfig?.orientation).toBe('portrait');
+  });
+
+  it('supports all four orientations on iPad only, via the ~ipad Info.plist key', () => {
+    const ipadOrientations = expoConfig?.ios?.infoPlist?.['UISupportedInterfaceOrientations~ipad'];
+    expect(Array.isArray(ipadOrientations)).toBe(true);
+    expect(ipadOrientations).toEqual([
+      'UIInterfaceOrientationPortrait',
+      'UIInterfaceOrientationPortraitUpsideDown',
+      'UIInterfaceOrientationLandscapeLeft',
+      'UIInterfaceOrientationLandscapeRight',
+    ]);
+    // Plain (non-~ipad) UISupportedInterfaceOrientations must stay unset so
+    // iPhone keeps following `expo.orientation` ('portrait') unchanged.
+    expect(expoConfig?.ios?.infoPlist?.UISupportedInterfaceOrientations).toBeUndefined();
+  });
+
+  it('disables requireFullScreen for iPad multitasking / Stage Manager', () => {
+    expect(expoConfig?.ios?.requireFullScreen).toBe(false);
+  });
+});
+
 describe('app.config torrent file registration', () => {
   const config = require('../../app.config.js');
   const expoConfig = config.expo;

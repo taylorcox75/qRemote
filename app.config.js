@@ -31,7 +31,22 @@ module.exports = {
       supportsTablet: true,
       bundleIdentifier: isDevelopmentBuild ? 'com.taylorcox75.expogo' : 'com.qRemote.app',
       appStoreUrl: 'https://apps.apple.com/us/app/qremote-for-qbittorrent/id6756276747',
+      // Must be false: iPad multitasking (Split View / Slide Over) and Stage
+      // Manager require the app to opt out of the "must run full screen"
+      // restriction. This key has no effect on iPhone.
+      requireFullScreen: false,
       infoPlist: {
+        // iPad multitasking and Stage Manager also require the app to
+        // declare support for all four orientations on iPad, even though
+        // `expo.orientation` above stays 'portrait' for iPhone. The `~ipad`
+        // suffix means this key only applies on iPad devices - it does not
+        // affect iPhone, so the iPhone experience stays unchanged.
+        'UISupportedInterfaceOrientations~ipad': [
+          'UIInterfaceOrientationPortrait',
+          'UIInterfaceOrientationPortraitUpsideDown',
+          'UIInterfaceOrientationLandscapeLeft',
+          'UIInterfaceOrientationLandscapeRight',
+        ],
         // Must be false: RN's StatusBar API (expo-status-bar / FocusAwareStatusBar)
         // is a no-op when iOS uses view-controller-based status bar appearance,
         // leaving the bar stuck on the system appearance (white icons in light mode).

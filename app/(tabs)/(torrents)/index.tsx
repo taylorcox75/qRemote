@@ -22,6 +22,7 @@ import {
   LayoutAnimation,
   InteractionManager,
   GestureResponderEvent,
+  useWindowDimensions,
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
@@ -29,11 +30,14 @@ import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTorrents } from '@/context/TorrentContext';
+import { useShell } from '@/context/ShellContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { TorrentInfo, ServerConfig } from '@/types/api';
 import { TorrentCard } from '@/components/TorrentCard';
+import { TorrentRow } from '@/components/TorrentRow';
+import { TorrentDetailBody } from '@/components/torrent-detail/TorrentDetailBody';
 import { SkeletonTorrentCard } from '@/components/SkeletonLoader';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { InputModal } from '@/components/InputModal';
@@ -82,6 +86,9 @@ export default function TorrentsScreen() {
   const { graceError, isPendingError } = useGracefulError(error);
   const { isConnected, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
+  const shell = useShell();
+  const idiom = shell.idiom;
+  const { width: windowWidth } = useWindowDimensions();
   const params = useLocalSearchParams<{
     magnet?: string | string[];
     torrentFileUri?: string | string[];
@@ -177,6 +184,18 @@ export default function TorrentsScreen() {
   // Track last known default filter so we only sync when user changes it in Settings
   const lastDefaultFilterRef = useRef<string | null>(null);
 
+  // Live snapshot of categoryFilter/tagFilters for the once-per-focus
+  // preference-reload effect below, which is memoized with an empty
+  // dependency array (so its AsyncStorage read timing never changes on
+  // compact/iPhone) and would otherwise only ever see the category/tags from
+  // its first render.
+  const categoryFilterRef = useRef(categoryFilter);
+  const tagFiltersRef = useRef(tagFilters);
+  useEffect(() => {
+    categoryFilterRef.current = categoryFilter;
+    tagFiltersRef.current = tagFilters;
+  }, [categoryFilter, tagFilters]);
+
   // This screen's search/sort/add header overlays the top of the list (see
   // headerContainer/listContent below) rather than taking up its own layout
   // space, so the toast's default safe-area offset lands on top of it. Push
@@ -202,6 +221,10 @@ export default function TorrentsScreen() {
             lastDefaultFilterRef.current !== newDefault
           ) {
             setFilter(newDefault);
+            // Regular/mac: mirror this write into the shell too, or the
+            // shell<->local sync effect below sees the shell's now-stale
+            // status and reverts it right back.
+            pushListFilterToShell(newDefault, categoryFilterRef.current, tagFiltersRef.current);
           }
           lastDefaultFilterRef.current = newDefault;
           setCardViewMode(prefs.cardViewMode ?? 'compact');
@@ -251,6 +274,15 @@ export default function TorrentsScreen() {
         if (prefs.lastTagFilters && prefs.lastTagFilters.length > 0) {
           setTagFilters(prefs.lastTagFilters);
         }
+        // Regular/mac: mirror the restored filter/category/tags into the
+        // shell too (matching whatever the setters above just resolved to),
+        // or the shell<->local sync effect below sees the shell still at its
+        // DEFAULT_LIST_FILTER and reverts these restored values right back.
+        pushListFilterToShell(
+          prefs.defaultFilter || 'all',
+          prefs.lastCategoryFilter !== undefined ? prefs.lastCategoryFilter : null,
+          prefs.lastTagFilters && prefs.lastTagFilters.length > 0 ? prefs.lastTagFilters : [],
+        );
         setCardViewMode(prefs.cardViewMode ?? 'compact');
         if (prefs.expandedCardFields) {
           setExpandedCardFields({
@@ -427,6 +459,58 @@ export default function TorrentsScreen() {
 
     void handleIncomingTorrentFile();
   }, [params.torrentFileUri, params.torrentFileName, router]);
+
+  // Regular/mac only: mirror the sidebar's ListFilter into this screen's own
+  // filter/categoryFilter/tagFilters state whenever the sidebar changes it.
+  // One-directional and event-driven: depends only on shell.listFilter (not
+  // the local filter/categoryFilter/tagFilters state), and is guarded by a
+  // ref rather than a value comparison against local state, so it reacts
+  // only to a genuine new shell.listFilter and never re-fires just because a
+  // local write (from pushListFilterToShell below, or from the
+  // preference-restore effects above) happened to change local state first.
+  // Compact (iPhone) never reads shell.listFilter, so this is a no-op there
+  // beyond the idiom check itself.
+  const appliedShellListFilterRef = useRef(shell.listFilter);
+  useEffect(() => {
+    if (idiom === 'compact') return;
+    if (appliedShellListFilterRef.current === shell.listFilter) return;
+    appliedShellListFilterRef.current = shell.listFilter;
+    const { status, category, tags } = shell.listFilter;
+    setFilter(status);
+    setCategoryFilter(category);
+    setTagFilters(tags);
+    // Converge with the in-list filter chips (handleCategorySelect,
+    // handleTagsChange, the downloading/uploading chip): same auto-sort,
+    // and the same persisted last-used filter, so a sidebar selection
+    // survives relaunch instead of being silently reverted by the
+    // chip-era prefs.lastCategoryFilter/lastTagFilters restore above.
+    if (status === 'downloading') setSortBy('dlspeed');
+    else if (status === 'uploading') setSortBy('upspeed');
+    (async () => {
+      try {
+        const prefs = await storageService.getPreferences();
+        await storageService.savePreferences({
+          ...prefs,
+          lastCategoryFilter: category,
+          lastTagFilters: tags,
+        });
+      } catch {
+        // best-effort
+      }
+    })();
+  }, [idiom, shell.listFilter]);
+
+  // Regular/mac only: used by the in-list filter chips (status/category/tags)
+  // to write their change back into the sidebar's shared ListFilter. Compact
+  // never calls this in a way that has any effect (idiom is always
+  // 'compact'), so this doesn't touch the iPhone path.
+  const pushListFilterToShell = useCallback(
+    (status: string, category: string | null, tags: string[]) => {
+      if (idiom === 'compact') return;
+      shell.setListFilter({ status, category, tags });
+    },
+    [idiom, shell],
+  );
 
   // Filter, sort, and search logic
   const filteredTorrents = useMemo(() => {
@@ -992,6 +1076,7 @@ export default function TorrentsScreen() {
     setFilter('all');
     setCategoryFilter(null);
     setTagFilters([]);
+    pushListFilterToShell('all', null, []);
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({
@@ -1002,7 +1087,7 @@ export default function TorrentsScreen() {
     } catch {
       // best-effort
     }
-  }, []);
+  }, [pushListFilterToShell]);
 
   // Category picker options: All + Uncategorized + sorted server categories
   const categoryPickerOptions = useMemo<OptionPickerItem[]>(() => {
@@ -1059,30 +1144,38 @@ export default function TorrentsScreen() {
       .map((tag) => ({ label: tag, value: tag, icon: 'pricetag-outline' as const }));
   }, [bulkTagMode, torrents, selectedHashes]);
 
-  const handleCategorySelect = useCallback(async (value: string) => {
-    const newFilter = value === '__all__' ? null : value;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setCategoryFilter(newFilter);
-    setShowCategoryPicker(false);
-    haptics.light();
-    try {
-      const prefs = await storageService.getPreferences();
-      await storageService.savePreferences({ ...prefs, lastCategoryFilter: newFilter });
-    } catch {
-      // best-effort
-    }
-  }, []);
+  const handleCategorySelect = useCallback(
+    async (value: string) => {
+      const newFilter = value === '__all__' ? null : value;
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setCategoryFilter(newFilter);
+      setShowCategoryPicker(false);
+      pushListFilterToShell(filter, newFilter, tagFilters);
+      haptics.light();
+      try {
+        const prefs = await storageService.getPreferences();
+        await storageService.savePreferences({ ...prefs, lastCategoryFilter: newFilter });
+      } catch {
+        // best-effort
+      }
+    },
+    [filter, tagFilters, pushListFilterToShell],
+  );
 
-  const handleTagsChange = useCallback(async (values: string[]) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setTagFilters(values);
-    try {
-      const prefs = await storageService.getPreferences();
-      await storageService.savePreferences({ ...prefs, lastTagFilters: values });
-    } catch {
-      // best-effort
-    }
-  }, []);
+  const handleTagsChange = useCallback(
+    async (values: string[]) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setTagFilters(values);
+      pushListFilterToShell(filter, categoryFilter, values);
+      try {
+        const prefs = await storageService.getPreferences();
+        await storageService.savePreferences({ ...prefs, lastTagFilters: values });
+      } catch {
+        // best-effort
+      }
+    },
+    [filter, categoryFilter, pushListFilterToShell],
+  );
 
   // Filter options
   const filterOptions = [
@@ -1173,260 +1266,323 @@ export default function TorrentsScreen() {
     );
   }
 
-  return (
-    <>
-      <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Animated.View
-          style={[
-            styles.headerContainer,
-            {
-              backgroundColor: 'transparent',
-              transform: [{ translateY: headerTranslateY }],
-            },
-          ]}
-        >
-          <View style={[styles.searchCard, { backgroundColor: 'transparent' }]}>
-            {/* Search bar with Sort button */}
-            <View style={styles.searchRow}>
-              {/* LEFT: Sort button — fixed 42×42 */}
-              {!selectMode && (
-                <TouchableOpacity
-                  style={[
-                    styles.searchSortButton,
-                    {
-                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
-                      borderColor: colors.surface,
-                    },
-                  ]}
-                  onPress={() => setShowSortMenu(!showSortMenu)}
-                  activeOpacity={0.7}
-                  accessibilityLabel={t('screens.settings.sortBy')}
-                >
-                  <Ionicons
-                    name="swap-vertical"
-                    size={18}
-                    color={showSortMenu ? colors.primary : colors.text}
-                  />
-                </TouchableOpacity>
-              )}
+  // Regular/mac with a wide enough window (>= 1000pt) split the screen into
+  // this list (left) and a detail pane (right) instead of pushing the
+  // torrent-detail route. Compact (iPhone) and any narrower regular/mac
+  // window render mainContent alone, exactly as the screen always has.
+  // Gated on the raw window width, per spec, rather than the width left
+  // over after subtracting the 240pt sidebar: subtracting it first would
+  // mean the split pane never appears on an open-sidebar 11-inch (1194),
+  // 10.9-inch (1180) or 10.2-inch (1080) iPad in landscape, or the mini
+  // (1024) -- only the 13-inch (1366) would clear 1000 with the sidebar
+  // open. The list column still shrinks with the sidebar open (down to
+  // 574pt on the 11-inch), which TorrentRow's middle-ellipsis handles.
+  const showDetailPane = idiom !== 'compact' && windowWidth >= 1000;
 
-              {/* CENTER: Search input — flex:1, loading indicator inside */}
-              <View
+  const mainContent = (
+    <>
+      <Animated.View
+        style={[
+          styles.headerContainer,
+          {
+            backgroundColor: 'transparent',
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+      >
+        <View style={[styles.searchCard, { backgroundColor: 'transparent' }]}>
+          {/* Search bar with Sort button */}
+          <View style={styles.searchRow}>
+            {/* LEFT: Sidebar toggle - regular/mac only, fixed 42x42. Never
+                rendered on compact (iPhone), so this is a no-op there. */}
+            {!selectMode && idiom !== 'compact' && (
+              <TouchableOpacity
                 style={[
-                  styles.searchInputContainer,
-                  {
-                    backgroundColor: colors.surface,
-                    borderWidth: 0.1,
-                    borderColor: colors.surfaceOutline,
-                  },
+                  styles.searchSortButton,
+                  { backgroundColor: colors.background, borderColor: colors.surface },
                 ]}
+                onPress={shell.toggleSidebar}
+                activeOpacity={0.7}
+                accessibilityLabel={
+                  shell.sidebarCollapsed ? t('sidebar.expand') : t('sidebar.collapse')
+                }
               >
                 <Ionicons
-                  name="search"
+                  name={shell.sidebarCollapsed ? 'chevron-forward-outline' : 'chevron-back-outline'}
                   size={18}
-                  color={colors.textSecondary}
-                  style={styles.searchIcon}
+                  color={colors.text}
                 />
-                <TextInput
-                  style={[styles.searchInputCompact, { color: colors.text }]}
-                  placeholder={t('placeholders.searchTorrents')}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholderTextColor={colors.textSecondary}
-                />
-                {isLoading && (
-                  <ActivityIndicator
-                    size="small"
-                    color={colors.primary}
-                    style={{ marginLeft: spacing.xs }}
-                  />
-                )}
-              </View>
+              </TouchableOpacity>
+            )}
 
-              {/* RIGHT: Add torrent button — fixed 42×42 */}
-              {!selectMode && (
-                <TouchableOpacity
-                  style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    void handleOpenAddTorrent();
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel={t('screens.torrents.addTorrent')}
-                >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
+            {/* LEFT: Sort button — fixed 42×42 */}
+            {!selectMode && (
+              <TouchableOpacity
+                style={[
+                  styles.searchSortButton,
+                  {
+                    backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
+                    borderColor: colors.surface,
+                  },
+                ]}
+                onPress={() => setShowSortMenu(!showSortMenu)}
+                activeOpacity={0.7}
+                accessibilityLabel={t('screens.settings.sortBy')}
+              >
+                <Ionicons
+                  name="swap-vertical"
+                  size={18}
+                  color={showSortMenu ? colors.primary : colors.text}
+                />
+              </TouchableOpacity>
+            )}
+
+            {/* CENTER: Search input — flex:1, loading indicator inside */}
+            <View
+              style={[
+                styles.searchInputContainer,
+                {
+                  backgroundColor: colors.surface,
+                  borderWidth: 0.1,
+                  borderColor: colors.surfaceOutline,
+                },
+              ]}
+            >
+              <Ionicons
+                name="search"
+                size={18}
+                color={colors.textSecondary}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={[styles.searchInputCompact, { color: colors.text }]}
+                placeholder={t('placeholders.searchTorrents')}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor={colors.textSecondary}
+              />
+              {isLoading && (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={{ marginLeft: spacing.xs }}
+                />
               )}
             </View>
 
-            {/* Filter row */}
-            <View style={[styles.filterRow, { backgroundColor: 'transparent' }]}>
-              {/* Scrollable filter options */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterRowContainer}
-                style={styles.filterScrollView}
+            {/* RIGHT: Add torrent button — fixed 42×42 */}
+            {!selectMode && (
+              <TouchableOpacity
+                style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
+                onPress={() => {
+                  void handleOpenAddTorrent();
+                }}
+                activeOpacity={0.7}
+                accessibilityLabel={t('screens.torrents.addTorrent')}
               >
-                {/* Checkbox that scrolls with filters */}
-                <TouchableOpacity
-                  style={styles.selectCheckbox}
-                  onPress={() => {
-                    if (selectMode) {
-                      if (selectedHashes.size === filteredTorrents.length) {
-                        clearSelection();
-                      } else {
-                        selectAll();
-                      }
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Filter row */}
+          <View style={[styles.filterRow, { backgroundColor: 'transparent' }]}>
+            {/* Scrollable filter options */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRowContainer}
+              style={styles.filterScrollView}
+            >
+              {/* Checkbox that scrolls with filters */}
+              <TouchableOpacity
+                style={styles.selectCheckbox}
+                onPress={() => {
+                  if (selectMode) {
+                    if (selectedHashes.size === filteredTorrents.length) {
+                      clearSelection();
                     } else {
-                      toggleSelectMode();
+                      selectAll();
                     }
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel={
+                  } else {
+                    toggleSelectMode();
+                  }
+                }}
+                activeOpacity={0.7}
+                accessibilityLabel={
+                  selectMode
+                    ? selectedHashes.size === filteredTorrents.length
+                      ? t('screens.torrents.deselectAll')
+                      : t('screens.torrents.selectAll')
+                    : t('screens.torrents.selectMode')
+                }
+              >
+                <Ionicons
+                  name={
                     selectMode
                       ? selectedHashes.size === filteredTorrents.length
-                        ? t('screens.torrents.deselectAll')
-                        : t('screens.torrents.selectAll')
-                      : t('screens.torrents.selectMode')
-                  }
-                >
-                  <Ionicons
-                    name={
-                      selectMode
-                        ? selectedHashes.size === filteredTorrents.length
-                          ? 'checkbox'
-                          : 'square-outline'
+                        ? 'checkbox'
                         : 'square-outline'
-                    }
-                    size={24}
-                    color={
-                      selectMode && selectedHashes.size === filteredTorrents.length
-                        ? colors.primary
-                        : colors.textSecondary
-                    }
-                  />
-                </TouchableOpacity>
+                      : 'square-outline'
+                  }
+                  size={24}
+                  color={
+                    selectMode && selectedHashes.size === filteredTorrents.length
+                      ? colors.primary
+                      : colors.textSecondary
+                  }
+                />
+              </TouchableOpacity>
 
-                {!selectMode &&
-                  filterOptions.map((item) => (
-                    <FilterChip
-                      key={item.key}
-                      label={t(item.labelKey)}
-                      icon={item.icon}
-                      active={filter === item.key}
-                      onPress={() => {
-                        haptics.light();
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        if (filter === item.key) {
-                          // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
-                          setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-                          if (item.key === 'downloading') setSortBy('dlspeed');
-                          else if (item.key === 'uploading') setSortBy('upspeed');
-                        } else {
-                          setFilter(item.key);
-                          if (item.key === 'downloading') setSortBy('dlspeed');
-                          else if (item.key === 'uploading') setSortBy('upspeed');
-                        }
-                      }}
-                    />
-                  ))}
-
-                {!selectMode && (
-                  <>
-                    {/* Visual separator */}
-                    <View
-                      style={[
-                        styles.filterChipSeparator,
-                        { backgroundColor: colors.surfaceOutline },
-                      ]}
-                    />
-
-                    {/* Category filter chip */}
-                    <FilterChip
-                      icon="folder-outline"
-                      active={categoryFilter !== null}
-                      onPress={() => {
-                        haptics.light();
-                        setShowCategoryPicker(true);
-                      }}
-                      accessibilityLabel={t('filters.category')}
-                      label={
-                        categoryFilter === null
-                          ? t('filters.category')
-                          : categoryFilter === ''
-                            ? t('filters.uncategorized')
-                            : categoryFilter
-                      }
-                    />
-
-                    {/* Tags filter chip */}
-                    <FilterChip
-                      icon="pricetag-outline"
-                      active={tagFilters.length > 0}
-                      onPress={() => {
-                        haptics.light();
-                        setShowTagPicker(true);
-                      }}
-                      accessibilityLabel={t('filters.tags')}
-                      label={
-                        tagFilters.length > 0
-                          ? t('filters.tagsCount', { count: tagFilters.length })
-                          : t('filters.tags')
-                      }
-                    />
-                  </>
-                )}
-
-                {selectMode && (
+              {!selectMode &&
+                filterOptions.map((item) => (
                   <FilterChip
-                    icon="close"
-                    active
-                    activeColor={colors.error}
-                    onPress={toggleSelectMode}
-                    label={t('common.close')}
-                    style={{ marginLeft: 8 }}
-                  />
-                )}
-              </ScrollView>
-            </View>
-
-            {/* Sort options dropdown - positioned near search bar */}
-            {showSortMenu && !selectMode && (
-              <View
-                style={[
-                  styles.sortDropdown,
-                  {
-                    backgroundColor: isDark ? colors.surface : colors.background,
-                    borderColor: colors.surfaceOutline,
-                  },
-                ]}
-              >
-                {sortOptions.map((option) => (
-                  <TouchableOpacity
-                    key={option.key}
-                    style={[
-                      styles.sortOption,
-                      sortBy === option.key && {
-                        backgroundColor: isDark ? colors.primaryOpac : colors.primary,
-                      },
-                    ]}
+                    key={item.key}
+                    label={t(item.labelKey)}
+                    icon={item.icon}
+                    active={filter === item.key}
                     onPress={() => {
                       haptics.light();
-                      if (sortBy === option.key) {
-                        // Toggle direction if clicking the same sort option
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      if (filter === item.key) {
+                        // Clicking same filter twice toggles sort direction (for DL/UL, reverse sort)
+                        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                        if (item.key === 'downloading') setSortBy('dlspeed');
+                        else if (item.key === 'uploading') setSortBy('upspeed');
                       } else {
-                        // Set new sort option with default direction (desc for most, asc for name)
-                        setSortBy(option.key);
-                        setSortDirection(option.key === 'name' ? 'asc' : 'desc');
+                        setFilter(item.key);
+                        pushListFilterToShell(item.key, categoryFilter, tagFilters);
+                        if (item.key === 'downloading') setSortBy('dlspeed');
+                        else if (item.key === 'uploading') setSortBy('upspeed');
                       }
-                      setShowSortMenu(false);
                     }}
-                    activeOpacity={0.7}
+                  />
+                ))}
+
+              {!selectMode && (
+                <>
+                  {/* Visual separator */}
+                  <View
+                    style={[styles.filterChipSeparator, { backgroundColor: colors.surfaceOutline }]}
+                  />
+
+                  {/* Category filter chip */}
+                  <FilterChip
+                    icon="folder-outline"
+                    active={categoryFilter !== null}
+                    onPress={() => {
+                      haptics.light();
+                      setShowCategoryPicker(true);
+                    }}
+                    accessibilityLabel={t('filters.category')}
+                    label={
+                      categoryFilter === null
+                        ? t('filters.category')
+                        : categoryFilter === ''
+                          ? t('filters.uncategorized')
+                          : categoryFilter
+                    }
+                  />
+
+                  {/* Tags filter chip */}
+                  <FilterChip
+                    icon="pricetag-outline"
+                    active={tagFilters.length > 0}
+                    onPress={() => {
+                      haptics.light();
+                      setShowTagPicker(true);
+                    }}
+                    accessibilityLabel={t('filters.tags')}
+                    label={
+                      tagFilters.length > 0
+                        ? t('filters.tagsCount', { count: tagFilters.length })
+                        : t('filters.tags')
+                    }
+                  />
+                </>
+              )}
+
+              {selectMode && (
+                <FilterChip
+                  icon="close"
+                  active
+                  activeColor={colors.error}
+                  onPress={toggleSelectMode}
+                  label={t('common.close')}
+                  style={{ marginLeft: 8 }}
+                />
+              )}
+            </ScrollView>
+          </View>
+
+          {/* Sort options dropdown - positioned near search bar */}
+          {showSortMenu && !selectMode && (
+            <View
+              style={[
+                styles.sortDropdown,
+                {
+                  backgroundColor: isDark ? colors.surface : colors.background,
+                  borderColor: colors.surfaceOutline,
+                },
+              ]}
+            >
+              {sortOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.sortOption,
+                    sortBy === option.key && {
+                      backgroundColor: isDark ? colors.primaryOpac : colors.primary,
+                    },
+                  ]}
+                  onPress={() => {
+                    haptics.light();
+                    if (sortBy === option.key) {
+                      // Toggle direction if clicking the same sort option
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      // Set new sort option with default direction (desc for most, asc for name)
+                      setSortBy(option.key);
+                      setSortDirection(option.key === 'name' ? 'asc' : 'desc');
+                    }
+                    setShowSortMenu(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={option.icon}
+                    size={18}
+                    color={
+                      sortBy === option.key
+                        ? isDark
+                          ? colors.primary
+                          : '#FFFFFF'
+                        : isDark
+                          ? colors.textSecondary
+                          : colors.text
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.sortOptionText,
+                      {
+                        color:
+                          sortBy === option.key
+                            ? isDark
+                              ? colors.primary
+                              : '#FFFFFF'
+                            : isDark
+                              ? colors.textSecondary
+                              : colors.text,
+                        fontWeight: sortBy === option.key ? '600' : '400',
+                      },
+                    ]}
                   >
+                    {t(option.labelKey)}
+                  </Text>
+                  {sortBy === option.key && (
                     <Ionicons
-                      name={option.icon}
+                      name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
                       size={18}
                       color={
                         sortBy === option.key
@@ -1438,318 +1594,307 @@ export default function TorrentsScreen() {
                             : colors.text
                       }
                     />
-                    <Text
-                      style={[
-                        styles.sortOptionText,
-                        {
-                          color:
-                            sortBy === option.key
-                              ? isDark
-                                ? colors.primary
-                                : '#FFFFFF'
-                              : isDark
-                                ? colors.textSecondary
-                                : colors.text,
-                          fontWeight: sortBy === option.key ? '600' : '400',
-                        },
-                      ]}
-                    >
-                      {t(option.labelKey)}
-                    </Text>
-                    {sortBy === option.key && (
-                      <Ionicons
-                        name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
-                        size={18}
-                        color={
-                          sortBy === option.key
-                            ? isDark
-                              ? colors.primary
-                              : '#FFFFFF'
-                            : isDark
-                              ? colors.textSecondary
-                              : colors.text
-                        }
-                      />
-                    )}
-                  </TouchableOpacity>
-                ))}
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </Animated.View>
+
+      {/* Category filter picker */}
+      <OptionPicker
+        visible={showCategoryPicker}
+        title={t('filters.category')}
+        options={categoryPickerOptions}
+        selectedValue={categoryFilter === null ? '__all__' : categoryFilter}
+        onSelect={(value) => void handleCategorySelect(value)}
+        onClose={() => setShowCategoryPicker(false)}
+      />
+
+      {/* Tags filter picker */}
+      <MultiSelectPicker
+        visible={showTagPicker}
+        title={t('filters.tags')}
+        options={tagFilterPickerOptions}
+        selectedValues={tagFilters}
+        onChange={(values) => void handleTagsChange(values)}
+        onClose={() => setShowTagPicker(false)}
+      />
+
+      {/* Bulk actions menu — long-press while in select mode */}
+      <ActionMenu
+        visible={bulkMenuVisible}
+        onClose={() => setBulkMenuVisible(false)}
+        items={bulkMenuItems}
+      />
+
+      {/* Bulk Set Category picker */}
+      <OptionPicker
+        visible={showBulkCategoryPicker}
+        title={t('actions.setCategory')}
+        options={bulkCategoryOptions}
+        onSelect={handleBulkSetCategory}
+        onClose={() => setShowBulkCategoryPicker(false)}
+      />
+
+      {/* Bulk Add/Remove Tags picker — applies the draft on close */}
+      <MultiSelectPicker
+        visible={bulkTagMode !== null}
+        title={bulkTagMode === 'remove' ? t('actions.removeTags') : t('actions.addTags')}
+        options={bulkTagMode === 'remove' ? bulkRemoveTagOptions : tagPickerOptions}
+        selectedValues={bulkTagDraft}
+        onChange={setBulkTagDraft}
+        onClose={handleBulkTagsDone}
+      />
+
+      {filteredTorrents.length === 0 ? (
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <Ionicons
+            name={
+              filter === 'all' && !hasSecondaryFilter ? 'cloud-download-outline' : 'funnel-outline'
+            }
+            size={64}
+            color={colors.textSecondary}
+          />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            {filter === 'all' && !hasSecondaryFilter
+              ? t('screens.torrents.noTorrents')
+              : t('screens.torrents.noResults')}
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            {filter === 'all' && !hasSecondaryFilter
+              ? t('screens.torrents.addMagnetSubtitle')
+              : categoryFilter !== null && tagFilters.length === 0 && filter === 'all'
+                ? t('screens.torrents.noCategoryResults')
+                : tagFilters.length > 0 && categoryFilter === null && filter === 'all'
+                  ? t('screens.torrents.noTagResults')
+                  : filter === 'stuck'
+                    ? t('screens.torrents.noStuckResults')
+                    : t('screens.torrents.noFilterResults', { filter })}
+          </Text>
+          {filter === 'all' && !hasSecondaryFilter ? (
+            <TouchableOpacity
+              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                void handleOpenAddTorrent();
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Text style={styles.emptyButtonText}>{t('screens.torrents.addTorrent')}</Text>
               </View>
-            )}
-          </View>
-        </Animated.View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.emptyButton,
+                {
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.surfaceOutline,
+                },
+              ]}
+              onPress={() => void clearAllFilters()}
+            >
+              <Text style={[styles.emptyButtonText, { color: colors.text }]}>
+                {t('screens.torrents.clearAllFilters')}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <FlatList
+          data={filteredTorrents}
+          keyExtractor={(item) => item.hash}
+          style={{ backgroundColor: colors.background }}
+          renderItem={({ item }) => {
+            const itemIsPaused =
+              item.state === 'pausedDL' ||
+              item.state === 'pausedUP' ||
+              item.state === 'stoppedDL' ||
+              item.state === 'stoppedUP';
 
-        {/* Category filter picker */}
-        <OptionPicker
-          visible={showCategoryPicker}
-          title={t('filters.category')}
-          options={categoryPickerOptions}
-          selectedValue={categoryFilter === null ? '__all__' : categoryFilter}
-          onSelect={(value) => void handleCategorySelect(value)}
-          onClose={() => setShowCategoryPicker(false)}
-        />
+            let swipeRef: Swipeable | null = null;
 
-        {/* Tags filter picker */}
-        <MultiSelectPicker
-          visible={showTagPicker}
-          title={t('filters.tags')}
-          options={tagFilterPickerOptions}
-          selectedValues={tagFilters}
-          onChange={(values) => void handleTagsChange(values)}
-          onClose={() => setShowTagPicker(false)}
-        />
-
-        {/* Bulk actions menu — long-press while in select mode */}
-        <ActionMenu
-          visible={bulkMenuVisible}
-          onClose={() => setBulkMenuVisible(false)}
-          items={bulkMenuItems}
-        />
-
-        {/* Bulk Set Category picker */}
-        <OptionPicker
-          visible={showBulkCategoryPicker}
-          title={t('actions.setCategory')}
-          options={bulkCategoryOptions}
-          onSelect={handleBulkSetCategory}
-          onClose={() => setShowBulkCategoryPicker(false)}
-        />
-
-        {/* Bulk Add/Remove Tags picker — applies the draft on close */}
-        <MultiSelectPicker
-          visible={bulkTagMode !== null}
-          title={bulkTagMode === 'remove' ? t('actions.removeTags') : t('actions.addTags')}
-          options={bulkTagMode === 'remove' ? bulkRemoveTagOptions : tagPickerOptions}
-          selectedValues={bulkTagDraft}
-          onChange={setBulkTagDraft}
-          onClose={handleBulkTagsDone}
-        />
-
-        {filteredTorrents.length === 0 ? (
-          <View style={[styles.center, { backgroundColor: colors.background }]}>
-            <Ionicons
-              name={
-                filter === 'all' && !hasSecondaryFilter
-                  ? 'cloud-download-outline'
-                  : 'funnel-outline'
-              }
-              size={64}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {filter === 'all' && !hasSecondaryFilter
-                ? t('screens.torrents.noTorrents')
-                : t('screens.torrents.noResults')}
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              {filter === 'all' && !hasSecondaryFilter
-                ? t('screens.torrents.addMagnetSubtitle')
-                : categoryFilter !== null && tagFilters.length === 0 && filter === 'all'
-                  ? t('screens.torrents.noCategoryResults')
-                  : tagFilters.length > 0 && categoryFilter === null && filter === 'all'
-                    ? t('screens.torrents.noTagResults')
-                    : filter === 'stuck'
-                      ? t('screens.torrents.noStuckResults')
-                      : t('screens.torrents.noFilterResults', { filter })}
-            </Text>
-            {filter === 'all' && !hasSecondaryFilter ? (
-              <TouchableOpacity
-                style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-                onPress={() => {
-                  void handleOpenAddTorrent();
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                  <Text style={styles.emptyButtonText}>{t('screens.torrents.addTorrent')}</Text>
-                </View>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[
-                  styles.emptyButton,
-                  {
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.surfaceOutline,
-                  },
-                ]}
-                onPress={() => void clearAllFilters()}
-              >
-                <Text style={[styles.emptyButtonText, { color: colors.text }]}>
-                  {t('screens.torrents.clearAllFilters')}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          <FlatList
-            data={filteredTorrents}
-            keyExtractor={(item) => item.hash}
-            style={{ backgroundColor: colors.background }}
-            renderItem={({ item }) => {
-              const itemIsPaused =
-                item.state === 'pausedDL' ||
-                item.state === 'pausedUP' ||
-                item.state === 'stoppedDL' ||
-                item.state === 'stoppedUP';
-
-              let swipeRef: Swipeable | null = null;
-
-              const renderRightActions = (
-                _progress: Animated.AnimatedInterpolation<number>,
-                dragX: Animated.AnimatedInterpolation<number>,
-              ) => {
-                const pauseScale = dragX.interpolate({
-                  inputRange: [-120, -60, 0],
-                  outputRange: [0.6, 1, 0],
-                  extrapolate: 'clamp',
-                });
-                const deleteScale = dragX.interpolate({
-                  inputRange: [-240, -160, -120],
-                  outputRange: [1, 0.8, 0],
-                  extrapolate: 'clamp',
-                });
-
-                return (
-                  <View style={styles.swipeActionsRight}>
-                    <RectButton
-                      style={[
-                        styles.swipeAction,
-                        { backgroundColor: itemIsPaused ? colors.success : colors.warning },
-                      ]}
-                      onPress={() => handleSwipePauseResume(item, swipeRef)}
-                    >
-                      <Animated.View
-                        style={[styles.swipeActionContent, { transform: [{ scale: pauseScale }] }]}
-                      >
-                        <Ionicons
-                          name={itemIsPaused ? 'play' : 'pause'}
-                          size={22}
-                          color="#FFFFFF"
-                        />
-                        <Text style={styles.swipeActionText}>
-                          {itemIsPaused ? t('actions.resume') : t('actions.pause')}
-                        </Text>
-                      </Animated.View>
-                    </RectButton>
-                    <RectButton
-                      style={[styles.swipeAction, { backgroundColor: colors.error }]}
-                      onPress={() => handleSwipeDelete(item, swipeRef)}
-                    >
-                      <Animated.View
-                        style={[styles.swipeActionContent, { transform: [{ scale: deleteScale }] }]}
-                      >
-                        <Ionicons name="trash" size={22} color="#FFFFFF" />
-                        <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
-                      </Animated.View>
-                    </RectButton>
-                  </View>
-                );
-              };
-
-              const renderLeftActions = (
-                _progress: Animated.AnimatedInterpolation<number>,
-                dragX: Animated.AnimatedInterpolation<number>,
-              ) => {
-                const scale = dragX.interpolate({
-                  inputRange: [0, 60, 120],
-                  outputRange: [0, 1, 1],
-                  extrapolate: 'clamp',
-                });
-
-                return (
-                  <RectButton
-                    style={[styles.swipeActionLeft, { backgroundColor: colors.primary }]}
-                    onPress={() => handleSwipeForceStart(item, swipeRef)}
-                  >
-                    <Animated.View style={[styles.swipeActionContent, { transform: [{ scale }] }]}>
-                      <Ionicons name="flash" size={22} color="#FFFFFF" />
-                      <Text style={styles.swipeActionText}>{t('actions.forceStart')}</Text>
-                    </Animated.View>
-                  </RectButton>
-                );
-              };
+            const renderRightActions = (
+              _progress: Animated.AnimatedInterpolation<number>,
+              dragX: Animated.AnimatedInterpolation<number>,
+            ) => {
+              const pauseScale = dragX.interpolate({
+                inputRange: [-120, -60, 0],
+                outputRange: [0.6, 1, 0],
+                extrapolate: 'clamp',
+              });
+              const deleteScale = dragX.interpolate({
+                inputRange: [-240, -160, -120],
+                outputRange: [1, 0.8, 0],
+                extrapolate: 'clamp',
+              });
 
               return (
-                <Swipeable
-                  ref={(ref) => {
-                    swipeRef = ref;
-                  }}
-                  friction={2}
-                  rightThreshold={60}
-                  leftThreshold={60}
-                  overshootRight={false}
-                  overshootLeft={false}
-                  renderRightActions={renderRightActions}
-                  renderLeftActions={renderLeftActions}
-                  onSwipeableWillOpen={() => {
-                    if (openSwipeableRef.current && openSwipeableRef.current !== swipeRef) {
-                      openSwipeableRef.current.close();
-                    }
-                    openSwipeableRef.current = swipeRef;
-                    if (!swipeHapticFired.current) {
-                      haptics.medium();
-                      swipeHapticFired.current = true;
-                    }
-                  }}
-                  onSwipeableClose={() => {
-                    if (openSwipeableRef.current === swipeRef) {
-                      openSwipeableRef.current = null;
-                    }
-                    swipeHapticFired.current = false;
-                  }}
-                  onSwipeableOpenStartDrag={() => {
-                    swipeHapticFired.current = false;
-                  }}
-                  enabled={!selectMode}
+                <View style={styles.swipeActionsRight}>
+                  <RectButton
+                    style={[
+                      styles.swipeAction,
+                      { backgroundColor: itemIsPaused ? colors.success : colors.warning },
+                    ]}
+                    onPress={() => handleSwipePauseResume(item, swipeRef)}
+                  >
+                    <Animated.View
+                      style={[styles.swipeActionContent, { transform: [{ scale: pauseScale }] }]}
+                    >
+                      <Ionicons name={itemIsPaused ? 'play' : 'pause'} size={22} color="#FFFFFF" />
+                      <Text style={styles.swipeActionText}>
+                        {itemIsPaused ? t('actions.resume') : t('actions.pause')}
+                      </Text>
+                    </Animated.View>
+                  </RectButton>
+                  <RectButton
+                    style={[styles.swipeAction, { backgroundColor: colors.error }]}
+                    onPress={() => handleSwipeDelete(item, swipeRef)}
+                  >
+                    <Animated.View
+                      style={[styles.swipeActionContent, { transform: [{ scale: deleteScale }] }]}
+                    >
+                      <Ionicons name="trash" size={22} color="#FFFFFF" />
+                      <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
+                    </Animated.View>
+                  </RectButton>
+                </View>
+              );
+            };
+
+            const renderLeftActions = (
+              _progress: Animated.AnimatedInterpolation<number>,
+              dragX: Animated.AnimatedInterpolation<number>,
+            ) => {
+              const scale = dragX.interpolate({
+                inputRange: [0, 60, 120],
+                outputRange: [0, 1, 1],
+                extrapolate: 'clamp',
+              });
+
+              return (
+                <RectButton
+                  style={[styles.swipeActionLeft, { backgroundColor: colors.primary }]}
+                  onPress={() => handleSwipeForceStart(item, swipeRef)}
                 >
-                  <View style={styles.torrentItemContainer}>
-                    {selectMode && (
-                      <TouchableOpacity
-                        style={styles.checkbox}
-                        onPress={() => toggleSelection(item.hash)}
-                        accessibilityLabel={
-                          selectedHashes.has(item.hash)
-                            ? t('screens.torrents.deselectTorrent')
-                            : t('screens.torrents.selectTorrent')
+                  <Animated.View style={[styles.swipeActionContent, { transform: [{ scale }] }]}>
+                    <Ionicons name="flash" size={22} color="#FFFFFF" />
+                    <Text style={styles.swipeActionText}>{t('actions.forceStart')}</Text>
+                  </Animated.View>
+                </RectButton>
+              );
+            };
+
+            // Regular/mac split layout with a wide-enough detail pane
+            // selects into the shell instead of navigating; iPhone
+            // ('compact') and any narrower regular/mac window keep the
+            // original router.push navigation unchanged.
+            const handleRowPress = () => {
+              if (selectMode) {
+                toggleSelection(item.hash);
+              } else if (showDetailPane) {
+                shell.setSelectedHash(item.hash);
+              } else {
+                router.push(`/torrent/${item.hash}`);
+              }
+            };
+
+            const handleRowLongPress = (event?: GestureResponderEvent) => {
+              haptics.medium();
+              if (selectMode) {
+                // Bulk menu for the current selection; a long-press
+                // with nothing selected selects the pressed row.
+                if (selectedHashes.size === 0) toggleSelection(item.hash);
+                setBulkMenuVisible(true);
+              } else {
+                setSelectedTorrent(item);
+                setMenuAnchor(
+                  event ? { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY } : null,
+                );
+                setMenuVisible(true);
+              }
+            };
+
+            // Regular/mac dense list rows (cardViewMode === 'compact') use
+            // TorrentRow; the expanded grid keeps TorrentCard exactly as it
+            // has always rendered. Compact idiom always keeps TorrentCard.
+            const useTorrentRow = idiom !== 'compact' && cardViewMode === 'compact';
+
+            return (
+              <Swipeable
+                ref={(ref) => {
+                  swipeRef = ref;
+                }}
+                friction={2}
+                rightThreshold={60}
+                leftThreshold={60}
+                overshootRight={false}
+                overshootLeft={false}
+                renderRightActions={renderRightActions}
+                renderLeftActions={renderLeftActions}
+                onSwipeableWillOpen={() => {
+                  if (openSwipeableRef.current && openSwipeableRef.current !== swipeRef) {
+                    openSwipeableRef.current.close();
+                  }
+                  openSwipeableRef.current = swipeRef;
+                  if (!swipeHapticFired.current) {
+                    haptics.medium();
+                    swipeHapticFired.current = true;
+                  }
+                }}
+                onSwipeableClose={() => {
+                  if (openSwipeableRef.current === swipeRef) {
+                    openSwipeableRef.current = null;
+                  }
+                  swipeHapticFired.current = false;
+                }}
+                onSwipeableOpenStartDrag={() => {
+                  swipeHapticFired.current = false;
+                }}
+                enabled={!selectMode}
+              >
+                <View style={styles.torrentItemContainer}>
+                  {selectMode && (
+                    <TouchableOpacity
+                      style={styles.checkbox}
+                      onPress={() => toggleSelection(item.hash)}
+                      accessibilityLabel={
+                        selectedHashes.has(item.hash)
+                          ? t('screens.torrents.deselectTorrent')
+                          : t('screens.torrents.selectTorrent')
+                      }
+                    >
+                      <Ionicons
+                        name={selectedHashes.has(item.hash) ? 'checkbox' : 'square-outline'}
+                        size={24}
+                        color={
+                          selectedHashes.has(item.hash) ? colors.primary : colors.textSecondary
                         }
-                      >
-                        <Ionicons
-                          name={selectedHashes.has(item.hash) ? 'checkbox' : 'square-outline'}
-                          size={24}
-                          color={
-                            selectedHashes.has(item.hash) ? colors.primary : colors.textSecondary
-                          }
-                        />
-                      </TouchableOpacity>
-                    )}
-                    <View style={{ flex: 1 }}>
+                      />
+                    </TouchableOpacity>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    {useTorrentRow ? (
+                      <TorrentRow
+                        torrent={item}
+                        selected={shell.selectedHash === item.hash}
+                        onPress={handleRowPress}
+                        onLongPress={handleRowLongPress}
+                        categoryColor={
+                          item.category
+                            ? (categoryColors[item.category] ?? defaultCategoryColor)
+                            : undefined
+                        }
+                        tagColors={tagColors}
+                      />
+                    ) : (
                       <TorrentCard
                         torrent={item}
-                        onPress={() => {
-                          if (selectMode) {
-                            toggleSelection(item.hash);
-                          } else {
-                            router.push(`/torrent/${item.hash}`);
-                          }
-                        }}
-                        onLongPress={(event?: GestureResponderEvent) => {
-                          haptics.medium();
-                          if (selectMode) {
-                            // Bulk menu for the current selection; a long-press
-                            // with nothing selected selects the pressed row.
-                            if (selectedHashes.size === 0) toggleSelection(item.hash);
-                            setBulkMenuVisible(true);
-                          } else {
-                            setSelectedTorrent(item);
-                            setMenuAnchor(
-                              event
-                                ? { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY }
-                                : null,
-                            );
-                            setMenuVisible(true);
-                          }
-                        }}
+                        onPress={handleRowPress}
+                        onLongPress={handleRowLongPress}
                         onMenuPress={(anchor) => {
                           haptics.medium();
                           if (selectMode) {
@@ -1771,327 +1916,363 @@ export default function TorrentsScreen() {
                         categoryColors={categoryColors}
                         tagColors={tagColors}
                       />
-                    </View>
+                    )}
                   </View>
-                </Swipeable>
-              );
-            }}
-            refreshControl={
-              <RefreshControl
-                refreshing={isLoading}
-                onRefresh={refresh}
-                tintColor={colors.primary}
-              />
-            }
-            contentContainerStyle={styles.listContent}
-            onScroll={handleScroll}
-            scrollEventThrottle={50}
-            removeClippedSubviews={false}
-            initialNumToRender={10}
-            maxToRenderPerBatch={5}
-            windowSize={10}
-          />
-        )}
+                </View>
+              </Swipeable>
+            );
+          }}
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={colors.primary} />
+          }
+          contentContainerStyle={styles.listContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={50}
+          removeClippedSubviews={false}
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={10}
+        />
+      )}
 
-        {selectMode && selectedHashes.size > 0 && (
-          <View
-            style={[
-              styles.bulkActionsBar,
-              { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
-            ]}
+      {selectMode && selectedHashes.size > 0 && (
+        <View
+          style={[
+            styles.bulkActionsBar,
+            { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
+          ]}
+        >
+          <TouchableOpacity
+            style={[styles.bulkActionButton, { backgroundColor: colors.success }]}
+            onPress={handleBulkResume}
+            disabled={bulkLoading}
+          >
+            <Ionicons name="play" size={20} color="#FFFFFF" />
+            <Text style={styles.bulkActionText}>{t('actions.resume')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.bulkActionButton, { backgroundColor: colors.warning }]}
+            onPress={handleBulkPause}
+            disabled={bulkLoading}
+          >
+            <Ionicons name="pause" size={20} color="#FFFFFF" />
+            <Text style={styles.bulkActionText}>{t('actions.pause')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.bulkActionButton, { backgroundColor: colors.error }]}
+            onPress={handleBulkDelete}
+            disabled={bulkLoading}
+          >
+            <Ionicons name="trash" size={20} color="#FFFFFF" />
+            <Text style={styles.bulkActionText}>{t('common.delete')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlayInner}
           >
             <TouchableOpacity
-              style={[styles.bulkActionButton, { backgroundColor: colors.success }]}
-              onPress={handleBulkResume}
-              disabled={bulkLoading}
-            >
-              <Ionicons name="play" size={20} color="#FFFFFF" />
-              <Text style={styles.bulkActionText}>{t('actions.resume')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.bulkActionButton, { backgroundColor: colors.warning }]}
-              onPress={handleBulkPause}
-              disabled={bulkLoading}
-            >
-              <Ionicons name="pause" size={20} color="#FFFFFF" />
-              <Text style={styles.bulkActionText}>{t('actions.pause')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.bulkActionButton, { backgroundColor: colors.error }]}
-              onPress={handleBulkDelete}
-              disabled={bulkLoading}
-            >
-              <Ionicons name="trash" size={20} color="#FFFFFF" />
-              <Text style={styles.bulkActionText}>{t('common.delete')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <Modal
-          visible={showAddModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowAddModal(false)}
-        >
-          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={styles.modalOverlayInner}
+              activeOpacity={1}
+              onPress={() => setShowAddModal(false)}
             >
               <TouchableOpacity
-                style={styles.modalOverlayInner}
                 activeOpacity={1}
-                onPress={() => setShowAddModal(false)}
+                onPress={(e) => e.stopPropagation()}
+                style={[styles.modalContent, { backgroundColor: colors.surface }]}
               >
-                <TouchableOpacity
-                  activeOpacity={1}
-                  onPress={(e) => e.stopPropagation()}
-                  style={[styles.modalContent, { backgroundColor: colors.surface }]}
-                >
-                  <View style={styles.modalHeader}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>
-                      {t('screens.torrents.addTorrent')}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setShowAddModal(false);
-                        setTorrentUrl('');
-                        setSelectedFiles([]);
-                      }}
-                      accessibilityLabel={t('common.close')}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Ionicons name="close" size={24} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-
-                  <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
-                    {t('screens.torrents.urlOrMagnet')}
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>
+                    {t('screens.torrents.addTorrent')}
                   </Text>
-                  <TextInput
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowAddModal(false);
+                      setTorrentUrl('');
+                      setSelectedFiles([]);
+                    }}
+                    accessibilityLabel={t('common.close')}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={24} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
+                  {t('screens.torrents.urlOrMagnet')}
+                </Text>
+                <TextInput
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                    },
+                  ]}
+                  value={torrentUrl}
+                  onChangeText={setTorrentUrl}
+                  placeholder={t('placeholders.magnetLink')}
+                  placeholderTextColor={colors.textSecondary}
+                  multiline
+                  numberOfLines={3}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textAlignVertical="top"
+                />
+                <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
+                  {t('screens.torrents.magnetMultiHint')}
+                </Text>
+
+                <View style={styles.divider}>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
+                  <Text style={[styles.dividerText, { color: colors.textSecondary }]}>
+                    {t('common.or')}
+                  </Text>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]} />
+                </View>
+
+                {selectedFiles.length > 0 && (
+                  <View
                     style={[
-                      styles.modalInput,
-                      {
-                        backgroundColor: colors.background,
-                        color: colors.text,
-                      },
+                      styles.fileListContainer,
+                      { borderColor: colors.success, backgroundColor: colors.background },
                     ]}
-                    value={torrentUrl}
-                    onChangeText={setTorrentUrl}
-                    placeholder={t('placeholders.magnetLink')}
-                    placeholderTextColor={colors.textSecondary}
-                    multiline
-                    numberOfLines={3}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    textAlignVertical="top"
-                  />
-                  <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
-                    {t('screens.torrents.magnetMultiHint')}
-                  </Text>
-
-                  <View style={styles.divider}>
-                    <View
-                      style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]}
-                    />
-                    <Text style={[styles.dividerText, { color: colors.textSecondary }]}>
-                      {t('common.or')}
-                    </Text>
-                    <View
-                      style={[styles.dividerLine, { backgroundColor: colors.surfaceOutline }]}
-                    />
-                  </View>
-
-                  {selectedFiles.length > 0 && (
-                    <View
-                      style={[
-                        styles.fileListContainer,
-                        { borderColor: colors.success, backgroundColor: colors.background },
-                      ]}
-                    >
-                      <ScrollView style={styles.fileListScroll} nestedScrollEnabled>
-                        {selectedFiles.map((file, index) => (
-                          <View
-                            key={`${file.uri}-${index}`}
-                            style={[
-                              styles.fileListRow,
-                              index > 0 && {
-                                borderTopColor: colors.surfaceOutline,
-                                borderTopWidth: 1,
-                              },
-                            ]}
+                  >
+                    <ScrollView style={styles.fileListScroll} nestedScrollEnabled>
+                      {selectedFiles.map((file, index) => (
+                        <View
+                          key={`${file.uri}-${index}`}
+                          style={[
+                            styles.fileListRow,
+                            index > 0 && {
+                              borderTopColor: colors.surfaceOutline,
+                              borderTopWidth: 1,
+                            },
+                          ]}
+                        >
+                          <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                          <Text
+                            style={[styles.fileListRowText, { color: colors.text }]}
+                            numberOfLines={1}
                           >
-                            <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                            <Text
-                              style={[styles.fileListRowText, { color: colors.text }]}
-                              numberOfLines={1}
-                            >
-                              {file.name}
-                            </Text>
-                            <TouchableOpacity
-                              onPress={() => handleRemoveSelectedFile(index)}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              accessibilityLabel={t('common.remove')}
-                            >
-                              <Ionicons
-                                name="close-circle"
-                                size={18}
-                                color={colors.textSecondary}
-                              />
-                            </TouchableOpacity>
-                          </View>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
+                            {file.name}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleRemoveSelectedFile(index)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            accessibilityLabel={t('common.remove')}
+                          >
+                            <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
 
+                <TouchableOpacity
+                  style={[
+                    styles.filePickerButton,
+                    {
+                      backgroundColor: colors.background,
+                      borderColor: colors.surfaceOutline,
+                    },
+                  ]}
+                  onPress={handlePickFile}
+                >
+                  <Ionicons name="document" size={20} color={colors.text} />
+                  <Text style={[styles.filePickerText, { color: colors.text }]}>
+                    {selectedFiles.length > 0
+                      ? t('screens.torrents.addMoreFiles')
+                      : t('screens.torrents.selectTorrentFile')}
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.modalButtons}>
                   <TouchableOpacity
                     style={[
-                      styles.filePickerButton,
-                      {
-                        backgroundColor: colors.background,
-                        borderColor: colors.surfaceOutline,
-                      },
+                      styles.modalButton,
+                      styles.modalButtonCancel,
+                      { backgroundColor: colors.background },
                     ]}
-                    onPress={handlePickFile}
+                    onPress={() => {
+                      setTorrentUrl('');
+                      setSelectedFiles([]);
+                      setShowAddModal(false);
+                    }}
                   >
-                    <Ionicons name="document" size={20} color={colors.text} />
-                    <Text style={[styles.filePickerText, { color: colors.text }]}>
-                      {selectedFiles.length > 0
-                        ? t('screens.torrents.addMoreFiles')
-                        : t('screens.torrents.selectTorrentFile')}
+                    <Text style={[styles.modalButtonText, { color: colors.text }]}>
+                      {t('common.cancel')}
                     </Text>
                   </TouchableOpacity>
-
-                  <View style={styles.modalButtons}>
-                    <TouchableOpacity
-                      style={[
-                        styles.modalButton,
-                        styles.modalButtonCancel,
-                        { backgroundColor: colors.background },
-                      ]}
-                      onPress={() => {
-                        setTorrentUrl('');
-                        setSelectedFiles([]);
-                        setShowAddModal(false);
-                      }}
-                    >
-                      <Text style={[styles.modalButtonText, { color: colors.text }]}>
-                        {t('common.cancel')}
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButton,
+                      styles.modalButtonAdd,
+                      { backgroundColor: colors.primary },
+                      addingTorrent && { opacity: 0.6 },
+                    ]}
+                    onPress={handleSubmitTorrent}
+                    disabled={addingTorrent}
+                  >
+                    {addingTorrent ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                        {t('common.add')}
                       </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.modalButton,
-                        styles.modalButtonAdd,
-                        { backgroundColor: colors.primary },
-                        addingTorrent && { opacity: 0.6 },
-                      ]}
-                      onPress={handleSubmitTorrent}
-                      disabled={addingTorrent}
-                    >
-                      {addingTorrent ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
-                          {t('common.add')}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </TouchableOpacity>
-            </KeyboardAvoidingView>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      <ActionMenu
+        visible={menuVisible}
+        onClose={() => {
+          // Keep the anchor through the Modal's fade-out. Clearing it here
+          // re-renders ActionMenu's bottom-sheet branch in place of the
+          // popover while the dismiss animation is still running. Both open
+          // paths set a fresh anchor before showing the menu again.
+          setMenuVisible(false);
+        }}
+        items={actionMenuItems}
+        anchor={menuAnchor ?? undefined}
+      />
+
+      <InputModal
+        visible={dlLimitModalVisible}
+        title={t('torrentDetail.setDownloadLimit')}
+        message={t('screens.torrents.enterLimitKbs')}
+        placeholder="0"
+        defaultValue={dlLimitDefaultValue}
+        keyboardType="numeric"
+        allowEmpty
+        computeHint={(value) => {
+          const kb = parseFloat(value);
+          return kb > 0 ? formatSpeed(kbToBytes(kb)) : null;
+        }}
+        onCancel={() => setDlLimitModalVisible(false)}
+        onConfirm={(value) => {
+          setDlLimitModalVisible(false);
+          handleSetDownloadLimit(value);
+        }}
+      />
+
+      <InputModal
+        visible={ulLimitModalVisible}
+        title={t('torrentDetail.setUploadLimit')}
+        message={t('screens.torrents.enterLimitKbs')}
+        placeholder="0"
+        defaultValue={ulLimitDefaultValue}
+        keyboardType="numeric"
+        allowEmpty
+        computeHint={(value) => {
+          const kb = parseFloat(value);
+          return kb > 0 ? formatSpeed(kbToBytes(kb)) : null;
+        }}
+        onCancel={() => setUlLimitModalVisible(false)}
+        onConfirm={(value) => {
+          setUlLimitModalVisible(false);
+          handleSetUploadLimit(value);
+        }}
+      />
+
+      <ConfirmModal
+        visible={deleteConfirmVisible}
+        title={t('common.delete')}
+        message={
+          selectedTorrent ? t('alerts.deleteName', { name: selectedTorrent.name }) : undefined
+        }
+        buttons={[
+          { label: t('alerts.torrentOnly'), onPress: () => handleConfirmDelete(false) },
+          {
+            label: t('alerts.withFiles'),
+            onPress: () => handleConfirmDelete(true),
+            destructive: true,
+          },
+        ]}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setDeleteConfirmVisible(false)}
+      />
+
+      <ConfirmModal
+        visible={!!listDeleteConfirm}
+        title={listDeleteConfirm?.title ?? t('common.delete')}
+        message={listDeleteConfirm?.message}
+        buttons={[
+          { label: t('alerts.torrentOnly'), onPress: () => handleConfirmListDelete(false) },
+          {
+            label: t('alerts.withFiles'),
+            onPress: () => handleConfirmListDelete(true),
+            destructive: true,
+          },
+        ]}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => {
+          listDeleteConfirm?.swipeableRef?.close();
+          setListDeleteConfirm(null);
+        }}
+      />
+    </>
+  );
+
+  // Compact (iPhone) keeps the exact original tree: mainContent sits
+  // directly in the container View, no matter what showDetailPane resolves
+  // to (it is always false on compact, but we branch on idiom rather than on
+  // showDetailPane so the compact code path is untouched byte-for-byte).
+  if (idiom === 'compact') {
+    return (
+      <>
+        <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          {mainContent}
+        </View>
+      </>
+    );
+  }
+
+  // Regular/mac: keep the same parent chain (container -> detailSplitList ->
+  // mainContent) whether or not showDetailPane is currently true, so crossing
+  // the 1000pt threshold on a live resize only mounts/unmounts the sibling
+  // detail pane instead of tearing down and rebuilding the list subtree.
+  return (
+    <>
+      <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background },
+          showDetailPane && styles.detailSplitRow,
+        ]}
+      >
+        <View style={styles.detailSplitList}>{mainContent}</View>
+        {showDetailPane ? (
+          <View style={[styles.detailSplitPane, { borderLeftColor: colors.surfaceOutline }]}>
+            {shell.selectedHash ? (
+              <TorrentDetailBody
+                key={shell.selectedHash}
+                hash={shell.selectedHash}
+                embedded
+                onDismiss={() => shell.setSelectedHash(null)}
+              />
+            ) : (
+              <EmptyState icon="albums-outline" title={t('screens.torrents.selectTorrentHint')} />
+            )}
           </View>
-        </Modal>
-
-        <ActionMenu
-          visible={menuVisible}
-          onClose={() => {
-            // Keep the anchor through the Modal's fade-out. Clearing it here
-            // re-renders ActionMenu's bottom-sheet branch in place of the
-            // popover while the dismiss animation is still running. Both open
-            // paths set a fresh anchor before showing the menu again.
-            setMenuVisible(false);
-          }}
-          items={actionMenuItems}
-          anchor={menuAnchor ?? undefined}
-        />
-
-        <InputModal
-          visible={dlLimitModalVisible}
-          title={t('torrentDetail.setDownloadLimit')}
-          message={t('screens.torrents.enterLimitKbs')}
-          placeholder="0"
-          defaultValue={dlLimitDefaultValue}
-          keyboardType="numeric"
-          allowEmpty
-          computeHint={(value) => {
-            const kb = parseFloat(value);
-            return kb > 0 ? formatSpeed(kbToBytes(kb)) : null;
-          }}
-          onCancel={() => setDlLimitModalVisible(false)}
-          onConfirm={(value) => {
-            setDlLimitModalVisible(false);
-            handleSetDownloadLimit(value);
-          }}
-        />
-
-        <InputModal
-          visible={ulLimitModalVisible}
-          title={t('torrentDetail.setUploadLimit')}
-          message={t('screens.torrents.enterLimitKbs')}
-          placeholder="0"
-          defaultValue={ulLimitDefaultValue}
-          keyboardType="numeric"
-          allowEmpty
-          computeHint={(value) => {
-            const kb = parseFloat(value);
-            return kb > 0 ? formatSpeed(kbToBytes(kb)) : null;
-          }}
-          onCancel={() => setUlLimitModalVisible(false)}
-          onConfirm={(value) => {
-            setUlLimitModalVisible(false);
-            handleSetUploadLimit(value);
-          }}
-        />
-
-        <ConfirmModal
-          visible={deleteConfirmVisible}
-          title={t('common.delete')}
-          message={
-            selectedTorrent ? t('alerts.deleteName', { name: selectedTorrent.name }) : undefined
-          }
-          buttons={[
-            { label: t('alerts.torrentOnly'), onPress: () => handleConfirmDelete(false) },
-            {
-              label: t('alerts.withFiles'),
-              onPress: () => handleConfirmDelete(true),
-              destructive: true,
-            },
-          ]}
-          cancelLabel={t('common.cancel')}
-          onCancel={() => setDeleteConfirmVisible(false)}
-        />
-
-        <ConfirmModal
-          visible={!!listDeleteConfirm}
-          title={listDeleteConfirm?.title ?? t('common.delete')}
-          message={listDeleteConfirm?.message}
-          buttons={[
-            { label: t('alerts.torrentOnly'), onPress: () => handleConfirmListDelete(false) },
-            {
-              label: t('alerts.withFiles'),
-              onPress: () => handleConfirmListDelete(true),
-              destructive: true,
-            },
-          ]}
-          cancelLabel={t('common.cancel')}
-          onCancel={() => {
-            listDeleteConfirm?.swipeableRef?.close();
-            setListDeleteConfirm(null);
-          }}
-        />
+        ) : null}
       </View>
     </>
   );
@@ -2100,6 +2281,18 @@ export default function TorrentsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  // Regular/mac detail-pane split (showDetailPane) only — the compact
+  // (iPhone) path never applies these.
+  detailSplitRow: {
+    flexDirection: 'row',
+  },
+  detailSplitList: {
+    flex: 1,
+  },
+  detailSplitPane: {
+    width: 380,
+    borderLeftWidth: StyleSheet.hairlineWidth,
   },
   center: {
     flex: 1,

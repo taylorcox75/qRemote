@@ -77,7 +77,8 @@
       "deselectAll": "Deselect All",
       "selectMode": "Select",
       "selectTorrent": "Select torrent",
-      "deselectTorrent": "Deselect torrent"
+      "deselectTorrent": "Deselect torrent",
+      "selectTorrentHint": "Select a torrent to see its details"
     },
     "addTorrent": {
       "none": "None",
@@ -1119,6 +1120,16 @@
     "tags": "Tags",
     "tagsCount": "Tags ({{count}})",
     "untagged": "Untagged"
+  },
+  "sidebar": {
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "sections": {
+      "destinations": "Navigation",
+      "status": "Status",
+      "categories": "Categories",
+      "tags": "Tags"
+    }
   },
   "sort": {
     "dateAdded": "Date Added",

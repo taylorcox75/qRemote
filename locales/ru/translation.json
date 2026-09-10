@@ -77,7 +77,8 @@
       "deselectAll": "Снять выделение",
       "selectMode": "Выбрать",
       "selectTorrent": "Выбрать торрент",
-      "deselectTorrent": "Снять выбор торрента"
+      "deselectTorrent": "Снять выбор торрента",
+      "selectTorrentHint": "Выберите торрент, чтобы увидеть подробности"
     },
     "addTorrent": {
       "none": "Нет",
@@ -1119,6 +1120,16 @@
     "tags": "Теги",
     "tagsCount": "Теги ({{count}})",
     "untagged": "Без тегов"
+  },
+  "sidebar": {
+    "collapse": "Свернуть боковую панель",
+    "expand": "Развернуть боковую панель",
+    "sections": {
+      "destinations": "Навигация",
+      "status": "Статус",
+      "categories": "Категории",
+      "tags": "Теги"
+    }
   },
   "sort": {
     "dateAdded": "Дата добавления",

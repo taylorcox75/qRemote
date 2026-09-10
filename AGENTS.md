@@ -264,6 +264,16 @@ re-add one without being asked.
   URLs so Expo Router doesn't try to treat a `file://…torrent` path as a route
   and land the user on "Unmatched Route".
 
+### Platforms / layout idiom
+
+Three idioms, computed by `hooks/useLayoutIdiom.ts` (`getLayoutIdiom`): `compact`
+(iPhone, and iPad under 700pt), `regular` (iPad at or above `REGULAR_MIN_WIDTH`
+= 700pt — sidebar layout via `SplitLayout`, detail pane once the window is also
+≥ 1000pt), `mac` (reserved for Mac Catalyst). An iPhone is never `regular`, even
+in landscape. **Every desktop behaviour is gated on the idiom being `regular` or
+`mac`** — on `compact` every code path must stay exactly what it is today, byte
+for byte.
+
 ### Per-server secrets
 
 Reverse-proxy Basic Auth (`useBasicAuth`, #118) shows the pattern every
@@ -312,7 +322,7 @@ Complete map. Trust it.
 
 | Path | Notes |
 |---|---|
-| `app/(tabs)/(torrents)/` | Torrents tab as a nested stack: `index` list, `torrent/[hash]`, `torrent/files`, `torrent/manage-trackers`. Group is omitted from URLs → `/`, `/torrent/[hash]`. |
+| `app/(tabs)/(torrents)/` | Torrents tab as a nested stack: `index` list, `torrent/[hash]`, `torrent/files`, `torrent/manage-trackers`. Group is omitted from URLs → `/`, `/torrent/[hash]`. `torrent/[hash]` is now a thin wrapper rendering `components/torrent-detail/TorrentDetailBody.tsx`. |
 | `app/(tabs)/search.tsx` | Search tab: job polling UI, plugin/category/indexer filter chips, client-side sort, collapsing header. Optional auto-tag-by-tracker on add (`autoCategorizeByTracker` pref — tags Search downloads only; the key name is historical). |
 | `app/(tabs)/transfer.tsx` | Transfer stats, global speed and seeding limits. |
 | `app/(tabs)/logs.tsx` | Connectivity logs. `href: null` — reached from Settings → Advanced, not a visible tab. |
@@ -379,6 +389,11 @@ clear poster cache — see Architecture §4 "Artwork (TMDB)") ·
   `utils/search-cart.ts`.
 - **`ArtworkContext.tsx`** — `useArtworkSettings()`: exposes `tmdbPostersEnabled`
   and whether a TMDB key is stored, backing the `integrations` settings screen.
+- **`ShellContext.tsx`** — `useShell()`: desktop shell state for `regular`/`mac`
+  idiom — `idiom` (from `useLayoutIdiom`), `selectedHash`/`setSelectedHash`,
+  `listFilter`/`setListFilter` (`ListFilter` reuses the same status ids as the
+  torrents list's local `filter` state), `sidebarCollapsed`/`toggleSidebar`.
+  Inert on `compact` — nothing under it may affect iPhone rendering.
 
 ### Components (`components/`)
 
@@ -416,6 +431,23 @@ All PascalCase function components taking a `…Props` interface.
   match — see Architecture §4 "Artwork (TMDB)").
 - **Chrome / diagnostics** — `FocusAwareStatusBar`, `SettingRow`,
   `QuickConnectPanel`, `LogViewer`, `DebugRow`, `SuperDebugPanel`.
+- **Shell (`components/shell/`, `regular`/`mac` idiom only)** —
+  `Sidebar.tsx` (reads `useShell`, `useTorrents`, `useServer`, Expo Router's
+  `useRouter`/`usePathname`/`useSegments` to highlight the active destination),
+  `SplitLayout.tsx` (`sidebar` | `children` | optional `detail` pane, 1px
+  `colors.surfaceOutline` separators; `detail` omitted → content takes the
+  full remaining width; `sidebarWidth`/`detailWidth` default 240/380).
+- **`StatusBadge.tsx`** — shadcn-style badge (`label`, `tint`): caption-medium
+  text in `tint`, fill at 14% alpha, 1px border at 22% alpha via
+  `utils/color.ts` `hexToRgba`, radius `borderRadius.xsmall`.
+- **`TorrentRow.tsx`** — Pogona `TransferRow`-style dense row for the sidebar
+  layout (`torrent`, `selected`, `onPress`, `onLongPress?`, `categoryColor?`,
+  `tagColors?`).
+- **`torrent-detail/TorrentDetailBody.tsx`** — the full torrent detail body,
+  extracted from `app/(tabs)/(torrents)/torrent/[hash].tsx` (`hash`,
+  `embedded?`, `onDismiss?`). When `embedded` is true it hides the back button
+  and calls `onDismiss` instead of `router.back()` — used both by the route's
+  thin wrapper and by the `regular`/`mac` detail pane.
 
 ### API wrappers (`services/api/`)
 
@@ -499,6 +531,12 @@ Thin objects over `apiClient`.
 - `useArtwork.ts` — resolves `ArtworkEntry` for a raw release name via
   `services/artwork-store.ts` (`peekArtwork` for an immediate sync value, then
   `lookupArtwork` if unknown); no-ops when `tmdbPostersEnabled` is off.
+- `useLayoutIdiom.ts` — `LayoutIdiom` = `'compact' | 'regular' | 'mac'`,
+  `REGULAR_MIN_WIDTH` = 700. `getLayoutIdiom(width, isPad, isMacCatalyst)` is
+  the pure function (`isMacCatalyst` → `mac`; `isPad && width >=
+  REGULAR_MIN_WIDTH` → `regular`; else `compact`). `useLayoutIdiom()` wraps it
+  with `useWindowDimensions` + `Platform.isPad`/`Platform.isMacCatalyst`. See
+  Architecture §4 "Platforms / layout idiom".
 
 ### Utils (`utils/`)
 
@@ -534,7 +572,11 @@ sound assignment, mirrors `haptics.ts` — #231) · `release-name.ts`
 (`parseReleaseName` — title/year/season/episode/resolution/source/codec/group/
 languages heuristics from a raw torrent name; `rowTitle` formats a display
 string with the `·` middle dot, e.g. "Nashville · S01E15" — see Architecture
-§4 "Artwork (TMDB)").
+§4 "Artwork (TMDB)") · `color.ts` (`hexToRgba` — hex or rgb()/rgba() input to
+an rgba() string at a given alpha; backs `StatusBadge`) · `torrent-filters.ts`
+(`matchesStatusFilter` — status-filter predicate for `components/shell/
+Sidebar.tsx`, a deliberate re-implementation of `index.tsx`'s local
+`filteredTorrents` switch, same ids/order/tie-breaks, not a shared import).
 
 ### Types, constants, i18n
 
@@ -690,8 +732,8 @@ rather than a translation gap.
 
 ## 9. Environment & Headless Agents
 
-- **iOS-only.** iOS-specific APIs (`ActionSheetIOS`, `Alert.prompt`, …) are fine
-  without platform gating.
+- **iPhone + iPad** (Mac Catalyst in progress). iOS-specific APIs
+  (`ActionSheetIOS`, `Alert.prompt`, …) are fine without platform gating.
 - **`expo-*` packages are pre-approved**, even ones needing `expo-dev-client`.
   Third-party native modules (e.g. `react-native-ios-context-menu`,
   `lottie-react-native`) need explicit approval first.

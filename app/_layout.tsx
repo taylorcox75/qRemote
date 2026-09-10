@@ -20,6 +20,7 @@ import { ServerProvider } from '@/context/ServerContext';
 import { ApiVersionProvider } from '@/context/ApiVersionContext';
 import { TorrentProvider } from '@/context/TorrentContext';
 import { TransferProvider } from '@/context/TransferContext';
+import { ShellProvider } from '@/context/ShellContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { ArtworkProvider } from '@/context/ArtworkContext';
 import { ToastProvider, useToast } from '@/context/ToastContext';
@@ -359,7 +360,9 @@ export default function RootLayout() {
                     <TorrentProvider>
                       <TransferProvider>
                         <SearchCartProvider>
-                          <StackNavigator />
+                          <ShellProvider>
+                            <StackNavigator />
+                          </ShellProvider>
                         </SearchCartProvider>
                       </TransferProvider>
                     </TorrentProvider>

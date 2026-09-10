@@ -56,7 +56,8 @@
       "deselectAll": "取消全选",
       "selectMode": "选择",
       "selectTorrent": "选择种子",
-      "deselectTorrent": "取消选择种子"
+      "deselectTorrent": "取消选择种子",
+      "selectTorrentHint": "选择一个种子以查看详情"
     },
     "addTorrent": {
       "none": "无",
@@ -1098,6 +1099,16 @@
     "tags": "标签",
     "tagsCount": "标签 ({{count}})",
     "untagged": "无标签"
+  },
+  "sidebar": {
+    "collapse": "收起侧边栏",
+    "expand": "展开侧边栏",
+    "sections": {
+      "destinations": "导航",
+      "status": "状态",
+      "categories": "分类",
+      "tags": "标签"
+    }
   },
   "sort": {
     "dateAdded": "添加日期",
