@@ -388,6 +388,9 @@
       "categoryTagColorsHint": "Sticker-Farben für Kategorien und Tags anpassen",
       "resetCategoryTagColors": "Kategorie- & Tag-Farben zurücksetzen",
       "resetStateColors": "Statusfarben zurücksetzen",
+      "themePresetsSection": "VOREINSTELLUNGEN",
+      "pogonaPreset": "Pogona",
+      "pogonaPresetHint": "Das Erscheinungsbild der Pogona-Desktop-App auf diesen Modus anwenden",
       "pickAColor": "Pick a Color",
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
@@ -1221,10 +1224,12 @@
     "serverNotFound": "Server nicht gefunden",
     "connectionFailedCheck": "Verbindung fehlgeschlagen. Bitte überprüfe deine Einstellungen und versuche, dich manuell zu verbinden.",
     "fileRenamed": "Datei umbenannt",
-    "folderRenamed": "Ordner umbenannt"
+    "folderRenamed": "Ordner umbenannt",
+    "themePresetApplied": "Design {{name}} angewendet"
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten",
+    "failedToApplyThemePreset": "Design-Voreinstellung konnte nicht angewendet werden",
     "failedToPause": "Torrent konnte nicht pausiert werden",
     "failedToResume": "Torrent konnte nicht fortgesetzt werden",
     "failedToDelete": "Torrent konnte nicht gelöscht werden",
@@ -1338,5 +1343,25 @@
     "stalledUp": "Stalled UP",
     "allocating": "Allocating",
     "moving": "Moving"
+  },
+  "commands": {
+    "newTransfer": "Neuer Transfer",
+    "refresh": "Aktualisieren",
+    "toggleAltSpeed": "Alternative Geschwindigkeitsbegrenzung umschalten",
+    "resume": "Fortsetzen",
+    "pause": "Pausieren",
+    "delete": "Löschen",
+    "recheck": "Erneut prüfen",
+    "reannounce": "Erneut ankündigen",
+    "queueTop": "Nach ganz oben verschieben",
+    "queueUp": "Nach oben verschieben",
+    "queueDown": "Nach unten verschieben",
+    "queueBottom": "Nach ganz unten verschieben",
+    "resumeAll": "Alle fortsetzen",
+    "pauseAll": "Alle pausieren",
+    "find": "Suchen",
+    "toggleSidebar": "Seitenleiste ein-/ausblenden",
+    "preferences": "Einstellungen",
+    "transferMenu": "Transfer"
   }
 }

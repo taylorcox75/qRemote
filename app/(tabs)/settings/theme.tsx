@@ -8,6 +8,7 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ColorPicker } from '@/components/ColorPicker';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
+import { buildPogonaTheme, POGONA_THEME_NAME } from '@/constants/pogonaTheme';
 import { useToast } from '@/context/ToastContext';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -130,6 +131,47 @@ export default function ThemeSettingsScreen() {
                   </Text>
                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Presets */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+              {t('screens.settings.themePresetsSection').toUpperCase()}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={async () => {
+                  try {
+                    const preset = buildPogonaTheme(isDark ? 'dark' : 'light');
+                    await colorThemeManager.saveCustomColors(isDark, preset);
+                    await reloadCustomColors();
+                    showToast(
+                      t('toast.themePresetApplied', { name: POGONA_THEME_NAME }),
+                      'success',
+                    );
+                  } catch {
+                    showToast(t('errors.failedToApplyThemePreset'), 'error');
+                  }
+                }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('screens.settings.pogonaPreset')}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="color-palette-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingText}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.pogonaPreset')}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {t('screens.settings.pogonaPresetHint')}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -376,7 +418,7 @@ export default function ThemeSettingsScreen() {
 
           <ColorPicker
             visible={colorPickerVisible}
-            currentColor={colorPickerKey ? colors[colorPickerKey] : '#000000'}
+            currentColor={(colorPickerKey ? colors[colorPickerKey] : '#000000') ?? '#000000'}
             onColorChange={async (newColor) => {
               try {
                 const custom = await colorThemeManager.getCustomColors(isDark);

@@ -1,0 +1,9 @@
+{
+  "name": "mac-commands",
+  "version": "1.0.0",
+  "description": "Local Expo module: registers the Mac Catalyst app menu (File/View/Transfer/Preferences) via UIMenuBuilder and forwards its commands to JS as 'onCommand' events. No-op on plain iOS/iPadOS.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "license": "MIT",
+  "private": true
+}

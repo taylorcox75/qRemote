@@ -409,6 +409,9 @@
       "categoryTagColorsHint": "Настройте цвета меток для категорий и тегов",
       "resetCategoryTagColors": "Сбросить цвета категорий и тегов",
       "resetStateColors": "Сбросить цвета состояний",
+      "themePresetsSection": "ГОТОВЫЕ ТЕМЫ",
+      "pogonaPreset": "Pogona",
+      "pogonaPresetHint": "Применить оформление приложения Pogona для этого режима",
       "pickAColor": "Выбор цвета",
       "currentColor": "Текущий цвет",
       "hexColor": "Цвет HEX",
@@ -1242,10 +1245,12 @@
     "prioritySetForCount": "Приоритет {{label}} для {{count}} файл(ов)",
     "fileSelected": "Выбран файл: {{name}}",
     "fileRenamed": "Файл переименован",
-    "folderRenamed": "Папка переименована"
+    "folderRenamed": "Папка переименована",
+    "themePresetApplied": "Тема {{name}} применена"
   },
   "errors": {
     "generic": "Произошла ошибка",
+    "failedToApplyThemePreset": "Не удалось применить готовую тему",
     "failedToPause": "Не удалось поставить на паузу",
     "failedToResume": "Не удалось возобновить",
     "failedToDelete": "Не удалось удалить торрент",
@@ -1338,5 +1343,25 @@
     "failedToLoadServer": "Не удалось загрузить сервер",
     "crashTitle": "Что-то пошло не так",
     "crashMessage": "В qRemote произошла непредвиденная ошибка. Ваши серверы и настройки не пострадали."
+  },
+  "commands": {
+    "newTransfer": "Новая передача",
+    "refresh": "Обновить",
+    "toggleAltSpeed": "Переключить альтернативные ограничения скорости",
+    "resume": "Возобновить",
+    "pause": "Приостановить",
+    "delete": "Удалить",
+    "recheck": "Перепроверить",
+    "reannounce": "Повторно анонсировать",
+    "queueTop": "Переместить в начало",
+    "queueUp": "Переместить вверх",
+    "queueDown": "Переместить вниз",
+    "queueBottom": "Переместить в конец",
+    "resumeAll": "Возобновить все",
+    "pauseAll": "Приостановить все",
+    "find": "Найти",
+    "toggleSidebar": "Показать/скрыть боковую панель",
+    "preferences": "Настройки",
+    "transferMenu": "Передача"
   }
 }

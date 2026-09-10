@@ -35,6 +35,7 @@ import { useShell } from '@/context/ShellContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
+import { useTransfer } from '@/context/TransferContext';
 import { TorrentInfo, ServerConfig } from '@/types/api';
 import { TorrentCard } from '@/components/TorrentCard';
 import { TorrentRow } from '@/components/TorrentRow';
@@ -63,6 +64,8 @@ import { buttonStyles, buttonText } from '@/constants/buttons';
 import { typography } from '@/constants/typography';
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { useTorrentActions } from '@/hooks/useTorrentActions';
+import { useMacCommands } from '@/hooks/useMacCommands';
+import type { MacCommandId } from '@/modules/mac-commands';
 import { useGracefulError } from '@/hooks/useGracefulError';
 import { getErrorMessage } from '@/utils/error';
 import { extractMagnetLink } from '@/utils/magnet';
@@ -91,6 +94,8 @@ export default function TorrentsScreen() {
   const { isConnected, isLoading: serverIsLoading, connectToServer } = useServer();
   const { colors, isDark } = useTheme();
   const shell = useShell();
+  // Mac idiom only: the same toggle MacStatusBar's alt-speed button calls.
+  const { toggleAlternativeSpeedLimits } = useTransfer();
   const idiom = shell.idiom;
   const { width: windowWidth } = useWindowDimensions();
   const params = useLocalSearchParams<{
@@ -192,6 +197,10 @@ export default function TorrentsScreen() {
   // Swipeable refs for closing open rows
   const openSwipeableRef = useRef<Swipeable | null>(null);
   const swipeHapticFired = useRef(false);
+
+  // Mac idiom only: the Find (cmd F) menu command focuses this instead of
+  // showing/hiding anything - the search input is already always rendered.
+  const searchInputRef = useRef<TextInput>(null);
 
   // Mac idiom only: draggable splitter between TorrentTable and the
   // bottom-docked detail panel (mirrors Pogona's PanelSplitter).
@@ -712,6 +721,109 @@ export default function TorrentsScreen() {
     },
     [filteredTorrents],
   );
+
+  // Mac idiom only: menu-bar / keyboard-shortcut commands (File > New
+  // Transfer, the Transfer menu, etc. - see modules/mac-commands and
+  // hooks/useMacCommands.ts). useMacCommands() is a no-op off Mac Catalyst
+  // (isMacIdiom() reads the native UIDevice userInterfaceIdiom once), so this
+  // is safe to call unconditionally on every idiom without affecting
+  // compact/regular behaviour. Per-torrent commands act on shell.selectedHash
+  // rather than the action-menu's selectedTorrent state, since the two are
+  // independent (selectedHash is the split-view/table selection; selectedTorrent
+  // is whichever row's action menu or delete confirm is currently open).
+  const macRunOnSelected = useCallback(
+    async (action: (hash: string) => Promise<void>) => {
+      const hash = shell.selectedHash;
+      if (!hash) return;
+      try {
+        await action(hash);
+        refresh();
+      } catch (error: unknown) {
+        showToast(getErrorMessage(error), 'error');
+      }
+    },
+    [shell.selectedHash, refresh, showToast],
+  );
+
+  const macRunOnAll = useCallback(
+    async (action: (hashes: string[]) => Promise<void>) => {
+      if (torrents.length === 0) return;
+      try {
+        await action(torrents.map((torrent) => torrent.hash));
+        refresh();
+      } catch (error: unknown) {
+        showToast(getErrorMessage(error), 'error');
+      }
+    },
+    [torrents, refresh, showToast],
+  );
+
+  const handleMacDelete = useCallback(() => {
+    const hash = shell.selectedHash;
+    if (!hash) return;
+    const torrent = torrents.find((t) => t.hash === hash);
+    if (!torrent) return;
+    setSelectedTorrent(torrent);
+    setDeleteConfirmVisible(true);
+  }, [shell.selectedHash, torrents, setDeleteConfirmVisible]);
+
+  const handleMacFind = useCallback(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
+  const macCommandHandlers = useMemo(
+    () => ({
+      newTransfer: () => void handleOpenAddTorrent(),
+      refresh: () => void refresh(),
+      find: handleMacFind,
+      toggleSidebar: shell.toggleSidebar,
+      preferences: () => router.navigate('/(tabs)/settings'),
+      resumeAll: () => void macRunOnAll((hashes) => torrentsApi.resumeTorrents(hashes)),
+      pauseAll: () => void macRunOnAll((hashes) => torrentsApi.pauseTorrents(hashes)),
+      toggleAltSpeed: () => void toggleAlternativeSpeedLimits(),
+      resume: () => void macRunOnSelected((hash) => torrentsApi.resumeTorrents([hash])),
+      pause: () => void macRunOnSelected((hash) => torrentsApi.pauseTorrents([hash])),
+      delete: handleMacDelete,
+      recheck: () => void macRunOnSelected((hash) => torrentsApi.recheckTorrents([hash])),
+      reannounce: () => void macRunOnSelected((hash) => torrentsApi.reannounceTorrents([hash])),
+      queueTop: () => void macRunOnSelected((hash) => torrentsApi.setMaximalPriority([hash])),
+      queueUp: () => void macRunOnSelected((hash) => torrentsApi.increasePriority([hash])),
+      queueDown: () => void macRunOnSelected((hash) => torrentsApi.decreasePriority([hash])),
+      queueBottom: () => void macRunOnSelected((hash) => torrentsApi.setMinimalPriority([hash])),
+    }),
+    [
+      handleOpenAddTorrent,
+      refresh,
+      handleMacFind,
+      shell.toggleSidebar,
+      router,
+      macRunOnAll,
+      toggleAlternativeSpeedLimits,
+      macRunOnSelected,
+      handleMacDelete,
+    ],
+  );
+
+  const macEnabledCommands = useMemo<MacCommandId[]>(() => {
+    const base: MacCommandId[] = ['newTransfer', 'refresh', 'find', 'toggleSidebar', 'preferences'];
+    if (!isConnected) return base;
+    const withGlobal: MacCommandId[] = [...base, 'resumeAll', 'pauseAll', 'toggleAltSpeed'];
+    if (!shell.selectedHash) return withGlobal;
+    return [
+      ...withGlobal,
+      'resume',
+      'pause',
+      'delete',
+      'recheck',
+      'reannounce',
+      'queueTop',
+      'queueUp',
+      'queueDown',
+      'queueBottom',
+    ];
+  }, [isConnected, shell.selectedHash]);
+
+  useMacCommands(macCommandHandlers, macEnabledCommands);
 
   // Selection handlers
   const toggleSelectMode = () => {
@@ -1458,6 +1570,7 @@ export default function TorrentsScreen() {
                 style={styles.searchIcon}
               />
               <TextInput
+                ref={searchInputRef}
                 style={[styles.searchInputCompact, { color: colors.text }]}
                 placeholder={t('placeholders.searchTorrents')}
                 value={searchQuery}

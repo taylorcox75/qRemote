@@ -388,6 +388,9 @@
       "categoryTagColorsHint": "Personnaliser les couleurs des étiquettes de catégories et de tags",
       "resetCategoryTagColors": "Réinitialiser les couleurs des catégories et tags",
       "resetStateColors": "Réinitialiser les couleurs d'état",
+      "themePresetsSection": "PRÉRÉGLAGES",
+      "pogonaPreset": "Pogona",
+      "pogonaPresetHint": "Appliquer le style de l'application de bureau Pogona à ce mode",
       "pickAColor": "Pick a Color",
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
@@ -1221,10 +1224,12 @@
     "serverNotFound": "Serveur introuvable",
     "connectionFailedCheck": "Échec de la connexion. Vérifiez vos paramètres et essayez de vous connecter manuellement.",
     "fileRenamed": "Fichier renommé",
-    "folderRenamed": "Dossier renommé"
+    "folderRenamed": "Dossier renommé",
+    "themePresetApplied": "Thème {{name}} appliqué"
   },
   "errors": {
     "generic": "Une erreur s'est produite",
+    "failedToApplyThemePreset": "Échec de l'application du préréglage de thème",
     "failedToPause": "Échec de la mise en pause du torrent",
     "failedToResume": "Échec de la reprise du torrent",
     "failedToDelete": "Échec de la suppression du torrent",
@@ -1338,5 +1343,25 @@
     "stalledUp": "Stalled UP",
     "allocating": "Allocating",
     "moving": "Moving"
+  },
+  "commands": {
+    "newTransfer": "Nouveau transfert",
+    "refresh": "Actualiser",
+    "toggleAltSpeed": "Basculer les limites de vitesse alternatives",
+    "resume": "Reprendre",
+    "pause": "Suspendre",
+    "delete": "Supprimer",
+    "recheck": "Revérifier",
+    "reannounce": "Réannoncer",
+    "queueTop": "Déplacer tout en haut",
+    "queueUp": "Déplacer vers le haut",
+    "queueDown": "Déplacer vers le bas",
+    "queueBottom": "Déplacer tout en bas",
+    "resumeAll": "Tout reprendre",
+    "pauseAll": "Tout suspendre",
+    "find": "Rechercher",
+    "toggleSidebar": "Afficher/masquer la barre latérale",
+    "preferences": "Préférences",
+    "transferMenu": "Transfert"
   }
 }

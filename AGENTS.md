@@ -246,9 +246,10 @@ re-add one without being asked.
   `PODS_IPHONEOS_DEPLOYMENT_TARGET` (16.4, matching the app target) on every
   Pods target, and flips `react_native_post_install`'s
   `:mac_catalyst_enabled` from `false` to `true` so
-  `apply_mac_catalyst_patches` runs. Despite the plugin, the Catalyst build
-  still fails on this machine's toolchain (see §9) — it stops the Simulator
-  and device targets from regressing while that gets sorted out.
+  `apply_mac_catalyst_patches` runs. **This plugin only applies when
+  `QREMOTE_MAC_CATALYST=1` is set at prebuild time** (`npm run xcode:mac`) so
+  the plain iOS/Simulator prebuild path is untouched. See §9 for the two root
+  causes it fixes and the verify commands.
 
 Build commands (from the repo root):
 
@@ -259,11 +260,16 @@ Build commands (from the repo root):
   `xcodebuild -workspace ios/qRemote.xcworkspace -scheme qRemote
   -configuration Debug -destination 'generic/platform=iOS Simulator'
   CODE_SIGNING_ALLOWED=NO -derivedDataPath ios/build-ios build`
-- **Mac Catalyst (fails, reproducible)**: `xcodebuild -workspace
-  ios/qRemote.xcworkspace -scheme qRemote -configuration Debug -destination
+- **Mac Catalyst (VERIFIED WORKING, BUILD SUCCEEDED, needs
+  `QREMOTE_MAC_CATALYST=1` at prebuild time)**: `npm run xcode:mac` (or the
+  equivalent manual sequence below), then
+  `xcodebuild -workspace ios/qRemote.xcworkspace -scheme qRemote
+  -configuration Debug -destination
   'generic/platform=macOS,variant=Mac Catalyst' CODE_SIGNING_ALLOWED=NO
-  CODE_SIGN_IDENTITY= -derivedDataPath ios/build build` — see §9 for the
-  failure signature.
+  CODE_SIGN_IDENTITY= build`. Manual verify sequence: `QREMOTE_MAC_CATALYST=1
+  npx expo prebuild -p ios --no-install && (cd ios && LANG=en_US.UTF-8
+  LC_ALL=en_US.UTF-8 pod install)` then the xcodebuild command above. See §9
+  for the two root causes `withMacCatalyst.js` fixes.
 
 `ios/` stays generated regardless of which of these you run: never commit it,
 never hand-edit it as a fix — fix `app.config.js` or the plugin instead.
@@ -308,9 +314,11 @@ sortable columns instead of `TorrentCard`/`TorrentRow`) and docks
 (New Transfer, Refresh, Resume/Pause/Delete, queue moves, alternative speed,
 Preferences, …) come from `modules/mac-commands` via `hooks/useMacCommands.ts`,
 which subscribes on the `mac` idiom only and is a no-op on `compact`/`regular`.
-qRemote does not currently build as a Mac Catalyst target on this machine's
-toolchain (see §9) — the `mac` idiom code paths exist and are gated correctly,
-but are unverified on-device pending that build fix.
+The Mac Catalyst target is VERIFIED WORKING (clean prebuild + pod install +
+xcodebuild = BUILD SUCCEEDED, `UIDeviceFamily [6]`) when
+`QREMOTE_MAC_CATALYST=1` is set at prebuild time (`npm run xcode:mac`); see
+§9 for the two root causes `plugins/withMacCatalyst.js` fixes and the exact
+verify commands.
 
 ### Per-server secrets
 
@@ -566,6 +574,19 @@ Thin objects over `apiClient`.
   podspec's `s.resources` and loaded through `Bundle.main` at play time.
   JS entry point exposes `playUiSound(name)`; `utils/sounds.ts` is the actual
   call site apps should use. iOS only; requires `npm run xcode` to pick up.
+- **`mac-commands`** — local Expo module (Swift) named `MacCommands`,
+  backing the Mac Catalyst menu bar (File/View/Transfer menus, app-menu
+  Preferences) mirroring Pogona's `PogonaApp.swift`. JS entry
+  `modules/mac-commands/index.ts` exports `MacCommandId`,
+  `MAC_COMMAND_IDS`, `isMacIdiom()` (false when the native module is
+  missing, e.g. jest or plain iOS), `setEnabledCommands`, `setMenuTitles`,
+  `setWindowMinSize`, `addCommandListener`. UIKit's `buildMenu(with:)`/
+  `validate(_:)`/the `macCommandAction(_:)` target-action are reachable only
+  from `AppDelegate` itself, so `plugins/withMacCatalyst.js` injects
+  overrides into the generated `AppDelegate.swift` that forward to
+  `MacMenuRegistry` (`modules/mac-commands/ios/MacMenuRegistry.swift`, a
+  no-op off Mac Catalyst). Mac Catalyst only; requires `npm run xcode:mac`
+  to pick up.
 
 ### Hooks (`hooks/`)
 
@@ -589,6 +610,10 @@ Thin objects over `apiClient`.
   REGULAR_MIN_WIDTH` → `regular`; else `compact`). `useLayoutIdiom()` wraps it
   with `useWindowDimensions` + `Platform.isPad`/`Platform.isMacCatalyst`. See
   Architecture §4 "Platforms / layout idiom".
+- `useMacCommands.ts` — `useMacCommands(handlers, enabled)` subscribes
+  `modules/mac-commands`'s command listener to a caller-supplied
+  `Partial<Record<MacCommandId, () => void>>`, restricted to the `enabled`
+  ids. Call unconditionally (hooks rule); it is a no-op off the `mac` idiom.
 
 ### Utils (`utils/`)
 
@@ -644,11 +669,19 @@ Sidebar.tsx`, a deliberate re-implementation of `index.tsx`'s local
   [docs/RELEASING.md](docs/RELEASING.md)),
   `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts`, `serverIcons.ts`
   (`SERVER_ICON_OPTIONS`, `DEFAULT_SERVER_ICON` — the curated Ionicons set for
-  a server's badge, #224). **Use these tokens; don't invent ad-hoc spacing.**
+  a server's badge, #224), `pogonaTheme.ts` (`POGONA_THEME_NAME = 'Pogona'`;
+  `buildPogonaTheme(base)` builds a `ColorTheme` matching Pogona's desktop
+  look for a `'light'` or `'dark'` base, offered as the `pogonaPreset` toggle
+  in `app/(tabs)/settings/appearance.tsx` — `screens.pogonaPreset` /
+  `screens.pogonaPresetHint`). **Use these tokens; don't invent ad-hoc
+  spacing.**
 - `i18n/index.ts` initializes react-i18next. Each locale is ONE file,
   `locales/{en,es,zh,fr,de,ru}/translation.json`, holding every namespace:
   `common`, `states`, `screens`, `placeholders`, `actions`, `alerts`, `server`,
-  `torrentDetail`, `filters`, `sort`, `toast`, `errors`. Keys read like
+  `torrentDetail`, `savePathPicker`, `filters`, `sidebar`, `sort`, `table`,
+  `statusBar`, `toast`, `errors`, `commands` (Mac Catalyst menu-bar labels,
+  keyed by `MacCommandId` and set into the native menu via
+  `modules/mac-commands`'s `setMenuTitles`). Keys read like
   `t('actions.pause')`.
 
 ---
@@ -791,23 +824,41 @@ rather than a translation gap.
 
 - **iPhone, iPad and Mac Catalyst.** iOS-specific APIs (`ActionSheetIOS`,
   `Alert.prompt`, …) are fine without platform gating.
-- **Mac Catalyst does not currently build on this machine's toolchain.** The
-  Catalyst xcodebuild command (§3) fails at `CreateBuildDescription` — before
-  any real compilation — with 90 repeats of:
+- **Mac Catalyst build is VERIFIED WORKING** (clean prebuild + pod install +
+  xcodebuild = BUILD SUCCEEDED, `UIDeviceFamily [6]`) when
+  `QREMOTE_MAC_CATALYST=1` is set at prebuild time. Verify with:
 
   ```
-  error: The macOS deployment target 'MACOSX_DEPLOYMENT_TARGET' is set to
-  10.15, but the range of supported deployment target versions is 12.0 to
-  27.0.x. (in target 'X' from project 'Pods')
+  QREMOTE_MAC_CATALYST=1 npx expo prebuild -p ios --no-install && \
+    (cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install) && \
+    xcodebuild -workspace ios/qRemote.xcworkspace -scheme qRemote \
+    -configuration Debug -destination \
+    'generic/platform=macOS,variant=Mac Catalyst' CODE_SIGNING_ALLOWED=NO \
+    CODE_SIGN_IDENTITY= build
   ```
 
-  across effectively every Pods target, despite `plugins/withMacCatalyst.js`
-  forcing the deployment target on those same targets — something upstream
-  (Xcode 27's Catalyst deployment-target mapping, or a pod's own build
-  settings) still resolves to 10.15 for at least one target before the fix
-  lands. The iOS Simulator build (§3) succeeds with this plugin present.
-  Treat `mac`-idiom code as gated-correctly-but-unverified-on-device until
-  this is resolved.
+  or just `npm run xcode:mac`. Without `QREMOTE_MAC_CATALYST=1`,
+  `plugins/withMacCatalyst.js` does not run and the plain iOS/Simulator
+  prebuild is unaffected. Two root causes made this fail before the plugin
+  (see the header of `plugins/withMacCatalyst.js` for the full detail):
+  (1) most Pods here are iOS-only podspecs with no `s.osx.deployment_target`,
+  so CocoaPods never sets `MACOSX_DEPLOYMENT_TARGET` on their pod targets and
+  Xcode falls back to its old built-in default of 10.15, below the current
+  minimum of 12.0 — fixed by forcing `MACOSX_DEPLOYMENT_TARGET` to
+  `PODS_MACOSX_DEPLOYMENT_TARGET` (12.0) on every pod target; (2) Xcode 27
+  derives a Catalyst build's effective macOS deployment target from
+  `IPHONEOS_DEPLOYMENT_TARGET`, and its mapping table has no entry for 15.1
+  (the value React Native 0.86 pods declare) so it falls through to an
+  unsupported 10.15 — fixed by forcing `IPHONEOS_DEPLOYMENT_TARGET` to
+  `PODS_IPHONEOS_DEPLOYMENT_TARGET` (16.4, matching the app target) on every
+  pod target. The plugin also flips `react_native_post_install`'s
+  `:mac_catalyst_enabled` to `true` (runs
+  `apply_mac_catalyst_patches` for bundle code-sign identity, dead-code-strip
+  and Swift search paths) and forces `SUPPORTS_MACCATALYST = YES` on every
+  pod target not in `EXCLUDED_FROM_MACCATALYST`. The iOS Simulator build (§3)
+  still succeeds unaffected with this plugin present. Treat `mac`-idiom code
+  as gated-correctly and build-verified; on-device runtime verification is
+  separate from the build result above.
 - **`expo-*` packages are pre-approved**, even ones needing `expo-dev-client`.
   Third-party native modules (e.g. `react-native-ios-context-menu`,
   `lottie-react-native`) need explicit approval first.

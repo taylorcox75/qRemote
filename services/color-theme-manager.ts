@@ -2,6 +2,10 @@ import { storageService } from './storage';
 
 export interface ColorTheme {
   primary?: string;
+  /** Alpha-reduced wash of `primary`, e.g. for selected-row backgrounds. */
+  primaryOpac?: string;
+  /** Foreground for text/icons on a filled accent background (see ThemeColors doc). */
+  onAccent?: string;
   error?: string;
   success?: string;
   warning?: string;

@@ -388,6 +388,9 @@
       "categoryTagColorsHint": "Personaliza los colores de las etiquetas visuales de categorías y etiquetas",
       "resetCategoryTagColors": "Restablecer colores de categorías y etiquetas",
       "resetStateColors": "Restablecer colores de estado",
+      "themePresetsSection": "AJUSTES PREDEFINIDOS",
+      "pogonaPreset": "Pogona",
+      "pogonaPresetHint": "Aplicar el estilo de la app de escritorio Pogona a este modo",
       "pickAColor": "Pick a Color",
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
@@ -1221,10 +1224,12 @@
     "serverNotFound": "Servidor no encontrado",
     "connectionFailedCheck": "Error de conexión. Comprueba tu configuración e intenta conectar manualmente.",
     "fileRenamed": "Archivo renombrado",
-    "folderRenamed": "Carpeta renombrada"
+    "folderRenamed": "Carpeta renombrada",
+    "themePresetApplied": "Tema {{name}} aplicado"
   },
   "errors": {
     "generic": "Ocurrió un error",
+    "failedToApplyThemePreset": "No se pudo aplicar el ajuste predefinido de tema",
     "failedToPause": "No se pudo pausar el torrent",
     "failedToResume": "No se pudo reanudar el torrent",
     "failedToDelete": "No se pudo eliminar el torrent",
@@ -1338,5 +1343,25 @@
     "stalledUp": "Stalled UP",
     "allocating": "Allocating",
     "moving": "Moving"
+  },
+  "commands": {
+    "newTransfer": "Nueva transferencia",
+    "refresh": "Actualizar",
+    "toggleAltSpeed": "Alternar límites de velocidad alternativos",
+    "resume": "Reanudar",
+    "pause": "Pausar",
+    "delete": "Eliminar",
+    "recheck": "Reverificar",
+    "reannounce": "Reanunciar",
+    "queueTop": "Mover al principio",
+    "queueUp": "Subir",
+    "queueDown": "Bajar",
+    "queueBottom": "Mover al final",
+    "resumeAll": "Reanudar todo",
+    "pauseAll": "Pausar todo",
+    "find": "Buscar",
+    "toggleSidebar": "Mostrar/ocultar barra lateral",
+    "preferences": "Preferencias",
+    "transferMenu": "Transferencia"
   }
 }

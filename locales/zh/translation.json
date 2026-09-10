@@ -388,6 +388,9 @@
       "categoryTagColorsHint": "自定义分类和标签标签的颜色",
       "resetCategoryTagColors": "重置分类与标签颜色",
       "resetStateColors": "重置状态颜色",
+      "themePresetsSection": "预设主题",
+      "pogonaPreset": "Pogona",
+      "pogonaPresetHint": "为此模式应用 Pogona 桌面应用的外观",
       "pickAColor": "Pick a Color",
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
@@ -1221,10 +1224,12 @@
     "serverNotFound": "未找到服务器",
     "connectionFailedCheck": "连接失败，请检查你的设置并尝试手动连接。",
     "fileRenamed": "文件已重命名",
-    "folderRenamed": "文件夹已重命名"
+    "folderRenamed": "文件夹已重命名",
+    "themePresetApplied": "已应用 {{name}} 主题"
   },
   "errors": {
     "generic": "发生错误",
+    "failedToApplyThemePreset": "应用预设主题失败",
     "failedToPause": "暂停种子失败",
     "failedToResume": "恢复种子失败",
     "failedToDelete": "删除种子失败",
@@ -1338,5 +1343,25 @@
     "stalledUp": "Stalled UP",
     "allocating": "Allocating",
     "moving": "Moving"
+  },
+  "commands": {
+    "newTransfer": "新建任务",
+    "refresh": "刷新",
+    "toggleAltSpeed": "切换备用速度限制",
+    "resume": "继续",
+    "pause": "暂停",
+    "delete": "删除",
+    "recheck": "重新校验",
+    "reannounce": "重新宣告",
+    "queueTop": "移到最前",
+    "queueUp": "上移",
+    "queueDown": "下移",
+    "queueBottom": "移到最后",
+    "resumeAll": "全部继续",
+    "pauseAll": "全部暂停",
+    "find": "查找",
+    "toggleSidebar": "显示/隐藏侧边栏",
+    "preferences": "偏好设置",
+    "transferMenu": "传输"
   }
 }

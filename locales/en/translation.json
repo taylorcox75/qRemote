@@ -409,6 +409,9 @@
       "categoryTagColorsHint": "Customize sticker colors for categories and tags",
       "resetCategoryTagColors": "Reset Category & Tag Colors",
       "resetStateColors": "Reset State Colors",
+      "themePresetsSection": "PRESETS",
+      "pogonaPreset": "Pogona",
+      "pogonaPresetHint": "Apply the Pogona desktop app look to this mode",
       "pickAColor": "Pick a Color",
       "currentColor": "Current Color",
       "hexColor": "Hex Color",
@@ -1242,10 +1245,12 @@
     "dlLimitSetKb": "Download limit set to {{value}} KiB/s",
     "ulLimitSetKb": "Upload limit set to {{value}} KiB/s",
     "fileRenamed": "File renamed",
-    "folderRenamed": "Folder renamed"
+    "folderRenamed": "Folder renamed",
+    "themePresetApplied": "{{name}} theme applied"
   },
   "errors": {
     "generic": "An error occurred",
+    "failedToApplyThemePreset": "Failed to apply theme preset",
     "failedToPause": "Failed to pause torrent",
     "failedToResume": "Failed to resume torrent",
     "failedToDelete": "Failed to delete torrent",
@@ -1338,5 +1343,25 @@
     "failedToLoadServer": "Failed to load server",
     "crashTitle": "Something went wrong",
     "crashMessage": "qRemote ran into an unexpected error. Your servers and settings are safe."
+  },
+  "commands": {
+    "newTransfer": "New Transfer",
+    "refresh": "Refresh",
+    "toggleAltSpeed": "Toggle Alternative Speed",
+    "resume": "Resume",
+    "pause": "Pause",
+    "delete": "Delete",
+    "recheck": "Recheck",
+    "reannounce": "Reannounce",
+    "queueTop": "Move to Top",
+    "queueUp": "Move Up",
+    "queueDown": "Move Down",
+    "queueBottom": "Move to Bottom",
+    "resumeAll": "Resume All",
+    "pauseAll": "Pause All",
+    "find": "Find",
+    "toggleSidebar": "Toggle Sidebar",
+    "preferences": "Preferences",
+    "transferMenu": "Transfer"
   }
 }
