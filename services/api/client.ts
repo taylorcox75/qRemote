@@ -163,27 +163,8 @@ class ApiClient {
           (typeof headers.get === 'function' ? headers.get('set-cookie') : null);
 
         if (setCookieHeader) {
-          if (Array.isArray(setCookieHeader)) {
-            // Join multiple cookies with semicolon and space
-            // Also extract CSRF token if present in cookies
-            this.cookies = setCookieHeader
-              .map((cookie) => {
-                return cookie.split(';')[0].trim();
-              })
-              .join('; ');
-          } else {
-            this.cookies = setCookieHeader.split(';')[0].trim();
-          }
+          this.mergeCookies(setCookieHeader);
           clogDebug('HTTP', `Cookies captured: ${this.cookies.substring(0, 60)}...`);
-          // console.log('Cookies captured after request:', this.cookies.substring(0, 100));
-        } else {
-          // Log available headers for debugging
-          const headerKeys = Object.keys(headers);
-          // console.log('No set-cookie header found. Available headers:', headerKeys);
-          // Check if cookies might be in a different format
-          if (headerKeys.length > 0) {
-            // console.log('Sample header values:', headerKeys.slice(0, 5).map(key => `${key}: ${String(headers[key]).substring(0, 50)}`));
-          }
         }
         return response;
       },
@@ -318,6 +299,25 @@ class ApiClient {
 
   getCookies(): string {
     return this.cookies;
+  }
+
+  /**
+   * Merge Set-Cookie values into the jar by name instead of replacing it.
+   * A reverse proxy in front of qBittorrent may set its own cookie on any
+   * response (Cloudflare __cf_bm, forward-auth session cookies); replacing the
+   * jar wholesale dropped SID and forced a re-login on the next request.
+   */
+  private mergeCookies(setCookie: string | string[]): void {
+    const jar = new Map<string, string>();
+    const put = (pair: string) => {
+      const trimmed = pair.trim();
+      if (!trimmed) return;
+      const eq = trimmed.indexOf('=');
+      jar.set(eq === -1 ? trimmed : trimmed.slice(0, eq), trimmed);
+    };
+    this.cookies.split(';').forEach(put);
+    (Array.isArray(setCookie) ? setCookie : [setCookie]).forEach((raw) => put(raw.split(';')[0]));
+    this.cookies = Array.from(jar.values()).join('; ');
   }
 
   async postFormData(url: string, data: FormData): Promise<unknown> {

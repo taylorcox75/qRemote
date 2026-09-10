@@ -14,6 +14,7 @@ import { transferApi } from '@/services/api/transfer';
 import { applicationApi } from '@/services/api/application';
 import { useServer } from './ServerContext';
 import { getErrorMessage } from '@/utils/error';
+import { LONG_BACKGROUND_THRESHOLD_MS } from '@/constants/timing';
 
 interface TransferContextType {
   transferInfo: GlobalTransferInfo | null;
@@ -96,12 +97,10 @@ export function TransferProvider({ children }: { children: ReactNode }) {
       setIsAppActive(nextState === 'active');
 
       if (prevState === 'background' && nextState === 'active') {
+        const backgroundedMs = Date.now() - lastActiveTime.current;
         lastActiveTime.current = Date.now();
 
         if (isConnected) {
-          setIsRecoveringState(true);
-          setMutationError(null);
-
           // Deliberately NOT eagerly reconnecting here (mirrors TorrentContext
           // and useSearchJob): checkAndReconnect always performs a fresh
           // login, and qBittorrent ties search jobs to session state — an
@@ -110,6 +109,17 @@ export function TransferProvider({ children }: { children: ReactNode }) {
           // torrents sync poll fails the same way and TorrentContext's
           // reactive reconnect effect recovers the shared session for this
           // query too — only when it's actually needed.
+
+          if (backgroundedMs < LONG_BACKGROUND_THRESHOLD_MS) {
+            // Quick app-switch — nudge an immediate refresh without blocking
+            // on it or showing the recovery state. See TorrentContext.tsx.
+            queryClient.invalidateQueries({ queryKey: ['transfer'] });
+            return;
+          }
+
+          setIsRecoveringState(true);
+          setMutationError(null);
+
           await new Promise<void>((resolve) => {
             InteractionManager.runAfterInteractions(() => {
               queryClient.invalidateQueries({ queryKey: ['transfer'] }).finally(() => resolve());

@@ -57,6 +57,12 @@ beforeEach(() => {
     .mockReturnValue({ isConnected: true } as unknown as ReturnType<typeof useServer>);
 });
 
+afterEach(() => {
+  // Some tests below spy on Date.now — restore it (and any other spies) so a
+  // mocked clock can't leak into a later test.
+  jest.restoreAllMocks();
+});
+
 describe('TorrentContext', () => {
   it('throws when useTorrents used outside provider', async () => {
     const BadConsumer = () => {
@@ -71,7 +77,7 @@ describe('TorrentContext', () => {
     spy.mockRestore();
   });
 
-  it('keeps isRecoveringFromBackground true across a foreground re-sync that fails', async () => {
+  it('keeps isRecoveringFromBackground true across a foreground re-sync that fails, after a long background', async () => {
     jest.mocked(syncApi.getMainData).mockResolvedValue(emptyMainData);
 
     let appStateHandler: ((state: string) => void) | undefined;
@@ -79,6 +85,8 @@ describe('TorrentContext', () => {
       appStateHandler = handler as (state: string) => void;
       return { remove: jest.fn() } as unknown as ReturnType<typeof AppState.addEventListener>;
     });
+    let now = 1_000_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
 
     const getLatest = await renderProvider();
 
@@ -96,6 +104,9 @@ describe('TorrentContext', () => {
     await act(async () => {
       appStateHandler?.('background');
     });
+    // Longer than the "quick app-switch" threshold, so the full recovery
+    // dance (not just a quiet incremental refresh) is expected to run.
+    now += 11_000;
     await act(async () => {
       appStateHandler?.('active');
     });
@@ -112,7 +123,7 @@ describe('TorrentContext', () => {
     expect(getLatest().error).toBeNull();
   });
 
-  it('clears isRecoveringFromBackground once a genuinely new sync succeeds', async () => {
+  it('clears isRecoveringFromBackground once a genuinely new sync succeeds, after a long background', async () => {
     jest.mocked(syncApi.getMainData).mockResolvedValue(emptyMainData);
 
     let appStateHandler: ((state: string) => void) | undefined;
@@ -120,6 +131,8 @@ describe('TorrentContext', () => {
       appStateHandler = handler as (state: string) => void;
       return { remove: jest.fn() } as unknown as ReturnType<typeof AppState.addEventListener>;
     });
+    let now = 1_000_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
 
     const getLatest = await renderProvider();
     await waitFor(() => expect(getLatest().initialLoadComplete).toBe(true));
@@ -127,6 +140,7 @@ describe('TorrentContext', () => {
     await act(async () => {
       appStateHandler?.('background');
     });
+    now += 11_000;
     await act(async () => {
       appStateHandler?.('active');
     });
@@ -134,5 +148,39 @@ describe('TorrentContext', () => {
     await waitFor(() => {
       expect(getLatest().isRecoveringFromBackground).toBe(false);
     });
+  });
+
+  it('skips the recovery skeleton for a quick app-switch, but still refreshes', async () => {
+    jest.mocked(syncApi.getMainData).mockResolvedValue(emptyMainData);
+
+    let appStateHandler: ((state: string) => void) | undefined;
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, handler) => {
+      appStateHandler = handler as (state: string) => void;
+      return { remove: jest.fn() } as unknown as ReturnType<typeof AppState.addEventListener>;
+    });
+    let now = 1_000_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
+
+    const getLatest = await renderProvider();
+    await waitFor(() => expect(getLatest().initialLoadComplete).toBe(true));
+
+    const callsBeforeSwitch = jest.mocked(syncApi.getMainData).mock.calls.length;
+
+    await act(async () => {
+      appStateHandler?.('background');
+    });
+    // Well under the "long background" threshold — a glance at another app.
+    now += 1_000;
+    await act(async () => {
+      appStateHandler?.('active');
+    });
+
+    // Still nudges an immediate refresh rather than waiting out the normal
+    // poll interval...
+    await waitFor(() => {
+      expect(jest.mocked(syncApi.getMainData).mock.calls.length).toBeGreaterThan(callsBeforeSwitch);
+    });
+    // ...but never shows the recovery skeleton for it.
+    expect(getLatest().isRecoveringFromBackground).toBe(false);
   });
 });

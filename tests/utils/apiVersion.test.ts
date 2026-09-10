@@ -35,6 +35,7 @@ describe('getApiFeatures', () => {
       supportsSearchDownloadTorrent: true,
       useAddStoppedEnabledPreference: true,
       useStoppedAddParam: true,
+      useContentLayoutAddParam: true,
       supportsGetDirectoryContent: true,
       supportsSearchPubDate: true,
       hasIsPrivate: true,
@@ -59,10 +60,16 @@ describe('getApiFeatures', () => {
     expect(features.supportsGetDirectoryContent).toBe(false);
     expect(features.supportsSearchPubDate).toBe(false);
     expect(features.supportsI2p).toBe(false);
-    // ratio limit fields only require 2.8+, modern proxy fields and is_private only require 2.9+
+    // ratio limit fields only require 2.8+, modern proxy fields and is_private only require 2.9+,
+    // contentLayout only requires 2.7+
     expect(features.hasRatioLimitFields).toBe(true);
     expect(features.hasModernProxyFields).toBe(true);
     expect(features.hasIsPrivate).toBe(true);
+    expect(features.useContentLayoutAddParam).toBe(true);
+  });
+
+  it('gates useContentLayoutAddParam off below 2.7', () => {
+    expect(getApiFeatures('2.6.0').useContentLayoutAddParam).toBe(false);
   });
 
   it('gates hasIsPrivate off below 2.9 (is_private was added alongside the 4.6 proxy fields)', () => {
@@ -97,6 +104,7 @@ describe('getApiFeatures', () => {
     expect(features.supportsSearchDownloadTorrent).toBe(true);
     expect(features.useAddStoppedEnabledPreference).toBe(true);
     expect(features.useStoppedAddParam).toBe(true);
+    expect(features.useContentLayoutAddParam).toBe(true);
     expect(features.supportsGetDirectoryContent).toBe(true);
     expect(features.supportsSearchPubDate).toBe(true);
     expect(features.hasIsPrivate).toBe(true);

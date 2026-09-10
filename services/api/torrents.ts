@@ -236,7 +236,17 @@ export const torrentsApi = {
         formData.append(stoppedField, String(options.stopped));
       }
       if (options.root_folder !== undefined) {
-        formData.append('root_folder', String(options.root_folder));
+        if (apiClient.getApiFeatures().useContentLayoutAddParam) {
+          // "root_folder" has been a no-op since qBit 4.3.2; the live parameter is
+          // contentLayout. The switch is ON by default and has never done anything,
+          // so ON must keep meaning "server default" (omit the field) — sending
+          // 'Subfolder' or 'Original' here would silently change the layout of
+          // every add for every existing user. Only OFF sends anything.
+          if (!options.root_folder) formData.append('contentLayout', 'NoSubfolder');
+        } else {
+          // WebAPI < 2.7 (qBit ≤ 4.3.1) genuinely reads root_folder — unchanged.
+          formData.append('root_folder', String(options.root_folder));
+        }
       }
       if (options.rename) formData.append('rename', options.rename);
       if (options.upLimit !== undefined) {
@@ -345,7 +355,17 @@ export const torrentsApi = {
         formData.append(stoppedField, String(options.stopped));
       }
       if (options.root_folder !== undefined) {
-        formData.append('root_folder', String(options.root_folder));
+        if (apiClient.getApiFeatures().useContentLayoutAddParam) {
+          // "root_folder" has been a no-op since qBit 4.3.2; the live parameter is
+          // contentLayout. The switch is ON by default and has never done anything,
+          // so ON must keep meaning "server default" (omit the field) — sending
+          // 'Subfolder' or 'Original' here would silently change the layout of
+          // every add for every existing user. Only OFF sends anything.
+          if (!options.root_folder) formData.append('contentLayout', 'NoSubfolder');
+        } else {
+          // WebAPI < 2.7 (qBit ≤ 4.3.1) genuinely reads root_folder — unchanged.
+          formData.append('root_folder', String(options.root_folder));
+        }
       }
       if (options.rename) formData.append('rename', options.rename);
       if (options.upLimit !== undefined) {

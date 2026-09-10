@@ -384,8 +384,14 @@ proxy server incl. auth, IP filtering/banned IPs, I2P (qBit 5.0+ /
   `isRecoveringFromBackground` covers the foreground re-sync; it's cleared only
   once a fetch *newer than the pre-recovery `dataUpdatedAt`* lands, never by
   that timestamp merely being nonzero (which cleared it instantly, since it
-  holds the last success from potentially hours ago).
-- **`TransferContext.tsx`** — transfer-info poll; relies on TorrentContext's reconnect.
+  holds the last success from potentially hours ago). A foreground return
+  backgrounded for less than `LONG_BACKGROUND_THRESHOLD_MS` (`constants/timing.ts`,
+  10s) is treated as a quick app-switch: it skips the recovery dance entirely and
+  just nudges an incremental refresh, so a brief glance at another app doesn't
+  flash the recovery skeleton.
+- **`TransferContext.tsx`** — transfer-info poll; relies on TorrentContext's
+  reconnect. Mirrors TorrentContext's quick-app-switch threshold
+  (`LONG_BACKGROUND_THRESHOLD_MS`) for its own foreground recovery.
 - **`ToastContext.tsx`** + `components/Toast.tsx` — the global toast is a plain
   view. **Never wrap it in an RN `<Modal>`** — a Modal captures all touches and
   freezes the UI. Native-modal-sheet screens mount `ModalToast` locally instead.
@@ -513,6 +519,10 @@ and availability **FLOOR**, never round up) · `torrent-state.ts` (state → col
 label, completion and ETA rules) · `limit-input.ts` (share-limit sentinels:
 `-2` = follow global, `-1` = unlimited; own-vs-effective limit resolution) ·
 `error.ts` (`getErrorMessage`) · `apiVersion.ts` (parse + `ApiFeatures` gating) ·
+`connection-settings.ts` (`resolveConnectionSettings` — resolves the axios
+connection timeout / retry count from raw stored preferences, falling back to
+`DEFAULT_PREFERENCES` on missing or corrupt values while still honoring a
+legitimately saved `retryAttempts: 0`) ·
 `server.ts` (endpoint resolution incl. fallback URL, avatar colors, and
 `getServerIcon`/`getServerIconColor` for the per-server badge — #224) ·
 `authMode.ts` (derives `password`/`apiKey`/`none`) · `basicAuth.ts` ·
@@ -547,7 +557,9 @@ base).
   [docs/RELEASING.md](docs/RELEASING.md)),
   `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts`, `serverIcons.ts`
   (`SERVER_ICON_OPTIONS`, `DEFAULT_SERVER_ICON` — the curated Ionicons set for
-  a server's badge, #224). **Use these tokens; don't invent ad-hoc spacing.**
+  a server's badge, #224), `timing.ts` (`LONG_BACKGROUND_THRESHOLD_MS` — shared
+  by `TorrentContext` and `TransferContext` for their quick-app-switch gate).
+  **Use these tokens; don't invent ad-hoc spacing.**
 - `i18n/index.ts` initializes react-i18next. Each locale is ONE file,
   `locales/{en,es,zh,fr,de,ru}/translation.json`, holding every namespace:
   `common`, `states`, `screens`, `placeholders`, `actions`, `alerts`, `server`,
@@ -759,3 +771,12 @@ Keep entries factual and current; if you find one that's no longer true
   component just never re-renders, and it looks exactly like a product bug.
   Full detail and the working pattern live in [§6](#6-task-recipes)'s "Add a
   test" recipe, under the `rn`-project traps.
+- **The 5.0 wiki's `torrents/add` page still documents a `root_folder` param
+  that no supported qBittorrent version reads.** It looks like it "works" —
+  the request 200s, the field is just silently dropped — but it has done
+  nothing since qBit 4.3.2 (WebAPI 2.7.0). The live parameter is
+  `contentLayout` (`Original`/`Subfolder`/`NoSubfolder`), gated by
+  `ApiFeatures.useContentLayoutAddParam` in `utils/apiVersion.ts`. When a
+  parameter "works" in the UI but has no visible server-side effect, check it
+  against qBittorrent's `torrentscontroller.cpp` source, not the wiki — the
+  wiki is not reliably kept in sync with parameter renames.

@@ -27,6 +27,7 @@ import { logStorage } from '@/services/log-storage';
 import { storageService } from '@/services/storage';
 import { apiClient } from '@/services/api/client';
 import { setHapticsEnabled } from '@/utils/haptics';
+import { resolveConnectionSettings } from '@/utils/connection-settings';
 import {
   setDebugMode as setConnectivityDebugMode,
   clogInfo,
@@ -332,10 +333,7 @@ export default function RootLayout() {
       .then((prefs) => {
         setHapticsEnabled(prefs.hapticFeedback !== false);
         setConnectivityDebugMode(prefs.debugMode === true);
-        apiClient.updateSettings({
-          connectionTimeout: Number(prefs.connectionTimeout) || 10000,
-          retryAttempts: Number(prefs.retryAttempts) || 3,
-        });
+        apiClient.updateSettings(resolveConnectionSettings(prefs));
       })
       .catch(() => {
         // Defaults already applied in each module — safe to ignore

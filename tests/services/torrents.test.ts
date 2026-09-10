@@ -240,6 +240,24 @@ describe('torrentsApi', () => {
       expect(formData).toBeInstanceOf(FormData);
     });
 
+    it('sends neither contentLayout nor root_folder when the toggle is ON (server default)', async () => {
+      mockGetApiFeatures.mockReturnValue({ useContentLayoutAddParam: true });
+      mockPostFormData.mockResolvedValueOnce(undefined);
+      await torrentsApi.addTorrent('magnet:?xt=1', { root_folder: true });
+      const formData = mockPostFormData.mock.calls[0][1] as FormData;
+      expect(formData.get('contentLayout')).toBeNull();
+      expect(formData.get('root_folder')).toBeNull();
+    });
+
+    it('sends contentLayout=NoSubfolder when the toggle is OFF', async () => {
+      mockGetApiFeatures.mockReturnValue({ useContentLayoutAddParam: true });
+      mockPostFormData.mockResolvedValueOnce(undefined);
+      await torrentsApi.addTorrent('magnet:?xt=1', { root_folder: false });
+      const formData = mockPostFormData.mock.calls[0][1] as FormData;
+      expect(formData.get('contentLayout')).toBe('NoSubfolder');
+      expect(formData.get('root_folder')).toBeNull();
+    });
+
     it('appends useDownloadPath and downloadPath when provided', async () => {
       mockPostFormData.mockResolvedValueOnce(undefined);
       await torrentsApi.addTorrent('magnet:?xt=1', {

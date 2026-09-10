@@ -193,6 +193,10 @@ describe('apiClient', () => {
   describe('response interceptor — success (cookie capture)', () => {
     beforeEach(() => {
       apiClient.setServer(makeServer());
+      // Cookies now merge by name rather than being replaced wholesale, so
+      // the jar persists across requests within a test — start each test
+      // from an empty jar so tests stay independent of ordering.
+      apiClient.clearCookies();
     });
 
     it('captures a single set-cookie header', () => {
@@ -227,6 +231,34 @@ describe('apiClient', () => {
         status: 200,
       });
       expect(apiClient.getCookies()).toBe('SID=viaget');
+    });
+
+    it('merges a proxy cookie set on a later response, keeping the session cookie', () => {
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': 'SID=abc; Path=/' },
+        data: 'Ok.',
+        status: 200,
+      });
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': '__cf_bm=zzz; Path=/' },
+        data: '',
+        status: 200,
+      });
+      expect(apiClient.getCookies()).toBe('SID=abc; __cf_bm=zzz');
+    });
+
+    it('replaces a cookie in place by name on re-login instead of appending a duplicate', () => {
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': 'SID=old; Path=/' },
+        data: 'Ok.',
+        status: 200,
+      });
+      capturedResponseInterceptorSuccess!({
+        headers: { 'set-cookie': 'SID=new; HttpOnly' },
+        data: 'Ok.',
+        status: 200,
+      });
+      expect(apiClient.getCookies()).toBe('SID=new');
     });
 
     it('leaves cookies untouched when no set-cookie header exists', () => {

@@ -13,6 +13,7 @@ import { ServerManager } from '@/services/server-manager';
 import { apiClient } from '@/services/api/client';
 import { storageService } from '@/services/storage';
 import { getActiveEndpoint } from '@/utils/server';
+import { resolveConnectionSettings } from '@/utils/connection-settings';
 import { clogInfo, clogWarn } from '@/services/connectivity-log';
 
 interface ServerContextType {
@@ -97,6 +98,13 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     async function autoConnect() {
       try {
         const prefs = await storageService.getPreferences();
+        // Apply connection settings before the first connect attempt fires.
+        // RootLayout also applies these from the same preferences, but its
+        // effect runs after this provider's (child effects fire before a
+        // parent's on mount) — without this, the very first cold-launch
+        // connect always uses apiClient's built-in defaults instead of the
+        // user's configured timeout/retry count.
+        apiClient.updateSettings(resolveConnectionSettings(prefs));
         const autoConnectLastServer = prefs.autoConnectLastServer !== false;
         const manualDisconnect = await storageService.getManualDisconnect();
 
