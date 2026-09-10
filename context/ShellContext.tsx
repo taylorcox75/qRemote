@@ -1,9 +1,9 @@
 /**
- * ShellContext.tsx — Desktop/iPad shell state (Phase B). Holds the layout
+ * ShellContext.tsx - Desktop/iPad shell state (Phase B). Holds the layout
  * idiom, the selected torrent (for the split-view detail pane), the
  * sidebar's list filter, and whether the sidebar is collapsed.
  *
- * Only mounted on 'regular'/'mac' layouts — the 'compact' (iPhone) screens
+ * Only mounted on 'regular'/'mac' layouts - the 'compact' (iPhone) screens
  * never read this context, so nothing here can change iPhone behaviour.
  *
  * Key exports: ShellProvider, useShell, ListFilter, ShellState
@@ -21,7 +21,7 @@ import { useLayoutIdiom, LayoutIdiom } from '@/hooks/useLayoutIdiom';
 import { useTorrents } from '@/context/TorrentContext';
 import { useServer } from '@/context/ServerContext';
 
-/** Mirrors index.tsx's local filter state — see utils/torrent-filters.ts for the status ids. */
+/** Mirrors index.tsx's local filter state - see utils/torrent-filters.ts for the status ids. */
 export interface ListFilter {
   status: string;
   category: string | null;
@@ -52,7 +52,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Clear the selected torrent once it no longer exists in the live list, or
-  // once the server disconnects — otherwise the detail pane would keep
+  // once the server disconnects - otherwise the detail pane would keep
   // showing a stale/deleted torrent. Gated on initialLoadComplete so a
   // still-loading first sync (torrents briefly empty) doesn't clear a hash
   // that was selected the moment the app opened, before data arrived.

@@ -1,5 +1,5 @@
 /**
- * TorrentDetailBody.tsx — the torrent detail body, extracted from
+ * TorrentDetailBody.tsx - the torrent detail body, extracted from
  * app/(tabs)/(torrents)/torrent/[hash].tsx (Phase B shell work) so it can be
  * rendered either as the full-screen route (iPhone / compact idiom) or
  * embedded in a detail pane inside SplitLayout (regular / mac idiom).
@@ -12,7 +12,7 @@
  * `hash` is passed as a prop instead of read via useLocalSearchParams so this
  * component works outside its own route. `embedded` hides the back button and
  * routes every "leave this screen" action through `onDismiss` instead of
- * router.back()/router.replace() — those calls have nowhere sensible to go
+ * router.back()/router.replace() - those calls have nowhere sensible to go
  * when this body is mounted inside a split-view detail pane rather than its
  * own stack screen. router.push() calls for the Files and Manage Trackers
  * sub-screens are left untouched: those routes live in the same stack, so
@@ -219,11 +219,11 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
     if (hash && isConnected) {
       loadTorrentData();
     }
-    // loadTorrentData isn't memoized — only re-run when hash/isConnected change.
+    // loadTorrentData isn't memoized - only re-run when hash/isConnected change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash, isConnected]);
 
-  // Encryption is a global qBittorrent setting, not per-torrent — fetch once
+  // Encryption is a global qBittorrent setting, not per-torrent - fetch once
   // per connection rather than on every poll tick.
   useEffect(() => {
     if (!isConnected) return;
@@ -259,7 +259,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
   }, [onDismiss]);
 
   /**
-   * The torrent no longer exists on the server — it was removed elsewhere, or a
+   * The torrent no longer exists on the server - it was removed elsewhere, or a
    * share limit with a "Remove torrent" action fired. Stop polling (otherwise we
    * keep 404-ing every 2s), say so plainly, and leave the dead screen.
    */
@@ -305,7 +305,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
 
       const next = torrentList.length > 0 ? torrentList[0] : null;
       // torrents/info answers 200 with an empty list for a hash that's gone,
-      // so this — not the 404 below — is the usual signal.
+      // so this - not the 404 below - is the usual signal.
       if (!next) {
         handleTorrentGone();
         return null;
@@ -374,7 +374,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
       setUlHistory((prev) => [...prev.slice(1), ul]);
       setLastUpdatedAt(new Date());
     } catch (error: unknown) {
-      // Still silent for ordinary failures — but a vanished torrent has to be
+      // Still silent for ordinary failures - but a vanished torrent has to be
       // acted on, or this poll 404s every 2 seconds forever.
       if (getErrorStatus(error) === 404) {
         handleTorrentGone();
@@ -564,7 +564,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
    * Everything setShareLimits needs in order to leave alone what the user isn't
    * editing. The sentinels ('Default', -2) mean "use the global setting", NOT
    * "unchanged", so a limit edit that doesn't echo these back silently resets
-   * them — and a global action of "Remove torrent" then deletes the torrent.
+   * them - and a global action of "Remove torrent" then deletes the torrent.
    */
   const currentShareLimits = () => ({
     inactiveSeedingTimeLimit: torrent?.inactive_seeding_time_limit,
@@ -1127,7 +1127,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
   if (optimisticPaused !== null) {
     if (optimisticPaused) {
       if (torrent.progress >= 1) {
-        // Pausing/stopping a finished torrent — qBittorrent's own WebUI
+        // Pausing/stopping a finished torrent - qBittorrent's own WebUI
         // calls this "Completed", not "Paused".
         stateColor = colors.stateSeeding;
         stateLabel = t('torrentDetail.completed');
@@ -1253,7 +1253,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
   );
 
   /**
-   * The "Rename" row only renames the torrent's own display name — it does
+   * The "Rename" row only renames the torrent's own display name - it does
    * NOT touch the file/folder on disk, which surprises people expecting a
    * filesystem rename. The info icon pops a one-off tooltip clarifying that,
    * same pattern as the Auto TMM tooltip on the add-torrent screen.
@@ -1307,7 +1307,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
   );
 
   /**
-   * A path row that isn't tappable as a whole — only its two icon buttons
+   * A path row that isn't tappable as a whole - only its two icon buttons
    * are: an edit button that opens the path editor (with autocomplete) via
    * `onEdit`, and an info button that pops the existing full-path popover
    * (for when the ellipsized value doesn't tell the whole story).
@@ -1495,7 +1495,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
   })();
 
   // Prefer `private` (5.0+, null until metadata arrives) over `is_private`
-  // (4.6+, always torrent->isPrivate()) — the wiki's field name "isPrivate"
+  // (4.6+, always torrent->isPrivate()) - the wiki's field name "isPrivate"
   // doesn't exist on the wire at any version.
   const apiPrivateValue: boolean | undefined = features.hasIsPrivate
     ? (properties?.private ?? properties?.is_private)
@@ -1667,7 +1667,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
                   {
                     key: 'eta',
                     label: t('torrentDetail.eta'),
-                    value: hasEta(torrent.eta, torrent.progress) ? formatTime(torrent.eta) : '—',
+                    value: hasEta(torrent.eta, torrent.progress) ? formatTime(torrent.eta) : '-',
                   },
                   {
                     key: 'ratio',
@@ -1695,7 +1695,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
                     key: 'availability',
                     label: t('torrentDetail.availability'),
                     value:
-                      torrent.availability > 0 ? formatAvailability(torrent.availability) : '—',
+                      torrent.availability > 0 ? formatAvailability(torrent.availability) : '-',
                   },
                 ] as Array<{
                   key: string;

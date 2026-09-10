@@ -1,7 +1,7 @@
 /**
- * SplitLayout.tsx — Desktop/iPad shell frame (Phase B): sidebar | content |
+ * SplitLayout.tsx - Desktop/iPad shell frame (Phase B): sidebar | content |
  * optional detail pane, each separated by a 1px colors.surfaceOutline line.
- * Only rendered on 'regular'/'mac' layouts (see hooks/useLayoutIdiom.ts) —
+ * Only rendered on 'regular'/'mac' layouts (see hooks/useLayoutIdiom.ts) -
  * 'compact' screens don't mount this component at all.
  *
  * Key exports: SplitLayout

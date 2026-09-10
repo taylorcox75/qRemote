@@ -1,8 +1,8 @@
 /**
- * Sidebar.tsx — Desktop/iPad shell sidebar (Phase B), modelled on Pogona's
+ * Sidebar.tsx - Desktop/iPad shell sidebar (Phase B), modelled on Pogona's
  * FilterSidebar: a scrollable list of destinations, status filters,
  * categories and tags, each section collapsible via a chevron header.
- * Only rendered on 'regular'/'mac' layouts — 'compact' (iPhone) screens
+ * Only rendered on 'regular'/'mac' layouts - 'compact' (iPhone) screens
  * never mount this component.
  *
  * Key exports: Sidebar
@@ -84,7 +84,7 @@ const DESTINATIONS: DestinationDef[] = [
   },
 ];
 
-/** Icon glyph per status filter — same set index.tsx's filterOptions uses. */
+/** Icon glyph per status filter - same set index.tsx's filterOptions uses. */
 const STATUS_FILTER_ICONS: Record<StatusFilterId, IoniconName> = {
   all: 'grid-outline',
   active: 'pulse',
@@ -100,7 +100,7 @@ const STATUS_FILTER_ICONS: Record<StatusFilterId, IoniconName> = {
  * use that colors.state* token (downloading/uploading/paused/stuck mirror
  * their qBittorrent state family 1:1; completed reuses stateSeeding, the
  * same "done" color torrent-state.ts converges completed torrents toward).
- * 'all' and 'active' have no single-state analogue — they're deliberately
+ * 'all' and 'active' have no single-state analogue - they're deliberately
  * generic (textSecondary / primary) rather than borrowing an unrelated
  * state color.
  */

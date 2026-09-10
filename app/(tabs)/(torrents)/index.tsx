@@ -1530,7 +1530,7 @@ export default function TorrentsScreen() {
               </TouchableOpacity>
             )}
 
-            {/* LEFT: Sort button — fixed 42×42 */}
+            {/* LEFT: Sort button - fixed 42×42 */}
             {!selectMode && (
               <TouchableOpacity
                 style={[
@@ -1552,7 +1552,7 @@ export default function TorrentsScreen() {
               </TouchableOpacity>
             )}
 
-            {/* CENTER: Search input — flex:1, loading indicator inside */}
+            {/* CENTER: Search input - flex:1, loading indicator inside */}
             <View
               style={[
                 styles.searchInputContainer,
@@ -1586,7 +1586,7 @@ export default function TorrentsScreen() {
               )}
             </View>
 
-            {/* RIGHT: Add torrent button — fixed 42×42 */}
+            {/* RIGHT: Add torrent button - fixed 42×42 */}
             {!selectMode && (
               <TouchableOpacity
                 style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
@@ -1846,7 +1846,7 @@ export default function TorrentsScreen() {
         onClose={() => setShowTagPicker(false)}
       />
 
-      {/* Bulk actions menu — long-press while in select mode */}
+      {/* Bulk actions menu - long-press while in select mode */}
       <ActionMenu
         visible={bulkMenuVisible}
         onClose={() => setBulkMenuVisible(false)}
@@ -1862,7 +1862,7 @@ export default function TorrentsScreen() {
         onClose={() => setShowBulkCategoryPicker(false)}
       />
 
-      {/* Bulk Add/Remove Tags picker — applies the draft on close */}
+      {/* Bulk Add/Remove Tags picker - applies the draft on close */}
       <MultiSelectPicker
         visible={bulkTagMode !== null}
         title={bulkTagMode === 'remove' ? t('actions.removeTags') : t('actions.addTags')}

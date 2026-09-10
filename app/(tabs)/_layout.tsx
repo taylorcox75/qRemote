@@ -38,7 +38,7 @@ export default function TabsLayout() {
   // On a true iPhone (isShellHost false, idiom always 'compact') this tree
   // stays exactly as it always has been: no sidebar, no split layout, the
   // tab bar visible. Everything below this line is unconditional for that
-  // path — the hidden tab bar only ever applies on 'regular'/'mac' idiom.
+  // path - the hidden tab bar only ever applies on 'regular'/'mac' idiom.
   const tabs = (
     <Tabs
       screenOptions={{

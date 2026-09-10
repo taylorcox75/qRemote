@@ -1,5 +1,5 @@
 /**
- * [hash].tsx — Torrent detail route.
+ * [hash].tsx - Torrent detail route.
  *
  * The actual detail body (hero, actions, all grouped sections, and every
  * modal) lives in components/torrent-detail/TorrentDetailBody.tsx so it can
