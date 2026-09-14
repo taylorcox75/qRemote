@@ -70,7 +70,7 @@ import { tagsApi } from '@/services/api/tags';
 import { categoriesApi } from '@/services/api/categories';
 import { applicationApi } from '@/services/api/application';
 import { useApiFeatures } from '@/context/ApiVersionContext';
-import { TorrentProperties, Tracker, TorrentFile, TorrentInfo } from '@/types/api';
+import { TorrentProperties, Tracker, TorrentFile, TorrentInfo, WebSeed } from '@/types/api';
 import {
   formatDate,
   formatProgress,
@@ -137,7 +137,7 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
   // capsule, no outer card padding/border. Route (compact/iPhone) and
   // regular-iPad embedded rendering are untouched: this only swaps a
   // handful of style entries, never the JSX structure or behaviour.
-  const isMacEmbedded = !!embedded && Platform.OS === 'ios' && (Platform.isMacCatalyst ?? false);
+  const isMacEmbedded = !!embedded;
   const router = useRouter();
   const navigation = useNavigation();
   const { isConnected, isLoading } = useServer();
@@ -185,6 +185,10 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
   } | null>(null);
   const [pathPopoverHeight, setPathPopoverHeight] = useState<number | null>(null);
 
+  const [inspectorTab, setInspectorTab] = useState<
+    'overview' | 'files' | 'trackers' | 'peers' | 'pieces' | 'sources'
+  >('overview');
+  const [webSeeds, setWebSeeds] = useState<WebSeed[]>([]);
   const [peersModalVisible, setPeersModalVisible] = useState(false);
   const [peersData, setPeersData] = useState<
     Array<{ ip: string; progress: number; client?: string }>
@@ -528,6 +532,35 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
       setPeersLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!embedded || !hash) return;
+    if (inspectorTab === 'sources') {
+      void torrentsApi
+        .getTorrentWebSeeds(hash)
+        .then(setWebSeeds)
+        .catch(() => setWebSeeds([]));
+    }
+    if (inspectorTab === 'peers') {
+      setPeersLoading(true);
+      void syncApi
+        .getTorrentPeers(hash, 0)
+        .then((data) => {
+          const peersObj =
+            (data as { peers?: Record<string, { progress?: number; client?: string }> })?.peers ??
+            {};
+          const list = Object.entries(peersObj).map(([addr, p]) => ({
+            ip: addr,
+            progress: typeof p?.progress === 'number' ? p.progress : 0,
+            client: p?.client || '',
+          }));
+          list.sort((a, b) => b.progress - a.progress);
+          setPeersData(list);
+        })
+        .catch(() => setPeersData([]))
+        .finally(() => setPeersLoading(false));
+    }
+  }, [embedded, hash, inspectorTab]);
 
   const handleReannounce = async () => {
     try {
@@ -1537,8 +1570,8 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
           embedded ? (e: LayoutChangeEvent) => setPaneWidth(e.nativeEvent.layout.width) : undefined
         }
       >
-        <View style={[styles.topBar, { borderBottomColor: colors.surfaceOutline }]}>
-          {!embedded && (
+        {!embedded && (
+          <View style={[styles.topBar, { borderBottomColor: colors.surfaceOutline }]}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.back()}
@@ -1546,27 +1579,66 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
             >
               <Ionicons name="chevron-back" size={24} color={colors.text} />
             </TouchableOpacity>
-          )}
-          <View style={styles.topBarActions}>
-            <TouchableOpacity
-              style={styles.topBarIconBtn}
-              onPress={handleCopyMagnet}
-              accessibilityLabel={t('torrentDetail.copyMagnet')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="magnet-outline" size={20} color={colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.topBarIconBtn}
-              onPress={handleReannounce}
-              disabled={actionLoading}
-              accessibilityLabel={t('torrentDetail.reannounce')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="megaphone-outline" size={20} color={colors.text} />
-            </TouchableOpacity>
+            <View style={styles.topBarActions}>
+              <TouchableOpacity
+                style={styles.topBarIconBtn}
+                onPress={handleCopyMagnet}
+                accessibilityLabel={t('torrentDetail.copyMagnet')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="magnet-outline" size={20} color={colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.topBarIconBtn}
+                onPress={handleReannounce}
+                disabled={actionLoading}
+                accessibilityLabel={t('torrentDetail.reannounce')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="megaphone-outline" size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
+
+        {embedded && (
+          <View style={[styles.inspectorTabs, { borderBottomColor: colors.surfaceOutline }]}>
+            {(
+              [
+                ['overview', 'torrentDetail.overview'],
+                ['files', 'torrentDetail.files'],
+                ['trackers', 'torrentDetail.trackers'],
+                ['peers', 'torrentDetail.peers'],
+                ['pieces', 'torrentDetail.pieces'],
+                ['sources', 'torrentDetail.httpSources'],
+              ] as const
+            ).map(([id, labelKey]) => {
+              const active = inspectorTab === id;
+              return (
+                <TouchableOpacity
+                  key={id}
+                  onPress={() => setInspectorTab(id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[
+                    styles.inspectorTab,
+                    active && { borderBottomColor: colors.primary, borderBottomWidth: 2 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.inspectorTabLabel,
+                      { color: active ? colors.primary : colors.textSecondary },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {t(labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         <ScrollView
           style={styles.scrollView}
@@ -1580,432 +1652,555 @@ export function TorrentDetailBody({ hash, embedded, onDismiss }: TorrentDetailBo
           }
         >
           {/* ── Hero ────────────────────────────────────────────── */}
-          <View
-            style={[
-              isMacEmbedded ? styles.heroCardMac : styles.heroCard,
-              !isMacEmbedded && { backgroundColor: colors.surface },
-            ]}
-          >
-            <View style={styles.heroHeaderRow}>
-              {/* Self-fetching, opt-in TMDB poster - null when inactive. */}
-              <ArtworkThumbnail name={torrent.name} width={44} placeholderIcon="film-outline" />
+          {(!embedded || inspectorTab === 'overview') && (
+            <View
+              style={[
+                isMacEmbedded ? styles.heroCardMac : styles.heroCard,
+                !isMacEmbedded && { backgroundColor: colors.surface },
+              ]}
+            >
+              <View style={styles.heroHeaderRow}>
+                {/* Self-fetching, opt-in TMDB poster - null when inactive. */}
+                <ArtworkThumbnail name={torrent.name} width={44} placeholderIcon="film-outline" />
+                <Text
+                  style={[
+                    isMacEmbedded ? styles.heroNameMac : styles.heroName,
+                    { color: colors.text },
+                  ]}
+                  numberOfLines={3}
+                >
+                  {torrent.name}
+                </Text>
+                <View style={styles.heroBadge}>
+                  <View
+                    style={[
+                      StyleSheet.absoluteFill,
+                      { backgroundColor: stateColor, opacity: 0.28 },
+                    ]}
+                  />
+                  <Text style={[styles.heroBadgeText, { color: colors.text }]} numberOfLines={1}>
+                    {stateLabel}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.progressRow}>
+                <View style={styles.progressBarFlex}>
+                  <AnimatedProgressBar
+                    progress={Math.min(progress, 100)}
+                    color={stateColor}
+                    height={isMacEmbedded ? 4 : 5}
+                  />
+                </View>
+                <TouchableOpacity
+                  onPress={handlePauseResume}
+                  disabled={actionLoading}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={[styles.pauseCircle, { backgroundColor: stateColor }]}
+                  activeOpacity={0.7}
+                  accessibilityLabel={
+                    isPaused ? t('torrentDetail.resume') : t('torrentDetail.pause')
+                  }
+                >
+                  <Ionicons name={isPaused ? 'play' : 'pause'} size={14} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+
               <Text
                 style={[
-                  isMacEmbedded ? styles.heroNameMac : styles.heroName,
-                  { color: colors.text },
+                  isMacEmbedded ? styles.heroSizeLineMac : styles.heroSizeLine,
+                  { color: colors.textSecondary },
                 ]}
-                numberOfLines={3}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
               >
-                {torrent.name}
+                {formatSize(torrent.completed)}
+                {' / '}
+                {formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)}
+                {torrent.amount_left > 0
+                  ? ` · ${t('torrentDetail.amountLeft', { size: formatSize(torrent.amount_left) })}`
+                  : ''}
+                {torrent.time_active > 0
+                  ? ` · ${t('torrentDetail.activeFor', { time: formatTime(torrent.time_active) })}`
+                  : ''}
               </Text>
-              <View style={styles.heroBadge}>
-                <View
-                  style={[StyleSheet.absoluteFill, { backgroundColor: stateColor, opacity: 0.28 }]}
+
+              <View style={styles.sparklineRow}>
+                <SpeedGraph
+                  data={dlHistory}
+                  color={colors.primary}
+                  width={graphWidth}
+                  height={36}
+                  maxValue={dlSparkMax}
                 />
-                <Text style={[styles.heroBadgeText, { color: colors.text }]} numberOfLines={1}>
-                  {stateLabel}
+                <Text style={[styles.sparklineScaleCaption, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.graphScale', { value: formatSpeed(dlSparkMax) })}
                 </Text>
               </View>
-            </View>
-
-            <View style={styles.progressRow}>
-              <View style={styles.progressBarFlex}>
-                <AnimatedProgressBar
-                  progress={Math.min(progress, 100)}
-                  color={stateColor}
-                  height={isMacEmbedded ? 4 : 5}
+              <View style={[styles.sparklineRow, { marginTop: 4 }]}>
+                <SpeedGraph
+                  data={ulHistory}
+                  color={colors.success}
+                  width={graphWidth}
+                  height={28}
+                  maxValue={ulSparkMax}
                 />
+                <Text style={[styles.sparklineScaleCaption, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.graphScale', { value: formatSpeed(ulSparkMax) })}
+                </Text>
               </View>
-              <TouchableOpacity
-                onPress={handlePauseResume}
-                disabled={actionLoading}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={[styles.pauseCircle, { backgroundColor: stateColor }]}
-                activeOpacity={0.7}
-                accessibilityLabel={isPaused ? t('torrentDetail.resume') : t('torrentDetail.pause')}
-              >
-                <Ionicons name={isPaused ? 'play' : 'pause'} size={14} color="#ffffff" />
-              </TouchableOpacity>
-            </View>
 
-            <Text
-              style={[
-                isMacEmbedded ? styles.heroSizeLineMac : styles.heroSizeLine,
-                { color: colors.textSecondary },
-              ]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
-            >
-              {formatSize(torrent.completed)}
-              {' / '}
-              {formatSize(torrent.total_size > 0 ? torrent.total_size : torrent.size)}
-              {torrent.amount_left > 0
-                ? ` · ${t('torrentDetail.amountLeft', { size: formatSize(torrent.amount_left) })}`
-                : ''}
-              {torrent.time_active > 0
-                ? ` · ${t('torrentDetail.activeFor', { time: formatTime(torrent.time_active) })}`
-                : ''}
-            </Text>
-
-            <View style={styles.sparklineRow}>
-              <SpeedGraph
-                data={dlHistory}
-                color={colors.primary}
-                width={graphWidth}
-                height={36}
-                maxValue={dlSparkMax}
-              />
-              <Text style={[styles.sparklineScaleCaption, { color: colors.textSecondary }]}>
-                {t('screens.transfer.graphScale', { value: formatSpeed(dlSparkMax) })}
-              </Text>
-            </View>
-            <View style={[styles.sparklineRow, { marginTop: 4 }]}>
-              <SpeedGraph
-                data={ulHistory}
-                color={colors.success}
-                width={graphWidth}
-                height={28}
-                maxValue={ulSparkMax}
-              />
-              <Text style={[styles.sparklineScaleCaption, { color: colors.textSecondary }]}>
-                {t('screens.transfer.graphScale', { value: formatSpeed(ulSparkMax) })}
-              </Text>
-            </View>
-
-            <View style={styles.heroStatsGrid}>
-              {(
-                [
-                  {
-                    key: 'dlSpeed',
-                    label: t('torrentDetail.dlSpeed'),
-                    value: formatSpeed(dlspeed),
-                  },
-                  {
-                    key: 'ulSpeed',
-                    label: t('torrentDetail.ulSpeed'),
-                    value: formatSpeed(upspeed),
-                  },
-                  {
-                    key: 'eta',
-                    label: t('torrentDetail.eta'),
-                    value: hasEta(torrent.eta, torrent.progress) ? formatTime(torrent.eta) : '-',
-                  },
-                  {
-                    key: 'ratio',
-                    label: t('torrentDetail.ratio'),
-                    value: torrent.ratio != null ? torrent.ratio.toFixed(2) : '0.00',
-                  },
-                  {
-                    key: 'uploaded',
-                    label: t('torrentDetail.uploaded'),
-                    value: formatSize(torrent.uploaded),
-                  },
-                  {
-                    key: 'seeds',
-                    label: t('torrentDetail.seeds'),
-                    value: `${torrent.num_seeds || 0} / ${torrent.num_complete || 0}`,
-                    onPress: handleOpenPeerDetails,
-                  },
-                  {
-                    key: 'peers',
-                    label: t('torrentDetail.peers'),
-                    value: `${torrent.num_leechs || 0} / ${torrent.num_incomplete || 0}`,
-                    onPress: handleOpenPeerDetails,
-                  },
-                  {
-                    key: 'availability',
-                    label: t('torrentDetail.availability'),
-                    value:
-                      torrent.availability > 0 ? formatAvailability(torrent.availability) : '-',
-                  },
-                ] as Array<{
-                  key: string;
-                  label: string;
-                  value: string;
-                  onPress?: () => void;
-                }>
-              ).map((item) => {
-                const cell = (
-                  <>
-                    <Text
-                      style={[styles.heroStatLabel, { color: colors.textSecondary }]}
-                      numberOfLines={1}
+              <View style={styles.heroStatsGrid}>
+                {(
+                  [
+                    {
+                      key: 'dlSpeed',
+                      label: t('torrentDetail.dlSpeed'),
+                      value: formatSpeed(dlspeed),
+                    },
+                    {
+                      key: 'ulSpeed',
+                      label: t('torrentDetail.ulSpeed'),
+                      value: formatSpeed(upspeed),
+                    },
+                    {
+                      key: 'eta',
+                      label: t('torrentDetail.eta'),
+                      value: hasEta(torrent.eta, torrent.progress) ? formatTime(torrent.eta) : '-',
+                    },
+                    {
+                      key: 'ratio',
+                      label: t('torrentDetail.ratio'),
+                      value: torrent.ratio != null ? torrent.ratio.toFixed(2) : '0.00',
+                    },
+                    {
+                      key: 'uploaded',
+                      label: t('torrentDetail.uploaded'),
+                      value: formatSize(torrent.uploaded),
+                    },
+                    {
+                      key: 'seeds',
+                      label: t('torrentDetail.seeds'),
+                      value: `${torrent.num_seeds || 0} / ${torrent.num_complete || 0}`,
+                      onPress: handleOpenPeerDetails,
+                    },
+                    {
+                      key: 'peers',
+                      label: t('torrentDetail.peers'),
+                      value: `${torrent.num_leechs || 0} / ${torrent.num_incomplete || 0}`,
+                      onPress: handleOpenPeerDetails,
+                    },
+                    {
+                      key: 'availability',
+                      label: t('torrentDetail.availability'),
+                      value:
+                        torrent.availability > 0 ? formatAvailability(torrent.availability) : '-',
+                    },
+                  ] as Array<{
+                    key: string;
+                    label: string;
+                    value: string;
+                    onPress?: () => void;
+                  }>
+                ).map((item) => {
+                  const cell = (
+                    <>
+                      <Text
+                        style={[styles.heroStatLabel, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {item.label}
+                      </Text>
+                      <Text
+                        style={[styles.heroStatValue, { color: colors.text }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                      >
+                        {item.value}
+                      </Text>
+                    </>
+                  );
+                  return item.onPress ? (
+                    <TouchableOpacity
+                      key={item.key}
+                      style={styles.heroStatCell}
+                      onPress={item.onPress}
+                      activeOpacity={0.7}
                     >
-                      {item.label}
-                    </Text>
-                    <Text
-                      style={[styles.heroStatValue, { color: colors.text }]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.7}
-                    >
-                      {item.value}
-                    </Text>
-                  </>
-                );
-                return item.onPress ? (
+                      {cell}
+                    </TouchableOpacity>
+                  ) : (
+                    <View key={item.key} style={styles.heroStatCell}>
+                      {cell}
+                    </View>
+                  );
+                })}
+              </View>
+
+              {(() => {
+                const realTrackers = trackers.filter((tr) => isRealTracker(tr.url));
+                if (realTrackers.length === 0) return null;
+                return (
                   <TouchableOpacity
-                    key={item.key}
-                    style={styles.heroStatCell}
-                    onPress={item.onPress}
+                    style={[styles.trackerHealthRow, { borderTopColor: colors.surfaceOutline }]}
+                    onPress={() => router.push(`/torrent/manage-trackers?hash=${hash}`)}
                     activeOpacity={0.7}
                   >
-                    {cell}
+                    <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>
+                      {t('torrentDetail.trackerHealth')}
+                    </Text>
+                    <View style={styles.trackerDots}>
+                      {realTrackers.slice(0, 12).map((tr, i) => (
+                        <View
+                          key={`${tr.url}-${i}`}
+                          style={[
+                            styles.trackerDot,
+                            { backgroundColor: trackerStatusColor(tr.status, colors) },
+                          ]}
+                        />
+                      ))}
+                      {realTrackers.length > 12 && (
+                        <Text style={[styles.trackerMore, { color: colors.textSecondary }]}>
+                          +{realTrackers.length - 12}
+                        </Text>
+                      )}
+                    </View>
                   </TouchableOpacity>
-                ) : (
-                  <View key={item.key} style={styles.heroStatCell}>
-                    {cell}
-                  </View>
                 );
-              })}
-            </View>
+              })()}
 
-            {(() => {
-              const realTrackers = trackers.filter((tr) => isRealTracker(tr.url));
-              if (realTrackers.length === 0) return null;
-              return (
-                <TouchableOpacity
-                  style={[styles.trackerHealthRow, { borderTopColor: colors.surfaceOutline }]}
-                  onPress={() => router.push(`/torrent/manage-trackers?hash=${hash}`)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>
-                    {t('torrentDetail.trackerHealth')}
+              {pieceStates.length > 0 && (
+                <View style={[styles.pieceMapBlock, { borderTopColor: colors.surfaceOutline }]}>
+                  <Text
+                    style={[styles.heroStatLabel, { color: colors.textSecondary, marginBottom: 6 }]}
+                  >
+                    {t('torrentDetail.pieceMap')}
+                    {properties?.pieces_have != null && properties?.pieces_num
+                      ? `  ·  ${properties.pieces_have}/${properties.pieces_num}`
+                      : ''}
                   </Text>
-                  <View style={styles.trackerDots}>
-                    {realTrackers.slice(0, 12).map((tr, i) => (
-                      <View
-                        key={`${tr.url}-${i}`}
-                        style={[
-                          styles.trackerDot,
-                          { backgroundColor: trackerStatusColor(tr.status, colors) },
-                        ]}
-                      />
-                    ))}
-                    {realTrackers.length > 12 && (
-                      <Text style={[styles.trackerMore, { color: colors.textSecondary }]}>
-                        +{realTrackers.length - 12}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })()}
+                  <PieceMap states={pieceStates} />
+                </View>
+              )}
 
-            {pieceStates.length > 0 && (
-              <View style={[styles.pieceMapBlock, { borderTopColor: colors.surfaceOutline }]}>
-                <Text
-                  style={[styles.heroStatLabel, { color: colors.textSecondary, marginBottom: 6 }]}
-                >
-                  {t('torrentDetail.pieceMap')}
-                  {properties?.pieces_have != null && properties?.pieces_num
-                    ? `  ·  ${properties.pieces_have}/${properties.pieces_num}`
-                    : ''}
+              {lastUpdatedAt && (
+                <Text style={[styles.lastUpdated, { color: colors.textSecondary }]}>
+                  {t('torrentDetail.lastUpdated', {
+                    time: lastUpdatedAt.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    }),
+                  })}
                 </Text>
-                <PieceMap states={pieceStates} />
-              </View>
-            )}
-
-            {lastUpdatedAt && (
-              <Text style={[styles.lastUpdated, { color: colors.textSecondary }]}>
-                {t('torrentDetail.lastUpdated', {
-                  time: lastUpdatedAt.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  }),
-                })}
-              </Text>
-            )}
-          </View>
+              )}
+            </View>
+          )}
 
           {/* ── Actions ─────────────────────────────────────────── */}
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: colors.textSecondary }]}
-              onPress={handleRecheck}
-              disabled={actionLoading}
-            >
-              <Ionicons name="checkmark-circle-outline" size={18} color={colors.textSecondary} />
-              <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>
-                {t('torrentDetail.recheck')}
+          {(!embedded || inspectorTab === 'overview') && (
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, { borderColor: colors.textSecondary }]}
+                onPress={handleRecheck}
+                disabled={actionLoading}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color={colors.textSecondary} />
+                <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>
+                  {t('torrentDetail.recheck')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, { borderColor: colors.error }]}
+                onPress={handleDelete}
+                disabled={actionLoading}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.error} />
+                <Text style={[styles.actionBtnText, { color: colors.error }]}>
+                  {t('common.delete')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {embedded && inspectorTab === 'files' && (
+            <View style={styles.inspectorPane}>
+              {files.length === 0 ? (
+                <Text style={[styles.inspectorEmpty, { color: colors.textSecondary }]}>
+                  {t('torrentDetail.filesCount', { count: 0 })}
+                </Text>
+              ) : (
+                files.map((file) => (
+                  <View
+                    key={file.index}
+                    style={[styles.inspectorRow, { borderBottomColor: colors.surfaceOutline }]}
+                  >
+                    <Text
+                      style={[styles.inspectorRowTitle, { color: colors.text }]}
+                      numberOfLines={1}
+                      ellipsizeMode="middle"
+                    >
+                      {file.name}
+                    </Text>
+                    <Text style={[styles.inspectorRowMeta, { color: colors.textSecondary }]}>
+                      {formatProgress(file.progress, 0)} · {formatSize(file.size)}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
+
+          {embedded && inspectorTab === 'trackers' && (
+            <View style={styles.inspectorPane}>
+              {trackers
+                .filter((tr) => isRealTracker(tr.url))
+                .map((tr) => (
+                  <View
+                    key={tr.url}
+                    style={[styles.inspectorRow, { borderBottomColor: colors.surfaceOutline }]}
+                  >
+                    <Text
+                      style={[styles.inspectorRowTitle, { color: colors.text }]}
+                      numberOfLines={1}
+                      ellipsizeMode="middle"
+                    >
+                      {tr.url}
+                    </Text>
+                    <Text style={[styles.inspectorRowMeta, { color: colors.textSecondary }]}>
+                      {tr.msg || `${tr.num_seeds} / ${tr.num_leeches}`}
+                    </Text>
+                  </View>
+                ))}
+            </View>
+          )}
+
+          {embedded && inspectorTab === 'peers' && (
+            <View style={styles.inspectorPane}>
+              {peersLoading ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : peersData.length === 0 ? (
+                <Text style={[styles.inspectorEmpty, { color: colors.textSecondary }]}>
+                  {t('torrentDetail.noConnectedPeers')}
+                </Text>
+              ) : (
+                peersData.map((peer) => (
+                  <View
+                    key={peer.ip}
+                    style={[styles.inspectorRow, { borderBottomColor: colors.surfaceOutline }]}
+                  >
+                    <Text style={[styles.inspectorRowTitle, { color: colors.text }]}>
+                      {peer.ip}
+                    </Text>
+                    <Text style={[styles.inspectorRowMeta, { color: colors.textSecondary }]}>
+                      {peer.client} · {formatProgress(peer.progress, 0)}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
+
+          {embedded && inspectorTab === 'pieces' && (
+            <View style={styles.inspectorPane}>
+              {pieceStates.length > 0 ? (
+                <PieceMap states={pieceStates} />
+              ) : (
+                <Text style={[styles.inspectorEmpty, { color: colors.textSecondary }]}>
+                  {t('torrentDetail.pieces')}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {embedded && inspectorTab === 'sources' && (
+            <View style={styles.inspectorPane}>
+              {webSeeds.length === 0 ? (
+                <Text style={[styles.inspectorEmpty, { color: colors.textSecondary }]}>
+                  {t('torrentDetail.httpSources')}
+                </Text>
+              ) : (
+                webSeeds.map((seed) => (
+                  <Text
+                    key={seed.url}
+                    style={[styles.inspectorRowTitle, { color: colors.text, paddingVertical: 8 }]}
+                    numberOfLines={1}
+                  >
+                    {seed.url}
+                  </Text>
+                ))
+              )}
+            </View>
+          )}
+
+          {!embedded && (
+            <>
+              {/* ── GENERAL ─────────────────────────────────────────── */}
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                {t('torrentDetail.general')}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: colors.error }]}
-              onPress={handleDelete}
-              disabled={actionLoading}
-            >
-              <Ionicons name="trash-outline" size={18} color={colors.error} />
-              <Text style={[styles.actionBtnText, { color: colors.error }]}>
-                {t('common.delete')}
+              <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+                {renderRows([
+                  properties &&
+                    editablePathRow(
+                      t('torrentDetail.savePath'),
+                      properties.save_path,
+                      handleSetLocation,
+                    ),
+                  properties?.download_path &&
+                    pathRow(t('torrentDetail.downloadPath'), properties.download_path),
+                  categoryBadgeRow(t('torrentDetail.category'), torrent.category || '', () =>
+                    setCategoryPickerVisible(true),
+                  ),
+                  tagsBadgeRow(t('torrentDetail.tags'), torrent.tags || '', handleAddTags),
+                ])}
+              </View>
+
+              {/* ── TRANSFER ────────────────────────────────────────── */}
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                {t('torrentDetail.transfer')}
               </Text>
-            </TouchableOpacity>
-          </View>
+              <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+                {renderRows([
+                  staticRow(
+                    t('torrentDetail.downloaded'),
+                    formatSize(torrent.downloaded ?? torrent.completed),
+                  ),
+                  staticRow(t('torrentDetail.uploaded'), formatSize(torrent.uploaded)),
+                  tappableRow(
+                    t('torrentDetail.dlLimit'),
+                    properties && properties.dl_limit > 0
+                      ? formatSpeed(properties.dl_limit)
+                      : t('common.unlimited'),
+                    handleSetDownloadLimit,
+                  ),
+                  tappableRow(
+                    t('torrentDetail.ulLimit'),
+                    properties && properties.up_limit > 0
+                      ? formatSpeed(properties.up_limit)
+                      : t('common.unlimited'),
+                    handleSetUploadLimit,
+                  ),
+                  tappableRow(
+                    t('torrentDetail.maxRatio'),
+                    shareLimitValue(torrent.ratio_limit, torrent.max_ratio, (value) =>
+                      value.toFixed(2),
+                    ),
+                    handleSetRatioLimit,
+                  ),
+                  staticRow(t('torrentDetail.seedingTime'), formatTime(torrent.seeding_time)),
+                  tappableRow(
+                    t('torrentDetail.maxSeedingTime'),
+                    shareLimitValue(torrent.seeding_time_limit, torrent.max_seeding_time, (value) =>
+                      formatTime(value * 60),
+                    ),
+                    handleSetSeedingTimeLimit,
+                  ),
+                ])}
+              </View>
 
-          {/* ── GENERAL ─────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {t('torrentDetail.general')}
-          </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-            {renderRows([
-              properties &&
-                editablePathRow(
-                  t('torrentDetail.savePath'),
-                  properties.save_path,
-                  handleSetLocation,
-                ),
-              properties?.download_path &&
-                pathRow(t('torrentDetail.downloadPath'), properties.download_path),
-              categoryBadgeRow(t('torrentDetail.category'), torrent.category || '', () =>
-                setCategoryPickerVisible(true),
-              ),
-              tagsBadgeRow(t('torrentDetail.tags'), torrent.tags || '', handleAddTags),
-            ])}
-          </View>
+              {/* ── NETWORK ─────────────────────────────────────────── */}
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                {t('torrentDetail.network')}
+              </Text>
+              <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+                {renderRows([
+                  torrent.popularity != null &&
+                    staticRow(t('torrentDetail.popularity'), torrent.popularity.toFixed(2)),
+                  statusRow(
+                    t('torrentDetail.dht'),
+                    channelStateLabel(pseudoStates.dht),
+                    channelStateColor(pseudoStates.dht),
+                  ),
+                  statusRow(
+                    t('torrentDetail.pex'),
+                    channelStateLabel(pseudoStates.pex),
+                    channelStateColor(pseudoStates.pex),
+                  ),
+                  statusRow(
+                    t('torrentDetail.lsd'),
+                    channelStateLabel(pseudoStates.lsd),
+                    channelStateColor(pseudoStates.lsd),
+                  ),
+                  staticRow(t('torrentDetail.encryption'), encryptionLabel),
+                  statusRow(t('torrentDetail.private'), privateLabel, privateColor),
+                ])}
+              </View>
 
-          {/* ── TRANSFER ────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {t('torrentDetail.transfer')}
-          </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-            {renderRows([
-              staticRow(
-                t('torrentDetail.downloaded'),
-                formatSize(torrent.downloaded ?? torrent.completed),
-              ),
-              staticRow(t('torrentDetail.uploaded'), formatSize(torrent.uploaded)),
-              tappableRow(
-                t('torrentDetail.dlLimit'),
-                properties && properties.dl_limit > 0
-                  ? formatSpeed(properties.dl_limit)
-                  : t('common.unlimited'),
-                handleSetDownloadLimit,
-              ),
-              tappableRow(
-                t('torrentDetail.ulLimit'),
-                properties && properties.up_limit > 0
-                  ? formatSpeed(properties.up_limit)
-                  : t('common.unlimited'),
-                handleSetUploadLimit,
-              ),
-              tappableRow(
-                t('torrentDetail.maxRatio'),
-                shareLimitValue(torrent.ratio_limit, torrent.max_ratio, (value) =>
-                  value.toFixed(2),
-                ),
-                handleSetRatioLimit,
-              ),
-              staticRow(t('torrentDetail.seedingTime'), formatTime(torrent.seeding_time)),
-              tappableRow(
-                t('torrentDetail.maxSeedingTime'),
-                shareLimitValue(torrent.seeding_time_limit, torrent.max_seeding_time, (value) =>
-                  formatTime(value * 60),
-                ),
-                handleSetSeedingTimeLimit,
-              ),
-            ])}
-          </View>
+              {/* ── CONTENT ─────────────────────────────────────────── */}
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                {t('torrentDetail.content')}
+              </Text>
+              <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+                {renderRows([
+                  navRow(
+                    t('torrentDetail.files'),
+                    t('torrentDetail.filesCount', { count: files.length }),
+                    () => router.push(`/torrent/files?hash=${hash}`),
+                  ),
+                  trackerNavRowWithReannounce(
+                    t('torrentDetail.trackers'),
+                    t('torrentDetail.trackersCount', {
+                      count: trackers.filter((tr) => isRealTracker(tr.url)).length,
+                    }),
+                    () => router.push(`/torrent/manage-trackers?hash=${hash}`),
+                  ),
+                ])}
+              </View>
 
-          {/* ── NETWORK ─────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {t('torrentDetail.network')}
-          </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-            {renderRows([
-              torrent.popularity != null &&
-                staticRow(t('torrentDetail.popularity'), torrent.popularity.toFixed(2)),
-              statusRow(
-                t('torrentDetail.dht'),
-                channelStateLabel(pseudoStates.dht),
-                channelStateColor(pseudoStates.dht),
-              ),
-              statusRow(
-                t('torrentDetail.pex'),
-                channelStateLabel(pseudoStates.pex),
-                channelStateColor(pseudoStates.pex),
-              ),
-              statusRow(
-                t('torrentDetail.lsd'),
-                channelStateLabel(pseudoStates.lsd),
-                channelStateColor(pseudoStates.lsd),
-              ),
-              staticRow(t('torrentDetail.encryption'), encryptionLabel),
-              statusRow(t('torrentDetail.private'), privateLabel, privateColor),
-            ])}
-          </View>
+              {/* ── ADVANCED ────────────────────────────────────────── */}
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                {t('torrentDetail.advanced')}
+              </Text>
+              <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+                {renderRows([
+                  tappableRow(t('torrentDetail.priority'), priorityDisplay, () =>
+                    setPriorityPickerVisible(true),
+                  ),
+                  toggleRow(
+                    t('torrentDetail.autoManagement'),
+                    optAutoTmm ?? torrent.auto_tmm ?? false,
+                    handleAutomaticManagement,
+                  ),
+                  toggleRow(
+                    t('torrentDetail.sequentialDownload'),
+                    optSeqDl ?? torrent.seq_dl ?? false,
+                    handleSequentialDownload,
+                  ),
+                  toggleRow(
+                    t('torrentDetail.firstLastPiecePriority'),
+                    optFlPiece ?? torrent.f_l_piece_prio ?? false,
+                    handleFirstLastPiecePriority,
+                  ),
+                  toggleRow(
+                    t('torrentDetail.superSeeding'),
+                    optSuperSeeding ?? torrent.super_seeding ?? false,
+                    handleSuperSeeding,
+                  ),
+                  toggleRow(
+                    t('torrentDetail.forceStart'),
+                    optForceStart ?? torrent.force_start ?? false,
+                    handleForceStart,
+                  ),
+                  renameRow(t('torrentDetail.rename'), torrent.name, handleRenameTorrent),
+                ])}
+              </View>
 
-          {/* ── CONTENT ─────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {t('torrentDetail.content')}
-          </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-            {renderRows([
-              navRow(
-                t('torrentDetail.files'),
-                t('torrentDetail.filesCount', { count: files.length }),
-                () => router.push(`/torrent/files?hash=${hash}`),
-              ),
-              trackerNavRowWithReannounce(
-                t('torrentDetail.trackers'),
-                t('torrentDetail.trackersCount', {
-                  count: trackers.filter((tr) => isRealTracker(tr.url)).length,
-                }),
-                () => router.push(`/torrent/manage-trackers?hash=${hash}`),
-              ),
-            ])}
-          </View>
-
-          {/* ── ADVANCED ────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {t('torrentDetail.advanced')}
-          </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-            {renderRows([
-              tappableRow(t('torrentDetail.priority'), priorityDisplay, () =>
-                setPriorityPickerVisible(true),
-              ),
-              toggleRow(
-                t('torrentDetail.autoManagement'),
-                optAutoTmm ?? torrent.auto_tmm ?? false,
-                handleAutomaticManagement,
-              ),
-              toggleRow(
-                t('torrentDetail.sequentialDownload'),
-                optSeqDl ?? torrent.seq_dl ?? false,
-                handleSequentialDownload,
-              ),
-              toggleRow(
-                t('torrentDetail.firstLastPiecePriority'),
-                optFlPiece ?? torrent.f_l_piece_prio ?? false,
-                handleFirstLastPiecePriority,
-              ),
-              toggleRow(
-                t('torrentDetail.superSeeding'),
-                optSuperSeeding ?? torrent.super_seeding ?? false,
-                handleSuperSeeding,
-              ),
-              toggleRow(
-                t('torrentDetail.forceStart'),
-                optForceStart ?? torrent.force_start ?? false,
-                handleForceStart,
-              ),
-              renameRow(t('torrentDetail.rename'), torrent.name, handleRenameTorrent),
-            ])}
-          </View>
-
-          {/* ── DATES ───────────────────────────────────────────── */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            {t('torrentDetail.dates')}
-          </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-            {renderRows([
-              staticRow(t('torrentDetail.added'), formatDate(torrent.added_on)),
-              staticRow(t('torrentDetail.completed'), formatDate(torrent.completion_on)),
-              staticRow(t('torrentDetail.lastActivity'), formatDate(torrent.last_activity)),
-            ])}
-          </View>
+              {/* ── DATES ───────────────────────────────────────────── */}
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                {t('torrentDetail.dates')}
+              </Text>
+              <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+                {renderRows([
+                  staticRow(t('torrentDetail.added'), formatDate(torrent.added_on)),
+                  staticRow(t('torrentDetail.completed'), formatDate(torrent.completion_on)),
+                  staticRow(t('torrentDetail.lastActivity'), formatDate(torrent.last_activity)),
+                ])}
+              </View>
+            </>
+          )}
         </ScrollView>
 
         {/* ── Modals ──────────────────────────────────────────── */}
@@ -2421,6 +2616,39 @@ const styles = StyleSheet.create({
   // Mac Catalyst, embedded detail pane only (isMacEmbedded) - Pogona-style
   // inspector: no outer card chrome, denser name/meta type. Route rendering
   // and the regular-idiom embedded pane keep the styles above untouched.
+  inspectorTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+  },
+  inspectorTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  inspectorTabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  inspectorPane: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+  },
+  inspectorRow: {
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  inspectorRowTitle: {
+    fontSize: 13,
+  },
+  inspectorRowMeta: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  inspectorEmpty: {
+    fontSize: 13,
+    paddingVertical: 16,
+    textAlign: 'center',
+  },
   heroCardMac: {
     padding: 0,
     marginBottom: 10,

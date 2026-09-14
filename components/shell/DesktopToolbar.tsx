@@ -69,6 +69,18 @@ export interface DesktopToolbarProps {
    */
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
+  hasSelection?: boolean;
+  onDeletePress?: () => void;
+  onResumePress?: () => void;
+  onPausePress?: () => void;
+  onQueueTopPress?: () => void;
+  onQueueUpPress?: () => void;
+  onQueueDownPress?: () => void;
+  onQueueBottomPress?: () => void;
+  onAltSpeedPress?: () => void;
+  altSpeedActive?: boolean;
+  onRecheckPress?: () => void;
+  onReannouncePress?: () => void;
 }
 
 interface ToolbarIconButtonProps {
@@ -78,6 +90,8 @@ interface ToolbarIconButtonProps {
   onPress: () => void;
   accessibilityLabel: string;
   selected?: boolean;
+  disabled?: boolean;
+  active?: boolean;
 }
 
 function ToolbarIconButton({
@@ -87,26 +101,33 @@ function ToolbarIconButton({
   onPress,
   accessibilityLabel,
   selected,
+  disabled,
+  active,
 }: ToolbarIconButtonProps) {
   const { colors } = useTheme();
   const [hovered, setHovered] = useState(false);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: !!selected }}
+      accessibilityState={{ selected: !!selected, disabled: !!disabled }}
       style={[
         styles.iconButton,
-        { width: buttonSize, height: buttonSize },
-        hovered && { backgroundColor: hexToRgba(colors.text, 0.08) },
+        { width: buttonSize, height: buttonSize, opacity: disabled ? 0.35 : 1 },
+        hovered && !disabled && { backgroundColor: hexToRgba(colors.text, 0.08) },
       ]}
     >
-      <Ionicons name={icon} size={iconSize} color={colors.text} />
+      <Ionicons name={icon} size={iconSize} color={active ? colors.warning : colors.text} />
     </Pressable>
   );
+}
+
+function ToolbarDivider({ color }: { color: string }) {
+  return <View style={[styles.divider, { backgroundColor: color }]} />;
 }
 
 function SortControl({
@@ -170,6 +191,18 @@ export function DesktopToolbar({
   searchInputRef,
   sidebarCollapsed,
   onToggleSidebar,
+  hasSelection = false,
+  onDeletePress,
+  onResumePress,
+  onPausePress,
+  onQueueTopPress,
+  onQueueUpPress,
+  onQueueDownPress,
+  onQueueBottomPress,
+  onAltSpeedPress,
+  altSpeedActive = false,
+  onRecheckPress,
+  onReannouncePress,
 }: DesktopToolbarProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -181,10 +214,11 @@ export function DesktopToolbar({
       style={[
         styles.bar,
         {
-          height: metrics.toolbarHeight,
-          backgroundColor: colors.surface,
-          borderBottomColor: colors.surfaceOutline,
-          borderBottomWidth: metrics.hairline,
+          height: isMac ? metrics.titlebarHeight : metrics.toolbarHeight,
+          paddingLeft: isMac && sidebarCollapsed ? metrics.trafficLightsWidth : undefined,
+          backgroundColor: colors.background,
+          borderBottomColor: hexToRgba(colors.text, 0.08),
+          borderBottomWidth: isMac ? 0 : metrics.hairline,
         },
       ]}
     >
@@ -219,17 +253,133 @@ export function DesktopToolbar({
             {resultCount}
           </Text>
         )}
+        {isMac && (
+          <View style={styles.chrome}>
+            <ToolbarIconButton
+              icon="add"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onAddPress}
+              accessibilityLabel={t('screens.torrents.addTorrent')}
+            />
+            <ToolbarIconButton
+              icon="trash-outline"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onDeletePress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('common.delete')}
+            />
+            <ToolbarDivider color={colors.surfaceOutline} />
+            <ToolbarIconButton
+              icon="play"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onResumePress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('actions.resume')}
+            />
+            <ToolbarIconButton
+              icon="pause"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onPausePress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('actions.pause')}
+            />
+            <ToolbarDivider color={colors.surfaceOutline} />
+            <ToolbarIconButton
+              icon="play-skip-back"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onQueueTopPress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('commands.queueTop')}
+            />
+            <ToolbarIconButton
+              icon="chevron-up"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onQueueUpPress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('commands.queueUp')}
+            />
+            <ToolbarIconButton
+              icon="chevron-down"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onQueueDownPress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('commands.queueDown')}
+            />
+            <ToolbarIconButton
+              icon="play-skip-forward"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onQueueBottomPress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('commands.queueBottom')}
+            />
+            <ToolbarDivider color={colors.surfaceOutline} />
+            <ToolbarIconButton
+              icon={altSpeedActive ? 'speedometer' : 'speedometer-outline'}
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onAltSpeedPress ?? (() => {})}
+              active={altSpeedActive}
+              accessibilityLabel={
+                altSpeedActive ? t('statusBar.toggleAltSpeedOff') : t('statusBar.toggleAltSpeedOn')
+              }
+            />
+            <ToolbarIconButton
+              icon="refresh-outline"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onRecheckPress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('actions.recheck')}
+            />
+            <ToolbarIconButton
+              icon="megaphone-outline"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onReannouncePress ?? (() => {})}
+              disabled={!hasSelection}
+              accessibilityLabel={t('actions.reannounce')}
+            />
+          </View>
+        )}
+        {!isMac && hasSelection && (
+          <View style={styles.chrome}>
+            <ToolbarIconButton
+              icon="play"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onResumePress ?? (() => {})}
+              accessibilityLabel={t('actions.resume')}
+            />
+            <ToolbarIconButton
+              icon="pause"
+              iconSize={metrics.toolbarIconSize}
+              buttonSize={metrics.toolbarControlHeight}
+              onPress={onPausePress ?? (() => {})}
+              accessibilityLabel={t('actions.pause')}
+            />
+          </View>
+        )}
       </View>
 
       <View style={styles.right}>
-        <ToolbarIconButton
-          icon={selectMode ? 'close' : 'checkmark-circle-outline'}
-          iconSize={metrics.toolbarIconSize}
-          buttonSize={metrics.toolbarControlHeight}
-          selected={selectMode}
-          onPress={onToggleSelectMode}
-          accessibilityLabel={selectMode ? t('common.close') : t('screens.torrents.selectMode')}
-        />
+        {!isMac && (
+          <ToolbarIconButton
+            icon={selectMode ? 'close' : 'checkmark-circle-outline'}
+            iconSize={metrics.toolbarIconSize}
+            buttonSize={metrics.toolbarControlHeight}
+            selected={selectMode}
+            onPress={onToggleSelectMode}
+            accessibilityLabel={selectMode ? t('common.close') : t('screens.torrents.selectMode')}
+          />
+        )}
 
         <SortControl
           idiom={idiom}
@@ -239,7 +389,7 @@ export function DesktopToolbar({
           onPress={onSortPress}
         />
 
-        {!selectMode && (
+        {!isMac && !selectMode && (
           <ToolbarIconButton
             icon="add"
             iconSize={metrics.toolbarIconSize}
@@ -350,5 +500,16 @@ const styles = StyleSheet.create({
   searchFieldInput: {
     flex: 1,
     padding: 0,
+  },
+  chrome: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginLeft: spacing.sm,
+  },
+  divider: {
+    width: StyleSheet.hairlineWidth,
+    height: 16,
+    marginHorizontal: 4,
   },
 });

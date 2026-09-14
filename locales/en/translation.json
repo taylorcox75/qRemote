@@ -1001,6 +1001,8 @@
     "peers": "Peers",
     "availability": "Availability",
     "popularity": "Popularity",
+    "overview": "Overview",
+    "httpSources": "HTTP sources",
     "files": "Files",
     "trackers": "Trackers",
     "forceStart": "Force Start",
@@ -1133,7 +1135,26 @@
       "destinations": "Navigation",
       "status": "Status",
       "categories": "Categories",
-      "tags": "Tags"
+      "tags": "Tags",
+      "trackers": "Trackers"
+    },
+    "newCategory": "New category",
+    "newTags": "New tags",
+    "editCategory": "Edit category",
+    "deleteCategory": "Delete category",
+    "deleteTag": "Delete tag",
+    "status": {
+      "all": "All",
+      "downloading": "Downloading",
+      "seeding": "Seeding",
+      "completed": "Completed",
+      "running": "Running",
+      "paused": "Stopped",
+      "active": "Active",
+      "inactive": "Inactive",
+      "stalled": "Stalled",
+      "checking": "Checking",
+      "error": "Errors"
     }
   },
   "sort": {
@@ -1158,7 +1179,10 @@
       "peers": "Peers",
       "eta": "ETA",
       "ratio": "Ratio",
-      "added": "Added"
+      "added": "Added",
+      "completed": "Completed",
+      "seen": "Seen complete",
+      "queue": "Queue"
     },
     "sortedAscending": "Sorted ascending",
     "sortedDescending": "Sorted descending"

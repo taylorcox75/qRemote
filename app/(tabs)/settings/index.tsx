@@ -32,6 +32,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { colorThemeManager } from '@/services/color-theme-manager';
+import { useShell } from '@/context/ShellContext';
 
 const APP_STORE_URL = 'https://apps.apple.com/us/app/qremote-for-qbittorrent/id6756276747';
 
@@ -116,6 +117,7 @@ export default function SettingsScreen() {
     useServer();
   const { showToast } = useToast();
   const { isDark, colors } = useTheme();
+  const { idiom } = useShell();
   const [hasServers, setHasServers] = useState(false);
   const disconnectBadgeBackground = colorThemeManager.hexToRgba(
     colorThemeManager.rgbaToHex(colors.error),
@@ -302,78 +304,82 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
-        {/* Navigation Rows */}
-        <View style={styles.section}>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <NavRow
-              icon="server-outline"
-              label={t('screens.settings.servers')}
-              onPress={() => router.push('/settings/servers')}
-              colors={colors}
-            />
-            <NavRow
-              icon="color-palette-outline"
-              label={t('screens.settings.appearance')}
-              onPress={() => router.push('/settings/appearance')}
-              colors={colors}
-            />
-            <NavRow
-              icon="options-outline"
-              label={t('screens.settings.serverSettings')}
-              onPress={() => router.push('/settings/torrent-defaults')}
-              colors={colors}
-            />
-            <NavRow
-              icon="git-network-outline"
-              label={t('screens.settings.connectionSettings')}
-              onPress={() => router.push('/settings/connection')}
-              colors={colors}
-            />
-            <NavRow
-              icon="logo-rss"
-              label={t('screens.settings.rss')}
-              onPress={() => router.push('/settings/rss')}
-              colors={colors}
-            />
-            <NavRow
-              icon="extension-puzzle-outline"
-              label={t('screens.search.pluginsTitle')}
-              onPress={() => router.push('/search/plugins')}
-              colors={colors}
-            />
-            <NavRow
-              icon="film-outline"
-              label={t('screens.settings.integrations')}
-              onPress={() => router.push('/settings/integrations')}
-              colors={colors}
-            />
-            <NavRow
-              icon="construct-outline"
-              label={t('screens.settings.advanced')}
-              onPress={() => router.push('/settings/advanced')}
-              colors={colors}
-              isLast
-            />
-          </View>
-        </View>
+        {/* Navigation Rows — compact only. regular/mac use SettingsSidebar. */}
+        {idiom === 'compact' && (
+          <>
+            <View style={styles.section}>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <NavRow
+                  icon="server-outline"
+                  label={t('screens.settings.servers')}
+                  onPress={() => router.push('/settings/servers')}
+                  colors={colors}
+                />
+                <NavRow
+                  icon="color-palette-outline"
+                  label={t('screens.settings.appearance')}
+                  onPress={() => router.push('/settings/appearance')}
+                  colors={colors}
+                />
+                <NavRow
+                  icon="options-outline"
+                  label={t('screens.settings.serverSettings')}
+                  onPress={() => router.push('/settings/torrent-defaults')}
+                  colors={colors}
+                />
+                <NavRow
+                  icon="git-network-outline"
+                  label={t('screens.settings.connectionSettings')}
+                  onPress={() => router.push('/settings/connection')}
+                  colors={colors}
+                />
+                <NavRow
+                  icon="logo-rss"
+                  label={t('screens.settings.rss')}
+                  onPress={() => router.push('/settings/rss')}
+                  colors={colors}
+                />
+                <NavRow
+                  icon="extension-puzzle-outline"
+                  label={t('screens.search.pluginsTitle')}
+                  onPress={() => router.push('/search/plugins')}
+                  colors={colors}
+                />
+                <NavRow
+                  icon="film-outline"
+                  label={t('screens.settings.integrations')}
+                  onPress={() => router.push('/settings/integrations')}
+                  colors={colors}
+                />
+                <NavRow
+                  icon="construct-outline"
+                  label={t('screens.settings.advanced')}
+                  onPress={() => router.push('/settings/advanced')}
+                  colors={colors}
+                  isLast
+                />
+              </View>
+            </View>
 
-        <View style={styles.section}>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <NavRow
-              icon="sparkles-outline"
-              label={t('screens.settings.whatsNew')}
-              onPress={() => router.push('/settings/whats-new')}
-              colors={colors}
-            />
-            <NavRow
-              icon="information-circle-outline"
-              label={t('screens.settings.about')}
-              onPress={() => router.push('/settings/about')}
-              colors={colors}
-              isLast
-            />
-          </View>
-        </View>
+            <View style={styles.section}>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <NavRow
+                  icon="sparkles-outline"
+                  label={t('screens.settings.whatsNew')}
+                  onPress={() => router.push('/settings/whats-new')}
+                  colors={colors}
+                />
+                <NavRow
+                  icon="information-circle-outline"
+                  label={t('screens.settings.about')}
+                  onPress={() => router.push('/settings/about')}
+                  colors={colors}
+                  isLast
+                />
+              </View>
+            </View>
+          </>
+        )}
 
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>

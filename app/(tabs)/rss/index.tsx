@@ -7,6 +7,10 @@
  * remove, plus refresh/mark-all-read for feeds). Tapping a feed pushes the
  * article-list screen at /rss/feed. The auto-download rules screen is one
  * tap away via the header's funnel button.
+ *
+ * Compact keeps the iPhone title + fat action-button row. Regular/mac use
+ * a static toolbar-density header (icon actions, 13pt/15pt type) and
+ * hairline tree rows matching Search/Torrents.
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -32,12 +36,15 @@ import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
+import { useShell } from '@/context/ShellContext';
 import { useRssFeeds } from '@/hooks/useRssFeeds';
 import { RssFeed, RssItemsResponse } from '@/types/api';
 import { isRssFeed, joinRssPath, parentRssPath, rssPathBaseName } from '@/utils/rss';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
+import { desktopMetrics, type DesktopMetrics } from '@/constants/desktop';
 import { getErrorMessage } from '@/utils/error';
+import { hexToRgba } from '@/utils/color';
 import { haptics } from '@/utils/haptics';
 
 type Row =
@@ -90,6 +97,9 @@ export default function RssFeedsScreen() {
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
   const { isConnected } = useServer();
+  const { idiom, sidebarCollapsed } = useShell();
+  const isDesktop = idiom !== 'compact';
+  const metrics = desktopMetrics(idiom === 'mac' ? 'mac' : 'regular');
   const {
     tree,
     folders,
@@ -446,59 +456,148 @@ export default function RssFeedsScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <View style={styles.headerButton} />
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {t('screens.rss.feedsTitle')}
-          </Text>
-          <View style={styles.headerButton} />
+        <View
+          style={[
+            styles.header,
+            {
+              borderBottomColor: isDesktop ? hexToRgba(colors.text, 0.08) : colors.surfaceOutline,
+            },
+            isDesktop && {
+              minHeight: idiom === 'mac' ? metrics.titlebarHeight : metrics.toolbarHeight,
+              paddingVertical: 0,
+              paddingHorizontal: metrics.sidebarInsetHorizontal,
+              borderBottomWidth: StyleSheet.hairlineWidth,
+            },
+            idiom === 'mac' && sidebarCollapsed && { paddingLeft: metrics.trafficLightsWidth },
+          ]}
+        >
+          {isDesktop ? (
+            <>
+              <Text
+                style={[
+                  styles.headerTitle,
+                  {
+                    fontSize: metrics.toolbarFontSize,
+                    lineHeight: Math.round(metrics.toolbarFontSize * 1.3),
+                    flex: 1,
+                    textAlign: 'left',
+                    color: colors.text,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {t('screens.rss.feedsTitle')}
+              </Text>
+              <View style={styles.desktopHeaderActions}>
+                <TouchableOpacity
+                  style={{
+                    width: metrics.toolbarControlHeight,
+                    height: metrics.toolbarControlHeight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => setPendingInput({ kind: 'addRootFeed' })}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.rss.addFeed')}
+                >
+                  <Ionicons name="add" size={metrics.toolbarIconSize} color={colors.text} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    width: metrics.toolbarControlHeight,
+                    height: metrics.toolbarControlHeight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => setPendingInput({ kind: 'addRootFolder' })}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.rss.addFolder')}
+                >
+                  <Ionicons
+                    name="folder-outline"
+                    size={metrics.toolbarIconSize}
+                    color={colors.text}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    width: metrics.toolbarControlHeight,
+                    height: metrics.toolbarControlHeight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: refreshingAll ? 0.5 : 1,
+                  }}
+                  onPress={() => void handleRefreshAll()}
+                  disabled={refreshingAll}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.rss.refreshAll')}
+                >
+                  {refreshingAll ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Ionicons name="refresh" size={metrics.toolbarIconSize} color={colors.text} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.headerButton} />
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
+                {t('screens.rss.feedsTitle')}
+              </Text>
+              <View style={styles.headerButton} />
+            </>
+          )}
         </View>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-            onPress={() => setPendingInput({ kind: 'addRootFeed' })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={18} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>{t('screens.rss.addFeed')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              { backgroundColor: colors.surface, borderColor: colors.surfaceOutline },
-            ]}
-            onPress={() => setPendingInput({ kind: 'addRootFolder' })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="folder-outline" size={18} color={colors.primary} />
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              {t('screens.rss.addFolder')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.surfaceOutline,
-                opacity: refreshingAll ? 0.5 : 1,
-              },
-            ]}
-            onPress={() => void handleRefreshAll()}
-            disabled={refreshingAll}
-            activeOpacity={0.7}
-          >
-            {refreshingAll ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Ionicons name="refresh" size={18} color={colors.primary} />
-            )}
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              {t('screens.rss.refreshAll')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {!isDesktop && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+              onPress={() => setPendingInput({ kind: 'addRootFeed' })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>{t('screens.rss.addFeed')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                { backgroundColor: colors.surface, borderColor: colors.surfaceOutline },
+              ]}
+              onPress={() => setPendingInput({ kind: 'addRootFolder' })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="folder-outline" size={18} color={colors.primary} />
+              <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+                {t('screens.rss.addFolder')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.surfaceOutline,
+                  opacity: refreshingAll ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => void handleRefreshAll()}
+              disabled={refreshingAll}
+              activeOpacity={0.7}
+            >
+              {refreshingAll ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="refresh" size={18} color={colors.primary} />
+              )}
+              <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+                {t('screens.rss.refreshAll')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {isLoading ? (
           <View style={styles.center}>
@@ -509,7 +608,7 @@ export default function RssFeedsScreen() {
         ) : showEmpty ? (
           <EmptyState
             icon="logo-rss"
-            iconSize={56}
+            iconSize={isDesktop ? 40 : 56}
             title={t('screens.rss.noFeedsTitle')}
             subtitle={t('screens.rss.noFeedsSubtitle')}
           />
@@ -527,6 +626,8 @@ export default function RssFeedsScreen() {
                   isExpanded={expandedFolders.has(item.path)}
                   isBusy={busyPath === item.path}
                   colors={colors}
+                  dense={isDesktop}
+                  metrics={isDesktop ? metrics : undefined}
                   onToggle={() => toggleFolder(item.path)}
                   onLongPress={(anchor) => openFolderMenu(item.path, anchor)}
                   onMenuPress={(anchor) => openFolderMenu(item.path, anchor)}
@@ -537,6 +638,8 @@ export default function RssFeedsScreen() {
                   depth={item.depth}
                   isBusy={busyPath === item.path}
                   colors={colors}
+                  dense={isDesktop}
+                  metrics={isDesktop ? metrics : undefined}
                   onPress={() => handleOpenFeed(item.path)}
                   onLongPress={(anchor) => openFeedMenu(item.path, anchor)}
                   onMenuPress={(anchor) => openFeedMenu(item.path, anchor)}
@@ -608,6 +711,8 @@ interface FolderRowProps {
   isExpanded: boolean;
   isBusy: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
+  dense?: boolean;
+  metrics?: DesktopMetrics;
   onToggle: () => void;
   onLongPress: (anchor: Anchor) => void;
   onMenuPress: (anchor: Anchor) => void;
@@ -619,15 +724,30 @@ function FolderRow({
   isExpanded,
   isBusy,
   colors,
+  dense,
+  metrics,
   onToggle,
   onLongPress,
   onMenuPress,
 }: FolderRowProps) {
+  const inset =
+    dense && metrics
+      ? metrics.sidebarInsetHorizontal + depth * metrics.sidebarInsetHorizontal
+      : spacing.lg + depth * spacing.lg;
+  const iconSize = dense && metrics ? metrics.toolbarIconSize : 16;
   return (
     <TouchableOpacity
       style={[
         styles.row,
-        { paddingLeft: spacing.lg + depth * spacing.lg, opacity: isBusy ? 0.5 : 1 },
+        dense &&
+          metrics && {
+            minHeight: metrics.tableRowHeight,
+            paddingVertical: spacing.xs,
+            paddingRight: metrics.sidebarInsetHorizontal,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.surfaceOutline,
+          },
+        { paddingLeft: inset, opacity: isBusy ? 0.5 : 1 },
       ]}
       onPress={onToggle}
       onLongPress={(e) => onLongPress({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
@@ -636,12 +756,28 @@ function FolderRow({
     >
       <Ionicons
         name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-        size={16}
+        size={iconSize}
         color={colors.textSecondary}
         style={styles.chevron}
       />
-      <Ionicons name="folder" size={20} color={colors.primary} style={styles.rowIcon} />
-      <Text style={[styles.rowTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+      <Ionicons
+        name="folder"
+        size={dense && metrics ? metrics.toolbarIconSize : 20}
+        color={colors.primary}
+        style={styles.rowIcon}
+      />
+      <Text
+        style={[
+          styles.rowTitle,
+          dense &&
+            metrics && {
+              fontSize: metrics.tableFontSize,
+              lineHeight: Math.round(metrics.tableFontSize * 1.3),
+            },
+          { color: colors.text, flex: 1 },
+        ]}
+        numberOfLines={1}
+      >
         {rssPathBaseName(path)}
       </Text>
       {isBusy && <ActivityIndicator size="small" color={colors.primary} />}
@@ -650,7 +786,11 @@ function FolderRow({
         hitSlop={8}
         style={styles.menuButton}
       >
-        <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+        <Ionicons
+          name="ellipsis-horizontal"
+          size={dense && metrics ? metrics.toolbarIconSize : 18}
+          color={colors.textSecondary}
+        />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -661,17 +801,41 @@ interface FeedRowProps {
   depth: number;
   isBusy: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
+  dense?: boolean;
+  metrics?: DesktopMetrics;
   onPress: () => void;
   onLongPress: (anchor: Anchor) => void;
   onMenuPress: (anchor: Anchor) => void;
 }
 
-function FeedRow({ feed, depth, isBusy, colors, onPress, onLongPress, onMenuPress }: FeedRowProps) {
+function FeedRow({
+  feed,
+  depth,
+  isBusy,
+  colors,
+  dense,
+  metrics,
+  onPress,
+  onLongPress,
+  onMenuPress,
+}: FeedRowProps) {
+  const inset =
+    dense && metrics
+      ? metrics.sidebarInsetHorizontal + depth * metrics.sidebarInsetHorizontal
+      : spacing.lg + depth * spacing.lg;
   return (
     <TouchableOpacity
       style={[
         styles.row,
-        { paddingLeft: spacing.lg + depth * spacing.lg, opacity: isBusy ? 0.5 : 1 },
+        dense &&
+          metrics && {
+            minHeight: metrics.tableRowHeight,
+            paddingVertical: spacing.xs,
+            paddingRight: metrics.sidebarInsetHorizontal,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.surfaceOutline,
+          },
+        { paddingLeft: inset, opacity: isBusy ? 0.5 : 1 },
       ]}
       onPress={onPress}
       onLongPress={(e) => onLongPress({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
@@ -684,20 +848,40 @@ function FeedRow({ feed, depth, isBusy, colors, onPress, onLongPress, onMenuPres
         ) : (
           <Ionicons
             name="logo-rss"
-            size={18}
+            size={dense && metrics ? metrics.toolbarIconSize : 18}
             color={feed.hasError ? colors.error : colors.primary}
           />
         )}
       </View>
       <View style={styles.rowBody}>
         <Text
-          style={[styles.rowTitle, { color: feed.hasError ? colors.error : colors.text }]}
+          style={[
+            styles.rowTitle,
+            dense &&
+              metrics && {
+                fontSize: metrics.tableFontSize,
+                lineHeight: Math.round(metrics.tableFontSize * 1.3),
+              },
+            { color: feed.hasError ? colors.error : colors.text },
+          ]}
           numberOfLines={1}
         >
           {feed.title || feed.url}
         </Text>
         {feed.title ? (
-          <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+          <Text
+            style={[
+              styles.rowSubtitle,
+              dense &&
+                metrics && {
+                  fontSize: metrics.tableHeaderFontSize,
+                  lineHeight: Math.round(metrics.tableHeaderFontSize * 1.3),
+                  marginTop: 0,
+                },
+              { color: colors.textSecondary },
+            ]}
+            numberOfLines={1}
+          >
             {getUrlHost(feed.url)}
           </Text>
         ) : null}
@@ -708,7 +892,11 @@ function FeedRow({ feed, depth, isBusy, colors, onPress, onLongPress, onMenuPres
         hitSlop={8}
         style={styles.menuButton}
       >
-        <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+        <Ionicons
+          name="ellipsis-horizontal"
+          size={dense && metrics ? metrics.toolbarIconSize : 18}
+          color={colors.textSecondary}
+        />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -734,6 +922,10 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...typography.h4,
+  },
+  desktopHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   actionRow: {
     flexDirection: 'row',

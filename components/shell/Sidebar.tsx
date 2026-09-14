@@ -49,8 +49,20 @@ import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { desktopMetrics } from '@/constants/desktop';
 import { hexToRgba } from '@/utils/color';
-import { STATUS_FILTER_IDS, matchesStatusFilter, StatusFilterId } from '@/utils/torrent-filters';
+import {
+  DESKTOP_STATUS_FILTER_IDS,
+  matchesStatusFilter,
+  StatusFilterId,
+  trackerHosts,
+} from '@/utils/torrent-filters';
 import { parseTagsCsv, UNTAGGED_FILTER } from '@/utils/tags';
+import { categoriesApi } from '@/services/api/categories';
+import { tagsApi } from '@/services/api/tags';
+import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
+import { ConfirmModal } from '@/components/ConfirmModal';
+import { InputModal } from '@/components/InputModal';
+import { useToast } from '@/context/ToastContext';
+import { getErrorMessage } from '@/utils/error';
 
 interface SidebarProps {
   style?: ViewStyle;
@@ -106,13 +118,19 @@ const DESTINATIONS: DestinationDef[] = [
 
 /** Icon glyph per status filter - same set index.tsx's filterOptions uses. */
 const STATUS_FILTER_ICONS: Record<StatusFilterId, IoniconName> = {
-  all: 'grid-outline',
-  active: 'pulse',
+  all: 'file-tray-full-outline',
+  downloading: 'arrow-down-circle',
+  seeding: 'arrow-up-circle',
   completed: 'checkmark-circle',
+  running: 'play-circle',
   paused: 'pause-circle',
+  active: 'flash',
+  inactive: 'moon-outline',
+  stalled: 'warning',
+  checking: 'sync-circle',
+  error: 'close-circle',
   stuck: 'warning',
-  downloading: 'arrow-down',
-  uploading: 'arrow-up',
+  uploading: 'arrow-up-circle',
 };
 
 /**
@@ -128,17 +146,24 @@ function statusFilterTint(id: StatusFilterId, colors: ReturnType<typeof useTheme
   switch (id) {
     case 'downloading':
       return colors.stateDownloading;
+    case 'seeding':
     case 'uploading':
-      return colors.stateUploadOnly;
+    case 'completed':
+      return colors.stateSeeding;
     case 'paused':
       return colors.statePaused;
     case 'stuck':
+    case 'stalled':
       return colors.stateStalled;
-    case 'completed':
-      return colors.stateSeeding;
+    case 'error':
+      return colors.stateError;
+    case 'checking':
+      return colors.stateChecking;
     case 'active':
+    case 'running':
       return colors.primary;
     case 'all':
+    case 'inactive':
     default:
       return colors.textSecondary;
   }
@@ -204,8 +229,11 @@ function Section({ title, expanded, onToggle, children }: SectionProps) {
             styles.sectionTitle,
             {
               fontSize: metrics.sectionHeaderFontSize,
-              letterSpacing: 0.5,
+              fontWeight: '500',
+              letterSpacing: 0,
               color: colors.textSecondary,
+              opacity: 0.7,
+              textTransform: 'none',
             },
           ]}
         >
@@ -235,6 +263,7 @@ interface RowProps {
    */
   variant?: 'solid' | 'quiet';
   onPress: () => void;
+  onLongPress?: () => void;
 }
 
 function Row({
@@ -246,29 +275,27 @@ function Row({
   active,
   variant = 'solid',
   onPress,
+  onLongPress,
 }: RowProps) {
   const { colors } = useTheme();
   const { idiom } = useShell();
   const metrics = desktopMetrics(idiom);
   const isMac = idiom === 'mac';
-  const isQuiet = isMac && variant === 'quiet';
   const [hovered, setHovered] = useState(false);
 
+  // Pogona sidebar: every selected row is a muted rounded capsule, never a
+  // solid accent fill. Icons keep their state tint. Matches FilterSidebar.
   const backgroundColor = active
     ? isMac
-      ? isQuiet
-        ? hexToRgba(colors.text, 0.08)
-        : colors.primary
+      ? hexToRgba(colors.text, 0.1)
       : colors.primaryOpac
     : hovered && isMac
       ? hexToRgba(colors.text, 0.06)
       : 'transparent';
 
-  const activeContentColor = isMac ? colors.onAccent : colors.primary;
-  const labelColor = active ? (isQuiet ? colors.text : activeContentColor) : colors.text;
-  const rowIconColor =
-    active && !isQuiet ? activeContentColor : (iconColor ?? colors.textSecondary);
-  const countColor = active && isMac && !isQuiet ? colors.onAccent : colors.textSecondary;
+  const labelColor = active && !isMac ? colors.primary : colors.text;
+  const rowIconColor = iconColor ?? (active && !isMac ? colors.primary : colors.textSecondary);
+  const countColor = colors.textSecondary;
 
   return (
     <Pressable
@@ -283,23 +310,12 @@ function Row({
         },
       ]}
       onPress={onPress}
+      onLongPress={onLongPress}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
       accessibilityRole="button"
       accessibilityState={{ selected: !!active }}
     >
-      {active && isQuiet && (
-        <View
-          style={[
-            styles.filterBar,
-            {
-              backgroundColor: colors.primary,
-              borderTopLeftRadius: metrics.selectionRadius,
-              borderBottomLeftRadius: metrics.selectionRadius,
-            },
-          ]}
-        />
-      )}
       {icon && (
         <Ionicons
           name={icon}
@@ -339,8 +355,9 @@ export function Sidebar({ style }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { idiom, listFilter, setListFilter, toggleSidebar } = useShell();
-  const { torrents, categories, tags } = useTorrents();
+  const { torrents, categories, tags, refresh } = useTorrents();
   const { currentServer, isConnected } = useServer();
+  const { showToast } = useToast();
   const metrics = desktopMetrics(idiom);
   const isMac = idiom === 'mac';
   // Category dots / tag icons read a dedicated size, not metrics.sidebarIconSize
@@ -359,6 +376,16 @@ export function Sidebar({ style }: SidebarProps) {
   const [statusExpanded, setStatusExpanded] = useState(true);
   const [categoriesExpanded, setCategoriesExpanded] = useState(true);
   const [tagsExpanded, setTagsExpanded] = useState(true);
+  const [trackersExpanded, setTrackersExpanded] = useState(false);
+  const [newCategoryVisible, setNewCategoryVisible] = useState(false);
+  const [newTagsVisible, setNewTagsVisible] = useState(false);
+  const [editCategory, setEditCategory] = useState<{ name: string; savePath: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    kind: 'category' | 'tag';
+    name: string;
+  } | null>(null);
+  const [categoryMenu, setCategoryMenu] = useState<string | null>(null);
+  const [tagMenu, setTagMenu] = useState<string | null>(null);
 
   const visibleDestinations = DESTINATIONS.filter((d) => d.key !== 'rss' || showRss);
 
@@ -369,8 +396,11 @@ export function Sidebar({ style }: SidebarProps) {
     (torrent) => parseTagsCsv(torrent.tags).length === 0,
   ).length;
 
+  const trackerEntries = trackerHosts(torrents);
+  const tracker = listFilter.tracker ?? null;
+
   const selectStatus = (id: StatusFilterId) => {
-    setListFilter({ ...listFilter, status: id });
+    setListFilter({ ...listFilter, status: id, tracker: listFilter.tracker ?? null });
     router.navigate('/(tabs)/(torrents)');
   };
 
@@ -378,6 +408,7 @@ export function Sidebar({ style }: SidebarProps) {
     setListFilter({
       ...listFilter,
       category: listFilter.category === category ? null : category,
+      tracker: listFilter.tracker ?? null,
     });
     router.navigate('/(tabs)/(torrents)');
   };
@@ -387,9 +418,106 @@ export function Sidebar({ style }: SidebarProps) {
     setListFilter({
       ...listFilter,
       tags: isSelected ? listFilter.tags.filter((t) => t !== tag) : [...listFilter.tags, tag],
+      tracker: listFilter.tracker ?? null,
     });
     router.navigate('/(tabs)/(torrents)');
   };
+
+  const selectTracker = (host: string) => {
+    setListFilter({
+      ...listFilter,
+      tracker: tracker === host ? null : host,
+    });
+    router.navigate('/(tabs)/(torrents)');
+  };
+
+  const handleCreateCategory = async (name: string) => {
+    try {
+      await categoriesApi.addCategory(name.trim());
+      await refresh();
+    } catch (error) {
+      showToast(getErrorMessage(error), 'error');
+    }
+  };
+
+  const handleEditCategory = async (savePath: string) => {
+    if (!editCategory) return;
+    try {
+      await categoriesApi.editCategory(editCategory.name, savePath.trim());
+      await refresh();
+    } catch (error) {
+      showToast(getErrorMessage(error), 'error');
+    }
+  };
+
+  const handleCreateTags = async (raw: string) => {
+    const names = raw
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    try {
+      await tagsApi.createTags(names);
+      await refresh();
+    } catch (error) {
+      showToast(getErrorMessage(error), 'error');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      if (deleteTarget.kind === 'category') {
+        await categoriesApi.removeCategories([deleteTarget.name]);
+      } else {
+        await tagsApi.deleteTags([deleteTarget.name]);
+      }
+      await refresh();
+    } catch (error) {
+      showToast(getErrorMessage(error), 'error');
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const categoryMenuItems: ActionMenuItemDef[] = categoryMenu
+    ? [
+        {
+          label: t('sidebar.editCategory'),
+          icon: 'pencil-outline',
+          onPress: () => {
+            const name = categoryMenu;
+            setCategoryMenu(null);
+            setEditCategory({ name, savePath: categories[name]?.savePath ?? '' });
+          },
+        },
+        {
+          label: t('sidebar.deleteCategory'),
+          icon: 'trash-outline',
+          destructive: true,
+          onPress: () => {
+            const name = categoryMenu;
+            setCategoryMenu(null);
+            setDeleteTarget({ kind: 'category', name });
+          },
+        },
+      ]
+    : [];
+
+  const tagMenuItems: ActionMenuItemDef[] = tagMenu
+    ? [
+        {
+          label: t('sidebar.deleteTag'),
+          icon: 'trash-outline',
+          destructive: true,
+          onPress: () => {
+            const name = tagMenu;
+            setTagMenu(null);
+            setDeleteTarget({ kind: 'tag', name });
+          },
+        },
+      ]
+    : [];
 
   // Mac keeps the header (and its collapse chevron) visible even while
   // disconnected - Pogona's transfersTable always has a titlebar. Regular
@@ -401,7 +529,27 @@ export function Sidebar({ style }: SidebarProps) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }, style]}>
-      {showServerHeader && (
+      {isMac && (
+        <View
+          style={[
+            styles.trafficLightRow,
+            {
+              height: metrics.titlebarHeight,
+              paddingLeft: metrics.trafficLightsWidth,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={toggleSidebar}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={t('sidebar.collapse')}
+          >
+            <Ionicons name="menu-outline" size={16} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+      )}
+      {showServerHeader && !isMac && (
         <View style={[styles.serverHeader, { borderBottomColor: colors.surfaceOutline }]}>
           {currentServer ? (
             <>
@@ -419,20 +567,6 @@ export function Sidebar({ style }: SidebarProps) {
             </>
           ) : (
             <View style={styles.serverName} />
-          )}
-          {isMac && (
-            <Pressable
-              onPress={toggleSidebar}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel={t('sidebar.collapse')}
-            >
-              <Ionicons
-                name="chevron-back-outline"
-                size={metrics.sidebarCollapseIconSize}
-                color={colors.textSecondary}
-              />
-            </Pressable>
           )}
         </View>
       )}
@@ -465,10 +599,10 @@ export function Sidebar({ style }: SidebarProps) {
           expanded={statusExpanded}
           onToggle={() => setStatusExpanded((prev) => !prev)}
         >
-          {STATUS_FILTER_IDS.map((id) => (
+          {DESKTOP_STATUS_FILTER_IDS.map((id) => (
             <Row
               key={id}
-              label={t(`filters.${id}`)}
+              label={t(`sidebar.status.${id}`)}
               icon={STATUS_FILTER_ICONS[id]}
               iconColor={statusFilterTint(id, colors)}
               count={torrents.filter((torrent) => matchesStatusFilter(torrent, id)).length}
@@ -513,8 +647,16 @@ export function Sidebar({ style }: SidebarProps) {
               active={listFilter.category === name}
               variant="quiet"
               onPress={() => selectCategory(name)}
+              onLongPress={() => setCategoryMenu(name)}
             />
           ))}
+          <Row
+            label={t('sidebar.newCategory')}
+            icon="add"
+            iconSize={categoryTagIconSize}
+            variant="quiet"
+            onPress={() => setNewCategoryVisible(true)}
+          />
         </Section>
 
         <Section
@@ -543,10 +685,94 @@ export function Sidebar({ style }: SidebarProps) {
               active={listFilter.tags.includes(tag)}
               variant="quiet"
               onPress={() => toggleTag(tag)}
+              onLongPress={() => setTagMenu(tag)}
             />
           ))}
+          <Row
+            label={t('sidebar.newTags')}
+            icon="add"
+            iconSize={categoryTagIconSize}
+            variant="quiet"
+            onPress={() => setNewTagsVisible(true)}
+          />
         </Section>
+
+        {trackerEntries.length > 0 && (
+          <Section
+            title={t('sidebar.sections.trackers')}
+            expanded={trackersExpanded}
+            onToggle={() => setTrackersExpanded((prev) => !prev)}
+          >
+            {trackerEntries.map((entry) => (
+              <Row
+                key={entry.host}
+                label={entry.host}
+                icon="radio-outline"
+                iconSize={categoryTagIconSize}
+                count={entry.count}
+                active={tracker === entry.host}
+                variant="quiet"
+                onPress={() => selectTracker(entry.host)}
+              />
+            ))}
+          </Section>
+        )}
       </ScrollView>
+
+      <InputModal
+        visible={newCategoryVisible}
+        title={t('sidebar.newCategory')}
+        placeholder={t('torrentDetail.enterCategoryName')}
+        onCancel={() => setNewCategoryVisible(false)}
+        onConfirm={(value) => {
+          setNewCategoryVisible(false);
+          void handleCreateCategory(value);
+        }}
+      />
+      <InputModal
+        visible={!!editCategory}
+        title={t('sidebar.editCategory')}
+        placeholder={t('screens.addTorrent.savePathPlaceholder')}
+        defaultValue={editCategory?.savePath ?? ''}
+        allowEmpty
+        pathAutocomplete
+        onCancel={() => setEditCategory(null)}
+        onConfirm={(value) => {
+          void handleEditCategory(value);
+          setEditCategory(null);
+        }}
+      />
+      <InputModal
+        visible={newTagsVisible}
+        title={t('sidebar.newTags')}
+        message={t('torrentDetail.enterTagsComma')}
+        multiline
+        onCancel={() => setNewTagsVisible(false)}
+        onConfirm={(value) => {
+          setNewTagsVisible(false);
+          void handleCreateTags(value);
+        }}
+      />
+      <ConfirmModal
+        visible={!!deleteTarget}
+        title={deleteTarget?.kind === 'tag' ? t('sidebar.deleteTag') : t('sidebar.deleteCategory')}
+        message={deleteTarget?.name}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setDeleteTarget(null)}
+        buttons={[
+          {
+            label: t('common.delete'),
+            destructive: true,
+            onPress: () => void handleConfirmDelete(),
+          },
+        ]}
+      />
+      <ActionMenu
+        visible={!!categoryMenu}
+        onClose={() => setCategoryMenu(null)}
+        items={categoryMenuItems}
+      />
+      <ActionMenu visible={!!tagMenu} onClose={() => setTagMenu(null)} items={tagMenuItems} />
     </View>
   );
 }
@@ -561,6 +787,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  trafficLightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingRight: 8,
   },
   serverName: {
     flex: 1,

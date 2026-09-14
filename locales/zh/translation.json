@@ -980,6 +980,8 @@
     "peers": "节点",
     "availability": "可用性",
     "popularity": "流行度",
+    "overview": "概览",
+    "httpSources": "HTTP 源",
     "files": "文件",
     "trackers": "Tracker",
     "forceStart": "强制开始",
@@ -1112,7 +1114,26 @@
       "destinations": "导航",
       "status": "状态",
       "categories": "分类",
-      "tags": "标签"
+      "tags": "标签",
+      "trackers": "Tracker"
+    },
+    "newCategory": "新建分类",
+    "newTags": "新建标签",
+    "editCategory": "编辑分类",
+    "deleteCategory": "删除分类",
+    "deleteTag": "删除标签",
+    "status": {
+      "all": "全部",
+      "downloading": "下载中",
+      "seeding": "做种",
+      "completed": "已完成",
+      "running": "进行中",
+      "paused": "已停止",
+      "active": "活动",
+      "inactive": "不活动",
+      "stalled": "停滞",
+      "checking": "校验",
+      "error": "错误"
     }
   },
   "sort": {
@@ -1137,7 +1158,10 @@
       "peers": "节点",
       "eta": "ETA",
       "ratio": "比率",
-      "added": "添加时间"
+      "added": "添加时间",
+      "completed": "完成时间",
+      "seen": "上次完整",
+      "queue": "队列"
     },
     "sortedAscending": "升序排列",
     "sortedDescending": "降序排列"

@@ -64,7 +64,7 @@ export function MacStatusBar() {
       testID="mac-status-bar"
       style={[
         styles.bar,
-        { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
+        { backgroundColor: colors.background, borderTopColor: hexToRgba(colors.text, 0.08) },
       ]}
     >
       <View

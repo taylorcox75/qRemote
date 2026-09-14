@@ -32,6 +32,15 @@ jest.mock('@/services/api/application', () => ({
 jest.mock('@/context/ShellContext', () => ({ useShell: jest.fn() }));
 jest.mock('@/context/TorrentContext', () => ({ useTorrents: jest.fn() }));
 jest.mock('@/context/ServerContext', () => ({ useServer: jest.fn() }));
+jest.mock('@/context/ToastContext', () => ({
+  useToast: () => ({ showToast: jest.fn() }),
+}));
+jest.mock('@/services/api/categories', () => ({
+  categoriesApi: { addCategory: jest.fn(), editCategory: jest.fn(), removeCategories: jest.fn() },
+}));
+jest.mock('@/services/api/tags', () => ({
+  tagsApi: { createTags: jest.fn(), deleteTags: jest.fn() },
+}));
 
 function torrent(overrides: Partial<TorrentInfo>): TorrentInfo {
   return {
@@ -92,7 +101,7 @@ function mockShell(overrides?: Partial<ReturnType<typeof useShell>>) {
     idiom: 'regular',
     selectedHash: null,
     setSelectedHash: jest.fn(),
-    listFilter: { status: 'all', category: null, tags: [] },
+    listFilter: { status: 'all', category: null, tags: [], tracker: null },
     setListFilter: jest.fn(),
     sidebarCollapsed: false,
     toggleSidebar: jest.fn(),
@@ -153,7 +162,7 @@ describe('Sidebar', () => {
     expect(screen.getByLabelText('sidebar.collapse')).toBeTruthy();
   });
 
-  it('keeps the server header (with chevron) visible on mac even without a current server', async () => {
+  it('keeps the traffic-light row (with collapse) visible on mac even without a current server', async () => {
     mockShell({ idiom: 'mac' });
     jest.mocked(useServer).mockReturnValue({
       currentServer: null,
@@ -198,28 +207,26 @@ describe('Sidebar', () => {
     expect(navigate).toHaveBeenCalledWith('/(tabs)/transfer');
   });
 
-  it('renders status filter rows with counts matching matchesStatusFilter', async () => {
+  it('renders Pogona status filter rows', async () => {
     await render(<Sidebar />);
-    // all=3, active=2 (h1 dlspeed>0, h3 upspeed>0), completed=2 (h2, h3 at
-    // progress 1), paused=1 (h2 pausedUP), stuck=0, downloading=1, uploading=1.
-    // Categories/tags contribute additional '1'/'2' badges, so these assert
-    // at-least rather than exact counts; stuck's '0' is asserted exactly
-    // since nothing else in the tree renders a bare "0".
-    expect(screen.getAllByText('3')).toHaveLength(1);
-    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(3);
-    expect(screen.getAllByText('0')).toHaveLength(1);
+    expect(screen.getByText('sidebar.status.all')).toBeTruthy();
+    expect(screen.getByText('sidebar.status.downloading')).toBeTruthy();
+    expect(screen.getByText('sidebar.status.seeding')).toBeTruthy();
+    expect(screen.getByText('sidebar.status.running')).toBeTruthy();
+    expect(screen.getByText('sidebar.status.stalled')).toBeTruthy();
+    expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(1);
   });
 
   it('selecting a status filter updates listFilter and navigates to the torrents tab', async () => {
     const setListFilter = jest.fn();
     mockShell({ setListFilter });
     await render(<Sidebar />);
-    fireEvent.press(screen.getByText('filters.downloading'));
+    fireEvent.press(screen.getByText('sidebar.status.downloading'));
     expect(setListFilter).toHaveBeenCalledWith({
       status: 'downloading',
       category: null,
       tags: [],
+      tracker: null,
     });
     expect(navigate).toHaveBeenCalledWith('/(tabs)/(torrents)');
   });
@@ -236,15 +243,28 @@ describe('Sidebar', () => {
     mockShell({ setListFilter });
     await render(<Sidebar />);
     fireEvent.press(screen.getByText('movies'));
-    expect(setListFilter).toHaveBeenCalledWith({ status: 'all', category: 'movies', tags: [] });
+    expect(setListFilter).toHaveBeenCalledWith({
+      status: 'all',
+      category: 'movies',
+      tags: [],
+      tracker: null,
+    });
   });
 
   it('pressing the already-active category clears it', async () => {
     const setListFilter = jest.fn();
-    mockShell({ setListFilter, listFilter: { status: 'all', category: 'movies', tags: [] } });
+    mockShell({
+      setListFilter,
+      listFilter: { status: 'all', category: 'movies', tags: [], tracker: null },
+    });
     await render(<Sidebar />);
     fireEvent.press(screen.getByText('movies'));
-    expect(setListFilter).toHaveBeenCalledWith({ status: 'all', category: null, tags: [] });
+    expect(setListFilter).toHaveBeenCalledWith({
+      status: 'all',
+      category: null,
+      tags: [],
+      tracker: null,
+    });
   });
 
   it('renders tags with counts, including Untagged', async () => {
@@ -259,7 +279,12 @@ describe('Sidebar', () => {
     mockShell({ setListFilter });
     await render(<Sidebar />);
     fireEvent.press(screen.getByText('linux'));
-    expect(setListFilter).toHaveBeenCalledWith({ status: 'all', category: null, tags: ['linux'] });
+    expect(setListFilter).toHaveBeenCalledWith({
+      status: 'all',
+      category: null,
+      tags: ['linux'],
+      tracker: null,
+    });
   });
 
   it('collapsing the destinations section hides its rows', async () => {

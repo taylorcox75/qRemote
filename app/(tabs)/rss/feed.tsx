@@ -8,6 +8,9 @@
  * There's no per-feed fetch endpoint: useRssFeeds() always returns the whole
  * tree, so the feed shown here is located by matching `path` against the
  * flattened `feeds` list.
+ *
+ * Compact keeps the iPhone header, 2-line titles and descriptions.
+ * Regular/mac use a toolbar-density header and single-line hairline rows.
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -32,13 +35,16 @@ import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
+import { useShell } from '@/context/ShellContext';
 import { useRssFeeds } from '@/hooks/useRssFeeds';
 import { torrentsApi } from '@/services/api/torrents';
 import { RssArticle } from '@/types/api';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
+import { desktopMetrics } from '@/constants/desktop';
 import { getErrorMessage } from '@/utils/error';
+import { hexToRgba } from '@/utils/color';
 import { haptics } from '@/utils/haptics';
 import { toSearchQuery } from '@/utils/rss';
 
@@ -51,6 +57,9 @@ export default function RssFeedArticlesScreen() {
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
   const { isConnected } = useServer();
+  const { idiom, sidebarCollapsed } = useShell();
+  const isDesktop = idiom !== 'compact';
+  const metrics = desktopMetrics(idiom === 'mac' ? 'mac' : 'regular');
   const { feeds, isLoading, refresh, refreshItem, markAsRead } = useRssFeeds();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -341,7 +350,17 @@ export default function RssFeedArticlesScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.row, { borderBottomColor: colors.surfaceOutline }]}
+        style={[
+          styles.row,
+          isDesktop && {
+            paddingVertical: spacing.xs,
+            paddingLeft: metrics.sidebarInsetHorizontal,
+            paddingRight: spacing.xs,
+            minHeight: metrics.tableRowHeight,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+          },
+          { borderBottomColor: colors.surfaceOutline },
+        ]}
         onPress={() => (selectMode ? toggleSelection(item.id) : void handleRowPress(item))}
         onLongPress={(e) =>
           selectMode
@@ -361,22 +380,37 @@ export default function RssFeedArticlesScreen() {
           <View style={styles.checkbox}>
             <Ionicons
               name={isSelected ? 'checkbox' : 'square-outline'}
-              size={22}
+              size={isDesktop ? metrics.toolbarIconSize : 22}
               color={isSelected ? colors.primary : colors.textSecondary}
             />
           </View>
         )}
-        <View style={styles.articleContent}>
+        <View style={[styles.articleContent, isDesktop && { gap: 1 }]}>
           <Text
-            style={[isRead ? typography.body : typography.bodySemibold, { color: colors.text }]}
-            numberOfLines={2}
+            style={[
+              isRead ? typography.body : typography.bodySemibold,
+              isDesktop && {
+                fontSize: metrics.tableFontSize,
+                lineHeight: Math.round(metrics.tableFontSize * 1.3),
+              },
+              { color: colors.text },
+            ]}
+            numberOfLines={isDesktop ? 1 : 2}
           >
             {item.title}
           </Text>
           {!!dateLabel && (
-            <Text style={[styles.articleDate, { color: colors.textSecondary }]}>{dateLabel}</Text>
+            <Text
+              style={[
+                styles.articleDate,
+                isDesktop && { fontSize: metrics.tableHeaderFontSize },
+                { color: colors.textSecondary },
+              ]}
+            >
+              {dateLabel}
+            </Text>
           )}
-          {!!item.description && (
+          {!isDesktop && !!item.description && (
             <Text
               style={[styles.articleDescription, { color: colors.textSecondary }]}
               numberOfLines={2}
@@ -393,7 +427,11 @@ export default function RssFeedArticlesScreen() {
             hitSlop={8}
             style={styles.menuButton}
           >
-            <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={isDesktop ? metrics.toolbarIconSize : 18}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -404,16 +442,51 @@ export default function RssFeedArticlesScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              borderBottomColor: isDesktop ? hexToRgba(colors.text, 0.08) : colors.surfaceOutline,
+            },
+            isDesktop && {
+              minHeight: idiom === 'mac' ? metrics.titlebarHeight : metrics.toolbarHeight,
+              paddingVertical: 0,
+              paddingHorizontal: metrics.sidebarInsetHorizontal,
+              borderBottomWidth: StyleSheet.hairlineWidth,
+            },
+            idiom === 'mac' && sidebarCollapsed && { paddingLeft: metrics.trafficLightsWidth },
+          ]}
+        >
           <TouchableOpacity
             onPress={() => (selectMode ? toggleSelectMode() : router.back())}
-            style={styles.headerButton}
+            style={[
+              styles.headerButton,
+              isDesktop && {
+                width: metrics.toolbarControlHeight,
+                height: metrics.toolbarControlHeight,
+              },
+            ]}
             activeOpacity={0.7}
             accessibilityLabel={selectMode ? t('common.cancel') : t('common.back')}
           >
-            <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.text} />
+            <Ionicons
+              name={selectMode ? 'close' : 'arrow-back'}
+              size={isDesktop ? metrics.toolbarIconSize : 24}
+              color={colors.text}
+            />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+          <Text
+            style={[
+              styles.headerTitle,
+              isDesktop && {
+                fontSize: metrics.toolbarFontSize,
+                lineHeight: Math.round(metrics.toolbarFontSize * 1.3),
+                textAlign: 'left',
+              },
+              { color: colors.text },
+            ]}
+            numberOfLines={1}
+          >
             {selectMode
               ? t('screens.rss.articlesSelectedCount', { count: selectedIds.size })
               : headerTitle}
@@ -427,6 +500,10 @@ export default function RssFeedArticlesScreen() {
                 disabled={isMarkingAllRead || !itemPath}
                 style={[
                   styles.headerButton,
+                  isDesktop && {
+                    width: metrics.toolbarControlHeight,
+                    height: metrics.toolbarControlHeight,
+                  },
                   (isMarkingAllRead || !itemPath) && styles.headerButtonDisabled,
                 ]}
                 activeOpacity={0.7}
@@ -435,7 +512,11 @@ export default function RssFeedArticlesScreen() {
                 {isMarkingAllRead ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <Ionicons name="checkmark-done-outline" size={22} color={colors.text} />
+                  <Ionicons
+                    name="checkmark-done-outline"
+                    size={isDesktop ? metrics.toolbarIconSize : 22}
+                    color={colors.text}
+                  />
                 )}
               </TouchableOpacity>
               <TouchableOpacity
@@ -443,6 +524,10 @@ export default function RssFeedArticlesScreen() {
                 disabled={isRefreshingFeed || !itemPath}
                 style={[
                   styles.headerButton,
+                  isDesktop && {
+                    width: metrics.toolbarControlHeight,
+                    height: metrics.toolbarControlHeight,
+                  },
                   (isRefreshingFeed || !itemPath) && styles.headerButtonDisabled,
                 ]}
                 activeOpacity={0.7}
@@ -451,7 +536,11 @@ export default function RssFeedArticlesScreen() {
                 {isRefreshingFeed ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <Ionicons name="refresh" size={22} color={colors.text} />
+                  <Ionicons
+                    name="refresh"
+                    size={isDesktop ? metrics.toolbarIconSize : 22}
+                    color={colors.text}
+                  />
                 )}
               </TouchableOpacity>
             </View>
@@ -460,7 +549,16 @@ export default function RssFeedArticlesScreen() {
 
         {isConnected && !isLoading && articles.length > 0 && (
           <TouchableOpacity
-            style={[styles.selectionRow, { borderBottomColor: colors.surfaceOutline }]}
+            style={[
+              styles.selectionRow,
+              isDesktop && {
+                paddingHorizontal: metrics.sidebarInsetHorizontal,
+                paddingVertical: spacing.xs,
+                minHeight: metrics.toolbarControlHeight,
+                borderBottomWidth: StyleSheet.hairlineWidth,
+              },
+              { borderBottomColor: colors.surfaceOutline },
+            ]}
             onPress={handleSelectAllPress}
             activeOpacity={0.7}
           >
@@ -468,14 +566,20 @@ export default function RssFeedArticlesScreen() {
               name={
                 selectMode && selectedIds.size === articles.length ? 'checkbox' : 'square-outline'
               }
-              size={20}
+              size={isDesktop ? metrics.toolbarIconSize : 20}
               color={
                 selectMode && selectedIds.size === articles.length
                   ? colors.primary
                   : colors.textSecondary
               }
             />
-            <Text style={[styles.selectionLabel, { color: colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.selectionLabel,
+                isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                { color: colors.textSecondary },
+              ]}
+            >
               {selectMode
                 ? selectedIds.size === articles.length
                   ? t('screens.torrents.deselectAll')
@@ -517,12 +621,21 @@ export default function RssFeedArticlesScreen() {
           <View
             style={[
               styles.bulkActionsBar,
+              isDesktop && {
+                paddingVertical: spacing.sm,
+                paddingHorizontal: metrics.sidebarInsetHorizontal,
+              },
               { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
             ]}
           >
             <TouchableOpacity
               style={[
                 styles.bulkActionButton,
+                isDesktop && {
+                  paddingVertical: spacing.xs,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: metrics.selectionRadius,
+                },
                 {
                   backgroundColor: colors.primary,
                   opacity: selectedIds.size === 0 || bulkLoading ? 0.5 : 1,
@@ -535,13 +648,29 @@ export default function RssFeedArticlesScreen() {
               {bulkLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+                <Ionicons
+                  name="add-circle-outline"
+                  size={isDesktop ? metrics.toolbarIconSize : 20}
+                  color="#FFFFFF"
+                />
               )}
-              <Text style={styles.bulkActionText}>{t('screens.rss.addSelectedAsTorrents')}</Text>
+              <Text
+                style={[
+                  styles.bulkActionText,
+                  isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                ]}
+              >
+                {t('screens.rss.addSelectedAsTorrents')}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.bulkActionButtonSecondary,
+                isDesktop && {
+                  paddingVertical: spacing.xs,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: metrics.selectionRadius,
+                },
                 {
                   backgroundColor: colors.surface,
                   borderColor: colors.surfaceOutline,
@@ -552,8 +681,18 @@ export default function RssFeedArticlesScreen() {
               disabled={selectedIds.size === 0 || bulkLoading}
               activeOpacity={0.8}
             >
-              <Ionicons name="checkmark-done-outline" size={20} color={colors.primary} />
-              <Text style={[styles.bulkActionText, { color: colors.primary }]}>
+              <Ionicons
+                name="checkmark-done-outline"
+                size={isDesktop ? metrics.toolbarIconSize : 20}
+                color={colors.primary}
+              />
+              <Text
+                style={[
+                  styles.bulkActionText,
+                  isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                  { color: colors.primary },
+                ]}
+              >
                 {t('screens.rss.markSelectedRead')}
               </Text>
             </TouchableOpacity>

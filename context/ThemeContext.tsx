@@ -1,8 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Appearance, useColorScheme } from 'react-native';
+import { Appearance, Platform, useColorScheme } from 'react-native';
 import { storageService } from '@/services/storage';
 import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
+import { buildPogonaTheme } from '@/constants/pogonaTheme';
 import type { ThemeMode } from '@/types/preferences';
+
+/** iPad + Mac Catalyst use Pogona's zinc palette as the base. iPhone is untouched. */
+function isDesktopHost(): boolean {
+  return Platform.OS === 'ios' && !!(Platform.isPad || Platform.isMacCatalyst);
+}
+
+function desktopOrPhoneBase(isDark: boolean) {
+  if (isDesktopHost()) {
+    return buildPogonaTheme(isDark ? 'dark' : 'light');
+  }
+  return isDark ? darkColors : lightColors;
+}
 
 export interface ThemeColors {
   background: string;
@@ -234,14 +247,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     await setThemeMode(nextMode);
   };
 
-  const baseColors = isDark ? darkColors : lightColors;
-  const colors = colorThemeManager.mergeColors(baseColors, customColors) as typeof baseColors;
+  const baseColors = desktopOrPhoneBase(isDark);
+  const colors = colorThemeManager.mergeColors(baseColors, customColors) as typeof lightColors;
 
   if (isLoading) {
     // While loading, use the system appearance (or dark as a fallback) so the
     // first paint avoids a flash of the wrong theme.
     const initialIsDark = effectiveSystem !== 'light';
-    const initialColors = initialIsDark ? darkColors : lightColors;
+    const initialColors = desktopOrPhoneBase(initialIsDark);
     return (
       <ThemeContext.Provider
         value={{

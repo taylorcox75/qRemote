@@ -51,6 +51,8 @@ module.exports = {
         // is a no-op when iOS uses view-controller-based status bar appearance,
         // leaving the bar stuck on the system appearance (white icons in light mode).
         UIViewControllerBasedStatusBarAppearance: false,
+        EXDevMenuShowFloatingActionButton: false,
+        EXDevMenuShowsAtLaunch: false,
         ITSAppUsesNonExemptEncryption: false,
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: true,
@@ -111,6 +113,16 @@ module.exports = {
     },
     plugins: [
       'expo-router',
+      [
+        'expo-dev-client',
+        {
+          // Floating gear + auto-open menu are debug chrome. Shake (iPhone)
+          // still opens the menu. Mac Catalyst promotes the launcher TabView
+          // into persistent window tabs without this.
+          toolsButton: false,
+          showMenuAtLaunch: false,
+        },
+      ],
       'expo-font',
       'expo-localization',
       'expo-secure-store',

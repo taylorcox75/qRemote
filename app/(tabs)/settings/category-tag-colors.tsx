@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { SettingsBackButton } from '@/components/shell/SettingsBackButton';
 import { useTorrents } from '@/context/TorrentContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -195,14 +196,7 @@ export default function CategoryTagColorsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-            accessibilityLabel={t('common.back')}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+          <SettingsBackButton />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t('screens.settings.categoryTagColors')}
           </Text>

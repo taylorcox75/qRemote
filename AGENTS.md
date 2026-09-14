@@ -369,10 +369,10 @@ Complete map. Trust it.
 | Path | Notes |
 |---|---|
 | `app/(tabs)/(torrents)/` | Torrents tab as a nested stack: `index` list, `torrent/[hash]`, `torrent/files`, `torrent/manage-trackers`. Group is omitted from URLs → `/`, `/torrent/[hash]`. `torrent/[hash]` is now a thin wrapper rendering `components/torrent-detail/TorrentDetailBody.tsx`. |
-| `app/(tabs)/search.tsx` | Search tab: job polling UI, plugin/category/indexer filter chips, client-side sort, collapsing header. Optional auto-tag-by-tracker on add (`autoCategorizeByTracker` pref — tags Search downloads only; the key name is historical). |
+| `app/(tabs)/search.tsx` | Search tab: job polling UI, plugin/category/indexer filter chips, client-side sort. Compact keeps the collapsing iPhone header and card rows; regular/mac use a static toolbar-density header and dense hairline rows (full pane). Optional auto-tag-by-tracker on add (`autoCategorizeByTracker` pref — tags Search downloads only; the key name is historical). |
 | `app/(tabs)/transfer.tsx` | Transfer stats, global speed and seeding limits. |
 | `app/(tabs)/logs.tsx` | Connectivity logs. `href: null` — reached from Settings → Advanced, not a visible tab. |
-| `app/(tabs)/rss/` | RSS Feeds tab (`index` tree + `feed` detail). `href` is null until connected **and** the server's `rss_processing_enabled` is on. Rules and settings screens do **not** go here — they live under Settings. |
+| `app/(tabs)/rss/` | RSS Feeds tab (`index` tree + `feed` detail). Compact keeps the iPhone title + fat action row and article cards; regular/mac use a toolbar-density header (icon actions) and hairline rows at table density. `href` is null until connected **and** the server's `rss_processing_enabled` is on. Rules and settings screens do **not** go here — they live under Settings. |
 | `app/(tabs)/settings/` | Settings tab as a nested stack. See sub-screens below. |
 | `app/(tabs)/_layout.tsx` | Tab bar and tab gating. |
 | `app/_layout.tsx` | Root providers, theme, deep-link handling. Anchors on `(tabs)`. |
@@ -461,7 +461,9 @@ All PascalCase function components taking a `…Props` interface.
   silently stops updating; category/tag stickers use `categoryColors`/`tagColors`
   then defaults then the `avatarColor` fallback), `SearchResultRow` (+ internal
   ActionPill; the `+` button and the cart-toggle button are independent — see
-  its header comment), `FilterChip`, `EmptyState`, `SkeletonLoader`
+  its header comment; regular/mac render a dense hairline row via `useShell`,
+  compact stays the surface card), `FilterChip` (`muted` = desktop selected
+  wash; compact callers leave it unset), `EmptyState`, `SkeletonLoader`
   (+ `SkeletonTorrentCard`), `PieceMap`, `ServerIconBadge` (per-server tinted
   icon badge — `ServerConfig.icon`/`iconColor` via `utils/server.ts`
   `getServerIcon`/`getServerIconColor`, falling back to a default icon and
@@ -478,11 +480,14 @@ All PascalCase function components taking a `…Props` interface.
 - **Chrome / diagnostics** — `FocusAwareStatusBar`, `SettingRow`,
   `QuickConnectPanel`, `LogViewer`, `DebugRow`, `SuperDebugPanel`.
 - **Shell (`components/shell/`, `regular`/`mac` idiom only)** —
-  `Sidebar.tsx` (reads `useShell`, `useTorrents`, `useServer`, Expo Router's
-  `useRouter`/`usePathname`/`useSegments` to highlight the active destination),
+  `Sidebar.tsx` (Pogona FilterSidebar: destinations, 11 status buckets,
+  categories/tags with create-edit-delete, trackers by host),
+  `SettingsSidebar.tsx` (regular/mac settings source list; compact keeps
+  the iPhone hub on `settings/index`),
+  `SettingsBackButton.tsx` (hides the iPhone back chevron on desktop),
   `SplitLayout.tsx` (`sidebar` | `children` | optional `detail` pane, 1px
   `colors.surfaceOutline` separators; `detail` omitted → content takes the
-  full remaining width; `sidebarWidth`/`detailWidth` default 240/380).
+  full remaining width; production passes `desktopMetrics(idiom).sidebarWidth`).
 - **`StatusBadge.tsx`** — shadcn-style badge (`label`, `tint`): caption-medium
   text in `tint`, fill at 14% alpha, 1px border at 22% alpha via
   `utils/color.ts` `hexToRgba`, radius `borderRadius.xsmall`.
@@ -492,17 +497,18 @@ All PascalCase function components taking a `…Props` interface.
 - **`torrent-detail/TorrentDetailBody.tsx`** — the full torrent detail body,
   extracted from `app/(tabs)/(torrents)/torrent/[hash].tsx` (`hash`,
   `embedded?`, `onDismiss?`). When `embedded` is true it hides the back button
-  and calls `onDismiss` instead of `router.back()` — used both by the route's
-  thin wrapper and by the `regular`/`mac` detail pane.
-- **`TorrentTable.tsx`** (`mac` idiom only) — dense 11-column desktop table
-  mirroring Pogona's `MacTransfersView.swift` `transfersTable`: 28pt rows, a
-  28pt artwork plate leading the name cell, right-aligned tabular-nums numeric
-  columns, sortable header. Props: `torrents`, `selectedHash`, `onSelect`,
-  `onContextMenu(hash, anchor)`, `sortBy` (`SortField`), `sortDirection`,
-  `onSortChange`, `alternatingRows`, `categoryColors?`, `topInset?` (reserves
-  space above the header for index.tsx's absolutely-positioned search/sort
-  header). Not rendered on `compact`/`regular` — `TorrentCard`/`TorrentRow`
-  stay untouched.
+  and calls `onDismiss` instead of `router.back()`, and renders a Pogona-style
+  inspector tab strip (Overview / Files / Trackers / Peers / Pieces / HTTP)
+  instead of the grouped iOS sections. Used by the route's thin wrapper and
+  by the `regular` trailing pane / `mac` bottom panel.
+- **`TorrentTable.tsx`** (`regular` and `mac`) — Pogona transfer table.
+  `idiom='mac'` (default): 13-col dense table (26pt rows, 28pt artwork plate)
+  mirroring `MacTransfersView.swift`. `idiom='regular'`: 8-col iPad table
+  (44pt rows) mirroring `TransferListScreen.swift` `tableView`. Props:
+  `torrents`, `selectedHash`, `onSelect`, `onContextMenu(hash, anchor)`,
+  `sortBy` (`SortField`), `sortDirection`, `onSortChange`, `alternatingRows`,
+  `categoryColors?`, `topInset?`, `idiom?`. Compact never mounts this —
+  `TorrentCard` stays the iPhone list.
 - **`MacStatusBar.tsx`** (`mac` idiom only) — qBittorrent-style bottom status
   bar mirroring Pogona's `MacStatusBar`: DHT node count, connection-state dot,
   alternative-speed-limits toggle, down/up speed with session totals, free
@@ -641,7 +647,9 @@ for the Search tab's `+` behavior — #217) · `search-cart.ts`
 endpoint applies one `tags` value per request) · `server-export.ts` (strips
 `password`/`basicAuthPassword`/`apiKey` on export, forces them empty on import) ·
 `save-paths.ts` (`getKnownSavePaths`, derived from live data — no API call) ·
-`version.ts` (`APP_VERSION`) · `trackers.ts` (`isRealTracker` — filters
+`version.ts` (`APP_VERSION`) · `hide-dev-chrome.ts` (`hideDevChrome` — Expo
+  Dev Client Tools FAB / launch menu off on boot, Mac Catalyst only also
+  covered natively) · `trackers.ts` (`isRealTracker` — filters
 qBittorrent's DHT/PeX/LSD pseudo-tracker entries out of `torrents/trackers`;
 `getPseudoTrackerStates` reads each channel's on/off/working state from those
 same entries — #234, #236) · `sounds.ts` (global enabled flag + per-action
@@ -651,9 +659,9 @@ languages heuristics from a raw torrent name; `rowTitle` formats a display
 string with the `·` middle dot, e.g. "Nashville · S01E15" — see Architecture
 §4 "Artwork (TMDB)") · `color.ts` (`hexToRgba` — hex or rgb()/rgba() input to
 an rgba() string at a given alpha; backs `StatusBadge`) · `torrent-filters.ts`
-(`matchesStatusFilter` — status-filter predicate for `components/shell/
-Sidebar.tsx`, a deliberate re-implementation of `index.tsx`'s local
-`filteredTorrents` switch, same ids/order/tie-breaks, not a shared import).
+(`matchesStatusFilter` — status-filter predicate; compact chips keep
+`STATUS_FILTER_IDS`, the regular/mac sidebar uses `DESKTOP_STATUS_FILTER_IDS`
+matching Pogona's État buckets. Also `trackerHost` / `trackerHosts`).
 
 ### Types, constants, i18n
 

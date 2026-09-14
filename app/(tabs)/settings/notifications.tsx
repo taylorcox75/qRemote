@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { SettingsBackButton } from '@/components/shell/SettingsBackButton';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { storageService } from '@/services/storage';
 import {
@@ -105,14 +106,7 @@ export default function NotificationsSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-            accessibilityLabel={t('common.back')}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+          <SettingsBackButton />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t('screens.settings.notificationsFeedback')}
           </Text>

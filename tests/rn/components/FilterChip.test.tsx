@@ -2,6 +2,7 @@ import React from 'react';
 import { Text } from 'react-native';
 import { render, fireEvent, screen } from '@testing-library/react-native';
 import { FilterChip } from '@/components/FilterChip';
+import { mockColors } from './theme-mock';
 
 jest.mock('@/context/ThemeContext', () => ({
   useTheme: () => ({ colors: require('./theme-mock').mockColors }),
@@ -52,5 +53,13 @@ describe('FilterChip', () => {
       />,
     );
     expect(screen.getByLabelText('custom-chip')).toBeTruthy();
+  });
+
+  it('muted active uses primary text instead of white', async () => {
+    await render(<FilterChip label="Muted" active muted onPress={jest.fn()} />);
+    const text = screen.getByText('Muted');
+    expect(text.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ color: mockColors.primary })]),
+    );
   });
 });

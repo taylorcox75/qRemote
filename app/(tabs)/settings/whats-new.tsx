@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { SettingsBackButton } from '@/components/shell/SettingsBackButton';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { CHANGELOG } from '@/constants/changelog';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -42,14 +43,7 @@ export default function WhatsNewScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-            accessibilityLabel={t('common.back')}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+          <SettingsBackButton />
           <View style={styles.headerTitleContainer}>
             <Ionicons name="sparkles" size={22} color={colors.primary} />
             <Text style={[styles.headerTitle, { color: colors.text }]}>

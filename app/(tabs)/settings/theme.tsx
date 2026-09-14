@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
+import { SettingsBackButton } from '@/components/shell/SettingsBackButton';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ColorPicker } from '@/components/ColorPicker';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
@@ -82,14 +83,7 @@ export default function ThemeSettingsScreen() {
             { backgroundColor: colors.background, borderBottomColor: colors.surfaceOutline },
           ]}
         >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-            accessibilityLabel={t('common.back')}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+          <SettingsBackButton />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t('screens.settings.themeAndColors')}
           </Text>

@@ -26,6 +26,8 @@ export interface ListFilter {
   status: string;
   category: string | null;
   tags: string[];
+  /** Hostname of the working tracker, or null for no tracker filter. */
+  tracker: string | null;
 }
 
 export interface ShellState {
@@ -38,7 +40,12 @@ export interface ShellState {
   toggleSidebar(): void;
 }
 
-const DEFAULT_LIST_FILTER: ListFilter = { status: 'all', category: null, tags: [] };
+const DEFAULT_LIST_FILTER: ListFilter = {
+  status: 'all',
+  category: null,
+  tags: [],
+  tracker: null,
+};
 
 const ShellContext = createContext<ShellState | undefined>(undefined);
 

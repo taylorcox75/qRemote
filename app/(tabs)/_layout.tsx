@@ -11,14 +11,14 @@ import { applicationApi } from '@/services/api/application';
 import { useShell } from '@/context/ShellContext';
 import { SplitLayout } from '@/components/shell/SplitLayout';
 import { Sidebar } from '@/components/shell/Sidebar';
-import { DesktopColumn } from '@/components/shell/DesktopColumn';
+import { desktopMetrics } from '@/constants/desktop';
 
 export default function TabsLayout() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { isConnected } = useServer();
-  const { idiom, sidebarCollapsed } = useShell();
+  const { idiom, sidebarCollapsed, toggleSidebar } = useShell();
   // True iPhones are never anything but 'compact' (see useLayoutIdiom), so
   // they always take the bare-tabs branch below and this stays a no-op for
   // them. iPad and Mac Catalyst are the only device classes whose idiom can
@@ -41,17 +41,11 @@ export default function TabsLayout() {
   // stays exactly as it always has been: no sidebar, no split layout, the
   // tab bar visible. Everything below this line is unconditional for that
   // path - the hidden tab bar only ever applies on 'regular'/'mac' idiom.
-  // Regular/mac only: form-style tabs (Transfer, Search, RSS, Settings) are
-  // centered in a macOS-width column; the torrents tab keeps the full width
-  // for its table. Left undefined on iPhone so the compact tree is untouched.
-  const desktopScreenLayout = isShellHost
-    ? ({ route, children }: { route: { name: string }; children: React.ReactNode }) =>
-        route.name === '(torrents)' ? <>{children}</> : <DesktopColumn>{children}</DesktopColumn>
-    : undefined;
-
+  // Regular/mac tabs take the full pane (toolbar / table / source-list /
+  // RSS tree chrome). Left as a bare <Tabs> on iPhone so the compact tree
+  // is untouched.
   const tabs = (
     <Tabs
-      screenLayout={desktopScreenLayout}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
@@ -133,14 +127,20 @@ export default function TabsLayout() {
     <View
       style={{
         flex: 1,
-        paddingTop: insets.top,
+        // Mac Catalyst already sits below the native titlebar. Extra
+        // paddingTop here is the empty strip that makes the shell look
+        // like an iPhone shoved into a window. iPad keeps the status-bar
+        // inset. iPhone (not isShellHost) is unchanged below.
+        paddingTop: idiom === 'mac' ? 0 : insets.top,
         backgroundColor: colors.background,
       }}
     >
       {isShellHost ? (
         <SplitLayout
           sidebar={<Sidebar />}
+          sidebarWidth={desktopMetrics(idiom).sidebarWidth}
           sidebarCollapsed={sidebarCollapsed || idiom === 'compact'}
+          onExpandSidebar={idiom === 'mac' && sidebarCollapsed ? toggleSidebar : undefined}
         >
           {tabs}
         </SplitLayout>

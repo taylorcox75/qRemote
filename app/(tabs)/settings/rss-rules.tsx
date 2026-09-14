@@ -29,6 +29,7 @@ import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { InputModal } from '@/components/InputModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useTheme } from '@/context/ThemeContext';
+import { SettingsBackButton } from '@/components/shell/SettingsBackButton';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssRules } from '@/hooks/useRssRules';
@@ -174,14 +175,7 @@ export default function RssRulesScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-            accessibilityLabel={t('common.back')}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+          <SettingsBackButton />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t('screens.rss.rulesTitle')}
           </Text>

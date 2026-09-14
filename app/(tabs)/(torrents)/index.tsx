@@ -23,7 +23,6 @@ import {
   InteractionManager,
   GestureResponderEvent,
   PanResponder,
-  useWindowDimensions,
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
@@ -73,6 +72,7 @@ import { getErrorMessage } from '@/utils/error';
 import { extractMagnetLink } from '@/utils/magnet';
 import { getAddTorrentDialogueVariant } from '@/utils/add-torrent-dialogue';
 import { isTorrentCompleted } from '@/utils/torrent-state';
+import { matchesStatusFilter, trackerHost } from '@/utils/torrent-filters';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSelectPicker';
 import { torrentHasAnyTag, UNTAGGED_FILTER } from '@/utils/tags';
@@ -86,6 +86,7 @@ export default function TorrentsScreen() {
     torrents,
     categories,
     tags,
+    serverState,
     isLoading,
     error,
     refresh,
@@ -99,7 +100,6 @@ export default function TorrentsScreen() {
   // Mac idiom only: the same toggle MacStatusBar's alt-speed button calls.
   const { toggleAlternativeSpeedLimits } = useTransfer();
   const idiom = shell.idiom;
-  const { width: windowWidth } = useWindowDimensions();
   const params = useLocalSearchParams<{
     magnet?: string | string[];
     torrentFileUri?: string | string[];
@@ -158,6 +158,7 @@ export default function TorrentsScreen() {
   // Category/tag filter state (null = all categories, '' = uncategorized)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [trackerFilter, setTrackerFilter] = useState<string | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
 
@@ -566,10 +567,11 @@ export default function TorrentsScreen() {
     if (idiom === 'compact') return;
     if (appliedShellListFilterRef.current === shell.listFilter) return;
     appliedShellListFilterRef.current = shell.listFilter;
-    const { status, category, tags } = shell.listFilter;
+    const { status, category, tags, tracker } = shell.listFilter;
     setFilter(status);
     setCategoryFilter(category);
     setTagFilters(tags);
+    setTrackerFilter(tracker);
     // Converge with the in-list filter chips (handleCategorySelect,
     // handleTagsChange, the downloading/uploading chip): same auto-sort,
     // and the same persisted last-used filter, so a sidebar selection
@@ -596,9 +598,9 @@ export default function TorrentsScreen() {
   // never calls this in a way that has any effect (idiom is always
   // 'compact'), so this doesn't touch the iPhone path.
   const pushListFilterToShell = useCallback(
-    (status: string, category: string | null, tags: string[]) => {
+    (status: string, category: string | null, tags: string[], tracker: string | null = null) => {
       if (idiom === 'compact') return;
-      shell.setListFilter({ status, category, tags });
+      shell.setListFilter({ status, category, tags, tracker });
     },
     [idiom, shell],
   );
@@ -609,6 +611,11 @@ export default function TorrentsScreen() {
 
     if (filter !== 'all') {
       filtered = filtered.filter((torrent) => {
+        // Desktop sidebar uses Pogona buckets (matchesStatusFilter). Compact
+        // chips keep the original seven-id switch byte-for-byte.
+        if (idiom !== 'compact') {
+          return matchesStatusFilter(torrent, filter);
+        }
         switch (filter) {
           case 'downloading':
             return torrent.state === 'downloading';
@@ -651,6 +658,10 @@ export default function TorrentsScreen() {
     // Tag filter: OR semantics — torrent matches if it has any selected tag
     if (tagFilters.length > 0) {
       filtered = filtered.filter((torrent) => torrentHasAnyTag(torrent.tags, tagFilters));
+    }
+
+    if (idiom !== 'compact' && trackerFilter) {
+      filtered = filtered.filter((torrent) => trackerHost(torrent.tracker) === trackerFilter);
     }
 
     if (searchQuery.trim()) {
@@ -699,7 +710,17 @@ export default function TorrentsScreen() {
     });
 
     return filtered;
-  }, [torrents, filter, categoryFilter, tagFilters, searchQuery, sortBy, sortDirection]);
+  }, [
+    torrents,
+    filter,
+    categoryFilter,
+    tagFilters,
+    trackerFilter,
+    searchQuery,
+    sortBy,
+    sortDirection,
+    idiom,
+  ]);
 
   // Mac idiom only: stable so TorrentTableRow's memo comparator
   // (prev.onSelect === next.onSelect) doesn't fail - and every visible row
@@ -1299,7 +1320,8 @@ export default function TorrentsScreen() {
     setFilter('all');
     setCategoryFilter(null);
     setTagFilters([]);
-    pushListFilterToShell('all', null, []);
+    setTrackerFilter(null);
+    pushListFilterToShell('all', null, [], null);
     try {
       const prefs = await storageService.getPreferences();
       await storageService.savePreferences({
@@ -1373,7 +1395,7 @@ export default function TorrentsScreen() {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setCategoryFilter(newFilter);
       setShowCategoryPicker(false);
-      pushListFilterToShell(filter, newFilter, tagFilters);
+      pushListFilterToShell(filter, newFilter, tagFilters, trackerFilter);
       haptics.light();
       try {
         const prefs = await storageService.getPreferences();
@@ -1382,14 +1404,14 @@ export default function TorrentsScreen() {
         // best-effort
       }
     },
-    [filter, tagFilters, pushListFilterToShell],
+    [filter, tagFilters, trackerFilter, pushListFilterToShell],
   );
 
   const handleTagsChange = useCallback(
     async (values: string[]) => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setTagFilters(values);
-      pushListFilterToShell(filter, categoryFilter, values);
+      pushListFilterToShell(filter, categoryFilter, values, trackerFilter);
       try {
         const prefs = await storageService.getPreferences();
         await storageService.savePreferences({ ...prefs, lastTagFilters: values });
@@ -1397,7 +1419,7 @@ export default function TorrentsScreen() {
         // best-effort
       }
     },
-    [filter, categoryFilter, pushListFilterToShell],
+    [filter, categoryFilter, trackerFilter, pushListFilterToShell],
   );
 
   // Filter options
@@ -1424,9 +1446,11 @@ export default function TorrentsScreen() {
 
   // regular/mac only: DesktopToolbar's title, the active status-filter
   // label (same labelKey set as filterOptions above).
-  const activeFilterLabel = t(
-    filterOptions.find((option) => option.key === filter)?.labelKey ?? 'filters.all',
-  );
+  const activeFilterLabel = t(`sidebar.status.${filter}`, {
+    defaultValue: t(
+      filterOptions.find((option) => option.key === filter)?.labelKey ?? 'filters.all',
+    ),
+  });
 
   // Early returns
   // Show the "Not Connected" quick-connect screen whenever there is no live
@@ -1506,7 +1530,10 @@ export default function TorrentsScreen() {
   // (1024) -- only the 13-inch (1366) would clear 1000 with the sidebar
   // open. The list column still shrinks with the sidebar open (down to
   // 574pt on the 11-inch), which TorrentRow's middle-ellipsis handles.
-  const showDetailPane = idiom === 'regular' && windowWidth >= 1000;
+  // Regular (iPad) always docks a trailing inspector, matching Pogona's
+  // `.inspector` on TransferListScreen. Compact still pushes the detail
+  // route. Mac uses the bottom-docked panel instead (see the mac return).
+  const showDetailPane = idiom === 'regular';
 
   // Shared option list for the sort dropdown, rendered from two different
   // gated spots below (compact header vs. desktop toolbar) so the JSX isn't
@@ -1840,8 +1867,8 @@ export default function TorrentsScreen() {
       {idiom !== 'compact' && (
         <DesktopToolbar
           idiom={idiom}
-          title={activeFilterLabel}
-          resultCount={filteredTorrents.length}
+          title={idiom === 'mac' ? undefined : activeFilterLabel}
+          resultCount={idiom === 'mac' ? undefined : filteredTorrents.length}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onClearSearch={() => setSearchQuery('')}
@@ -1856,6 +1883,30 @@ export default function TorrentsScreen() {
           searchInputRef={searchInputRef}
           sidebarCollapsed={shell.sidebarCollapsed}
           onToggleSidebar={shell.toggleSidebar}
+          hasSelection={!!shell.selectedHash}
+          onDeletePress={handleMacDelete}
+          onResumePress={() => void macRunOnSelected((hash) => torrentsApi.resumeTorrents([hash]))}
+          onPausePress={() => void macRunOnSelected((hash) => torrentsApi.pauseTorrents([hash]))}
+          onQueueTopPress={() =>
+            void macRunOnSelected((hash) => torrentsApi.setMaximalPriority([hash]))
+          }
+          onQueueUpPress={() =>
+            void macRunOnSelected((hash) => torrentsApi.increasePriority([hash]))
+          }
+          onQueueDownPress={() =>
+            void macRunOnSelected((hash) => torrentsApi.decreasePriority([hash]))
+          }
+          onQueueBottomPress={() =>
+            void macRunOnSelected((hash) => torrentsApi.setMinimalPriority([hash]))
+          }
+          onAltSpeedPress={() => void toggleAlternativeSpeedLimits()}
+          altSpeedActive={serverState?.use_alt_speed_limits ?? false}
+          onRecheckPress={() =>
+            void macRunOnSelected((hash) => torrentsApi.recheckTorrents([hash]))
+          }
+          onReannouncePress={() =>
+            void macRunOnSelected((hash) => torrentsApi.reannounceTorrents([hash]))
+          }
         />
       )}
 
@@ -1981,8 +2032,9 @@ export default function TorrentsScreen() {
             </TouchableOpacity>
           )}
         </View>
-      ) : idiom === 'mac' ? (
+      ) : idiom !== 'compact' ? (
         <TorrentTable
+          idiom={idiom}
           torrents={filteredTorrents}
           selectedHash={shell.selectedHash}
           onSelect={handleMacTableSelect}
@@ -1990,7 +2042,7 @@ export default function TorrentsScreen() {
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={handleMacSortChange}
-          alternatingRows={macAlternatingRows}
+          alternatingRows={idiom === 'mac' ? macAlternatingRows : false}
           categoryColors={categoryColors}
           topInset={0}
         />
@@ -2569,7 +2621,11 @@ export default function TorrentsScreen() {
                 onDismiss={() => shell.setSelectedHash(null)}
               />
             ) : (
-              <EmptyState icon="albums-outline" title={t('screens.torrents.selectTorrentHint')} />
+              <View style={styles.macEmptyInspector}>
+                <Text style={[styles.macEmptyInspectorTitle, { color: colors.textSecondary }]}>
+                  {t('screens.torrents.selectTorrentHint')}
+                </Text>
+              </View>
             )}
           </Animated.View>
           <MacStatusBar />
@@ -2644,6 +2700,16 @@ const styles = StyleSheet.create({
   },
   macDetailPanel: {
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  macEmptyInspector: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  macEmptyInspectorTitle: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   center: {
     flex: 1,

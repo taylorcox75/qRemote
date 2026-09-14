@@ -23,6 +23,12 @@ interface FilterChipProps {
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   children?: ReactNode;
+  /**
+   * Desktop (regular/mac) selection: muted primary wash and primary
+   * text/icon instead of the iPhone solid-fill chip. Compact callers
+   * leave this unset.
+   */
+  muted?: boolean;
 }
 
 export function FilterChip({
@@ -38,18 +44,29 @@ export function FilterChip({
   style,
   textStyle,
   children,
+  muted,
 }: FilterChipProps) {
   const { colors } = useTheme();
   const resolvedActiveColor = activeColor ?? colors.primary;
+  const mutedActive = !!muted && active;
+  const foreground = mutedActive ? colors.primary : active ? '#FFFFFF' : colors.text;
 
   return (
     <TouchableOpacity
       style={[
         styles.chip,
-        active && shadows.filterActive,
+        active && !muted && shadows.filterActive,
         {
-          backgroundColor: active ? resolvedActiveColor : colors.surface,
-          borderColor: active ? resolvedActiveColor : colors.surfaceOutline,
+          backgroundColor: mutedActive
+            ? colors.primaryOpac
+            : active
+              ? resolvedActiveColor
+              : colors.surface,
+          borderColor: mutedActive
+            ? 'transparent'
+            : active
+              ? resolvedActiveColor
+              : colors.surfaceOutline,
           borderWidth: active ? 0 : 0.2,
         },
         style,
@@ -59,9 +76,9 @@ export function FilterChip({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={accessibilityState ?? { selected: active }}
     >
-      {icon && <Ionicons name={icon} size={iconSize} color={active ? '#FFFFFF' : colors.text} />}
+      {icon && <Ionicons name={icon} size={iconSize} color={foreground} />}
       <Text
-        style={[styles.chipText, { color: active ? '#FFFFFF' : colors.text }, textStyle]}
+        style={[styles.chipText, { color: foreground }, textStyle]}
         numberOfLines={numberOfLines}
       >
         {label}

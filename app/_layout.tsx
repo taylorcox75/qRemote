@@ -5,11 +5,14 @@ import {
   Dimensions,
   InteractionManager,
   Linking,
+  Platform,
   Text,
+  TextInput,
   TouchableOpacity,
   useColorScheme,
   View,
 } from 'react-native';
+import { hideDevChrome } from '@/utils/hide-dev-chrome';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -39,6 +42,19 @@ import {
 import { extractMagnetLink } from '@/utils/magnet';
 import { extractTorrentFile, IncomingTorrentFile } from '@/utils/torrent-file';
 import { persistIncomingTorrentFile } from '@/services/incoming-file';
+
+hideDevChrome();
+
+if (Platform.OS === 'ios' && (Platform.isMacCatalyst ?? false)) {
+  const text = Text as typeof Text & {
+    defaultProps?: { allowFontScaling?: boolean; maxFontSizeMultiplier?: number };
+  };
+  const input = TextInput as typeof TextInput & {
+    defaultProps?: { allowFontScaling?: boolean; maxFontSizeMultiplier?: number };
+  };
+  text.defaultProps = { ...text.defaultProps, allowFontScaling: false, maxFontSizeMultiplier: 1 };
+  input.defaultProps = { ...input.defaultProps, allowFontScaling: false, maxFontSizeMultiplier: 1 };
+}
 
 const { width } = Dimensions.get('window');
 

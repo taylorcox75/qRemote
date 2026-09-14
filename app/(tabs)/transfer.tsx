@@ -42,7 +42,9 @@ import { InputModal } from '@/components/InputModal';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
+import { hexToRgba } from '@/utils/color';
 import { useGracefulError } from '@/hooks/useGracefulError';
+import { useShell } from '@/context/ShellContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRAPH_HORIZONTAL_PADDING = spacing.lg * 2;
@@ -77,6 +79,7 @@ export default function TransferScreen() {
   const isRecoveringFromBackground = transferRecovering || torrentRecovering;
   const { graceError, isPendingError } = useGracefulError(error);
   const { colors, isDark } = useTheme();
+  const { idiom } = useShell();
   const { showToast } = useToast();
   const router = useRouter();
 
@@ -749,387 +752,492 @@ export default function TransferScreen() {
           }
         >
           {/* ========== HERO SECTION ========== */}
-          <View style={styles.heroSection}>
-            <View style={styles.heroSpeedRow}>
-              <View style={styles.heroSpeedItem}>
-                <Ionicons name="arrow-down" size={20} color={colors.primary} />
-                <Text
-                  style={[styles.heroSpeedValue, { color: colors.text }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.6}
-                >
-                  {formatSpeed(transferInfo.dl_info_speed)}
-                </Text>
-              </View>
-              <View style={styles.heroSpeedItem}>
-                <Ionicons name="arrow-up" size={20} color={colors.success} />
-                <Text
-                  style={[styles.heroSpeedValue, { color: colors.text }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.6}
-                >
-                  {formatSpeed(transferInfo.up_info_speed)}
-                </Text>
-              </View>
-            </View>
-            <View style={[styles.heroGraphCard, { backgroundColor: colors.surface }]}>
-              <View style={styles.heroGraphContainer}>
-                <View style={styles.heroGraphOverlay}>
-                  <SpeedGraph
-                    data={downloadGraphData}
-                    color={colors.primary}
-                    width={INNER_GRAPH_WIDTH}
-                    height={80}
-                    maxValue={graphMax}
-                  />
+          {idiom === 'compact' && (
+            <View style={styles.heroSection}>
+              <View style={styles.heroSpeedRow}>
+                <View style={styles.heroSpeedItem}>
+                  <Ionicons name="arrow-down" size={20} color={colors.primary} />
+                  <Text
+                    style={[styles.heroSpeedValue, { color: colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.6}
+                  >
+                    {formatSpeed(transferInfo.dl_info_speed)}
+                  </Text>
                 </View>
-                <View style={styles.heroGraphOverlay}>
-                  <SpeedGraph
-                    data={uploadGraphData}
-                    color={colors.success}
-                    width={INNER_GRAPH_WIDTH}
-                    height={80}
-                    maxValue={graphMax}
-                  />
+                <View style={styles.heroSpeedItem}>
+                  <Ionicons name="arrow-up" size={20} color={colors.success} />
+                  <Text
+                    style={[styles.heroSpeedValue, { color: colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.6}
+                  >
+                    {formatSpeed(transferInfo.up_info_speed)}
+                  </Text>
                 </View>
               </View>
-              <Text style={[styles.graphScaleCaption, { color: colors.textSecondary }]}>
-                {t('screens.transfer.graphScale', { value: formatSpeed(graphMax) })}
-              </Text>
-            </View>
-          </View>
-
-          {/* ========== SPEED LIMITS ========== */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.transfer.speedLimits')}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openLimitModal('download')}
-                disabled={settingLimit || isAltSpeedEnabled}
-              >
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.downloadLimit')}
-                </Text>
-                <View style={styles.rowTrailing}>
-                  {isAltSpeedEnabled && (
-                    <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
-                  )}
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {getDisplayLimit(transferInfo.dl_rate_limit, transferInfo.alt_dl_limit)}
-                  </Text>
-                  <Ionicons
-                    name="pencil"
-                    size={14}
-                    color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openLimitModal('upload')}
-                disabled={settingLimit || isAltSpeedEnabled}
-              >
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.uploadLimit')}
-                </Text>
-                <View style={styles.rowTrailing}>
-                  {isAltSpeedEnabled && (
-                    <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
-                  )}
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {getDisplayLimit(transferInfo.up_rate_limit, transferInfo.alt_up_limit)}
-                  </Text>
-                  <Ionicons
-                    name="pencil"
-                    size={14}
-                    color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              {/* Alt Download Limit — always editable */}
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openAltLimitModal('altDownload')}
-                disabled={settingLimit}
-              >
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.altDownloadLimit')}
-                </Text>
-                <View style={styles.rowTrailing}>
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {transferInfo.alt_dl_limit != null && transferInfo.alt_dl_limit > 0
-                      ? formatSpeed(transferInfo.alt_dl_limit)
-                      : t('common.unlimited')}
-                  </Text>
-                  <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              {/* Alt Upload Limit — always editable */}
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openAltLimitModal('altUpload')}
-                disabled={settingLimit}
-              >
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.altUploadLimit')}
-                </Text>
-                <View style={styles.rowTrailing}>
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {transferInfo.alt_up_limit != null && transferInfo.alt_up_limit > 0
-                      ? formatSpeed(transferInfo.alt_up_limit)
-                      : t('common.unlimited')}
-                  </Text>
-                  <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.alternativeSpeeds')}
-                </Text>
-                <View style={styles.switchHost}>
-                  <Switch
-                    value={isAltSpeedEnabled}
-                    onValueChange={handleToggleAltSpeed}
-                    disabled={actionLoading === 'altSpeed'}
-                    trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* ========== SEEDING LIMITS ========== */}
-          {isConnected && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-                {t('screens.transfer.seedingLimits')}
-              </Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
-                <View style={styles.row}>
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.ratioLimitEnabled')}
-                  </Text>
-                  <View style={styles.switchHost}>
-                    <Switch
-                      value={ratioLimitEnabled}
-                      onValueChange={(value) => {
-                        const prev = ratioLimitEnabled;
-                        setSeedingLimitPreference(
-                          'max_ratio_enabled',
-                          value,
-                          () => setRatioLimitEnabled(value),
-                          () => setRatioLimitEnabled(prev),
-                        );
-                      }}
-                      trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+              <View style={[styles.heroGraphCard, { backgroundColor: colors.surface }]}>
+                <View style={styles.heroGraphContainer}>
+                  <View style={styles.heroGraphOverlay}>
+                    <SpeedGraph
+                      data={downloadGraphData}
+                      color={colors.primary}
+                      width={INNER_GRAPH_WIDTH}
+                      height={80}
+                      maxValue={graphMax}
+                    />
+                  </View>
+                  <View style={styles.heroGraphOverlay}>
+                    <SpeedGraph
+                      data={uploadGraphData}
+                      color={colors.success}
+                      width={INNER_GRAPH_WIDTH}
+                      height={80}
+                      maxValue={graphMax}
                     />
                   </View>
                 </View>
-
-                {ratioLimitEnabled && (
-                  <>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <TouchableOpacity
-                      style={styles.row}
-                      onPress={() => setMaxRatioModalVisible(true)}
-                    >
-                      <Text style={[styles.rowLabel, { color: colors.text }]}>
-                        {t('screens.transfer.maxRatio')}
-                      </Text>
-                      <View style={styles.rowTrailing}>
-                        <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                          {maxRatio.toFixed(2)}
-                        </Text>
-                        <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                      </View>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-                <View style={styles.row}>
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.seedingTimeLimitEnabled')}
-                  </Text>
-                  <View style={styles.switchHost}>
-                    <Switch
-                      value={seedingTimeLimitEnabled}
-                      onValueChange={(value) => {
-                        const prev = seedingTimeLimitEnabled;
-                        setSeedingLimitPreference(
-                          'max_seeding_time_enabled',
-                          value,
-                          () => setSeedingTimeLimitEnabled(value),
-                          () => setSeedingTimeLimitEnabled(prev),
-                        );
-                      }}
-                      trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                    />
-                  </View>
-                </View>
-
-                {seedingTimeLimitEnabled && (
-                  <>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <TouchableOpacity
-                      style={styles.row}
-                      onPress={() => setMaxSeedingTimeModalVisible(true)}
-                    >
-                      <Text style={[styles.rowLabel, { color: colors.text }]}>
-                        {t('screens.transfer.maxSeedingTime')}
-                      </Text>
-                      <View style={styles.rowTrailing}>
-                        <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                          {formatTime(maxSeedingTime * 60)}
-                        </Text>
-                        <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                      </View>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {(ratioLimitEnabled || seedingTimeLimitEnabled) && (
-                  <>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <TouchableOpacity
-                      style={styles.row}
-                      onPress={() => setMaxRatioActPickerVisible(true)}
-                    >
-                      <Text style={[styles.rowLabel, { color: colors.text }]}>
-                        {t('screens.transfer.whenLimitReached')}
-                      </Text>
-                      <View style={styles.rowTrailing}>
-                        <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                          {maxRatioActOptions.find((opt) => opt.value === String(maxRatioAct))
-                            ?.label ?? maxRatioActOptions[0].label}
-                        </Text>
-                        <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                      </View>
-                    </TouchableOpacity>
-                  </>
-                )}
+                <Text style={[styles.graphScaleCaption, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.graphScale', { value: formatSpeed(graphMax) })}
+                </Text>
               </View>
             </View>
           )}
 
-          {/* ========== ACTIONS ========== */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.transfer.actions')}
-            </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handleResumeAll}
-                disabled={actionLoading !== null}
+          {idiom !== 'compact' && (
+            <View style={styles.dashboardWrap}>
+              <Text style={[styles.dashboardTitle, { color: colors.text }]}>
+                {t('screens.transfer.title')}
+              </Text>
+              <View
+                style={[
+                  styles.dashboardChartCard,
+                  { backgroundColor: hexToRgba(colors.text, 0.04) },
+                ]}
               >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'resume' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="play" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.resumeAll')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handlePauseAll}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'pause' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="pause" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.pauseAll')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handlePauseAllDownloads}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'pauseDL' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="arrow-down" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.pauseDownloads')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handlePauseAllUploads}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'pauseUL' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="arrow-up" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.pauseUploads')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handleForceStartAll}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'forceStart' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="flash" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.forceStartAll')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+                <Text style={[styles.dashboardChartLabel, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.graphScale', { value: formatSpeed(graphMax) })}
+                </Text>
+                <SpeedGraph
+                  data={downloadGraphData}
+                  color={colors.stateDownloading}
+                  width={Math.min(INNER_GRAPH_WIDTH, 900)}
+                  height={120}
+                  maxValue={graphMax}
+                />
+              </View>
+              <View style={styles.dashboardGrid}>
+                {(
+                  [
+                    {
+                      key: 'dl',
+                      color: colors.stateDownloading,
+                      icon: 'arrow-down-circle' as const,
+                      label: t('screens.transfer.downloaded'),
+                      value: formatSpeed(transferInfo.dl_info_speed),
+                    },
+                    {
+                      key: 'ul',
+                      color: colors.stateSeeding,
+                      icon: 'arrow-up-circle' as const,
+                      label: t('screens.transfer.uploaded'),
+                      value: formatSpeed(transferInfo.up_info_speed),
+                    },
+                    {
+                      key: 'active',
+                      color: '#F59E0B',
+                      icon: 'flash' as const,
+                      label: t('sidebar.status.active'),
+                      value: String(
+                        torrents.filter((tor) => tor.dlspeed > 0 || tor.upspeed > 0).length,
+                      ),
+                    },
+                    {
+                      key: 'ratio',
+                      color: '#A78BFA',
+                      icon: 'swap-horizontal' as const,
+                      label: t('screens.transfer.globalRatio'),
+                      value: String(serverState?.global_ratio ?? '0.00'),
+                    },
+                    {
+                      key: 'disk',
+                      color: '#2DD4BF',
+                      icon: 'hardware-chip-outline' as const,
+                      label: t('screens.transfer.freeDiskSpace'),
+                      value: formatSize(serverState?.free_space_on_disk ?? 0),
+                    },
+                    {
+                      key: 'dht',
+                      color: '#60A5FA',
+                      icon: 'git-network-outline' as const,
+                      label: t('screens.transfer.dhtNodes'),
+                      value: String(serverState?.dht_nodes ?? 0),
+                    },
+                  ] as const
+                ).map((card) => (
+                  <View
+                    key={card.key}
+                    style={[
+                      styles.dashboardCard,
+                      { backgroundColor: hexToRgba(colors.text, 0.04) },
+                    ]}
+                  >
+                    <View style={styles.dashboardCardHead}>
+                      <Ionicons name={card.icon} size={12} color={card.color} />
+                      <Text style={[styles.dashboardCardLabel, { color: colors.textSecondary }]}>
+                        {card.label}
+                      </Text>
+                    </View>
+                    <Text style={[styles.dashboardCardValue, { color: colors.text }]}>
+                      {card.value}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
+          )}
+
+          {idiom === 'compact' && (
+            <>
+              {/* ========== SPEED LIMITS ========== */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.speedLimits')}
+                </Text>
+                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => openLimitModal('download')}
+                    disabled={settingLimit || isAltSpeedEnabled}
+                  >
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.downloadLimit')}
+                    </Text>
+                    <View style={styles.rowTrailing}>
+                      {isAltSpeedEnabled && (
+                        <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
+                      )}
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {getDisplayLimit(transferInfo.dl_rate_limit, transferInfo.alt_dl_limit)}
+                      </Text>
+                      <Ionicons
+                        name="pencil"
+                        size={14}
+                        color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => openLimitModal('upload')}
+                    disabled={settingLimit || isAltSpeedEnabled}
+                  >
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.uploadLimit')}
+                    </Text>
+                    <View style={styles.rowTrailing}>
+                      {isAltSpeedEnabled && (
+                        <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
+                      )}
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {getDisplayLimit(transferInfo.up_rate_limit, transferInfo.alt_up_limit)}
+                      </Text>
+                      <Ionicons
+                        name="pencil"
+                        size={14}
+                        color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  {/* Alt Download Limit — always editable */}
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => openAltLimitModal('altDownload')}
+                    disabled={settingLimit}
+                  >
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.altDownloadLimit')}
+                    </Text>
+                    <View style={styles.rowTrailing}>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {transferInfo.alt_dl_limit != null && transferInfo.alt_dl_limit > 0
+                          ? formatSpeed(transferInfo.alt_dl_limit)
+                          : t('common.unlimited')}
+                      </Text>
+                      <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  {/* Alt Upload Limit — always editable */}
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => openAltLimitModal('altUpload')}
+                    disabled={settingLimit}
+                  >
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.altUploadLimit')}
+                    </Text>
+                    <View style={styles.rowTrailing}>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {transferInfo.alt_up_limit != null && transferInfo.alt_up_limit > 0
+                          ? formatSpeed(transferInfo.alt_up_limit)
+                          : t('common.unlimited')}
+                      </Text>
+                      <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.alternativeSpeeds')}
+                    </Text>
+                    <View style={styles.switchHost}>
+                      <Switch
+                        value={isAltSpeedEnabled}
+                        onValueChange={handleToggleAltSpeed}
+                        disabled={actionLoading === 'altSpeed'}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* ========== SEEDING LIMITS ========== */}
+              {isConnected && (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                    {t('screens.transfer.seedingLimits')}
+                  </Text>
+                  <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                    <View style={styles.row}>
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.ratioLimitEnabled')}
+                      </Text>
+                      <View style={styles.switchHost}>
+                        <Switch
+                          value={ratioLimitEnabled}
+                          onValueChange={(value) => {
+                            const prev = ratioLimitEnabled;
+                            setSeedingLimitPreference(
+                              'max_ratio_enabled',
+                              value,
+                              () => setRatioLimitEnabled(value),
+                              () => setRatioLimitEnabled(prev),
+                            );
+                          }}
+                          trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                        />
+                      </View>
+                    </View>
+
+                    {ratioLimitEnabled && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <TouchableOpacity
+                          style={styles.row}
+                          onPress={() => setMaxRatioModalVisible(true)}
+                        >
+                          <Text style={[styles.rowLabel, { color: colors.text }]}>
+                            {t('screens.transfer.maxRatio')}
+                          </Text>
+                          <View style={styles.rowTrailing}>
+                            <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                              {maxRatio.toFixed(2)}
+                            </Text>
+                            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                          </View>
+                        </TouchableOpacity>
+                      </>
+                    )}
+
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                    <View style={styles.row}>
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.seedingTimeLimitEnabled')}
+                      </Text>
+                      <View style={styles.switchHost}>
+                        <Switch
+                          value={seedingTimeLimitEnabled}
+                          onValueChange={(value) => {
+                            const prev = seedingTimeLimitEnabled;
+                            setSeedingLimitPreference(
+                              'max_seeding_time_enabled',
+                              value,
+                              () => setSeedingTimeLimitEnabled(value),
+                              () => setSeedingTimeLimitEnabled(prev),
+                            );
+                          }}
+                          trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                        />
+                      </View>
+                    </View>
+
+                    {seedingTimeLimitEnabled && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <TouchableOpacity
+                          style={styles.row}
+                          onPress={() => setMaxSeedingTimeModalVisible(true)}
+                        >
+                          <Text style={[styles.rowLabel, { color: colors.text }]}>
+                            {t('screens.transfer.maxSeedingTime')}
+                          </Text>
+                          <View style={styles.rowTrailing}>
+                            <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                              {formatTime(maxSeedingTime * 60)}
+                            </Text>
+                            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                          </View>
+                        </TouchableOpacity>
+                      </>
+                    )}
+
+                    {(ratioLimitEnabled || seedingTimeLimitEnabled) && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <TouchableOpacity
+                          style={styles.row}
+                          onPress={() => setMaxRatioActPickerVisible(true)}
+                        >
+                          <Text style={[styles.rowLabel, { color: colors.text }]}>
+                            {t('screens.transfer.whenLimitReached')}
+                          </Text>
+                          <View style={styles.rowTrailing}>
+                            <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                              {maxRatioActOptions.find((opt) => opt.value === String(maxRatioAct))
+                                ?.label ?? maxRatioActOptions[0].label}
+                            </Text>
+                            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                          </View>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* ========== ACTIONS ========== */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.actions')}
+                </Text>
+                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handleResumeAll}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'resume' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="play" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.resumeAll')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handlePauseAll}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'pause' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="pause" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.pauseAll')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handlePauseAllDownloads}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'pauseDL' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="arrow-down" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.pauseDownloads')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handlePauseAllUploads}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'pauseUL' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="arrow-up" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.pauseUploads')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handleForceStartAll}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'forceStart' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="flash" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.forceStartAll')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          )}
 
           {/* ========== THIS SESSION ========== */}
           <View style={styles.section}>
@@ -1334,6 +1442,51 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  dashboardWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+    gap: 14,
+  },
+  dashboardTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  dashboardChartCard: {
+    borderRadius: 10,
+    padding: 12,
+  },
+  dashboardChartLabel: {
+    fontSize: 11,
+    marginBottom: 8,
+  },
+  dashboardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dashboardCard: {
+    flexGrow: 1,
+    flexBasis: '15%',
+    minWidth: 120,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 4,
+  },
+  dashboardCardHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dashboardCardValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+  dashboardCardLabel: {
+    fontSize: 11,
   },
   scrollContent: {
     paddingBottom: 20,

@@ -101,9 +101,19 @@ describe('TorrentTable', () => {
       'eta',
       'ratio',
       'added',
+      'completed',
+      'seen',
     ]) {
       expect(screen.getByText(`table.columns.${key}`)).toBeTruthy();
     }
+  });
+
+  it('renders the iPad column set (no seeds/peers/eta/dates, has queue)', async () => {
+    await render(<TorrentTable {...baseProps()} idiom="regular" />);
+    expect(screen.getByText('table.columns.queue')).toBeTruthy();
+    expect(screen.getByText('table.columns.status')).toBeTruthy();
+    expect(screen.queryByText('table.columns.seeds')).toBeNull();
+    expect(screen.queryByText('table.columns.added')).toBeNull();
   });
 
   it('renders a row per torrent', async () => {
@@ -172,14 +182,14 @@ describe('TorrentTable', () => {
     });
   });
 
-  it('uses a solid theme primary background for the selected row', async () => {
+  it('uses a muted wash for the selected row (Pogona table, not iOS invert)', async () => {
     await render(<TorrentTable {...baseProps()} selectedHash="h1" />);
     const row0 = screen.getByText('Alpha Torrent').parent?.parent;
     expect(StyleSheet.flatten(row0?.props.style)).toMatchObject({
-      backgroundColor: mockColors.primary,
+      backgroundColor: hexToRgba(mockColors.text, 0.08),
     });
     expect(StyleSheet.flatten(screen.getByText('Alpha Torrent').props.style)).toMatchObject({
-      color: mockColors.onAccent,
+      color: mockColors.text,
     });
   });
 

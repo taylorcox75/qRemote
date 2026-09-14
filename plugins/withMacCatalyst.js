@@ -204,6 +204,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   ) {
     guard let windowScene = scene as? UIWindowScene else { return }
     guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
+    #if targetEnvironment(macCatalyst)
+    if let titlebar = windowScene.titlebar {
+      titlebar.titleVisibility = .hidden
+      titlebar.toolbar = nil
+    }
+    #endif
     let window = UIWindow(windowScene: windowScene)
     self.window = window
     appDelegate.window = window
@@ -212,6 +218,27 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
       _ = appDelegate.application(UIApplication.shared, open: context.url, options: [:])
     }
   }
+
+  func sceneDidBecomeActive(_ scene: UIScene) {
+    #if targetEnvironment(macCatalyst)
+    guard let windowScene = scene as? UIWindowScene else { return }
+    windowScene.titlebar?.toolbar = nil
+    windowScene.titlebar?.titleVisibility = .hidden
+    for window in windowScene.windows {
+      hideDevLauncherTabs(in: window)
+    }
+    #endif
+  }
+
+  #if targetEnvironment(macCatalyst)
+  private func hideDevLauncherTabs(in view: UIView) {
+    if let tabBar = view as? UITabBar {
+      tabBar.isHidden = true
+      tabBar.removeFromSuperview()
+    }
+    view.subviews.forEach { hideDevLauncherTabs(in: $0) }
+  }
+  #endif
 
   func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
     guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
@@ -257,6 +284,8 @@ const APPDELEGATE_SCENE_METHODS = `
 
 function withUIScene(config) {
   config = withInfoPlist(config, (config) => {
+    config.modResults.EXDevMenuShowFloatingActionButton = false;
+    config.modResults.EXDevMenuShowsAtLaunch = false;
     config.modResults.UIApplicationSceneManifest = {
       UIApplicationSupportsMultipleScenes: false,
       UISceneConfigurations: {

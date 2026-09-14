@@ -1,16 +1,11 @@
 /**
- * TorrentTable.tsx - dense 11-column desktop table for the 'mac' idiom,
- * mirroring Pogona's Features/Main/MacTransfersView.swift `transfersTable`
- * anatomy: a desktopMetrics('mac')-tall row per torrent (26pt), a 20pt
- * square leading slot (TMDB poster art when active and matched, else a
- * tinted Ionicons state glyph - see getStateIcon) before the name cell,
- * right-aligned tabular-nums numeric columns, and a header row whose cells
- * double as sort toggles - 24pt tall, 11pt medium sentence-case secondary
- * labels (Finder-style, not uppercase), a hairline bottom border and
- * hairline separators between header cells only.
+ * TorrentTable.tsx - desktop table for the 'regular' (iPad) and 'mac'
+ * (Mac Catalyst) layout idioms, mirroring Pogona:
+ *   - mac: MacTransfersView.swift transfersTable (dense 13-col, 26pt rows,
+ *     28pt square artwork plate)
+ *   - regular: TransferListScreen.swift tableView (8-col, 44pt rows)
  *
- * Only rendered on the 'mac' layout idiom - the iPhone ('compact') and iPad
- * ('regular') layouts keep TorrentCard/TorrentRow untouched.
+ * Compact (iPhone) never mounts this component.
  */
 import React, { useRef, useState } from 'react';
 import {
@@ -35,10 +30,11 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { getStateColor, getStateLabel, hasEta } from '@/utils/torrent-state';
 import { formatSpeed, formatSize, formatTime, formatRatio, formatProgress } from '@/utils/format';
 import { spacing } from '@/constants/spacing';
-import { desktopMetrics } from '@/constants/desktop';
+import { desktopMetrics, type DesktopMetrics } from '@/constants/desktop';
 import { hexToRgba } from '@/utils/color';
+import type { LayoutIdiom } from '@/hooks/useLayoutIdiom';
 
-const METRICS = desktopMetrics('mac');
+type TableIdiom = Exclude<LayoutIdiom, 'compact'>;
 
 interface TorrentTableProps {
   torrents: TorrentInfo[];
@@ -50,12 +46,9 @@ interface TorrentTableProps {
   onSortChange: (field: SortField, direction: 'asc' | 'desc') => void;
   alternatingRows: boolean;
   categoryColors?: Record<string, string>;
-  // Pixels of empty space to reserve above the header row so the absolutely
-  // positioned search/sort header (index.tsx styles.headerContainer,
-  // zIndex 1000) does not cover the column headers or the first rows. Mirrors
-  // the FlatList branch's styles.listContent.paddingTop; 0 (default) keeps
-  // callers outside the mac shell (tests, future reuse) unaffected.
   topInset?: number;
+  /** Defaults to 'mac' so existing call sites and tests stay dense. */
+  idiom?: TableIdiom;
 }
 
 type ColumnKey =
@@ -69,71 +62,62 @@ type ColumnKey =
   | 'peers'
   | 'eta'
   | 'ratio'
-  | 'added';
+  | 'added'
+  | 'completed'
+  | 'seen'
+  | 'queue';
 
 interface ColumnDef {
   key: ColumnKey;
-  /** Sortable column's SortField, or null when the column has no SortField
-   * equivalent in types/preferences.ts (status, seeds, peers, eta). */
   field: SortField | null;
-  /** Fixed width in px, or undefined for the flexible name column. */
   width?: number;
   minWidth?: number;
   align: 'left' | 'right';
 }
 
 const NAME_MIN_WIDTH = 180;
-const SIZE_WIDTH = 80;
-const PROGRESS_WIDTH = 104;
-const STATUS_WIDTH = 100;
-const DOWN_WIDTH = 84;
-const UP_WIDTH = 84;
-const SEEDS_WIDTH = 60;
-const PEERS_WIDTH = 60;
-const ETA_WIDTH = 68;
-const RATIO_WIDTH = 52;
-const ADDED_WIDTH = 96;
-// Trailing per-row context-menu button. Not a COLUMNS entry (no sortable
-// field, no header label) - onPointerDown/onHoverIn/onHoverOut right-click
-// below never fire on this RN/Fabric build (RCTGetDispatchW3CPointerEvents
-// defaults NO and nothing in this app enables it), so this is the only way
-// a mouse/trackpad user can reach the context menu without a long-press.
 const MENU_WIDTH = 28;
-const ROW_HEIGHT = METRICS.tableRowHeight;
-const HEADER_HEIGHT = METRICS.tableHeaderHeight;
 const COLUMN_GAP = spacing.sm;
 const ROW_PADDING_HORIZONTAL = spacing.md;
-const POSTER_SIZE = 20;
 const PROGRESS_BAR_WIDTH = 60;
 const PROGRESS_GAP = 4;
 const PROGRESS_PERCENT_WIDTH = 40;
 
-const COLUMNS: ColumnDef[] = [
+const MAC_COLUMNS: ColumnDef[] = [
   { key: 'name', field: 'name', minWidth: NAME_MIN_WIDTH, align: 'left' },
-  { key: 'size', field: 'size', width: SIZE_WIDTH, align: 'right' },
-  { key: 'progress', field: 'progress', width: PROGRESS_WIDTH, align: 'right' },
-  { key: 'status', field: null, width: STATUS_WIDTH, align: 'left' },
-  { key: 'down', field: 'dlspeed', width: DOWN_WIDTH, align: 'right' },
-  { key: 'up', field: 'upspeed', width: UP_WIDTH, align: 'right' },
-  { key: 'seeds', field: null, width: SEEDS_WIDTH, align: 'right' },
-  { key: 'peers', field: null, width: PEERS_WIDTH, align: 'right' },
-  { key: 'eta', field: null, width: ETA_WIDTH, align: 'right' },
-  { key: 'ratio', field: 'ratio', width: RATIO_WIDTH, align: 'right' },
-  { key: 'added', field: 'added_on', width: ADDED_WIDTH, align: 'right' },
+  { key: 'size', field: 'size', width: 80, align: 'right' },
+  { key: 'progress', field: 'progress', width: 104, align: 'right' },
+  { key: 'status', field: null, width: 100, align: 'left' },
+  { key: 'down', field: 'dlspeed', width: 84, align: 'right' },
+  { key: 'up', field: 'upspeed', width: 84, align: 'right' },
+  { key: 'seeds', field: null, width: 60, align: 'right' },
+  { key: 'peers', field: null, width: 60, align: 'right' },
+  { key: 'eta', field: null, width: 68, align: 'right' },
+  { key: 'ratio', field: 'ratio', width: 52, align: 'right' },
+  { key: 'added', field: 'added_on', width: 96, align: 'right' },
+  { key: 'completed', field: null, width: 96, align: 'right' },
+  { key: 'seen', field: null, width: 96, align: 'right' },
 ];
 
-const FIXED_COLUMNS_WIDTH = COLUMNS.reduce((sum, col) => sum + (col.width ?? 0), 0);
-// Sum of the fixed columns plus the flexible Name column's minWidth - tuned
-// so a 1060pt content width (the mac shell's default window) fits every
-// column with no horizontal scroll; narrower windows still scroll via the
-// ScrollView above.
-const TABLE_MIN_WIDTH = FIXED_COLUMNS_WIDTH + NAME_MIN_WIDTH;
+const IPAD_COLUMNS: ColumnDef[] = [
+  { key: 'name', field: 'name', minWidth: 220, align: 'left' },
+  { key: 'status', field: null, width: 120, align: 'left' },
+  { key: 'progress', field: 'progress', width: 140, align: 'right' },
+  { key: 'down', field: 'dlspeed', width: 84, align: 'right' },
+  { key: 'up', field: 'upspeed', width: 84, align: 'right' },
+  { key: 'size', field: 'size', width: 80, align: 'right' },
+  { key: 'ratio', field: 'ratio', width: 60, align: 'right' },
+  { key: 'queue', field: 'priority', width: 48, align: 'right' },
+];
 
-// Short date ("Sep 10" for the current year, "Sep 10, 2026" otherwise),
-// mirroring Pogona's dense technical/tabular table columns. utils/format.ts's
-// formatDate returns a full locale datetime string (too long for a 96px
-// column), so this formats locally with the device's own locale/calendar
-// rather than forcing en-US.
+function columnsForIdiom(idiom: TableIdiom): ColumnDef[] {
+  return idiom === 'regular' ? IPAD_COLUMNS : MAC_COLUMNS;
+}
+
+function tableMinWidth(columns: ColumnDef[]): number {
+  return columns.reduce((sum, col) => sum + (col.width ?? col.minWidth ?? 0), 0);
+}
+
 function formatShortDate(epochSeconds: number | undefined | null): string {
   if (epochSeconds == null || isNaN(epochSeconds) || epochSeconds <= 0) return '-';
   const d = new Date(epochSeconds * 1000);
@@ -147,16 +131,10 @@ function formatShortDate(epochSeconds: number | undefined | null): string {
   );
 }
 
-// "connected | swarm total" pair, mirroring Fmt.pair ("2 | 40").
 function formatPair(connected: number, total: number): string {
   return `${Math.max(0, connected)} | ${Math.max(0, total)}`;
 }
 
-// State glyph for the name-cell leading slot when there's no poster to show
-// (artwork inactive, or no TMDB match/poster for this row). Mirrors
-// getStateColor's grouping (utils/torrent-state.ts) 1:1 so the glyph and the
-// tint it's drawn in (getStateColor) always agree on which state group a row
-// is in.
 function getStateIcon(
   state: string,
   progress: number,
@@ -211,12 +189,17 @@ function getStateIcon(
   }
 }
 
+function alignToJustify(align: 'left' | 'right'): 'flex-start' | 'flex-end' {
+  return align === 'right' ? 'flex-end' : 'flex-start';
+}
+
 interface HeaderCellProps {
   column: ColumnDef;
   sortBy: SortField;
   sortDirection: 'asc' | 'desc';
   onSortChange: (field: SortField, direction: 'asc' | 'desc') => void;
   showSeparator: boolean;
+  metrics: DesktopMetrics;
 }
 
 function HeaderCell({
@@ -225,6 +208,7 @@ function HeaderCell({
   sortDirection,
   onSortChange,
   showSeparator,
+  metrics,
 }: HeaderCellProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -236,14 +220,20 @@ function HeaderCell({
     styles.headerCellWrap,
     sizeStyle,
     showSeparator && {
-      borderRightWidth: METRICS.hairline,
+      borderRightWidth: metrics.hairline,
       borderRightColor: colors.surfaceOutline,
     },
   ];
 
   const content = (
     <View style={[styles.headerCellContent, { justifyContent: alignToJustify(column.align) }]}>
-      <Text style={[styles.headerLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+      <Text
+        style={[
+          styles.headerLabel,
+          { fontSize: metrics.tableHeaderFontSize, color: colors.textSecondary },
+        ]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
       {active && (
@@ -279,38 +269,39 @@ function HeaderCell({
   );
 }
 
-function alignToJustify(align: 'left' | 'right'): 'flex-start' | 'flex-end' {
-  return align === 'right' ? 'flex-end' : 'flex-start';
-}
-
 interface TableHeaderProps {
+  columns: ColumnDef[];
+  metrics: DesktopMetrics;
   sortBy: SortField;
   sortDirection: 'asc' | 'desc';
   onSortChange: (field: SortField, direction: 'asc' | 'desc') => void;
 }
 
-function TableHeader({ sortBy, sortDirection, onSortChange }: TableHeaderProps) {
+function TableHeader({ columns, metrics, sortBy, sortDirection, onSortChange }: TableHeaderProps) {
   const { colors } = useTheme();
   return (
     <View
       style={[
         styles.headerRow,
-        { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
+        {
+          height: metrics.tableHeaderHeight,
+          backgroundColor: colors.background,
+          borderBottomColor: hexToRgba(colors.text, 0.08),
+          borderBottomWidth: metrics.hairline,
+        },
       ]}
     >
-      {COLUMNS.map((column, index) => (
+      {columns.map((column, index) => (
         <HeaderCell
           key={column.key}
           column={column}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={onSortChange}
-          showSeparator={index !== COLUMNS.length - 1}
+          showSeparator={index !== columns.length - 1}
+          metrics={metrics}
         />
       ))}
-      {/* Spacer matching the row's trailing menu button - keeps columns
-          aligned without adding an unsortable COLUMNS entry (and the i18n
-          key that would need). */}
       <View style={{ width: MENU_WIDTH }} />
     </View>
   );
@@ -324,6 +315,12 @@ interface TableRowProps {
   onContextMenu: (hash: string, anchor: { x: number; y: number }) => void;
   alternatingRows: boolean;
   categoryColors?: Record<string, string>;
+  columns: ColumnDef[];
+  metrics: DesktopMetrics;
+}
+
+function cellSizeStyle(column: ColumnDef) {
+  return column.width ? { width: column.width } : { flex: 1, minWidth: column.minWidth };
 }
 
 function TorrentTableRowInner({
@@ -334,6 +331,8 @@ function TorrentTableRowInner({
   onContextMenu,
   alternatingRows,
   categoryColors,
+  columns,
+  metrics,
 }: TableRowProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -352,6 +351,7 @@ function TorrentTableRowInner({
   const etaVisible = hasEta(torrent.eta, progress);
   const totalSize = torrent.total_size > 0 ? torrent.total_size : torrent.size || 0;
   const categoryDotColor = torrent.category ? categoryColors?.[torrent.category] : undefined;
+  const posterSize = metrics.tableArtworkSize;
 
   const openContextMenu = (x: number, y: number) => {
     onContextMenu(torrent.hash, { x, y });
@@ -361,15 +361,6 @@ function TorrentTableRowInner({
     openContextMenu(e.nativeEvent.pageX, e.nativeEvent.pageY);
   };
 
-  // Secondary (right) click on trackpad/mouse - would use the `button` field
-  // RN 0.86 exposes on the PointerEvent's nativeEvent (W3C convention: 2 =
-  // secondary button), and onHoverIn/onHoverOut below for the mouse-hover
-  // highlight. Both are inert on this build: Fabric only instantiates the
-  // pointer-event handler (and with it UIHoverGestureRecognizer) when
-  // RCTGetDispatchW3CPointerEvents() is true, the static default is NO, and
-  // nothing in this app calls RCTSetDispatchW3CPointerEvents(YES). Left
-  // wired for when a config plugin enables that natively; the ellipsis
-  // button below is the real mouse/trackpad path to the context menu today.
   const handlePointerDown = (e: {
     nativeEvent: { button?: number; pageX: number; pageY: number };
   }) => {
@@ -385,17 +376,169 @@ function TorrentTableRowInner({
   };
 
   const backgroundColor = selected
-    ? colors.primary
+    ? hexToRgba(colors.text, 0.08)
     : hovered
-      ? hexToRgba(colors.text, 0.06)
+      ? hexToRgba(colors.text, 0.05)
       : alternatingRows && index % 2 === 1
         ? hexToRgba(colors.text, 0.03)
         : colors.background;
 
-  const textColor = selected ? colors.onAccent : colors.text;
-  const secondaryTextColor = selected ? colors.onAccent : colors.textSecondary;
-  const downColor = selected ? colors.onAccent : colors.stateDownloading;
-  const upColor = selected ? colors.onAccent : colors.stateSeeding;
+  const textColor = colors.text;
+  const secondaryTextColor = colors.textSecondary;
+  const downColor = colors.stateDownloading;
+  const upColor = colors.stateSeeding;
+  const numericStyle = [
+    styles.cellText,
+    styles.numericText,
+    { fontSize: metrics.tableFontSize, color: secondaryTextColor },
+  ];
+
+  const renderCell = (column: ColumnDef) => {
+    const wrap = { ...cellSizeStyle(column) };
+    switch (column.key) {
+      case 'name':
+        return (
+          <View key={column.key} style={[styles.nameCell, wrap]}>
+            {hasPoster ? (
+              <ArtworkThumbnail
+                name={torrent.name}
+                width={posterSize}
+                square
+                placeholderIcon="film-outline"
+                showPlaceholderWhenInactive
+              />
+            ) : (
+              <View style={[styles.stateGlyphSlot, { width: posterSize, height: posterSize }]}>
+                <Ionicons name={stateIcon} size={Math.round(posterSize * 0.5)} color={stateColor} />
+              </View>
+            )}
+            {categoryDotColor && (
+              <View style={[styles.categoryDot, { backgroundColor: categoryDotColor }]} />
+            )}
+            <Text
+              style={[
+                styles.cellText,
+                styles.nameText,
+                { fontSize: metrics.tableFontSize, color: textColor },
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              {torrent.name}
+            </Text>
+          </View>
+        );
+      case 'size':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>{formatSize(totalSize)}</Text>
+          </View>
+        );
+      case 'progress':
+        return (
+          <View key={column.key} style={[styles.progressCell, wrap]}>
+            <View style={styles.progressBarWrap}>
+              <AnimatedProgressBar
+                progress={Math.min(100, Math.max(0, progress * 100))}
+                color={selected ? colors.onAccent : stateColor}
+                height={5}
+              />
+            </View>
+            <Text style={[numericStyle, styles.progressPercent]}>
+              {formatProgress(progress, 0)}
+            </Text>
+          </View>
+        );
+      case 'status':
+        return (
+          <View key={column.key} style={wrap}>
+            <StatusBadge label={stateLabel} tint={stateColor} size="desktop" />
+          </View>
+        );
+      case 'down':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text
+              style={[
+                styles.cellText,
+                styles.numericText,
+                { fontSize: metrics.tableFontSize, color: downColor },
+              ]}
+            >
+              {dlspeed > 0 ? formatSpeed(dlspeed) : ''}
+            </Text>
+          </View>
+        );
+      case 'up':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text
+              style={[
+                styles.cellText,
+                styles.numericText,
+                { fontSize: metrics.tableFontSize, color: upColor },
+              ]}
+            >
+              {upspeed > 0 ? formatSpeed(upspeed) : ''}
+            </Text>
+          </View>
+        );
+      case 'seeds':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>{formatPair(torrent.num_seeds, torrent.num_complete)}</Text>
+          </View>
+        );
+      case 'peers':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>
+              {formatPair(torrent.num_leechs, torrent.num_incomplete)}
+            </Text>
+          </View>
+        );
+      case 'eta':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>{etaVisible ? formatTime(torrent.eta) : ''}</Text>
+          </View>
+        );
+      case 'ratio':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>{formatRatio(torrent.ratio)}</Text>
+          </View>
+        );
+      case 'added':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>{formatShortDate(torrent.added_on)}</Text>
+          </View>
+        );
+      case 'completed':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>{formatShortDate(torrent.completion_on)}</Text>
+          </View>
+        );
+      case 'seen':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>{formatShortDate(torrent.seen_complete)}</Text>
+          </View>
+        );
+      case 'queue':
+        return (
+          <View key={column.key} style={wrap}>
+            <Text style={numericStyle}>
+              {torrent.priority > 0 ? String(torrent.priority) : '-'}
+            </Text>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <Pressable
@@ -406,120 +549,9 @@ function TorrentTableRowInner({
       onHoverOut={() => setHovered(false)}
       accessibilityRole="button"
       accessibilityLabel={torrent.name}
-      style={[styles.row, { backgroundColor }]}
+      style={[styles.row, { height: metrics.tableRowHeight, backgroundColor }]}
     >
-      {/* Name */}
-      <View style={[styles.nameCell, { flex: 1, minWidth: NAME_MIN_WIDTH }]}>
-        {hasPoster ? (
-          <ArtworkThumbnail
-            name={torrent.name}
-            width={POSTER_SIZE}
-            square
-            placeholderIcon="film-outline"
-            showPlaceholderWhenInactive
-          />
-        ) : (
-          <View style={styles.stateGlyphSlot}>
-            <Ionicons name={stateIcon} size={14} color={stateColor} />
-          </View>
-        )}
-        {categoryDotColor && (
-          <View style={[styles.categoryDot, { backgroundColor: categoryDotColor }]} />
-        )}
-        <Text
-          style={[styles.cellText, styles.nameText, { color: textColor }]}
-          numberOfLines={1}
-          ellipsizeMode="middle"
-        >
-          {torrent.name}
-        </Text>
-      </View>
-
-      {/* Size */}
-      <View style={{ width: SIZE_WIDTH }}>
-        <Text style={[styles.cellText, styles.numericText, { color: secondaryTextColor }]}>
-          {formatSize(totalSize)}
-        </Text>
-      </View>
-
-      {/* Progress */}
-      <View style={[styles.progressCell, { width: PROGRESS_WIDTH }]}>
-        <View style={styles.progressBarWrap}>
-          <AnimatedProgressBar
-            progress={Math.min(100, Math.max(0, progress * 100))}
-            color={selected ? colors.onAccent : stateColor}
-            height={5}
-          />
-        </View>
-        <Text
-          style={[
-            styles.cellText,
-            styles.numericText,
-            styles.progressPercent,
-            { color: secondaryTextColor },
-          ]}
-        >
-          {formatProgress(progress, 0)}
-        </Text>
-      </View>
-
-      {/* Status */}
-      <View style={{ width: STATUS_WIDTH }}>
-        <StatusBadge label={stateLabel} tint={stateColor} size="desktop" selected={selected} />
-      </View>
-
-      {/* Down */}
-      <View style={{ width: DOWN_WIDTH }}>
-        <Text style={[styles.cellText, styles.numericText, { color: downColor }]}>
-          {dlspeed > 0 ? formatSpeed(dlspeed) : ''}
-        </Text>
-      </View>
-
-      {/* Up */}
-      <View style={{ width: UP_WIDTH }}>
-        <Text style={[styles.cellText, styles.numericText, { color: upColor }]}>
-          {upspeed > 0 ? formatSpeed(upspeed) : ''}
-        </Text>
-      </View>
-
-      {/* Seeds */}
-      <View style={{ width: SEEDS_WIDTH }}>
-        <Text style={[styles.cellText, styles.numericText, { color: secondaryTextColor }]}>
-          {formatPair(torrent.num_seeds, torrent.num_complete)}
-        </Text>
-      </View>
-
-      {/* Peers */}
-      <View style={{ width: PEERS_WIDTH }}>
-        <Text style={[styles.cellText, styles.numericText, { color: secondaryTextColor }]}>
-          {formatPair(torrent.num_leechs, torrent.num_incomplete)}
-        </Text>
-      </View>
-
-      {/* ETA */}
-      <View style={{ width: ETA_WIDTH }}>
-        <Text style={[styles.cellText, styles.numericText, { color: secondaryTextColor }]}>
-          {etaVisible ? formatTime(torrent.eta) : ''}
-        </Text>
-      </View>
-
-      {/* Ratio */}
-      <View style={{ width: RATIO_WIDTH }}>
-        <Text style={[styles.cellText, styles.numericText, { color: secondaryTextColor }]}>
-          {formatRatio(torrent.ratio)}
-        </Text>
-      </View>
-
-      {/* Added */}
-      <View style={{ width: ADDED_WIDTH }}>
-        <Text style={[styles.cellText, styles.numericText, { color: secondaryTextColor }]}>
-          {formatShortDate(torrent.added_on)}
-        </Text>
-      </View>
-
-      {/* Menu - the real mouse/trackpad path to the context menu (see the
-          onPointerDown comment above); mirrors TorrentCard's onMenuPress
-          button (measure-in-window anchor, same accessibility label). */}
+      {columns.map(renderCell)}
       <Pressable
         ref={menuButtonRef}
         onPress={(e) => {
@@ -537,8 +569,6 @@ function TorrentTableRowInner({
   );
 }
 
-// Every torrent.* field read above must appear here, or the row can go
-// stale while its hash stays put (mirrors TorrentCard's comparator).
 const TorrentTableRow = React.memo(TorrentTableRowInner, (prev, next) => {
   return (
     prev.torrent.hash === next.torrent.hash &&
@@ -556,11 +586,16 @@ const TorrentTableRow = React.memo(TorrentTableRowInner, (prev, next) => {
     prev.torrent.num_incomplete === next.torrent.num_incomplete &&
     prev.torrent.ratio === next.torrent.ratio &&
     prev.torrent.added_on === next.torrent.added_on &&
+    prev.torrent.completion_on === next.torrent.completion_on &&
+    prev.torrent.seen_complete === next.torrent.seen_complete &&
+    prev.torrent.priority === next.torrent.priority &&
     prev.torrent.category === next.torrent.category &&
     prev.index === next.index &&
     prev.selected === next.selected &&
     prev.alternatingRows === next.alternatingRows &&
     prev.categoryColors === next.categoryColors &&
+    prev.columns === next.columns &&
+    prev.metrics === next.metrics &&
     prev.onSelect === next.onSelect &&
     prev.onContextMenu === next.onContextMenu
   );
@@ -577,7 +612,12 @@ export function TorrentTable({
   alternatingRows,
   categoryColors,
   topInset = 0,
+  idiom = 'mac',
 }: TorrentTableProps) {
+  const metrics = desktopMetrics(idiom);
+  const columns = columnsForIdiom(idiom);
+  const minWidth = tableMinWidth(columns) + MENU_WIDTH + ROW_PADDING_HORIZONTAL * 2;
+
   return (
     <ScrollView
       horizontal
@@ -586,8 +626,14 @@ export function TorrentTable({
       contentContainerStyle={styles.hScrollContent}
       showsHorizontalScrollIndicator
     >
-      <View style={[styles.tableContainer, { minWidth: TABLE_MIN_WIDTH }]}>
-        <TableHeader sortBy={sortBy} sortDirection={sortDirection} onSortChange={onSortChange} />
+      <View style={[styles.tableContainer, { minWidth }]}>
+        <TableHeader
+          columns={columns}
+          metrics={metrics}
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={onSortChange}
+        />
         <FlatList
           data={torrents}
           keyExtractor={(item) => item.hash}
@@ -601,6 +647,8 @@ export function TorrentTable({
               onContextMenu={onContextMenu}
               alternatingRows={alternatingRows}
               categoryColors={categoryColors}
+              columns={columns}
+              metrics={metrics}
             />
           )}
         />
@@ -628,8 +676,6 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: HEADER_HEIGHT,
-    borderBottomWidth: METRICS.hairline,
     paddingHorizontal: ROW_PADDING_HORIZONTAL,
     gap: COLUMN_GAP,
   },
@@ -642,7 +688,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerLabel: {
-    fontSize: METRICS.tableHeaderFontSize,
     fontWeight: '500',
   },
   headerChevron: {
@@ -651,7 +696,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: ROW_HEIGHT,
     paddingHorizontal: ROW_PADDING_HORIZONTAL,
     gap: COLUMN_GAP,
   },
@@ -661,9 +705,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     minWidth: 0,
   },
-  cellText: {
-    fontSize: METRICS.tableFontSize,
-  },
+  cellText: {},
   nameText: {
     flex: 1,
     minWidth: 0,
@@ -674,8 +716,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   stateGlyphSlot: {
-    width: POSTER_SIZE,
-    height: POSTER_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },

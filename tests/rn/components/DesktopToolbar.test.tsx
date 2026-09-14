@@ -117,9 +117,17 @@ describe('DesktopToolbar', () => {
     expect(screen.getByLabelText('sidebar.expand')).toBeTruthy();
   });
 
-  it('does not render the sidebar-collapse chevron on mac (Sidebar.tsx has its own)', async () => {
+  it('does not render the sidebar-collapse chevron on mac (SplitLayout owns expand)', async () => {
     await render(<DesktopToolbar {...baseProps({ idiom: 'mac' })} />);
     expect(screen.queryByLabelText('sidebar.collapse')).toBeNull();
     expect(screen.queryByLabelText('sidebar.expand')).toBeNull();
+  });
+
+  it('hides select-mode on mac and shows Pogona icon chrome instead', async () => {
+    await render(<DesktopToolbar {...baseProps({ idiom: 'mac' })} />);
+    expect(screen.queryByLabelText('screens.torrents.selectMode')).toBeNull();
+    expect(screen.getByLabelText('screens.torrents.addTorrent')).toBeTruthy();
+    expect(screen.getByLabelText('actions.resume')).toBeTruthy();
+    expect(screen.getByLabelText('commands.queueTop')).toBeTruthy();
   });
 });

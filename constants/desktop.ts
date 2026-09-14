@@ -40,6 +40,8 @@ export interface DesktopMetrics {
   tableHeaderHeight: number;
   tableFontSize: number;
   tableHeaderFontSize: number;
+  /** Square artwork plate in the table name cell (Pogona NameCell.thumb). */
+  tableArtworkSize: number;
   /** Status badge. */
   badgeHeight: number;
   badgeFontSize: number;
@@ -50,6 +52,13 @@ export interface DesktopMetrics {
   detailPaneWidth: number;
   /** Hairline separator width. */
   hairline: number;
+  /**
+   * Mac Catalyst overlays the native titlebar (traffic lights) on the
+   * window content. These reserve that strip so nothing draws behind the
+   * lights. Zero on iPad (regular), which uses a real status-bar inset.
+   */
+  titlebarHeight: number;
+  trafficLightsWidth: number;
 }
 
 const MAC: DesktopMetrics = {
@@ -65,7 +74,9 @@ const MAC: DesktopMetrics = {
   sectionHeaderHeight: 22,
   sectionHeaderFontSize: 11,
   selectionRadius: 5,
-  toolbarHeight: 40,
+  titlebarHeight: 36,
+  trafficLightsWidth: 80,
+  toolbarHeight: 36,
   toolbarControlHeight: 24,
   toolbarFontSize: 13,
   toolbarIconSize: 15,
@@ -74,6 +85,7 @@ const MAC: DesktopMetrics = {
   tableHeaderHeight: 24,
   tableFontSize: 13,
   tableHeaderFontSize: 11,
+  tableArtworkSize: 28,
   badgeHeight: 18,
   badgeFontSize: 11,
   statusBarHeight: 22,
@@ -95,6 +107,8 @@ const REGULAR: DesktopMetrics = {
   sectionHeaderHeight: 32,
   sectionHeaderFontSize: 13,
   selectionRadius: 10,
+  titlebarHeight: 0,
+  trafficLightsWidth: 0,
   toolbarHeight: 52,
   toolbarControlHeight: 36,
   toolbarFontSize: 17,
@@ -104,6 +118,7 @@ const REGULAR: DesktopMetrics = {
   tableHeaderHeight: 32,
   tableFontSize: 15,
   tableHeaderFontSize: 13,
+  tableArtworkSize: 32,
   badgeHeight: 22,
   badgeFontSize: 13,
   statusBarHeight: 0,

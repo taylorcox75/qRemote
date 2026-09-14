@@ -1,8 +1,10 @@
 /**
  * search.tsx — Main "Search" tab.
  *
- * Visually mirrors the Torrents tab: same search row layout, same chip styling,
- * same sort dropdown, and the same surface card rows for results. Wraps
+ * Compact (iPhone) visually mirrors the Torrents tab: collapsing search
+ * header, chip rows, sort dropdown, surface card result rows. Regular/mac
+ * drop the iPhone chrome for a static toolbar-density header and dense
+ * hairline result rows, matching Torrents/DesktopToolbar. Wraps
  * qBittorrent's /api/v2/search/* endpoints behind a clean, consistent UI.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -39,6 +41,7 @@ import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { useSearchCart } from '@/context/SearchCartContext';
+import { useShell } from '@/context/ShellContext';
 import { useSearchJob } from '@/hooks/useSearchJob';
 import { searchApi } from '@/services/api/search';
 import { torrentsApi } from '@/services/api/torrents';
@@ -55,7 +58,9 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { buttonStyles, buttonText } from '@/constants/buttons';
+import { desktopMetrics } from '@/constants/desktop';
 import { getErrorMessage } from '@/utils/error';
+import { hexToRgba } from '@/utils/color';
 import { haptics } from '@/utils/haptics';
 
 const ALL = 'all';
@@ -147,6 +152,9 @@ export default function SearchScreen() {
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
   const cart = useSearchCart();
+  const { idiom, sidebarCollapsed } = useShell();
+  const isDesktop = idiom !== 'compact';
+  const metrics = desktopMetrics(idiom === 'mac' ? 'mac' : 'regular');
   const [cartModalVisible, setCartModalVisible] = useState(false);
   const queryInputRef = useRef<TextInput>(null);
   const activeTagPollsRef = useRef(new Set<AbortController>());
@@ -622,10 +630,13 @@ export default function SearchScreen() {
     [cart, isAggregatedSource],
   );
 
-  const handleLongPressResult = useCallback((result: SearchResult) => {
-    haptics.medium();
-    setActionResult(result);
-  }, []);
+  const handleLongPressResult = useCallback(
+    (result: SearchResult) => {
+      haptics.medium();
+      setActionResult(result);
+    },
+    [setActionResult],
+  );
 
   const handleOpenLink = useCallback(
     async (url: string | undefined) => {
@@ -833,22 +844,53 @@ export default function SearchScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header: search row + filter chip rows + status + sort dropdown.
-            Floats absolutely above the list and slides away on scroll (see
-            handleScroll). Wrapping in TouchableWithoutFeedback lets the user
-            tap any empty area in the header (gap between chips, status
-            banner, etc.) to dismiss the keyboard without stealing taps from
-            the controls. */}
+            Compact: floats absolutely above the list and slides away on
+            scroll (see handleScroll). Desktop: sits in document flow as a
+            static toolbar matching torrents/DesktopToolbar density.
+            Wrapping in TouchableWithoutFeedback lets the user tap any
+            empty area in the header to dismiss the keyboard without
+            stealing taps from the controls. */}
         <Animated.View
-          style={[styles.headerContainer, { transform: [{ translateY: headerTranslateY }] }]}
-          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+          style={[
+            isDesktop ? styles.desktopHeader : styles.headerContainer,
+            isDesktop
+              ? { borderBottomColor: hexToRgba(colors.text, 0.08) }
+              : { transform: [{ translateY: headerTranslateY }] },
+          ]}
+          onLayout={isDesktop ? undefined : (e) => setHeaderHeight(e.nativeEvent.layout.height)}
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View style={[styles.searchCard, { backgroundColor: colors.background }]}>
-              {/* Search row: [42x42 plugins button] [search input] [42x42 submit] */}
-              <View style={styles.searchRow}>
+            <View
+              style={[
+                styles.searchCard,
+                isDesktop && {
+                  paddingHorizontal: metrics.sidebarInsetHorizontal,
+                  paddingTop: idiom === 'mac' ? 0 : spacing.sm,
+                },
+                { backgroundColor: colors.background },
+              ]}
+            >
+              {/* Search row: compact 42x42 controls; desktop toolbarControlHeight. */}
+              <View
+                style={[
+                  styles.searchRow,
+                  isDesktop && {
+                    minHeight: idiom === 'mac' ? metrics.titlebarHeight : metrics.toolbarHeight,
+                    marginBottom: spacing.xs,
+                    gap: spacing.xs,
+                  },
+                  idiom === 'mac' &&
+                    sidebarCollapsed && { paddingLeft: metrics.trafficLightsWidth },
+                ]}
+              >
                 <TouchableOpacity
                   style={[
                     styles.iconButton,
+                    isDesktop && {
+                      width: metrics.toolbarControlHeight,
+                      height: metrics.toolbarControlHeight,
+                      borderRadius: metrics.selectionRadius,
+                    },
                     {
                       backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
                       borderColor: colors.surfaceOutline,
@@ -863,7 +905,7 @@ export default function SearchScreen() {
                 >
                   <Ionicons
                     name="swap-vertical"
-                    size={18}
+                    size={isDesktop ? metrics.toolbarIconSize : 18}
                     color={showSortMenu ? colors.primary : colors.text}
                   />
                 </TouchableOpacity>
@@ -871,6 +913,12 @@ export default function SearchScreen() {
                 <View
                   style={[
                     styles.searchInputContainer,
+                    isDesktop && {
+                      height: metrics.toolbarControlHeight,
+                      paddingVertical: 0,
+                      paddingHorizontal: spacing.sm,
+                      borderRadius: metrics.selectionRadius,
+                    },
                     {
                       backgroundColor: colors.surface,
                       borderColor: colors.surfaceOutline,
@@ -879,7 +927,7 @@ export default function SearchScreen() {
                 >
                   <Ionicons
                     name="search"
-                    size={18}
+                    size={isDesktop ? metrics.toolbarIconSize : 18}
                     color={colors.textSecondary}
                     style={styles.searchInputIcon}
                   />
@@ -887,7 +935,14 @@ export default function SearchScreen() {
                     ref={queryInputRef}
                     value={query}
                     onChangeText={setQuery}
-                    style={[styles.searchInput, { color: colors.text }]}
+                    style={[
+                      styles.searchInput,
+                      isDesktop && {
+                        fontSize: metrics.toolbarFontSize,
+                        lineHeight: Math.round(metrics.toolbarFontSize * 1.3),
+                      },
+                      { color: colors.text },
+                    ]}
                     placeholder={t('screens.search.placeholder')}
                     placeholderTextColor={colors.textSecondary}
                     autoCorrect={false}
@@ -901,7 +956,11 @@ export default function SearchScreen() {
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       accessibilityLabel={t('common.clearSearch')}
                     >
-                      <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                      <Ionicons
+                        name="close-circle"
+                        size={isDesktop ? metrics.toolbarIconSize : 18}
+                        color={colors.textSecondary}
+                      />
                     </TouchableOpacity>
                   )}
                   {isLoading && (
@@ -916,6 +975,11 @@ export default function SearchScreen() {
                 <TouchableOpacity
                   style={[
                     styles.submitButton,
+                    isDesktop && {
+                      width: metrics.toolbarControlHeight,
+                      height: metrics.toolbarControlHeight,
+                      borderRadius: metrics.selectionRadius,
+                    },
                     {
                       backgroundColor: query.trim() ? colors.primary : colors.surfaceOutline,
                     },
@@ -925,7 +989,11 @@ export default function SearchScreen() {
                   disabled={!query.trim()}
                   accessibilityLabel={t('screens.search.tabTitle')}
                 >
-                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                  <Ionicons
+                    name="arrow-forward"
+                    size={isDesktop ? metrics.toolbarIconSize : 20}
+                    color="#FFFFFF"
+                  />
                 </TouchableOpacity>
               </View>
 
@@ -937,14 +1005,20 @@ export default function SearchScreen() {
                   contentContainerStyle={styles.filterRowContainer}
                 >
                   <TouchableOpacity
-                    style={styles.pluginsCornerButton}
+                    style={[
+                      styles.pluginsCornerButton,
+                      isDesktop && {
+                        width: metrics.toolbarControlHeight,
+                        height: metrics.toolbarControlHeight,
+                      },
+                    ]}
                     onPress={handleOpenPlugins}
                     activeOpacity={0.7}
                     accessibilityLabel={t('screens.search.pluginsTitle')}
                   >
                     <Ionicons
                       name="extension-puzzle-outline"
-                      size={20}
+                      size={isDesktop ? metrics.toolbarIconSize : 20}
                       color={colors.textSecondary}
                     />
                   </TouchableOpacity>
@@ -956,10 +1030,22 @@ export default function SearchScreen() {
                         key={chip.key}
                         label={chip.label}
                         icon={chip.icon}
+                        iconSize={isDesktop ? metrics.sectionHeaderFontSize : 14}
                         active={isActive}
+                        muted={isDesktop}
                         numberOfLines={1}
-                        style={styles.filterChip}
-                        textStyle={styles.filterChipText}
+                        style={[
+                          styles.filterChip,
+                          isDesktop && {
+                            minHeight: metrics.toolbarControlHeight,
+                            paddingVertical: 2,
+                            paddingHorizontal: spacing.sm,
+                          },
+                        ]}
+                        textStyle={[
+                          styles.filterChipText,
+                          isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                        ]}
                         onPress={() => {
                           haptics.light();
                           setPlugin(chip.key);
@@ -985,17 +1071,38 @@ export default function SearchScreen() {
                     contentContainerStyle={styles.filterRowContainer}
                   >
                     <View style={styles.filterRowLabel}>
-                      <Ionicons name="globe-outline" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.filterRowLabelText, { color: colors.textSecondary }]}>
+                      <Ionicons
+                        name="globe-outline"
+                        size={isDesktop ? metrics.sectionHeaderFontSize : 14}
+                        color={colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.filterRowLabelText,
+                          isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {t('screens.search.indexerLabel')}
                       </Text>
                     </View>
                     <FilterChip
                       label={t('screens.search.allTrackers')}
                       active={selectedTrackers.size === 0}
+                      muted={isDesktop}
                       numberOfLines={1}
-                      style={styles.filterChip}
-                      textStyle={styles.filterChipText}
+                      style={[
+                        styles.filterChip,
+                        isDesktop && {
+                          minHeight: metrics.toolbarControlHeight,
+                          paddingVertical: 2,
+                          paddingHorizontal: spacing.sm,
+                        },
+                      ]}
+                      textStyle={[
+                        styles.filterChipText,
+                        isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                      ]}
                       onPress={() => {
                         haptics.light();
                         setSelectedTrackers(new Set());
@@ -1006,9 +1113,20 @@ export default function SearchScreen() {
                         key={host}
                         label={host}
                         active={selectedTrackers.has(host)}
+                        muted={isDesktop}
                         numberOfLines={1}
-                        style={styles.filterChip}
-                        textStyle={styles.filterChipText}
+                        style={[
+                          styles.filterChip,
+                          isDesktop && {
+                            minHeight: metrics.toolbarControlHeight,
+                            paddingVertical: 2,
+                            paddingHorizontal: spacing.sm,
+                          },
+                        ]}
+                        textStyle={[
+                          styles.filterChipText,
+                          isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                        ]}
                         onPress={() => toggleTracker(host)}
                       />
                     ))}
@@ -1025,8 +1143,18 @@ export default function SearchScreen() {
                     contentContainerStyle={styles.filterRowContainer}
                   >
                     <View style={styles.filterRowLabel}>
-                      <Ionicons name="folder-outline" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.filterRowLabelText, { color: colors.textSecondary }]}>
+                      <Ionicons
+                        name="folder-outline"
+                        size={isDesktop ? metrics.sectionHeaderFontSize : 14}
+                        color={colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.filterRowLabelText,
+                          isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                          { color: colors.textSecondary },
+                        ]}
+                      >
                         {t('screens.search.categoryLabel')}
                       </Text>
                     </View>
@@ -1038,9 +1166,20 @@ export default function SearchScreen() {
                             key={cat.id}
                             label={cat.name}
                             active={isActive}
+                            muted={isDesktop}
                             numberOfLines={1}
-                            style={styles.filterChip}
-                            textStyle={styles.filterChipText}
+                            style={[
+                              styles.filterChip,
+                              isDesktop && {
+                                minHeight: metrics.toolbarControlHeight,
+                                paddingVertical: 2,
+                                paddingHorizontal: spacing.sm,
+                              },
+                            ]}
+                            textStyle={[
+                              styles.filterChipText,
+                              isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                            ]}
                             onPress={() => {
                               haptics.light();
                               setCategory(cat.id);
@@ -1060,14 +1199,30 @@ export default function SearchScreen() {
                     {status === 'Running' ? (
                       <>
                         <ActivityIndicator size="small" color={colors.primary} />
-                        <Text style={[styles.statusBannerText, { color: colors.textSecondary }]}>
+                        <Text
+                          style={[
+                            styles.statusBannerText,
+                            isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           {t('screens.search.runningCount', { count: total })}
                         </Text>
                       </>
                     ) : (
                       <>
-                        <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                        <Text style={[styles.statusBannerText, { color: colors.textSecondary }]}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={isDesktop ? metrics.toolbarIconSize : 16}
+                          color={colors.success}
+                        />
+                        <Text
+                          style={[
+                            styles.statusBannerText,
+                            isDesktop && { fontSize: metrics.sectionHeaderFontSize },
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           {t('screens.search.foundCount', { count: total })}
                         </Text>
                       </>
@@ -1096,6 +1251,11 @@ export default function SearchScreen() {
                 <View
                   style={[
                     styles.sortDropdown,
+                    isDesktop && {
+                      top: (idiom === 'mac' ? metrics.titlebarHeight : metrics.toolbarHeight) + 4,
+                      left: metrics.sidebarInsetHorizontal,
+                      borderRadius: metrics.selectionRadius,
+                    },
                     {
                       backgroundColor: isDark ? colors.surface : colors.background,
                       borderColor: colors.surfaceOutline,
@@ -1127,7 +1287,7 @@ export default function SearchScreen() {
                       >
                         <Ionicons
                           name={opt.icon}
-                          size={18}
+                          size={isDesktop ? metrics.toolbarIconSize : 18}
                           color={
                             isActive
                               ? isDark
@@ -1141,6 +1301,7 @@ export default function SearchScreen() {
                         <Text
                           style={[
                             styles.sortOptionText,
+                            isDesktop && { fontSize: metrics.toolbarFontSize },
                             {
                               color: isActive
                                 ? isDark
@@ -1158,7 +1319,7 @@ export default function SearchScreen() {
                         {isActive && (
                           <Ionicons
                             name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'}
-                            size={18}
+                            size={isDesktop ? metrics.toolbarIconSize : 18}
                             color={isDark ? colors.primary : '#FFFFFF'}
                           />
                         )}
@@ -1193,9 +1354,9 @@ export default function SearchScreen() {
             )}
             contentContainerStyle={{
               paddingBottom: spacing.xxxl,
-              paddingTop: headerHeight + spacing.xs,
+              paddingTop: isDesktop ? 0 : headerHeight + spacing.xs,
             }}
-            onScroll={handleScroll}
+            onScroll={isDesktop ? undefined : handleScroll}
             scrollEventThrottle={50}
             keyboardShouldPersistTaps="handled"
             // Scrolling or starting a drag on the result list dismisses the keyboard
@@ -1213,7 +1374,17 @@ export default function SearchScreen() {
             user can prune the batch first. */}
         {cart.count > 0 && (
           <TouchableOpacity
-            style={[styles.cartFab, { backgroundColor: colors.primary }]}
+            style={[
+              styles.cartFab,
+              isDesktop && {
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                right: spacing.md,
+                bottom: spacing.md,
+              },
+              { backgroundColor: colors.primary },
+            ]}
             onPress={() => {
               haptics.medium();
               setCartModalVisible(true);
@@ -1221,10 +1392,11 @@ export default function SearchScreen() {
             activeOpacity={0.85}
             accessibilityLabel={t('screens.search.cartAccessibility', { count: cart.count })}
           >
-            <Ionicons name="cart" size={24} color="#FFFFFF" />
+            <Ionicons name="cart" size={isDesktop ? 18 : 24} color="#FFFFFF" />
             <View
               style={[
                 styles.cartFabBadge,
+                isDesktop && { minWidth: 16, height: 16, borderRadius: 8, borderWidth: 1.5 },
                 { backgroundColor: colors.error, borderColor: colors.background },
               ]}
             >
@@ -1270,6 +1442,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
+  },
+  desktopHeader: {
+    zIndex: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   searchCard: {
     paddingHorizontal: spacing.md,

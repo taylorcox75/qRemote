@@ -980,6 +980,8 @@
     "peers": "Pairs",
     "availability": "Disponibilité",
     "popularity": "Popularité",
+    "overview": "Aperçu",
+    "httpSources": "Sources HTTP",
     "files": "Fichiers",
     "trackers": "Trackers",
     "forceStart": "Démarrer forcé",
@@ -1112,7 +1114,26 @@
       "destinations": "Navigation",
       "status": "Statut",
       "categories": "Catégories",
-      "tags": "Étiquettes"
+      "tags": "Étiquettes",
+      "trackers": "Trackers"
+    },
+    "newCategory": "Nouvelle catégorie",
+    "newTags": "Nouvelles étiquettes",
+    "editCategory": "Modifier la catégorie",
+    "deleteCategory": "Supprimer la catégorie",
+    "deleteTag": "Supprimer l'étiquette",
+    "status": {
+      "all": "Tous",
+      "downloading": "Téléchargement",
+      "seeding": "Partage",
+      "completed": "Terminés",
+      "running": "En cours",
+      "paused": "Arrêtés",
+      "active": "Actifs",
+      "inactive": "Inactifs",
+      "stalled": "Au ralenti",
+      "checking": "Vérification",
+      "error": "Erreurs"
     }
   },
   "sort": {
@@ -1137,7 +1158,10 @@
       "peers": "Pairs",
       "eta": "ETA",
       "ratio": "Ratio",
-      "added": "Ajouté"
+      "added": "Ajouté",
+      "completed": "Terminé",
+      "seen": "Vu complet",
+      "queue": "File"
     },
     "sortedAscending": "Trié en ordre croissant",
     "sortedDescending": "Trié en ordre décroissant"

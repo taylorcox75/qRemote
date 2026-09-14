@@ -76,7 +76,12 @@ describe('ShellContext', () => {
     await waitFor(() => expect(latest).toBeDefined());
     expect(latest!.idiom).toBe('regular');
     expect(latest!.selectedHash).toBeNull();
-    expect(latest!.listFilter).toEqual({ status: 'all', category: null, tags: [] });
+    expect(latest!.listFilter).toEqual({
+      status: 'all',
+      category: null,
+      tags: [],
+      tracker: null,
+    });
     expect(latest!.sidebarCollapsed).toBe(false);
   });
 
@@ -101,13 +106,19 @@ describe('ShellContext', () => {
     );
     await waitFor(() => expect(latest).toBeDefined());
     await (async () => {
-      latest!.setListFilter({ status: 'downloading', category: 'movies', tags: ['x'] });
+      latest!.setListFilter({
+        status: 'downloading',
+        category: 'movies',
+        tags: ['x'],
+        tracker: null,
+      });
     })();
     await waitFor(() =>
       expect(latest!.listFilter).toEqual({
         status: 'downloading',
         category: 'movies',
         tags: ['x'],
+        tracker: null,
       }),
     );
   });

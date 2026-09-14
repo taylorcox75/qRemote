@@ -1,10 +1,14 @@
 import React from 'react';
 import { Text, StyleSheet } from 'react-native';
-import { render, screen } from '@testing-library/react-native';
+import { render, fireEvent, screen } from '@testing-library/react-native';
 import { SplitLayout } from '@/components/shell/SplitLayout';
 
 jest.mock('@/context/ThemeContext', () => ({
   useTheme: () => ({ colors: require('./theme-mock').mockColors }),
+}));
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (k: string) => k }),
 }));
 
 describe('SplitLayout', () => {
@@ -74,5 +78,20 @@ describe('SplitLayout', () => {
     const sidebar = StyleSheet.flatten(screen.getByTestId('split-layout-sidebar').props.style);
     expect(sidebar.width).toBe(0);
     expect(screen.queryByText('sidebar-content')).toBeNull();
+  });
+
+  it('shows an expand control when collapsed and onExpandSidebar is set', async () => {
+    const onExpandSidebar = jest.fn();
+    await render(
+      <SplitLayout
+        sidebar={<Text>sidebar-content</Text>}
+        sidebarCollapsed
+        onExpandSidebar={onExpandSidebar}
+      >
+        <Text>main-content</Text>
+      </SplitLayout>,
+    );
+    fireEvent.press(screen.getByTestId('split-layout-expand'));
+    expect(onExpandSidebar).toHaveBeenCalledTimes(1);
   });
 });

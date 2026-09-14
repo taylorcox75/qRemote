@@ -1,4 +1,10 @@
-import { matchesStatusFilter, STATUS_FILTER_IDS } from '@/utils/torrent-filters';
+import {
+  matchesStatusFilter,
+  STATUS_FILTER_IDS,
+  DESKTOP_STATUS_FILTER_IDS,
+  trackerHost,
+  trackerHosts,
+} from '@/utils/torrent-filters';
 import { TorrentInfo } from '@/types/api';
 
 interface TorrentOverrides {
@@ -39,8 +45,10 @@ describe('matchesStatusFilter', () => {
   });
 
   describe('downloading', () => {
-    it('matches only state === downloading', () => {
+    it('matches the Pogona/qB Downloading bucket (active, forced, metadata)', () => {
       expect(matchesStatusFilter(torrent({ state: 'downloading' }), 'downloading')).toBe(true);
+      expect(matchesStatusFilter(torrent({ state: 'forcedDL' }), 'downloading')).toBe(true);
+      expect(matchesStatusFilter(torrent({ state: 'metaDL' }), 'downloading')).toBe(true);
       expect(matchesStatusFilter(torrent({ state: 'stalledDL' }), 'downloading')).toBe(false);
     });
   });
@@ -111,5 +119,94 @@ describe('matchesStatusFilter', () => {
 
   it('falls through to true for an unrecognised filter id', () => {
     expect(matchesStatusFilter(torrent({ state: 'downloading' }), 'not-a-real-filter')).toBe(true);
+  });
+
+  describe('seeding', () => {
+    it('matches uploading and forcedUP, not stalledUP', () => {
+      expect(matchesStatusFilter(torrent({ state: 'uploading' }), 'seeding')).toBe(true);
+      expect(matchesStatusFilter(torrent({ state: 'forcedUP' }), 'seeding')).toBe(true);
+      expect(matchesStatusFilter(torrent({ state: 'stalledUP' }), 'seeding')).toBe(false);
+    });
+  });
+
+  describe('running', () => {
+    it('matches everything that is not paused/stopped', () => {
+      expect(matchesStatusFilter(torrent({ state: 'downloading' }), 'running')).toBe(true);
+      expect(matchesStatusFilter(torrent({ state: 'pausedDL' }), 'running')).toBe(false);
+      expect(matchesStatusFilter(torrent({ state: 'stoppedUP' }), 'running')).toBe(false);
+    });
+  });
+
+  describe('inactive', () => {
+    it('matches when both speeds are 0', () => {
+      expect(matchesStatusFilter(torrent({ dlspeed: 0, upspeed: 0 }), 'inactive')).toBe(true);
+      expect(matchesStatusFilter(torrent({ dlspeed: 10, upspeed: 0 }), 'inactive')).toBe(false);
+    });
+  });
+
+  describe('stalled', () => {
+    it.each(['stalledDL', 'stalledUP'])('matches state %s', (state) => {
+      expect(matchesStatusFilter(torrent({ state }), 'stalled')).toBe(true);
+    });
+  });
+
+  describe('checking', () => {
+    it.each(['checkingDL', 'checkingUP', 'checkingResumeData', 'allocating'])(
+      'matches state %s',
+      (state) => {
+        expect(matchesStatusFilter(torrent({ state }), 'checking')).toBe(true);
+      },
+    );
+  });
+
+  describe('error', () => {
+    it.each(['error', 'missingFiles'])('matches state %s', (state) => {
+      expect(matchesStatusFilter(torrent({ state }), 'error')).toBe(true);
+    });
+  });
+});
+
+describe('DESKTOP_STATUS_FILTER_IDS', () => {
+  it('follows Pogona FilterSidebar État order', () => {
+    expect(DESKTOP_STATUS_FILTER_IDS).toEqual([
+      'all',
+      'downloading',
+      'seeding',
+      'completed',
+      'running',
+      'paused',
+      'active',
+      'inactive',
+      'stalled',
+      'checking',
+      'error',
+    ]);
+  });
+});
+
+describe('trackerHost', () => {
+  it('returns the hostname of an announce URL', () => {
+    expect(trackerHost('https://tr.example.org:443/announce')).toBe('tr.example.org');
+    expect(trackerHost('udp://tr.example.org:6969/announce')).toBe('tr.example.org');
+  });
+
+  it('returns empty string for missing or unparseable values', () => {
+    expect(trackerHost('')).toBe('');
+    expect(trackerHost(null)).toBe('');
+    expect(trackerHost('not a url')).toBe('');
+  });
+});
+
+describe('trackerHosts', () => {
+  it('groups torrents by tracker hostname', () => {
+    const list = [
+      { ...torrent({ state: 'downloading' }), tracker: 'https://a.example/announce' },
+      { ...torrent({ state: 'uploading' }), tracker: 'https://a.example/other' },
+      { ...torrent({ state: 'pausedDL' }), tracker: 'udp://b.example:80/announce' },
+    ] as TorrentInfo[];
+    expect(trackerHosts(list)).toEqual([
+      { host: 'a.example', count: 2 },
+      { host: 'b.example', count: 1 },
+    ]);
   });
 });

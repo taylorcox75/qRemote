@@ -11,21 +11,33 @@
  * The + button and the cart button are independent affordances: + never
  * touches the cart, and the cart button never adds anything by itself.
  *
- * Visuals mirror TorrentCard: surface card, colored "health dot", filename
- * on line 1, meta line on line 2. Expanded state reveals the un-truncated
- * filename and an action chip row underneath.
+ * Compact (iPhone) visuals mirror TorrentCard: surface card, colored
+ * "health dot", filename on line 1, meta line on line 2. On regular/mac
+ * the same row is a dense hairline strip matching TorrentTable density
+ * (no card chrome, 13pt/15pt name, toolbar-sized + / cart). Expanded
+ * state still reveals the un-truncated filename and an action chip row.
  */
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { useShell } from '@/context/ShellContext';
 import { ArtworkThumbnail } from '@/components/ArtworkThumbnail';
 import { SearchResult } from '@/types/api';
 import { formatSize, formatDate } from '@/utils/format';
 import { resultTrackerLabel } from '@/utils/searchResult';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
+import { desktopMetrics } from '@/constants/desktop';
+import { hexToRgba } from '@/utils/color';
 import { haptics } from '@/utils/haptics';
 
 interface SearchResultRowProps {
@@ -67,43 +79,83 @@ export function SearchResultRow({
 }: SearchResultRowProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const { idiom } = useShell();
+  const desktop = idiom !== 'compact';
+  const metrics = desktop ? desktopMetrics(idiom) : null;
   const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   const seeders = Math.max(0, result.nbSeeders ?? 0);
   const leechers = Math.max(0, result.nbLeechers ?? 0);
   const host = resultTrackerLabel(result, isAggregatedSource ?? false);
   const dotColor = healthColor(seeders, colors);
 
-  return (
-    <TouchableOpacity
-      onPress={() => {
-        haptics.light();
-        setExpanded((prev) => !prev);
-      }}
-      onLongPress={onLongPress ? () => onLongPress(result) : undefined}
-      activeOpacity={0.7}
-      style={[styles.card, { backgroundColor: colors.surface }]}
-    >
-      <View style={styles.topRow}>
+  const toggleExpanded = () => {
+    haptics.light();
+    setExpanded((prev) => !prev);
+  };
+
+  const artworkSize = metrics?.tableArtworkSize ?? 44;
+  const controlSize = metrics?.toolbarControlHeight ?? 36;
+  const iconSize = metrics?.toolbarIconSize ?? 20;
+  const nameSize = metrics?.tableFontSize;
+  const captionSize = metrics?.tableHeaderFontSize;
+  const radius = metrics?.selectionRadius ?? borderRadius.medium;
+
+  const inner = (
+    <>
+      <View style={[styles.topRow, desktop && styles.topRowDesktop]}>
         {/* Self-fetching, opt-in TMDB poster (returns null when the feature
             is inactive, so layout is unchanged for users with it off). */}
-        <ArtworkThumbnail name={result.fileName || ''} width={44} placeholderIcon="film-outline" />
+        <ArtworkThumbnail
+          name={result.fileName || ''}
+          width={artworkSize}
+          placeholderIcon="film-outline"
+        />
         <View style={styles.body}>
           {/* Line 1: filename — truncate when collapsed, full when expanded */}
           <Text
-            style={[styles.name, { color: colors.text }]}
-            numberOfLines={expanded ? undefined : 2}
+            style={[
+              styles.name,
+              desktop &&
+                nameSize !== undefined && {
+                  fontSize: nameSize,
+                  lineHeight: Math.round(nameSize * 1.3),
+                  marginBottom: 2,
+                  fontWeight: '500',
+                },
+              { color: colors.text },
+            ]}
+            numberOfLines={expanded ? undefined : desktop ? 1 : 2}
           >
             {result.fileName || '—'}
           </Text>
 
           {/* Line 2: health dot + meta */}
           <View style={styles.statusRow}>
-            <View style={[styles.stateDot, { backgroundColor: dotColor }]} />
+            <View
+              style={[
+                styles.stateDot,
+                desktop && styles.stateDotDesktop,
+                { backgroundColor: dotColor },
+              ]}
+            />
             {/* numberOfLines=2, not 1: size/seeders/leechers/host/date can
                 overflow one line once a date is present — wrap instead of
-                silently truncating the date off the end. */}
-            <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={2}>
+                silently truncating the date off the end. Desktop is a
+                single tabular line like TorrentTable. */}
+            <Text
+              style={[
+                styles.statusText,
+                desktop &&
+                  captionSize !== undefined && {
+                    fontSize: captionSize,
+                    lineHeight: Math.round(captionSize * 1.3),
+                  },
+                { color: colors.textSecondary },
+              ]}
+              numberOfLines={desktop ? 1 : 2}
+            >
               {formatSize(result.fileSize)}
               {'  ·  '}
               <Text style={{ color: colors.success }}>↑{seeders}</Text>
@@ -117,18 +169,19 @@ export function SearchResultRow({
             {/* Chevron hints that the row expands */}
             <Ionicons
               name={expanded ? 'chevron-up' : 'chevron-down'}
-              size={14}
+              size={desktop ? (metrics?.toolbarIconSize ?? 14) : 14}
               color={colors.textSecondary}
               style={styles.chevron}
             />
           </View>
         </View>
 
-        {/* Right: the explicit add action, plus the cart toggle underneath.
-            Inner TouchableOpacity does NOT propagate to the outer one in
-            React Native, so tapping either button acts without toggling the
-            expand state. */}
-        <View style={styles.actionColumn}>
+        {/* Right: the explicit add action, plus the cart toggle.
+            Compact stacks them; desktop puts them in a row so the
+            strip can sit at table-row height. Inner TouchableOpacity
+            does NOT propagate to the outer one in React Native, so
+            tapping either button acts without toggling expand. */}
+        <View style={[styles.actionColumn, desktop && styles.actionColumnDesktop]}>
           <TouchableOpacity
             onPress={() => {
               haptics.medium();
@@ -138,6 +191,11 @@ export function SearchResultRow({
             accessibilityLabel={t('screens.search.addToQueue')}
             style={[
               styles.addButton,
+              desktop && {
+                width: controlSize,
+                height: controlSize,
+                borderRadius: radius,
+              },
               {
                 backgroundColor: isAdding ? colors.surfaceOutline : colors.primary,
               },
@@ -147,7 +205,7 @@ export function SearchResultRow({
             {isAdding ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Ionicons name="add" size={20} color="#FFFFFF" />
+              <Ionicons name="add" size={desktop ? iconSize : 20} color="#FFFFFF" />
             )}
           </TouchableOpacity>
 
@@ -163,6 +221,11 @@ export function SearchResultRow({
               accessibilityState={{ selected: !!inCart }}
               style={[
                 styles.cartButton,
+                desktop && {
+                  width: controlSize,
+                  height: controlSize,
+                  borderRadius: radius,
+                },
                 {
                   backgroundColor: inCart ? colors.primaryOpac : colors.background,
                   borderColor: inCart ? colors.primary : colors.surfaceOutline,
@@ -172,7 +235,7 @@ export function SearchResultRow({
             >
               <Ionicons
                 name={inCart ? 'cart' : 'cart-outline'}
-                size={18}
+                size={desktop ? iconSize : 18}
                 color={inCart ? colors.primary : colors.textSecondary}
               />
             </TouchableOpacity>
@@ -190,6 +253,7 @@ export function SearchResultRow({
                 icon="document-text-outline"
                 label={t('screens.search.openDescription')}
                 colors={colors}
+                dense={desktop}
                 onPress={() => onOpenLink(result.descrLink)}
               />
             ) : null}
@@ -198,6 +262,7 @@ export function SearchResultRow({
                 icon="globe-outline"
                 label={t('screens.search.openSite')}
                 colors={colors}
+                dense={desktop}
                 onPress={() => onOpenLink(result.siteUrl)}
               />
             ) : null}
@@ -206,13 +271,50 @@ export function SearchResultRow({
                 icon="copy-outline"
                 label={t('screens.search.copyLink')}
                 colors={colors}
+                dense={desktop}
                 onPress={() => onCopyUrl(result.fileUrl)}
               />
             ) : null}
           </View>
         </>
       )}
-    </TouchableOpacity>
+    </>
+  );
+
+  if (!desktop) {
+    return (
+      <TouchableOpacity
+        onPress={toggleExpanded}
+        onLongPress={onLongPress ? () => onLongPress(result) : undefined}
+        activeOpacity={0.7}
+        style={[styles.card, { backgroundColor: colors.surface }]}
+      >
+        {inner}
+      </TouchableOpacity>
+    );
+  }
+
+  const rowBackground = hovered ? hexToRgba(colors.text, 0.06) : colors.background;
+
+  return (
+    <Pressable
+      onPress={toggleExpanded}
+      onLongPress={onLongPress ? () => onLongPress(result) : undefined}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      accessibilityRole="button"
+      style={[
+        styles.denseRow,
+        {
+          backgroundColor: rowBackground,
+          borderBottomColor: colors.surfaceOutline,
+          minHeight: metrics?.tableRowHeight,
+          paddingHorizontal: metrics?.sidebarInsetHorizontal,
+        },
+      ]}
+    >
+      {inner}
+    </Pressable>
   );
 }
 
@@ -223,9 +325,10 @@ interface ActionPillProps {
   label: string;
   colors: ReturnType<typeof useTheme>['colors'];
   onPress: () => void;
+  dense?: boolean;
 }
 
-function ActionPill({ icon, label, colors, onPress }: ActionPillProps) {
+function ActionPill({ icon, label, colors, onPress, dense }: ActionPillProps) {
   return (
     <TouchableOpacity
       onPress={() => {
@@ -234,11 +337,12 @@ function ActionPill({ icon, label, colors, onPress }: ActionPillProps) {
       }}
       style={[
         styles.actionPill,
+        dense && styles.actionPillDense,
         { backgroundColor: colors.background, borderColor: colors.surfaceOutline },
       ]}
       activeOpacity={0.7}
     >
-      <Ionicons name={icon} size={14} color={colors.primary} />
+      <Ionicons name={icon} size={dense ? 12 : 14} color={colors.primary} />
       <Text style={[styles.actionPillText, { color: colors.text }]} numberOfLines={1}>
         {label}
       </Text>
@@ -327,5 +431,26 @@ const styles = StyleSheet.create({
   actionPillText: {
     ...typography.captionSemibold,
     letterSpacing: 0.2,
+  },
+  actionPillDense: {
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm,
+  },
+  topRowDesktop: {
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  stateDotDesktop: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  actionColumnDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  denseRow: {
+    paddingVertical: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });

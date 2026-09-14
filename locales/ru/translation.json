@@ -1001,6 +1001,8 @@
     "peers": "Пиры",
     "availability": "Доступность",
     "popularity": "Популярность",
+    "overview": "Обзор",
+    "httpSources": "HTTP-источники",
     "files": "Файлы",
     "trackers": "Трекеры",
     "forceStart": "Принудительный старт",
@@ -1133,7 +1135,26 @@
       "destinations": "Навигация",
       "status": "Статус",
       "categories": "Категории",
-      "tags": "Теги"
+      "tags": "Теги",
+      "trackers": "Трекеры"
+    },
+    "newCategory": "Новая категория",
+    "newTags": "Новые теги",
+    "editCategory": "Изменить категорию",
+    "deleteCategory": "Удалить категорию",
+    "deleteTag": "Удалить тег",
+    "status": {
+      "all": "Все",
+      "downloading": "Загрузка",
+      "seeding": "Раздача",
+      "completed": "Завершённые",
+      "running": "Запущенные",
+      "paused": "Остановленные",
+      "active": "Активные",
+      "inactive": "Неактивные",
+      "stalled": "Простой",
+      "checking": "Проверка",
+      "error": "Ошибки"
     }
   },
   "sort": {
@@ -1158,7 +1179,10 @@
       "peers": "Пиры",
       "eta": "ETA",
       "ratio": "Коэфф.",
-      "added": "Добавлен"
+      "added": "Добавлен",
+      "completed": "Завершён",
+      "seen": "Видели полностью",
+      "queue": "Очередь"
     },
     "sortedAscending": "Сортировка по возрастанию",
     "sortedDescending": "Сортировка по убыванию"
