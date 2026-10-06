@@ -482,8 +482,10 @@
       "uploadLimitSet": "Upload limit set to {{value}} KiB/s",
       "noDlTorrents": "No downloading torrents to pause",
       "noUlTorrents": "No uploading torrents to pause",
-      "pausedDl": "Paused {{count}} downloading torrent(s)",
-      "pausedUl": "Paused {{count}} uploading torrent(s)",
+      "pausedDl_one": "Paused {{count}} downloading torrent",
+      "pausedDl_other": "Paused {{count}} downloading torrents",
+      "pausedUl_one": "Paused {{count}} uploading torrent",
+      "pausedUl_other": "Paused {{count}} uploading torrents",
       "altDownloadLimit": "Alt Download",
       "altUploadLimit": "Alt Upload",
       "altDownloadLimitSet": "Alt download limit set to {{value}} KiB/s",
@@ -647,7 +649,8 @@
       "cartEmpty": "Nothing queued yet",
       "cartClearAll": "Clear all",
       "cartCheckout": "Continue ({{count}})",
-      "cartAccessibility": "Add queue, {{count}} torrent(s)"
+      "cartAccessibility_one": "Add queue, {{count}} torrent",
+      "cartAccessibility_other": "Add queue, {{count}} torrents"
     },
     "rss": {
       "feedsTitle": "RSS Feeds",
@@ -1205,7 +1208,8 @@
     "allFilesSelected": "All files selected for download",
     "allFilesDeselected": "All files deselected",
     "prioritySet": "Priority set to {{label}}",
-    "prioritySetForCount": "Priority set to {{label}} for {{count}} file(s)",
+    "prioritySetForCount_one": "Priority set to {{label}} for {{count}} file",
+    "prioritySetForCount_other": "Priority set to {{label}} for {{count}} files",
     "fileSelected": "File selected: {{name}}",
     "dlLimitSetKb": "Download limit set to {{value}} KiB/s",
     "ulLimitSetKb": "Upload limit set to {{value}} KiB/s",
