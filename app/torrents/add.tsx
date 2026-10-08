@@ -241,7 +241,11 @@ export default function AddTorrentFullScreen() {
   const buildOptions = (): AddTorrentOptions & AddTorrentFileOptions => {
     const opts: Record<string, unknown> = {};
 
-    if (fieldVisibility.savePath && tmmMode === 'manual' && savePath.trim()) {
+    // Sent even when the Save Path field is hidden, like an HTML hidden input:
+    // picking a category still fills savePath with the category's folder, and
+    // in manual TMM qBittorrent won't apply that folder on its own — dropping
+    // it here sent the torrent to the server's default path instead.
+    if (tmmMode === 'manual' && savePath.trim()) {
       opts.savepath = savePath.trim();
     }
     if (fieldVisibility.category && category) opts.category = category;
