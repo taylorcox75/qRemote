@@ -669,6 +669,11 @@ base).
   `common`, `states`, `screens`, `placeholders`, `actions`, `alerts`, `server`,
   `torrentDetail`, `filters`, `sort`, `toast`, `errors`. Keys read like
   `t('actions.pause')`.
+- `i18n/index.ts` imports the `intl-pluralrules` polyfill first. Hermes has no
+  `Intl.PluralRules`, and without it i18next only ever picks `_one`/`_other`,
+  so Polish and Russian `_few`/`_many` keys were never used.
+  `tests/locales/plurals.test.ts` reproduces that by deleting
+  `Intl.PluralRules`, and requires pl/ru plural keys to define all four forms.
 
 ---
 

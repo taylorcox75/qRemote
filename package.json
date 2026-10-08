@@ -37,6 +37,7 @@
     "expo-store-review": "~57.0.3",
     "expo-updates": "~57.0.24",
     "i18next": "^26.3.6",
+    "intl-pluralrules": "^2.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-i18next": "^17.0.11",

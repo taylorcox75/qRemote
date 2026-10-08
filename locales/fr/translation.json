@@ -461,8 +461,10 @@
       "uploadLimitSet": "Limite d'envoi définie à {{value}} KiB/s",
       "noDlTorrents": "Aucun torrent en cours de téléchargement à mettre en pause",
       "noUlTorrents": "Aucun torrent en cours d'envoi à mettre en pause",
-      "pausedDl": "{{count}} torrent(s) en téléchargement mis en pause",
-      "pausedUl": "{{count}} torrent(s) en envoi mis en pause",
+      "pausedDl_one": "{{count}} torrent en téléchargement mis en pause",
+      "pausedDl_other": "{{count}} torrents en téléchargement mis en pause",
+      "pausedUl_one": "{{count}} torrent en envoi mis en pause",
+      "pausedUl_other": "{{count}} torrents en envoi mis en pause",
       "altDownloadLimit": "Téléch. Alt",
       "altUploadLimit": "Envoi Alt",
       "altDownloadLimitSet": "Limite de téléchargement alternative définie à {{value}} KiB/s",
@@ -626,7 +628,8 @@
       "cartEmpty": "Rien en attente pour le moment",
       "cartClearAll": "Tout effacer",
       "cartCheckout": "Continuer ({{count}})",
-      "cartAccessibility": "File d'ajout, {{count}} torrent(s)"
+      "cartAccessibility_one": "File d'ajout, {{count}} torrent",
+      "cartAccessibility_other": "File d'ajout, {{count}} torrents"
     },
     "rss": {
       "feedsTitle": "Flux RSS",
@@ -1180,7 +1183,8 @@
     "allFilesSelected": "Tous les fichiers sélectionnés pour le téléchargement",
     "allFilesDeselected": "Toutes les sélections annulées",
     "prioritySet": "Priorité définie sur {{label}}",
-    "prioritySetForCount": "Priorité définie sur {{label}} pour {{count}} fichier(s)",
+    "prioritySetForCount_one": "Priorité définie sur {{label}} pour {{count}} fichier",
+    "prioritySetForCount_other": "Priorité définie sur {{label}} pour {{count}} fichiers",
     "fileSelected": "Fichier sélectionné : {{name}}",
     "stateColorsReset": "Couleurs d'état du torrent réinitialisées aux valeurs par défaut",
     "colorsReset": "Couleurs réinitialisées aux valeurs par défaut",

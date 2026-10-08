@@ -461,8 +461,10 @@
       "uploadLimitSet": "上传限速已设置为 {{value}} KiB/s",
       "noDlTorrents": "没有正在下载的种子可暂停",
       "noUlTorrents": "没有正在上传的种子可暂停",
-      "pausedDl": "已暂停 {{count}} 个正在下载的种子",
-      "pausedUl": "已暂停 {{count}} 个正在上传的种子",
+      "pausedDl_one": "已暂停 {{count}} 个正在下载的种子",
+      "pausedDl_other": "已暂停 {{count}} 个正在下载的种子",
+      "pausedUl_one": "已暂停 {{count}} 个正在上传的种子",
+      "pausedUl_other": "已暂停 {{count}} 个正在上传的种子",
       "altDownloadLimit": "备用下载",
       "altUploadLimit": "备用上传",
       "altDownloadLimitSet": "备用下载限速已设置为 {{value}} KiB/s",
@@ -626,7 +628,8 @@
       "cartEmpty": "队列中还没有内容",
       "cartClearAll": "清空全部",
       "cartCheckout": "继续（{{count}}）",
-      "cartAccessibility": "添加队列，共 {{count}} 个种子"
+      "cartAccessibility_one": "添加队列，共 {{count}} 个种子",
+      "cartAccessibility_other": "添加队列，共 {{count}} 个种子"
     },
     "rss": {
       "feedsTitle": "RSS 订阅",
@@ -1180,7 +1183,8 @@
     "allFilesSelected": "已选择全部文件以下载",
     "allFilesDeselected": "已取消全选",
     "prioritySet": "优先级已设为 {{label}}",
-    "prioritySetForCount": "已为 {{count}} 个文件设置优先级为 {{label}}",
+    "prioritySetForCount_one": "已为 {{count}} 个文件设置优先级为 {{label}}",
+    "prioritySetForCount_other": "已为 {{count}} 个文件设置优先级为 {{label}}",
     "fileSelected": "已选择文件：{{name}}",
     "stateColorsReset": "种子状态颜色已重置为默认值",
     "colorsReset": "颜色已重置为默认值",

@@ -128,7 +128,7 @@ describe('i18n locale parity', () => {
 
     it('has no extra keys that en does not have', () => {
       const extra = [...localeKeys].filter(
-        (k) => !enKeySet.has(k) && !(locale === 'pl' && /_(few|many)$/.test(k)),
+        (k) => !enKeySet.has(k) && !(['pl', 'ru'].includes(locale) && /_(few|many)$/.test(k)),
       );
       expect(extra).toEqual([]);
     });

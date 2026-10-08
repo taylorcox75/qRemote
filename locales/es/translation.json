@@ -461,8 +461,10 @@
       "uploadLimitSet": "Límite de subida establecido en {{value}} KiB/s",
       "noDlTorrents": "No hay torrents descargando para pausar",
       "noUlTorrents": "No hay torrents subiendo para pausar",
-      "pausedDl": "Se pausaron {{count}} torrent(s) en descarga",
-      "pausedUl": "Se pausaron {{count}} torrent(s) en subida",
+      "pausedDl_one": "Se pausó {{count}} torrent en descarga",
+      "pausedDl_other": "Se pausaron {{count}} torrents en descarga",
+      "pausedUl_one": "Se pausó {{count}} torrent en subida",
+      "pausedUl_other": "Se pausaron {{count}} torrents en subida",
       "altDownloadLimit": "Descarga Alt",
       "altUploadLimit": "Subida Alt",
       "altDownloadLimitSet": "Límite de descarga alternativa establecido en {{value}} KiB/s",
@@ -626,7 +628,8 @@
       "cartEmpty": "Aún no hay nada en cola",
       "cartClearAll": "Borrar todo",
       "cartCheckout": "Continuar ({{count}})",
-      "cartAccessibility": "Cola de adición, {{count}} torrent(s)"
+      "cartAccessibility_one": "Cola de adición, {{count}} torrent",
+      "cartAccessibility_other": "Cola de adición, {{count}} torrents"
     },
     "rss": {
       "feedsTitle": "Feeds RSS",
@@ -1178,7 +1181,8 @@
     "allFilesSelected": "Todos los archivos seleccionados para descargar",
     "allFilesDeselected": "Todas las selecciones anuladas",
     "prioritySet": "Prioridad establecida en {{label}}",
-    "prioritySetForCount": "Prioridad establecida en {{label}} para {{count}} archivo(s)",
+    "prioritySetForCount_one": "Prioridad establecida en {{label}} para {{count}} archivo",
+    "prioritySetForCount_other": "Prioridad establecida en {{label}} para {{count}} archivos",
     "fileSelected": "Archivo seleccionado: {{name}}",
     "dlLimitSetKb": "Límite de descarga establecido en {{value}} KiB/s",
     "ulLimitSetKb": "Límite de subida establecido en {{value}} KiB/s",
