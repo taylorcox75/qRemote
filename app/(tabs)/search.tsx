@@ -1045,7 +1045,7 @@ export default function SearchScreen() {
     key: string;
     label: string;
     icon: React.ComponentProps<typeof Ionicons>['name'];
-    /** Pinned plugin chips show a star; "All plugins" is never pinnable. */
+    /** Plugin chips show a filled star when pinned, an outline star when not; "All plugins" is never pinnable. */
     pinned?: boolean;
   };
 
@@ -1057,7 +1057,8 @@ export default function SearchScreen() {
       chips.push({
         key: p.name,
         label: p.enabled ? p.fullName : `${p.fullName} (${t('common.disabled')})`,
-        icon: pinnedSet.has(p.name) ? 'star' : 'extension-puzzle',
+        // Outline = tap to pin, filled = pinned (tap to unpin).
+        icon: pinnedSet.has(p.name) ? 'star' : 'star-outline',
         pinned: pinnedSet.has(p.name),
       });
     }
