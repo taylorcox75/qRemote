@@ -603,7 +603,7 @@
     },
     "search": {
       "tabTitle": "Поиск",
-      "placeholder": "Поиск по индексаторам торрентов…",
+      "placeholder": "Поиск индексаторов…",
       "plugin": "Плагин",
       "category": "Категория",
       "allPlugins": "Все плагины",

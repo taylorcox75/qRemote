@@ -576,7 +576,7 @@
     },
     "search": {
       "tabTitle": "搜索",
-      "placeholder": "Search torrent indexers…",
+      "placeholder": "搜索索引器…",
       "plugin": "Plugin",
       "category": "Category",
       "allPlugins": "All plugins",

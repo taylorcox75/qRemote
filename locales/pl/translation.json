@@ -603,7 +603,7 @@
     },
     "search": {
       "tabTitle": "Szukaj",
-      "placeholder": "Przeszukaj indeksery torrentów…",
+      "placeholder": "Szukaj indekserów…",
       "plugin": "Wtyczka",
       "category": "Kategoria",
       "allPlugins": "Wszystkie wtyczki",

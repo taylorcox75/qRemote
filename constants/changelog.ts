@@ -37,6 +37,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           'Fixed the connection diagnostic asking for a username and password in qui Proxy mode',
           'Fixed the loading spinner overlapping the torrent search box',
           'Fixed some search results (like LimeTorrents) showing as added but never appearing',
+          'Fixed the Search tab search field text being cut off',
         ],
       },
     ],

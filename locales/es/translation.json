@@ -576,7 +576,7 @@
     },
     "search": {
       "tabTitle": "Buscar",
-      "placeholder": "Search torrent indexers…",
+      "placeholder": "Buscar indexadores…",
       "plugin": "Plugin",
       "category": "Category",
       "allPlugins": "All plugins",
