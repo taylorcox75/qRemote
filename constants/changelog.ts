@@ -19,6 +19,19 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.47',
+    date: '2026-10-11',
+    sections: [
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'Fixed qui proxy servers failing to connect when the URL was pasted into the Host field',
+          'Fixed the connection diagnostic asking for a username and password in qui Proxy mode',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.46',
     date: '2026-10-04',
     sections: [

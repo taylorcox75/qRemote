@@ -1148,6 +1148,7 @@
     "notConnected": "Not connected to a server. Please connect to a server first.",
     "lostConnection": "Lost connection to server. Please reconnect.",
     "connectedTo": "Connected to {{name}}",
+    "quiProxyUrlDetected": "Detected a qui proxy URL — switched the authentication method to qui Proxy.",
     "disconnected": "Disconnected from server",
     "torrentDeleted": "Torrent deleted",
     "torrentsDeleted_one": "{{count}} torrent deleted",

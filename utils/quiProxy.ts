@@ -14,8 +14,8 @@
  * (see withQuiProxyPath). Because the key lives in the URL path, anything that
  * logs or displays a URL must run it through redactQuiProxyKey.
  *
- * Key exports: parseQuiProxyUrl, buildQuiProxyUrl, withQuiProxyPath, redactQuiProxyKey,
- *   QUI_KEY_REJECTED_MESSAGE, QUI_KEY_MISSING_MESSAGE, isQuiKeyRejection
+ * Key exports: parseQuiProxyUrl, detectQuiProxyUrlInHost, buildQuiProxyUrl, withQuiProxyPath,
+ *   redactQuiProxyKey, QUI_KEY_REJECTED_MESSAGE, QUI_KEY_MISSING_MESSAGE, isQuiKeyRejection
  */
 import { ServerConfig } from '@/types/api';
 
@@ -120,6 +120,28 @@ export function parseQuiProxyUrl(input: string): QuiProxyParseResult {
     basePath: baseSegments.length > 0 ? `/${baseSegments.join('/')}` : '/',
     key: keySegment,
   };
+}
+
+/**
+ * qui generates Client API keys as 32 random bytes in hex (64 chars). Matching
+ * 32+ hex chars keeps host-field detection from firing on a real qBittorrent
+ * that happens to sit behind a reverse proxy at `/proxy/<name>`.
+ */
+const QUI_GENERATED_KEY = /^[0-9a-f]{32,}$/i;
+
+/**
+ * Detect a qui proxy URL typed or pasted into the plain Host field (#278).
+ * That can never connect: the Port field is appended after the whole host, so
+ * the request goes to `/proxy/<key>:<port>/…` and qui rejects the key it sees.
+ * Returns the URL to move into the qui Proxy field (a scheme-less paste gets
+ * one from the HTTPS toggle), or null when the text isn't a qui proxy URL.
+ */
+export function detectQuiProxyUrlInHost(hostText: string, useHttps: boolean): string | null {
+  const text = (hostText ?? '').trim();
+  if (!/\/proxy\//i.test(text)) return null;
+  const url = /^https?:\/\//i.test(text) ? text : `${useHttps ? 'https' : 'http'}://${text}`;
+  const parsed = parseQuiProxyUrl(url);
+  return parsed.ok && QUI_GENERATED_KEY.test(parsed.key) ? url : null;
 }
 
 /**

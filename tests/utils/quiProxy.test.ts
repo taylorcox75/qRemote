@@ -2,6 +2,7 @@ import {
   QUI_KEY_MASK,
   QUI_KEY_REJECTED_MESSAGE,
   buildQuiProxyUrl,
+  detectQuiProxyUrlInHost,
   isQuiKeyRejection,
   parseQuiProxyUrl,
   redactQuiProxyKey,
@@ -152,6 +153,47 @@ describe('parseQuiProxyUrl', () => {
       expect(parseQuiProxyUrl('http://h:1/proxy/k')).toMatchObject({ ok: true, port: 1 });
       expect(parseQuiProxyUrl('http://h:65535/proxy/k')).toMatchObject({ ok: true, port: 65535 });
     });
+  });
+});
+
+describe('detectQuiProxyUrlInHost (#278)', () => {
+  // qui keys are 32 random bytes in hex.
+  const KEY = 'a3f1c2e4b5d6a7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70';
+
+  it('returns a pasted proxy URL unchanged', () => {
+    expect(detectQuiProxyUrlInHost(`http://192.168.1.10:7476/proxy/${KEY}`, false)).toBe(
+      `http://192.168.1.10:7476/proxy/${KEY}`,
+    );
+    expect(detectQuiProxyUrlInHost(`  https://qui.example.com/qui/proxy/${KEY}/ `, false)).toBe(
+      `https://qui.example.com/qui/proxy/${KEY}/`,
+    );
+  });
+
+  it('adds a scheme from the HTTPS toggle when the paste has none', () => {
+    expect(detectQuiProxyUrlInHost(`qui.example.com/proxy/${KEY}`, true)).toBe(
+      `https://qui.example.com/proxy/${KEY}`,
+    );
+    expect(detectQuiProxyUrlInHost(`10.0.0.2:7476/proxy/${KEY}`, false)).toBe(
+      `http://10.0.0.2:7476/proxy/${KEY}`,
+    );
+  });
+
+  it.each(['192.168.1.10', 'qbit.example.com', 'http://qbit.example.com:8080', ''])(
+    'ignores an ordinary host (%j)',
+    (host) => {
+      expect(detectQuiProxyUrlInHost(host, false)).toBeNull();
+    },
+  );
+
+  it('ignores a /proxy/ path that is not a qui-generated key', () => {
+    // A real qBittorrent behind a reverse proxy at /proxy/<name> must stay as typed.
+    expect(detectQuiProxyUrlInHost('https://example.com/proxy/qbittorrent', false)).toBeNull();
+    expect(detectQuiProxyUrlInHost('https://example.com/proxy/abc123', false)).toBeNull();
+  });
+
+  it('ignores an unfinished paste or anything after the key', () => {
+    expect(detectQuiProxyUrlInHost('https://qui.example.com/proxy/', false)).toBeNull();
+    expect(detectQuiProxyUrlInHost(`https://qui.example.com/proxy/${KEY}/api`, false)).toBeNull();
   });
 });
 

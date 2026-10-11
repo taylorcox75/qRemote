@@ -1166,6 +1166,7 @@
     "notConnected": "Нет подключения к серверу. Сначала подключитесь.",
     "lostConnection": "Соединение с сервером потеряно. Подключитесь снова.",
     "connectedTo": "Подключено к {{name}}",
+    "quiProxyUrlDetected": "Обнаружен URL прокси qui — способ аутентификации переключён на «Прокси qui».",
     "disconnected": "Отключено от сервера",
     "torrentDeleted": "Торрент удалён",
     "torrentsDeleted_one": "Удалён {{count}} торрент",

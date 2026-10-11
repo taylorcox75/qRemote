@@ -551,7 +551,8 @@ export function SuperDebugPanel({
       addEntry('ERROR', 'Host field is empty. Enter an IP or domain above first.', 'error');
       return;
     }
-    if (!bypassAuth && !useApiKey && (!username.trim() || !password.trim())) {
+    // qui mode hides the username/password fields — its key is in the URL.
+    if (!bypassAuth && !useApiKey && !useQuiProxy && (!username.trim() || !password.trim())) {
       addEntry(
         'ERROR',
         'Username and password are required. Fill them in above, or choose a different authentication method.',
@@ -869,6 +870,14 @@ export function SuperDebugPanel({
             addEntry(
               'WARN',
               'API key authentication was rejected. Possible causes:\n  1. The key was mistyped or copied incorrectly\n  2. The key was rotated in qBittorrent since it was entered here\n  3. Your qBittorrent version is older than 5.2.0 / WebAPI 2.14.1 (API keys are not supported)\n\nCheck: Preferences > WebUI > API Key in qBittorrent.',
+              'warning',
+            );
+          } else if (useQuiProxy) {
+            // qui accepted the key (a bad key is 401, above) and forwarded the
+            // request — this 403 is qBittorrent rejecting qui's own session.
+            addEntry(
+              'WARN',
+              "qui accepted the proxy key, but qBittorrent rejected qui's session. Check that the instance is connected and its credentials are correct in qui.",
               'warning',
             );
           } else if (!bypassAuth && !sessionCookie) {

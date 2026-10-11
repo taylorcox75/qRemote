@@ -343,6 +343,9 @@ the primary's key is reused (no second secret). The add/edit forms hide
 username/password/API key and host/port/HTTPS in this mode and show one masked
 `QuiProxyUrlField`; the edit screen repopulates it with `buildQuiProxyUrl`
 (ending at `/proxy/` for an imported server whose key was stripped).
+`tests/services/qui-proxy-e2e.test.ts` drives real axios against a local
+qui-shaped server — the other qui tests mock axios, so it is the only one that
+proves the key reaches the wire intact.
 
 ---
 
@@ -600,8 +603,9 @@ legitimately saved `retryAttempts: 0`) ·
 `authMode.ts` (derives `password`/`apiKey`/`none`/`quiProxy`) · `basicAuth.ts` ·
 `quiProxy.ts` (qui Client Proxy URLs, #272 — `parseQuiProxyUrl`/`buildQuiProxyUrl`
 for the pasted `…/proxy/<key>` URL, `withQuiProxyPath` for the request path,
-`redactQuiProxyKey` for logs/errors/debug text, and the `QUI_KEY_*` messages
-`ServerManager` matches) ·
+`redactQuiProxyKey` for logs/errors/debug text, `detectQuiProxyUrlInHost` (#278 —
+a qui URL pasted into the plain Host field flips the add/edit form to qui Proxy
+mode), and the `QUI_KEY_*` messages `ServerManager` matches) ·
 `customHeaders.ts` (per-server custom HTTP headers — sanitize/validate, and the
 reserved-name set the app manages itself: Authorization, Cookie, Referer,
 Origin, Content-Type, Host — #228) ·
@@ -935,3 +939,10 @@ Keep entries factual and current; if you find one that's no longer true
   `responseType`, so guard it). Tests that mock `request.response` directly
   pass while the real path silently sees nothing — mock the RN shape
   (`response: ''`, `responseText: '…'`) instead.
+- **A path typed into the plain Host field lands *before* the port.** The
+  non-qui server forms have no base-path field, and the client builds
+  `<host><:port><basePath>`, so Host `qui:7476/proxy/<key>` plus Port `7476`
+  requests `/proxy/<key>:7476/api/v2/…`. Against qui that reads as "Invalid
+  client API key" in qui's log and an auth failure in the app (#278) — it looks
+  exactly like a wrong key. qui URLs are now caught at input
+  (`detectQuiProxyUrlInHost`); any other path-in-Host still has this problem.

@@ -1127,6 +1127,7 @@
     "notConnected": "未连接服务器，请先连接。",
     "lostConnection": "连接已断开，请重新连接。",
     "connectedTo": "已连接 {{name}}",
+    "quiProxyUrlDetected": "检测到 qui 代理 URL，已将认证方式切换为 qui 代理。",
     "disconnected": "已断开服务器连接",
     "torrentDeleted": "种子已删除",
     "torrentsDeleted_one": "已删除 {{count}} 个种子",

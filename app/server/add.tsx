@@ -42,7 +42,12 @@ import { APP_VERSION } from '@/utils/version';
 import { getErrorMessage } from '@/utils/error';
 import { ServerAuthMode, applyServerAuthMode } from '@/utils/authMode';
 import { withAlpha } from '@/utils/color';
-import { parseQuiProxyUrl, redactQuiProxyKey, withQuiProxyPath } from '@/utils/quiProxy';
+import {
+  detectQuiProxyUrlInHost,
+  parseQuiProxyUrl,
+  redactQuiProxyKey,
+  withQuiProxyPath,
+} from '@/utils/quiProxy';
 import {
   CustomHeaderPair,
   sanitizeCustomHeaders,
@@ -116,6 +121,20 @@ export default function AddServerScreen() {
   // Helper function to strip http:// or https:// prefix and trailing colons/slashes from host
   const stripProtocol = (hostString: string): string => {
     return hostString.replace(/^(https?:\/\/)/i, '').replace(/[:/]+$/, '');
+  };
+
+  // A qui proxy URL pasted into Host can never connect (#278) — the Port is
+  // appended after the key. Switch to qui Proxy mode and move the URL there.
+  const handleHostChange = (text: string) => {
+    const quiUrl = isQui ? null : detectQuiProxyUrlInHost(text, useHttps);
+    if (!quiUrl) {
+      setHost(text);
+      return;
+    }
+    setAuthMode('quiProxy');
+    setQuiProxyUrl(quiUrl);
+    setHost('');
+    showToast(t('toast.quiProxyUrlDetected'), 'info');
   };
 
   // Computed debug info for troubleshooting
@@ -646,7 +665,7 @@ App Version: ${APP_VERSION}`;
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
                       value={host}
-                      onChangeText={setHost}
+                      onChangeText={handleHostChange}
                       placeholder={t('placeholders.ipDomain')}
                       placeholderTextColor={colors.textSecondary}
                       autoCapitalize="none"

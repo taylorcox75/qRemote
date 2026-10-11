@@ -1166,6 +1166,7 @@
     "notConnected": "Brak połączenia z serwerem. Najpierw połącz się z serwerem.",
     "lostConnection": "Utracono połączenie z serwerem. Połącz się ponownie.",
     "connectedTo": "Połączono z {{name}}",
+    "quiProxyUrlDetected": "Wykryto adres URL proxy qui — metodę uwierzytelniania przełączono na Proxy qui.",
     "disconnected": "Rozłączono z serwerem",
     "torrentDeleted": "Usunięto torrent",
     "torrentsDeleted_one": "Usunięto {{count}} torrent",
