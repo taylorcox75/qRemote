@@ -75,4 +75,16 @@ describe('SearchHistoryDropdown', () => {
     await renderDropdown({ entries: [{ query: 'pinned one', pinned: true }] });
     expect(screen.queryByLabelText('screens.torrents.clearRecentSearches')).toBeNull();
   });
+
+  it('explains how searches get saved when there are no entries yet', async () => {
+    await renderDropdown({ entries: [] });
+    expect(screen.getByText('screens.torrents.recentSearches')).toBeTruthy();
+    expect(screen.getByText('screens.torrents.noRecentSearches')).toBeTruthy();
+    expect(screen.queryByText('screens.torrents.clearRecentSearches')).toBeNull();
+  });
+
+  it('shows no empty-state text once there are entries', async () => {
+    await renderDropdown();
+    expect(screen.queryByText('screens.torrents.noRecentSearches')).toBeNull();
+  });
 });

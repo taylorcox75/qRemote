@@ -6,7 +6,8 @@
  *
  * Each row: leading icon (pin if pinned, clock otherwise), the query (tap to
  * reuse it), a pin toggle and a remove button. The footer clears every unpinned
- * entry. Pure list logic lives in utils/search-history.ts.
+ * entry. With no entries yet it shows how searches get saved, so the feature
+ * is discoverable before first use. Pure list logic lives in utils/search-history.ts.
  *
  * Key exports: SearchHistoryDropdown
  */
@@ -71,6 +72,11 @@ export function SearchHistoryDropdown({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {entries.length === 0 && (
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            {t('screens.torrents.noRecentSearches')}
+          </Text>
+        )}
         {entries.map((entry) => (
           <View key={entry.query} style={styles.row}>
             <TouchableOpacity
@@ -175,6 +181,12 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: spacing.xs,
+  },
+  emptyText: {
+    ...typography.secondary,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md,
   },
   footer: {
     flexDirection: 'row',

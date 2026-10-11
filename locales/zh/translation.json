@@ -31,6 +31,7 @@
   "screens": {
     "torrents": {
       "recentSearches": "最近搜索",
+      "noRecentSearches": "暂无最近搜索。输入搜索内容并点按键盘上的“搜索”即可保存到这里。",
       "recentSearchesHint": "记住最近的种子搜索，方便再次使用",
       "recentSearchesOff": "关闭",
       "pinSearch": "固定搜索",

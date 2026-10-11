@@ -31,6 +31,7 @@
   "screens": {
     "torrents": {
       "recentSearches": "Letzte Suchen",
+      "noRecentSearches": "Noch keine letzten Suchen. Gib eine Suche ein und tippe auf der Tastatur auf „Suchen“, um sie hier zu speichern.",
       "recentSearchesHint": "Merkt sich die letzten Torrent-Suchen zur erneuten Verwendung",
       "recentSearchesOff": "Aus",
       "pinSearch": "Suche anheften",

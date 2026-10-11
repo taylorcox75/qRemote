@@ -31,6 +31,7 @@
   "screens": {
     "torrents": {
       "recentSearches": "Recherches récentes",
+      "noRecentSearches": "Aucune recherche récente pour l’instant. Saisissez une recherche et appuyez sur Rechercher sur le clavier pour l’enregistrer ici.",
       "recentSearchesHint": "Mémorise vos dernières recherches de torrents pour les réutiliser",
       "recentSearchesOff": "Désactivé",
       "pinSearch": "Épingler la recherche",

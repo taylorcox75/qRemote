@@ -347,10 +347,13 @@ export default function TorrentsScreen() {
     () => getHistoryEntries(searchHistory.history, searchHistory.pinned),
     [searchHistory],
   );
-  const canShowSearchHistory = searchHistoryLimit > 0 && searchHistoryEntries.length > 0;
+  // Shown whenever history is on, even before anything is saved — otherwise
+  // the feature is invisible until you happen to trigger it (the dropdown
+  // explains how searches get saved).
+  const canShowSearchHistory = searchHistoryLimit > 0;
 
-  // Close the dropdown whenever its trigger disappears (history emptied or
-  // switched off, select mode entered, text typed or applied).
+  // Close the dropdown whenever its trigger disappears (history switched off,
+  // select mode entered, text typed or applied).
   useEffect(() => {
     if (showSearchHistory && (!canShowSearchHistory || selectMode || searchQuery.length > 0)) {
       setShowSearchHistory(false);

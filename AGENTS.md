@@ -460,7 +460,7 @@ All PascalCase function components taking a `…Props` interface.
   the connected one, taps another to call `connectToServer` directly; owns its
   own transient switching-id/error state rather than threading it through the
   screen, mirroring `QuickConnectPanel`'s row treatment),
-  `SearchHistoryDropdown` (#282 — recent/pinned searches popover under the Torrents tab search field; rows are pin/clock icon + query + pin toggle + remove, footer "Clear recent" keeps pinned. Presentational only; `app/(tabs)/(torrents)/index.tsx` owns open state, positioning (measured `onLayout`, mutually exclusive with the sort menu) and persistence).
+  `SearchHistoryDropdown` (#282 — recent/pinned searches popover under the Torrents tab search field; rows are pin/clock icon + query + pin toggle + remove, footer "Clear recent" keeps pinned; with no entries it explains how searches get saved, because the clock button shows whenever history is on (limit > 0), not only once something is saved. Presentational only; `app/(tabs)/(torrents)/index.tsx` owns open state, positioning (measured `onLayout`, mutually exclusive with the sort menu) and persistence).
 - **Torrent / search UI** — `TorrentCard` (`React.memo` with a **custom
   comparator — keep it in sync when you add a rendered field**, or the card
   silently stops updating; category/tag stickers use `categoryColors`/`tagColors`
