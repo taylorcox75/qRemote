@@ -37,7 +37,6 @@ import { SearchCartModal } from '@/components/SearchCartModal';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
 import { SearchFilterPanel } from '@/components/SearchFilterPanel';
-import { MultiSelectPicker } from '@/components/MultiSelectPicker';
 import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -73,7 +72,11 @@ import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 import { compareByQuality } from '@/utils/video-quality';
-import { orderPluginsWithPins, prunePinnedPlugins } from '@/utils/search-plugins';
+import {
+  orderPluginsWithPins,
+  prunePinnedPlugins,
+  togglePinnedPlugin,
+} from '@/utils/search-plugins';
 import { getResultDownloader, planPluginUrlAdd } from '@/utils/search-download';
 import {
   GroupAddPlan,
@@ -290,9 +293,9 @@ export default function SearchScreen() {
   const [actionGroup, setActionGroup] = useState<SearchResultGroup | null>(null);
 
   // #283: persisted plugin `name` ids pinned to the front of the plugin chip
-  // row, and the visibility of the picker that edits them.
+  // row. Tapping a chip's icon toggles its pin (see handleTogglePin).
   const [pinnedPlugins, setPinnedPlugins] = useState<string[]>([]);
-  const [showPinnedPicker, setShowPinnedPicker] = useState(false);
+  const pluginRowRef = useRef<ScrollView>(null);
 
   // pubDate is a qBit 5.0+ (WebAPI >= 2.11.0) field — hide the option on older
   // servers rather than offering a sort that silently does nothing.
@@ -378,21 +381,25 @@ export default function SearchScreen() {
     [sortedPlugins, activePinnedPlugins],
   );
 
-  const handlePinnedPluginsChange = useCallback(
-    async (next: string[]) => {
+  // Tapping a plugin chip's icon pins/unpins that plugin. A newly pinned chip
+  // jumps to the front of the row, so scroll back to the start to show where it
+  // went (the row may have been scrolled to wherever the chip was).
+  const handleTogglePin = useCallback(
+    async (name: string) => {
       haptics.light();
-      // Prune against what's installed now so uninstalled names don't pile up.
-      const pruned = prunePinnedPlugins(next, plugins);
-      setPinnedPlugins(pruned);
+      // Toggling also prunes uninstalled names so they don't pile up in storage.
+      const next = togglePinnedPlugin(pinnedPlugins, name, plugins);
+      setPinnedPlugins(next);
+      if (next.includes(name)) pluginRowRef.current?.scrollTo({ x: 0, animated: true });
       try {
         const prefs = await storageService.getPreferences();
-        await storageService.savePreferences({ ...prefs, searchPinnedPlugins: pruned });
+        await storageService.savePreferences({ ...prefs, searchPinnedPlugins: next });
       } catch (err: unknown) {
         // The in-memory pins still work; only persistence across launches is lost.
         clogWarn('SEARCH', `Failed to save pinned plugins preference: ${getErrorMessage(err)}`);
       }
     },
-    [plugins],
+    [pinnedPlugins, plugins],
   );
 
   // Categories supported by the currently selected plugin. When searching
@@ -1038,6 +1045,8 @@ export default function SearchScreen() {
     key: string;
     label: string;
     icon: React.ComponentProps<typeof Ionicons>['name'];
+    /** Pinned plugin chips show a star; "All plugins" is never pinnable. */
+    pinned?: boolean;
   };
 
   const pluginChips: PluginChip[] = useMemo(() => {
@@ -1049,21 +1058,11 @@ export default function SearchScreen() {
         key: p.name,
         label: p.enabled ? p.fullName : `${p.fullName} (${t('common.disabled')})`,
         icon: pinnedSet.has(p.name) ? 'star' : 'extension-puzzle',
+        pinned: pinnedSet.has(p.name),
       });
     }
     return chips;
   }, [pinOrderedPlugins, activePinnedPlugins, t]);
-
-  // Options for the "Pinned plugins" picker — every installed plugin, in the
-  // plain enabled-then-name order so the list doesn't reshuffle as you tick.
-  const pinnedPickerOptions = useMemo(
-    () =>
-      sortedPlugins.map((p) => ({
-        value: p.name,
-        label: p.enabled ? p.fullName : `${p.fullName} (${t('common.disabled')})`,
-      })),
-    [sortedPlugins, t],
-  );
 
   // ────────────────────────────────────────────────── empty states ────────
 
@@ -1338,6 +1337,7 @@ export default function SearchScreen() {
               {/* Plugin chip row */}
               <View style={styles.filterRow}>
                 <ScrollView
+                  ref={pluginRowRef}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.filterRowContainer}
@@ -1355,27 +1355,6 @@ export default function SearchScreen() {
                     />
                   </TouchableOpacity>
 
-                  {/* #283: pin plugins — pinned ones move to the front of this row. */}
-                  {plugins.length > 0 && (
-                    <TouchableOpacity
-                      style={styles.pluginsCornerButton}
-                      onPress={() => {
-                        haptics.light();
-                        setShowPinnedPicker(true);
-                      }}
-                      activeOpacity={0.7}
-                      accessibilityLabel={t('screens.search.pinnedPluginsButton')}
-                    >
-                      <Ionicons
-                        name={activePinnedPlugins.length > 0 ? 'star' : 'star-outline'}
-                        size={20}
-                        color={
-                          activePinnedPlugins.length > 0 ? colors.primary : colors.textSecondary
-                        }
-                      />
-                    </TouchableOpacity>
-                  )}
-
                   {pluginChips.map((chip) => {
                     const isActive = plugin === chip.key;
                     return (
@@ -1383,6 +1362,13 @@ export default function SearchScreen() {
                         key={chip.key}
                         label={chip.label}
                         icon={chip.icon}
+                        // #283: tapping the icon pins/unpins a plugin; the rest of
+                        // the chip still selects it.
+                        onIconPress={chip.key === ALL ? undefined : () => handleTogglePin(chip.key)}
+                        iconAccessibilityLabel={t(
+                          chip.pinned ? 'screens.search.unpinPlugin' : 'screens.search.pinPlugin',
+                          { name: chip.label },
+                        )}
                         active={isActive}
                         numberOfLines={1}
                         style={styles.filterChip}
@@ -1755,15 +1741,6 @@ export default function SearchScreen() {
           setActionGroup(null);
         }}
         items={actionItems}
-      />
-
-      <MultiSelectPicker
-        visible={showPinnedPicker}
-        title={t('screens.search.pinnedPluginsTitle')}
-        options={pinnedPickerOptions}
-        selectedValues={activePinnedPlugins}
-        onChange={handlePinnedPluginsChange}
-        onClose={() => setShowPinnedPicker(false)}
       />
 
       <SearchCartModal

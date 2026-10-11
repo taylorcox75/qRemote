@@ -53,4 +53,86 @@ describe('FilterChip', () => {
     );
     expect(screen.getByLabelText('custom-chip')).toBeTruthy();
   });
+
+  describe('onIconPress', () => {
+    it('taps on the icon call onIconPress and not onPress', async () => {
+      const onPress = jest.fn();
+      const onIconPress = jest.fn();
+      await render(
+        <FilterChip
+          label="Plugin"
+          active={false}
+          onPress={onPress}
+          icon="star"
+          onIconPress={onIconPress}
+          iconAccessibilityLabel="Pin Plugin"
+        />,
+      );
+      fireEvent.press(screen.getByLabelText('Pin Plugin'));
+      expect(onIconPress).toHaveBeenCalledTimes(1);
+      expect(onPress).not.toHaveBeenCalled();
+    });
+
+    it('taps on the label still call onPress and not onIconPress', async () => {
+      const onPress = jest.fn();
+      const onIconPress = jest.fn();
+      await render(
+        <FilterChip
+          label="Plugin"
+          active={false}
+          onPress={onPress}
+          icon="star"
+          onIconPress={onIconPress}
+          iconAccessibilityLabel="Pin Plugin"
+        />,
+      );
+      fireEvent.press(screen.getByText('Plugin'));
+      expect(onPress).toHaveBeenCalledTimes(1);
+      expect(onIconPress).not.toHaveBeenCalled();
+    });
+
+    it('exposes the icon press as a VoiceOver action on the chip', async () => {
+      const onPress = jest.fn();
+      const onIconPress = jest.fn();
+      await render(
+        <FilterChip
+          label="Plugin"
+          active={false}
+          onPress={onPress}
+          icon="star"
+          onIconPress={onIconPress}
+          iconAccessibilityLabel="Pin Plugin"
+          accessibilityLabel="plugin-chip"
+        />,
+      );
+      fireEvent(screen.getByLabelText('plugin-chip'), 'accessibilityAction', {
+        nativeEvent: { actionName: 'iconPress' },
+      });
+      expect(onIconPress).toHaveBeenCalledTimes(1);
+      expect(onPress).not.toHaveBeenCalled();
+    });
+
+    it('renders no icon button without an icon or without onIconPress', async () => {
+      await render(
+        <FilterChip
+          label="NoIcon"
+          active={false}
+          onPress={jest.fn()}
+          onIconPress={jest.fn()}
+          iconAccessibilityLabel="Pin NoIcon"
+        />,
+      );
+      expect(screen.queryByLabelText('Pin NoIcon')).toBeNull();
+      await render(
+        <FilterChip
+          label="NoHandler"
+          active={false}
+          onPress={jest.fn()}
+          icon="star"
+          iconAccessibilityLabel="Pin NoHandler"
+        />,
+      );
+      expect(screen.queryByLabelText('Pin NoHandler')).toBeNull();
+    });
+  });
 });

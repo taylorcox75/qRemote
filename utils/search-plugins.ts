@@ -53,3 +53,19 @@ export function prunePinnedPlugins(
   }
   return result;
 }
+
+/**
+ * The pinned list after tapping a plugin's icon: unpins it when it is pinned,
+ * otherwise pins it (appended). Pins for plugins that are no longer installed
+ * are dropped along the way, and a name that isn't installed can't be pinned.
+ */
+export function togglePinnedPlugin(
+  pinned: readonly string[] | undefined | null,
+  name: string,
+  installed: readonly PinnablePlugin[],
+): string[] {
+  const current = prunePinnedPlugins(pinned, installed);
+  if (current.includes(name)) return current.filter((pinnedName) => pinnedName !== name);
+  if (!installed.some((plugin) => plugin.name === name)) return current;
+  return [...current, name];
+}

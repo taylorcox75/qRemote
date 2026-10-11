@@ -1,4 +1,8 @@
-import { orderPluginsWithPins, prunePinnedPlugins } from '@/utils/search-plugins';
+import {
+  orderPluginsWithPins,
+  prunePinnedPlugins,
+  togglePinnedPlugin,
+} from '@/utils/search-plugins';
 
 const names = (list: { name: string }[]) => list.map((p) => p.name);
 
@@ -71,5 +75,41 @@ describe('prunePinnedPlugins', () => {
 
   it('prunes everything when no plugins are installed', () => {
     expect(prunePinnedPlugins(['alpha'], [])).toEqual([]);
+  });
+});
+
+describe('togglePinnedPlugin', () => {
+  const installed = [{ name: 'alpha' }, { name: 'beta' }, { name: 'gamma' }];
+
+  it('pins an unpinned plugin, appending it', () => {
+    expect(togglePinnedPlugin([], 'beta', installed)).toEqual(['beta']);
+    expect(togglePinnedPlugin(['gamma'], 'alpha', installed)).toEqual(['gamma', 'alpha']);
+  });
+
+  it('unpins a pinned plugin', () => {
+    expect(togglePinnedPlugin(['alpha', 'beta'], 'alpha', installed)).toEqual(['beta']);
+    expect(togglePinnedPlugin(['beta'], 'beta', installed)).toEqual([]);
+  });
+
+  it('treats undefined or null pins as none', () => {
+    expect(togglePinnedPlugin(undefined, 'alpha', installed)).toEqual(['alpha']);
+    expect(togglePinnedPlugin(null, 'alpha', installed)).toEqual(['alpha']);
+  });
+
+  it('cannot pin a plugin that is not installed', () => {
+    expect(togglePinnedPlugin(['alpha'], 'ghost', installed)).toEqual(['alpha']);
+  });
+
+  it('drops pins for uninstalled plugins and duplicates while toggling', () => {
+    expect(togglePinnedPlugin(['ghost', 'alpha', 'alpha'], 'beta', installed)).toEqual([
+      'alpha',
+      'beta',
+    ]);
+  });
+
+  it('does not mutate the pinned list it is given', () => {
+    const pinned = ['alpha'];
+    togglePinnedPlugin(pinned, 'beta', installed);
+    expect(pinned).toEqual(['alpha']);
   });
 });
