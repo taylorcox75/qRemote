@@ -69,6 +69,15 @@ export interface AppPreferences {
   /** Per-theme color overrides, keyed by 'dark' | 'light' */
   customColors: Record<string, ColorTheme>;
 
+  /**
+   * Id of the theme preset last applied from Settings → Theme (#286). Optional
+   * and written only when the user applies a preset — absent for everyone who
+   * has never picked one. It is a hint, not the source of truth: whether a
+   * preset is "selected" is decided by comparing `customColors` against that
+   * preset (see `getThemePresetSelection`), so a stale id can't mislabel anything.
+   */
+  themePresetId?: string;
+
   /** Default sticker color applied to every category that has no per-name override */
   defaultCategoryColor: string;
 

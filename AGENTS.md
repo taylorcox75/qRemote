@@ -493,7 +493,8 @@ All PascalCase function components taking a `…Props` interface.
   connectivity log, `services/connectivity-log.ts` — copy-to-clipboard via
   `formatConnectivityLog()`; opened from Settings → Advanced's "View
   Connectivity Logs" row; works with no live server connection, unlike
-  `app/(tabs)/logs.tsx`), `DebugRow`, `SuperDebugPanel`.
+  `app/(tabs)/logs.tsx`), `DebugRow`, `SuperDebugPanel`,
+  `ThemePresetsSection` (Settings → Theme "Presets" row, #286 — horizontally scrolling swatch cards previewing each preset for the *current* light/dark mode, built from `constants/themePresets.ts`; `default` previews the live `darkColors`/`lightColors`. Presentational: highlights from a `ThemePresetSelection` prop and calls `onSelect`; the screen owns applying and the confirm over custom colors).
 
 ### API wrappers (`services/api/`)
 
@@ -529,7 +530,7 @@ Thin objects over `apiClient`.
 - **`incoming-file.ts`** — copies an incoming `.torrent` into the app cache
   before the iOS security-scoped access can lapse.
 - **`query-client.ts`** — the shared TanStack `QueryClient`.
-- **`color-theme-manager.ts`** — save/load/apply user color themes.
+- **`color-theme-manager.ts`** — save/load/apply user color themes. `applyThemePreset` (#286) writes both modes and `themePresetId` in one `savePreferences` call (which overwrites, so deleting a key removes it).
 - **`connectivity-log.ts`** — in-memory ring log (`clogDebug/Info/Warn/Error(tag, msg)`),
   displayed by `components/LogViewer.tsx`.
 - **`search-tracker-topup.ts`** — #267: after a Search group of `.torrent` links is
@@ -643,6 +644,7 @@ last in *both* directions, ties by seeders desc with `-1` as 0 — #268) ·
 `search-history.ts` (#282 — pure Torrents-tab recent-search lists: `recordQuery` (trim, ignore <2 chars, case-insensitive dedupe keeping latest casing, front, trim to limit, limit 0 = off, never duplicates a pinned entry), `togglePin` (recent ⇄ pinned, max `MAX_PINNED_SEARCHES` = 10, pinned entries don't count toward the limit), `removeQuery`, `clearUnpinned`, `applyHistoryLimit`, `getHistoryEntries` (pinned first); `SEARCH_HISTORY_LIMIT_OPTIONS` backs the Appearance picker) ·
 `search-plugins.ts` (#283 — Search plugin pinning: `orderPluginsWithPins(sortedPlugins, pinned)` moves pinned plugins to the front of the already-sorted list, keeping the incoming enabled-then-name order within each group and ignoring pinned names that aren't installed; `prunePinnedPlugins(pinned, installed)` drops uninstalled and duplicate names before the `searchPinnedPlugins` pref is saved) ·
 `search-download.ts` (#284 — how a Search result's URL is added through the plugin that produced it. `isAggregatorResult(result)` is true for Jackett/Prowlarr results, detected per result by `engineName` matching `/jackett|prowlarr/i` or an `apikey=` / `jackett_apikey=` query param in the `fileUrl`; it deliberately does not infer this from "all results share one site". `getResultDownloader(result)` returns the result's `engineName` for non-magnet, non-aggregator results with an engine name, and is the single rule shared by `search.tsx`'s instant add, the `sourcePlugin` handoff to both add dialogs, cart items' `downloader`, and `useSearchHashResolver`. `planPluginUrlAdd(downloader, features)` returns `addWithDownloader` (`torrents/add` + `downloader`, WebAPI ≥ 2.13.1, all options kept), `searchDownloadTorrent` (5.0–5.1, default options only) or `plainAdd` (4.x). `getPrefilledDownloader(urls, {url, plugin})` lets the dialogs apply a Search-supplied plugin only while the submitted URLs are still exactly the pre-filled one) ·
+`themePresets.ts` (#286 — `getThemePresetSelection(customColors, themePresetId)` → `default` | `preset` | `custom` (+ `basedOn`), derived by deep-comparing stored overrides with the preset and never from the id alone, so existing hand-picked colors are always `custom`; `findThemePreset`; `presetApplyNeedsConfirm` — true only for `custom`) ·
 `login-response.ts` (qBittorrent login body/cookie interpretation) ·
 `haptics.ts` (global toggle + wrappers) · `tags.ts` (CSV tag parsing) ·
 `add-torrent-dialogue.ts` (compact vs full variant, plus `getSearchAddOpensDialogue`
@@ -658,7 +660,7 @@ qBittorrent's DHT/PeX/LSD pseudo-tracker entries out of `torrents/trackers`;
 same entries — #234, #236) · `color.ts` (`withAlpha` —
 applies an alpha channel to a hex/rgb/rgba color string; `colors.*` defaults
 mix formats, so appending a hex alpha suffix silently no-ops on an rgba()
-base).
+base; `contrastRatio(a, b)` — WCAG 2 contrast ratio for hex/rgb/rgba strings, alpha ignored, unparsable → 1).
 
 ### Types, constants, i18n
 
@@ -670,7 +672,8 @@ base).
   `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts`, `serverIcons.ts`
   (`SERVER_ICON_OPTIONS`, `DEFAULT_SERVER_ICON` — the curated Ionicons set for
   a server's badge, #224), `timing.ts` (`LONG_BACKGROUND_THRESHOLD_MS` — shared
-  by `TorrentContext` and `TransferContext` for their quick-app-switch gate).
+  by `TorrentContext` and `TransferContext` for their quick-app-switch gate),
+  `themePresets.ts` (`THEME_PRESETS`, `ThemePreset`, `DEFAULT_THEME_PRESET_ID` — #286: `default` plus oled/nord/dracula/solarized/highContrast/qbittorrentClassic, each defining EVERY `ColorTheme` key (incl. preset-only `primaryOpac`/`onAccent`) for both `dark` and `light`, 6-digit hex except `primaryOpac`. Applied through `colorThemeManager.applyThemePreset`. **Never rename a preset `id`** — it is persisted as `themePresetId`. Contrast is enforced by `tests/utils/themePresets.test.ts`).
   **Use these tokens; don't invent ad-hoc spacing.**
 - `i18n/index.ts` initializes react-i18next. Each locale is ONE file,
   `locales/{en,es,zh,fr,de,ru,pl}/translation.json`, holding every namespace:

@@ -27,6 +27,7 @@ export const CHANGELOG: ChangelogRelease[] = [
         items: [
           'Added recent searches and a clear button to the torrent list search',
           'Added pinning favorite search plugins to the front of the plugin list',
+          'Added theme presets to Settings → Theme',
         ],
       },
       {

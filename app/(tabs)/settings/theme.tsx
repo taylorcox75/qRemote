@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,7 +7,19 @@ import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ColorPicker } from '@/components/ColorPicker';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
-import { colorThemeManager, ColorTheme } from '@/services/color-theme-manager';
+import { ConfirmModal } from '@/components/ConfirmModal';
+import { ThemePresetsSection } from '@/components/ThemePresetsSection';
+import {
+  colorThemeManager,
+  type EditableColorKey,
+  type ColorTheme,
+} from '@/services/color-theme-manager';
+import type { ThemePreset } from '@/constants/themePresets';
+import {
+  getThemePresetSelection,
+  presetApplyNeedsConfirm,
+  type ThemePresetSelection,
+} from '@/utils/themePresets';
 import { useToast } from '@/context/ToastContext';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -42,17 +54,79 @@ export default function ThemeSettingsScreen() {
   const { showToast } = useToast();
   const { t } = useTranslation();
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
-  const [colorPickerKey, setColorPickerKey] = useState<keyof ColorTheme | null>(null);
+  const [colorPickerKey, setColorPickerKey] = useState<EditableColorKey | null>(null);
   const [themeModePickerVisible, setThemeModePickerVisible] = useState(false);
+  // What is applied right now, derived from storage (null until first read).
+  const [presetSelection, setPresetSelection] = useState<ThemePresetSelection | null>(null);
+  // A preset the user tapped while they have custom colors; applied only on confirm.
+  const [pendingPreset, setPendingPreset] = useState<ThemePreset | null>(null);
+
+  const readPresetSelection = useCallback(async (): Promise<ThemePresetSelection> => {
+    const prefs = await storageService.getPreferences();
+    return getThemePresetSelection(prefs.customColors, prefs.themePresetId);
+  }, []);
+
+  const refreshPresetSelection = useCallback(async () => {
+    try {
+      setPresetSelection(await readPresetSelection());
+    } catch {
+      // Leave the previous selection; the section just won't update its highlight.
+    }
+  }, [readPresetSelection]);
+
+  // Every color change goes through here so the highlighted preset follows it:
+  // editing a color after applying a preset naturally flips it to "Custom".
+  const reloadColors = async () => {
+    await reloadCustomColors();
+    await refreshPresetSelection();
+  };
+
+  const applyPreset = async (preset: ThemePreset) => {
+    try {
+      await colorThemeManager.applyThemePreset(preset);
+      await reloadColors();
+      showToast(t('screens.settings.themePresetApplied', { name: t(preset.nameKey) }), 'success');
+    } catch {
+      showToast(t('screens.settings.themePresetApplyFailed'), 'error');
+    }
+  };
+
+  const handlePresetSelect = async (preset: ThemePreset) => {
+    // Decide from storage at tap time, not from state that may be stale (or not
+    // loaded yet): custom colors are only ever replaced after an explicit confirm.
+    let current: ThemePresetSelection;
+    try {
+      current = await readPresetSelection();
+    } catch {
+      current = { kind: 'custom' };
+    }
+    setPresetSelection(current);
+    if (presetApplyNeedsConfirm(current)) {
+      setPendingPreset(preset);
+    } else {
+      await applyPreset(preset);
+    }
+  };
 
   useEffect(() => {
     reloadCustomColors();
+    let cancelled = false;
+    readPresetSelection()
+      .then((selection) => {
+        if (!cancelled) setPresetSelection(selection);
+      })
+      .catch(() => {
+        // Leave the highlight empty; tapping a preset re-reads storage anyway.
+      });
+    return () => {
+      cancelled = true;
+    };
     // Only run once on mount — reloadCustomColors isn't memoized in
     // ThemeContext, so including it would re-fire this on every color change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleColorSelect = (key: keyof ColorTheme) => {
+  const handleColorSelect = (key: EditableColorKey) => {
     setColorPickerKey(key);
     setColorPickerVisible(true);
   };
@@ -95,6 +169,9 @@ export default function ThemeSettingsScreen() {
           <View style={styles.headerButton} />
         </View>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {/* Theme presets */}
+          <ThemePresetsSection selection={presetSelection} onSelect={handlePresetSelect} />
+
           {/* Theme Mode */}
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
@@ -146,7 +223,7 @@ export default function ThemeSettingsScreen() {
                 onPress={async () => {
                   try {
                     await colorThemeManager.resetTorrentStateColors(isDark);
-                    await reloadCustomColors();
+                    await reloadColors();
                     showToast(t('toast.stateColorsReset'), 'success');
                   } catch {
                     showToast(t('errors.failedToResetStateColors'), 'error');
@@ -248,7 +325,7 @@ export default function ThemeSettingsScreen() {
                 onPress={async () => {
                   try {
                     await colorThemeManager.resetCustomColors(isDark);
-                    await reloadCustomColors();
+                    await reloadColors();
                     showToast(t('toast.colorsReset'), 'success');
                   } catch {
                     showToast(t('errors.failedToResetColors'), 'error');
@@ -385,7 +462,7 @@ export default function ThemeSettingsScreen() {
                   [colorPickerKey!]: newColor,
                 };
                 await colorThemeManager.saveCustomColors(isDark, updatedCustom);
-                await reloadCustomColors();
+                await reloadColors();
                 showToast(`${colorPickerKey} color updated`, 'success');
               } catch {
                 showToast(t('errors.failedToSaveColor'), 'error');
@@ -395,6 +472,29 @@ export default function ThemeSettingsScreen() {
           />
         </ScrollView>
       </View>
+
+      <ConfirmModal
+        visible={pendingPreset !== null}
+        title={t('screens.settings.themePresetReplaceTitle')}
+        message={
+          pendingPreset
+            ? t('screens.settings.themePresetReplaceMessage', { name: t(pendingPreset.nameKey) })
+            : undefined
+        }
+        buttons={[
+          {
+            label: t('screens.settings.themePresetReplaceConfirm'),
+            destructive: true,
+            onPress: () => {
+              const preset = pendingPreset;
+              setPendingPreset(null);
+              if (preset) applyPreset(preset);
+            },
+          },
+        ]}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setPendingPreset(null)}
+      />
 
       <OptionPicker
         visible={themeModePickerVisible}

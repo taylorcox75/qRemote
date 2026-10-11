@@ -1,4 +1,6 @@
 import { storageService } from './storage';
+import { DEFAULT_THEME_PRESET_ID, type ThemePreset } from '@/constants/themePresets';
+import type { AppPreferences } from '@/types/preferences';
 
 export interface ColorTheme {
   primary?: string;
@@ -32,9 +34,31 @@ export interface ColorTheme {
   stateQueued?: string;
   /** Torrent state: other (allocating, moving, unknown) */
   stateOther?: string;
+  /**
+   * Translucent tint of `primary` (selected rows, cart highlights). Not user
+   * editable — only theme presets set it, so a preset that changes `primary`
+   * doesn't leave the default blue-tinted highlight behind.
+   */
+  primaryOpac?: string;
+  /**
+   * Foreground for text/icons on a filled accent. Not user editable — only
+   * theme presets set it.
+   */
+  onAccent?: string;
 }
 
+/**
+ * The `ColorTheme` keys a user can edit one by one in Settings → Theme.
+ * `primaryOpac` and `onAccent` are preset-only and have no row or picker.
+ */
+export type EditableColorKey = Exclude<keyof ColorTheme, 'primaryOpac' | 'onAccent'>;
+
 const CUSTOM_COLORS_KEY = 'customColors';
+const THEME_PRESET_ID_KEY = 'themePresetId';
+
+function hasAnyColor(theme: ColorTheme | undefined): boolean {
+  return !!theme && Object.values(theme).some((value) => value !== undefined);
+}
 
 export const colorThemeManager = {
   /**
@@ -73,10 +97,46 @@ export const colorThemeManager = {
     const customColors = (preferences[CUSTOM_COLORS_KEY] as Record<string, ColorTheme>) || {};
     const themeKey = isDark ? 'dark' : 'light';
     delete customColors[themeKey];
-    await storageService.savePreferences({
+    const next: Partial<AppPreferences> = {
       ...preferences,
       [CUSTOM_COLORS_KEY]: customColors,
-    });
+    };
+    // Once neither mode has overrides left, the remembered preset is moot —
+    // drop it so a later hand edit isn't labelled "based on" a preset the
+    // user already reset away from.
+    if (!hasAnyColor(customColors.dark) && !hasAnyColor(customColors.light)) {
+      delete next[THEME_PRESET_ID_KEY];
+    }
+    await storageService.savePreferences(next);
+  },
+
+  /**
+   * Apply a theme preset: writes BOTH modes' overrides plus `themePresetId`
+   * in a single read-modify-write, so a failure can't leave dark from one
+   * theme and light from another. Each mode is replaced wholesale (not merged
+   * into what was there) so the stored colors deep-equal the preset.
+   *
+   * The `default` preset is the existing reset: it clears both modes'
+   * overrides and the remembered preset id, handing control back to the
+   * built-in palettes in ThemeContext.
+   */
+  async applyThemePreset(preset: ThemePreset): Promise<void> {
+    const preferences = await storageService.getPreferences();
+    const customColors = {
+      ...((preferences[CUSTOM_COLORS_KEY] as Record<string, ColorTheme>) || {}),
+    };
+    const next: Partial<AppPreferences> = { ...preferences };
+    if (preset.id === DEFAULT_THEME_PRESET_ID) {
+      delete customColors.dark;
+      delete customColors.light;
+      delete next[THEME_PRESET_ID_KEY];
+    } else {
+      customColors.dark = { ...preset.dark };
+      customColors.light = { ...preset.light };
+      next[THEME_PRESET_ID_KEY] = preset.id;
+    }
+    next[CUSTOM_COLORS_KEY] = customColors;
+    await storageService.savePreferences(next);
   },
 
   /** Keys used only for torrent state colors (can be reset independently) */
