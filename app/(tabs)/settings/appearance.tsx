@@ -15,6 +15,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { storageService } from '@/services/storage';
+import { DEFAULT_PREFERENCES } from '@/types/preferences';
+import { SEARCH_HISTORY_LIMIT_OPTIONS, applyHistoryLimit } from '@/utils/search-history';
 import { setStoredLanguage } from '@/i18n';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -28,6 +30,10 @@ export default function AppearanceSettingsScreen() {
   const [autoRefreshInterval, setAutoRefreshInterval] = useState('1000');
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
+  const [searchHistoryLimit, setSearchHistoryLimit] = useState(
+    DEFAULT_PREFERENCES.torrentSearchHistoryLimit,
+  );
+  const [searchHistoryPickerVisible, setSearchHistoryPickerVisible] = useState(false);
 
   const languageOptions: OptionPickerItem[] = [
     { label: 'English', value: 'en', icon: 'language-outline' },
@@ -39,12 +45,23 @@ export default function AppearanceSettingsScreen() {
     { label: 'Polski', value: 'pl', icon: 'language-outline' },
   ];
 
+  const searchHistoryOptions: OptionPickerItem[] = SEARCH_HISTORY_LIMIT_OPTIONS.map((limit) => ({
+    label: limit === 0 ? t('screens.torrents.recentSearchesOff') : String(limit),
+    value: String(limit),
+    icon: 'time-outline',
+  }));
+
   const loadPreferences = async () => {
     try {
       const prefs = await storageService.getPreferences();
       const interval = Number(prefs.autoRefreshInterval) || 1000;
       setAutoRefreshInterval(interval.toString());
       setCardViewMode(prefs.cardViewMode || 'compact');
+      setSearchHistoryLimit(
+        typeof prefs.torrentSearchHistoryLimit === 'number'
+          ? prefs.torrentSearchHistoryLimit
+          : DEFAULT_PREFERENCES.torrentSearchHistoryLimit,
+      );
     } catch {
       setAutoRefreshInterval('1000');
       setCardViewMode('compact');
@@ -73,6 +90,22 @@ export default function AppearanceSettingsScreen() {
       prefs.cardViewMode = mode;
       await storageService.savePreferences(prefs);
       setCardViewMode(mode);
+    } catch {
+      // Ignore save errors
+    }
+  };
+
+  // Lowering the limit trims the stored recent searches right away (pinned
+  // searches don't count toward it and are left alone).
+  const saveSearchHistoryLimit = async (limit: number) => {
+    try {
+      const prefs = await storageService.getPreferences();
+      prefs.torrentSearchHistoryLimit = limit;
+      if (Array.isArray(prefs.torrentSearchHistory)) {
+        prefs.torrentSearchHistory = applyHistoryLimit(prefs.torrentSearchHistory, limit);
+      }
+      await storageService.savePreferences(prefs);
+      setSearchHistoryLimit(limit);
     } catch {
       // Ignore save errors
     }
@@ -213,6 +246,32 @@ export default function AppearanceSettingsScreen() {
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
+                  <Ionicons name="time-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingTextWrap}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.torrents.recentSearches')}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {t('screens.torrents.recentSearchesHint')}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setSearchHistoryPickerVisible(true)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.torrents.recentSearches')}
+                >
+                  <Text style={[styles.pickerText, { color: colors.text }]}>
+                    {searchHistoryOptions.find((opt) => opt.value === String(searchHistoryLimit))
+                      ?.label ?? String(searchHistoryLimit)}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
                   <Ionicons name="refresh-outline" size={22} color={colors.primary} />
                   <View>
                     <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -251,6 +310,18 @@ export default function AppearanceSettingsScreen() {
           setLanguagePickerVisible(false);
         }}
         onClose={() => setLanguagePickerVisible(false)}
+      />
+
+      <OptionPicker
+        visible={searchHistoryPickerVisible}
+        title={t('screens.torrents.recentSearches')}
+        options={searchHistoryOptions}
+        selectedValue={String(searchHistoryLimit)}
+        onSelect={async (value) => {
+          await saveSearchHistoryLimit(Number(value));
+          setSearchHistoryPickerVisible(false);
+        }}
+        onClose={() => setSearchHistoryPickerVisible(false)}
       />
     </>
   );
@@ -315,6 +386,9 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  settingTextWrap: {
+    flex: 1,
   },
   settingDescription: {
     ...typography.caption,

@@ -51,6 +51,14 @@
   },
   "screens": {
     "torrents": {
+      "recentSearches": "Ostatnie wyszukiwania",
+      "recentSearchesHint": "Zapamiętuje ostatnie wyszukiwania torrentów, aby można było użyć ich ponownie",
+      "recentSearchesOff": "Wyłączone",
+      "pinSearch": "Przypnij wyszukiwanie",
+      "unpinSearch": "Odepnij wyszukiwanie",
+      "removeSearch": "Usuń z historii",
+      "clearRecentSearches": "Wyczyść ostatnie",
+      "pinLimitReached": "Możesz przypiąć maksymalnie {{max}} wyszukiwań",
       "tabTitle": "Torrenty",
       "notConnected": "Brak połączenia",
       "notConnectedSubtitle": "dodaj serwer, aby wyruszyć w rejs",

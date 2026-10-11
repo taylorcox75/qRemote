@@ -51,6 +51,14 @@
   },
   "screens": {
     "torrents": {
+      "recentSearches": "Recent searches",
+      "recentSearchesHint": "Remember your latest torrent searches so you can reuse them",
+      "recentSearchesOff": "Off",
+      "pinSearch": "Pin search",
+      "unpinSearch": "Unpin search",
+      "removeSearch": "Remove from history",
+      "clearRecentSearches": "Clear recent",
+      "pinLimitReached": "You can pin up to {{max}} searches",
       "tabTitle": "Torrents",
       "notConnected": "Not Connected",
       "notConnectedSubtitle": "add a server to set sail",

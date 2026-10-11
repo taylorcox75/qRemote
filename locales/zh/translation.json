@@ -30,6 +30,14 @@
   },
   "screens": {
     "torrents": {
+      "recentSearches": "最近搜索",
+      "recentSearchesHint": "记住最近的种子搜索，方便再次使用",
+      "recentSearchesOff": "关闭",
+      "pinSearch": "固定搜索",
+      "unpinSearch": "取消固定搜索",
+      "removeSearch": "从历史记录中移除",
+      "clearRecentSearches": "清除最近记录",
+      "pinLimitReached": "最多可固定 {{max}} 个搜索",
       "tabTitle": "种子",
       "notConnected": "未连接",
       "notConnectedSubtitle": "连接 qBittorrent 服务器以开始使用",

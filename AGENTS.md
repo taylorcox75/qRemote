@@ -357,7 +357,7 @@ Complete map. Trust it.
 
 | Path | Notes |
 |---|---|
-| `app/(tabs)/(torrents)/` | Torrents tab as a nested stack: `index` list, `torrent/[hash]`, `torrent/files`, `torrent/manage-trackers`. Group is omitted from URLs → `/`, `/torrent/[hash]`. |
+| `app/(tabs)/(torrents)/` | Torrents tab as a nested stack: `index` list, `torrent/[hash]`, `torrent/files`, `torrent/manage-trackers`. Group is omitted from URLs → `/`, `/torrent/[hash]`. The `index` search field has a clear ✕ and a recent-searches dropdown (#282; prefs `torrentSearchHistory`, `torrentSearchPinned`, `torrentSearchHistoryLimit`; Settings → Appearance → Recent searches). |
 | `app/(tabs)/search.tsx` | Search tab: job polling UI, plugin/category/indexer filter chips, client-side sort (keys: seeders/leechers/size/name/date/quality — Quality, #268, ranks by the resolution in the release name via `utils/video-quality.ts` and keeps unknown-quality results last in both directions; the sort dropdown also hosts the persisted "Hide zero seeders" toggle, `searchHideZeroSeeders` pref, and the persisted "Group duplicates" toggle, `searchGroupDuplicates` pref, default **on** — #267), a funnel-button filter panel (`components/SearchFilterPanel.tsx`: "Search in" names-only/everywhere — persisted `searchInMode` pref — plus session-only text, seeders and size filters, WebUI parity, #266), collapsing header. Result pipeline (`filteredResults` → `listItems`): dedupe → tracker chips → panel filters → hide zero seeders → group duplicates → sort by each group's primary (with grouping off every result is a group of one, so the list is exactly as before). Grouping (#267) collapses results that look like one torrent — same magnet `btih`, or same normalized name + exact size, confirmed on qBit 5.2+ by resolving duplicate-looking `.torrent` links through `torrents/fetchMetadata` — into one `SearchResultGroupRow`; the row's `+` adds the whole group (one merged magnet carrying every source's trackers, or the primary `.torrent` plus an `addTrackers` top-up once the torrent exists), a source's own `+` adds only that source. "names only" matches the last *submitted* pattern, not the live query box. Optional auto-tag-by-tracker on add (`autoCategorizeByTracker` pref — tags Search downloads only; the key name is historical). |
 | `app/(tabs)/transfer.tsx` | Transfer stats, global speed and seeding limits. |
 | `app/(tabs)/logs.tsx` | qBittorrent's own server-side application + peer log viewer (`logs/main`, `logs/peers` via `services/api/logs.ts`) — needs a live connection, shows a "not connected" placeholder otherwise. `href: null` — reached from Settings → Advanced ("Server Logs" row), not a visible tab. Not the app's own connectivity/diagnostic log — see `components/LogViewer.tsx` for that. |
@@ -459,7 +459,8 @@ All PascalCase function components taking a `…Props` interface.
   compact badge+name in the torrents screen header; lists saved servers, marks
   the connected one, taps another to call `connectToServer` directly; owns its
   own transient switching-id/error state rather than threading it through the
-  screen, mirroring `QuickConnectPanel`'s row treatment).
+  screen, mirroring `QuickConnectPanel`'s row treatment),
+  `SearchHistoryDropdown` (#282 — recent/pinned searches popover under the Torrents tab search field; rows are pin/clock icon + query + pin toggle + remove, footer "Clear recent" keeps pinned. Presentational only; `app/(tabs)/(torrents)/index.tsx` owns open state, positioning (measured `onLayout`, mutually exclusive with the sort menu) and persistence).
 - **Torrent / search UI** — `TorrentCard` (`React.memo` with a **custom
   comparator — keep it in sync when you add a rendered field**, or the card
   silently stops updating; category/tag stickers use `categoryColors`/`tagColors`
@@ -639,6 +640,7 @@ never reads `x264`/`h264` or a bare `1080`/year as a resolution, and deliberatel
 skips ambiguous "2K". `getVideoQualityLabel(rank)` for display, and
 `compareByQuality(a, b, dir)` — the Search "Quality" sort comparator: unknown
 last in *both* directions, ties by seeders desc with `-1` as 0 — #268) ·
+`search-history.ts` (#282 — pure Torrents-tab recent-search lists: `recordQuery` (trim, ignore <2 chars, case-insensitive dedupe keeping latest casing, front, trim to limit, limit 0 = off, never duplicates a pinned entry), `togglePin` (recent ⇄ pinned, max `MAX_PINNED_SEARCHES` = 10, pinned entries don't count toward the limit), `removeQuery`, `clearUnpinned`, `applyHistoryLimit`, `getHistoryEntries` (pinned first); `SEARCH_HISTORY_LIMIT_OPTIONS` backs the Appearance picker) ·
 `login-response.ts` (qBittorrent login body/cookie interpretation) ·
 `haptics.ts` (global toggle + wrappers) · `tags.ts` (CSV tag parsing) ·
 `add-torrent-dialogue.ts` (compact vs full variant, plus `getSearchAddOpensDialogue`

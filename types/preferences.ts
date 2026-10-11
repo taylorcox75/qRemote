@@ -97,6 +97,18 @@ export interface AppPreferences {
    */
   cardViewMode: 'compact' | 'expanded';
 
+  /**
+   * Recent (unpinned) queries typed into the Torrents tab search box, newest
+   * first. Capped by `torrentSearchHistoryLimit` (#282).
+   */
+  torrentSearchHistory: string[];
+
+  /** Pinned Torrents-tab searches (max 10). Not counted toward the history limit. */
+  torrentSearchPinned: string[];
+
+  /** How many recent searches to keep. 0 turns the history off. */
+  torrentSearchHistoryLimit: number;
+
   /** Whether newly added torrents start paused */
   pauseOnAdd: boolean;
 
@@ -207,6 +219,9 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultSortDirection: 'desc',
   defaultFilter: 'all',
   cardViewMode: 'compact',
+  torrentSearchHistory: [],
+  torrentSearchPinned: [],
+  torrentSearchHistoryLimit: 5,
   pauseOnAdd: false,
   defaultSavePath: '',
   lastUseDownloadPath: false,

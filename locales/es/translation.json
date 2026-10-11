@@ -30,6 +30,14 @@
   },
   "screens": {
     "torrents": {
+      "recentSearches": "Búsquedas recientes",
+      "recentSearchesHint": "Recuerda tus últimas búsquedas de torrents para reutilizarlas",
+      "recentSearchesOff": "Desactivado",
+      "pinSearch": "Fijar búsqueda",
+      "unpinSearch": "Desfijar búsqueda",
+      "removeSearch": "Quitar del historial",
+      "clearRecentSearches": "Borrar recientes",
+      "pinLimitReached": "Puedes fijar hasta {{max}} búsquedas",
       "tabTitle": "Torrents",
       "notConnected": "No Conectado",
       "notConnectedSubtitle": "Conecta a un servidor qBittorrent para empezar",

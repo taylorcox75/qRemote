@@ -23,6 +23,10 @@ export const CHANGELOG: ChangelogRelease[] = [
     date: '2026-10-11',
     sections: [
       {
+        title: 'New Features',
+        items: ['Added recent searches and a clear button to the torrent list search'],
+      },
+      {
         title: 'Bugs Fixed',
         items: [
           'Fixed qui proxy servers failing to connect when the URL was pasted into the Host field',

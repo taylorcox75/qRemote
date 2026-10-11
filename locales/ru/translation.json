@@ -51,6 +51,14 @@
   },
   "screens": {
     "torrents": {
+      "recentSearches": "Недавние поиски",
+      "recentSearchesHint": "Запоминает последние поиски торрентов, чтобы их можно было использовать снова",
+      "recentSearchesOff": "Выкл.",
+      "pinSearch": "Закрепить поиск",
+      "unpinSearch": "Открепить поиск",
+      "removeSearch": "Удалить из истории",
+      "clearRecentSearches": "Очистить недавние",
+      "pinLimitReached": "Можно закрепить не более {{max}} поисков",
       "tabTitle": "Торренты",
       "notConnected": "Нет подключения",
       "notConnectedSubtitle": "добавьте сервер, чтобы поднять паруса",

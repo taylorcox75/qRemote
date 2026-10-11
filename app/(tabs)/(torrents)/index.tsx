@@ -41,6 +41,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
+import { SearchHistoryDropdown } from '@/components/SearchHistoryDropdown';
 import { torrentsApi } from '@/services/api/torrents';
 import { applicationApi } from '@/services/api/application';
 import { apiClient } from '@/services/api/client';
@@ -66,6 +67,15 @@ import { isTorrentCompleted } from '@/utils/torrent-state';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSelectPicker';
 import { torrentHasAnyTag, UNTAGGED_FILTER } from '@/utils/tags';
+import {
+  MAX_PINNED_SEARCHES,
+  SearchHistoryState,
+  clearUnpinned,
+  getHistoryEntries,
+  recordQuery,
+  removeQuery,
+  togglePin,
+} from '@/utils/search-history';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -130,6 +140,21 @@ export default function TorrentsScreen() {
   // background poll/foreground re-sync, and wiring it to RefreshControl would
   // pop the iOS spinner on top of the search box on every load (#275).
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  // Recent/pinned searches for the search box (#282). The ref mirrors the
+  // state so blur/submit handlers always record against the latest lists.
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryState>({
+    history: [],
+    pinned: [],
+  });
+  const searchHistoryRef = useRef(searchHistory);
+  const [searchHistoryLimit, setSearchHistoryLimit] = useState(
+    DEFAULT_PREFERENCES.torrentSearchHistoryLimit,
+  );
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+  // Measured so the dropdown can sit right under the search field, whatever
+  // the header above it (server switcher row) happens to add.
+  const [searchRowLayout, setSearchRowLayout] = useState({ x: spacing.md, y: 50, height: 0 });
+  const [searchInputX, setSearchInputX] = useState(0);
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
   const [expandedCardFields, setExpandedCardFields] = useState<Record<ExpandedCardField, boolean>>(
     DEFAULT_PREFERENCES.expandedCardFields,
@@ -223,6 +248,109 @@ export default function TorrentsScreen() {
     }
   }, [refresh]);
 
+  // --- Recent searches (#282) -------------------------------------------
+  const persistSearchHistory = useCallback(async (next: SearchHistoryState) => {
+    try {
+      const prefs = await storageService.getPreferences();
+      await storageService.savePreferences({
+        ...prefs,
+        torrentSearchHistory: next.history,
+        torrentSearchPinned: next.pinned,
+      });
+    } catch {
+      // best-effort
+    }
+  }, []);
+
+  const applySearchHistory = useCallback(
+    (next: SearchHistoryState) => {
+      searchHistoryRef.current = next;
+      setSearchHistory(next);
+      void persistSearchHistory(next);
+    },
+    [persistSearchHistory],
+  );
+
+  // Records `query` (ignored when too short or history is off) and skips the
+  // write when nothing would change, since blur and submit both call this.
+  const recordSearch = useCallback(
+    (query: string) => {
+      if (searchHistoryLimit <= 0) return;
+      const { history, pinned } = searchHistoryRef.current;
+      const nextHistory = recordQuery(history, pinned, query, searchHistoryLimit);
+      if (
+        nextHistory.length === history.length &&
+        nextHistory.every((entry, index) => entry === history[index])
+      ) {
+        return;
+      }
+      applySearchHistory({ history: nextHistory, pinned });
+    },
+    [searchHistoryLimit, applySearchHistory],
+  );
+
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchQuery(text);
+    if (text.length > 0) setShowSearchHistory(false);
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    haptics.light();
+    setSearchQuery('');
+  }, []);
+
+  const handleSelectHistoryQuery = useCallback(
+    (query: string) => {
+      haptics.light();
+      setSearchQuery(query);
+      setShowSearchHistory(false);
+      recordSearch(query);
+    },
+    [recordSearch],
+  );
+
+  const handleToggleHistoryPin = useCallback(
+    (query: string) => {
+      haptics.light();
+      const { history, pinned } = searchHistoryRef.current;
+      const next = togglePin(history, pinned, query, searchHistoryLimit);
+      if (next.history === history && next.pinned === pinned) {
+        showToast(t('screens.torrents.pinLimitReached', { max: MAX_PINNED_SEARCHES }), 'info');
+        return;
+      }
+      applySearchHistory(next);
+    },
+    [searchHistoryLimit, applySearchHistory, showToast, t],
+  );
+
+  const handleRemoveHistoryQuery = useCallback(
+    (query: string) => {
+      haptics.light();
+      const { history, pinned } = searchHistoryRef.current;
+      applySearchHistory(removeQuery(history, pinned, query));
+    },
+    [applySearchHistory],
+  );
+
+  const handleClearRecentSearches = useCallback(() => {
+    haptics.light();
+    applySearchHistory(clearUnpinned(searchHistoryRef.current.pinned));
+  }, [applySearchHistory]);
+
+  const searchHistoryEntries = useMemo(
+    () => getHistoryEntries(searchHistory.history, searchHistory.pinned),
+    [searchHistory],
+  );
+  const canShowSearchHistory = searchHistoryLimit > 0 && searchHistoryEntries.length > 0;
+
+  // Close the dropdown whenever its trigger disappears (history emptied or
+  // switched off, select mode entered, text typed or applied).
+  useEffect(() => {
+    if (showSearchHistory && (!canShowSearchHistory || selectMode || searchQuery.length > 0)) {
+      setShowSearchHistory(false);
+    }
+  }, [showSearchHistory, canShowSearchHistory, selectMode, searchQuery]);
+
   // Check for filter + card view mode preference changes on screen focus
   useFocusEffect(
     useCallback(() => {
@@ -255,6 +383,19 @@ export default function TorrentsScreen() {
           setDefaultTagColor(prefs.defaultTagColor || DEFAULT_PREFERENCES.defaultTagColor);
           setCategoryColors(prefs.categoryColors || {});
           setTagColors(prefs.tagColors || {});
+          // Reloaded on focus so a limit changed in Settings → Appearance
+          // (which also trims the stored history) takes effect immediately.
+          const storedHistory: SearchHistoryState = {
+            history: Array.isArray(prefs.torrentSearchHistory) ? prefs.torrentSearchHistory : [],
+            pinned: Array.isArray(prefs.torrentSearchPinned) ? prefs.torrentSearchPinned : [],
+          };
+          searchHistoryRef.current = storedHistory;
+          setSearchHistory(storedHistory);
+          setSearchHistoryLimit(
+            typeof prefs.torrentSearchHistoryLimit === 'number'
+              ? prefs.torrentSearchHistoryLimit
+              : DEFAULT_PREFERENCES.torrentSearchHistoryLimit,
+          );
         } catch {
           // ignore
         }
@@ -1274,7 +1415,13 @@ export default function TorrentsScreen() {
             )}
 
             {/* Search bar with Sort button */}
-            <View style={styles.searchRow}>
+            <View
+              style={styles.searchRow}
+              onLayout={(e) => {
+                const { x, y, height } = e.nativeEvent.layout;
+                setSearchRowLayout({ x, y, height });
+              }}
+            >
               {/* LEFT: Sort button — fixed 42×42 */}
               {!selectMode && (
                 <TouchableOpacity
@@ -1285,7 +1432,10 @@ export default function TorrentsScreen() {
                       borderColor: colors.surface,
                     },
                   ]}
-                  onPress={() => setShowSortMenu(!showSortMenu)}
+                  onPress={() => {
+                    setShowSortMenu(!showSortMenu);
+                    setShowSearchHistory(false);
+                  }}
                   activeOpacity={0.7}
                   accessibilityLabel={t('screens.settings.sortBy')}
                 >
@@ -1307,6 +1457,7 @@ export default function TorrentsScreen() {
                     borderColor: colors.surfaceOutline,
                   },
                 ]}
+                onLayout={(e) => setSearchInputX(e.nativeEvent.layout.x)}
               >
                 <Ionicons
                   name="search"
@@ -1318,9 +1469,37 @@ export default function TorrentsScreen() {
                   style={[styles.searchInputCompact, { color: colors.text }]}
                   placeholder={t('placeholders.searchTorrents')}
                   value={searchQuery}
-                  onChangeText={setSearchQuery}
+                  onChangeText={handleSearchChange}
+                  onSubmitEditing={() => recordSearch(searchQuery)}
+                  onBlur={() => recordSearch(searchQuery)}
+                  returnKeyType="search"
                   placeholderTextColor={colors.textSecondary}
                 />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity
+                    onPress={handleClearSearch}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityLabel={t('common.clearSearch')}
+                  >
+                    <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+                {searchQuery.length === 0 && canShowSearchHistory && !selectMode && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowSearchHistory(!showSearchHistory);
+                      setShowSortMenu(false);
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityLabel={t('screens.torrents.recentSearches')}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={18}
+                      color={showSearchHistory ? colors.primary : colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                )}
                 {isLoading && (
                   <ActivityIndicator
                     size="small"
@@ -1476,6 +1655,22 @@ export default function TorrentsScreen() {
                 )}
               </ScrollView>
             </View>
+
+            {/* Recent searches dropdown — sits under the search field (#282) */}
+            {showSearchHistory && canShowSearchHistory && !selectMode && (
+              <SearchHistoryDropdown
+                entries={searchHistoryEntries}
+                onSelect={handleSelectHistoryQuery}
+                onTogglePin={handleToggleHistoryPin}
+                onRemove={handleRemoveHistoryQuery}
+                onClearRecent={handleClearRecentSearches}
+                style={{
+                  top: searchRowLayout.y + searchRowLayout.height + spacing.xs,
+                  left: searchRowLayout.x + searchInputX,
+                  right: searchRowLayout.x,
+                }}
+              />
+            )}
 
             {/* Sort options dropdown - positioned near search bar */}
             {showSortMenu && !selectMode && (
