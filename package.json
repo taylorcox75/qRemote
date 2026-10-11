@@ -1,6 +1,6 @@
 {
   "name": "qRemote",
-  "version": "3.8.46",
+  "version": "3.8.47",
   "easBuild": true,
   "main": "index.ts",
   "scripts": {
