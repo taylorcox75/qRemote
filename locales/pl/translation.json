@@ -1173,6 +1173,7 @@
     "ulSpeed": "Prędkość wysyłania"
   },
   "toast": {
+    "pluginAddDefaultOptions": "Dodano przez jego wtyczkę wyszukiwania z domyślnymi opcjami qBittorrent — ta wersja nie może zastosować do niego ścieżki zapisu, kategorii ani tagów.",
     "notConnected": "Brak połączenia z serwerem. Najpierw połącz się z serwerem.",
     "lostConnection": "Utracono połączenie z serwerem. Połącz się ponownie.",
     "connectedTo": "Połączono z {{name}}",

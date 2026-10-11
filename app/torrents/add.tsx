@@ -28,6 +28,8 @@ import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useSearchCart } from '@/context/SearchCartContext';
 import { torrentsApi } from '@/services/api/torrents';
+import { searchApi } from '@/services/api/search';
+import { apiClient } from '@/services/api/client';
 import { categoriesApi } from '@/services/api/categories';
 import { tagsApi } from '@/services/api/tags';
 import { applicationApi } from '@/services/api/application';
@@ -38,9 +40,37 @@ import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { extractMagnetLink } from '@/utils/magnet';
 import { groupCartItemsForAdd } from '@/utils/search-cart';
+import {
+  getPrefilledDownloader,
+  planPluginUrlAdd,
+  PluginUrlAddPlan,
+  PrefilledPlugin,
+} from '@/utils/search-download';
 
 type AddTorrentOptions = Parameters<typeof torrentsApi.addTorrent>[1];
 type AddTorrentFileOptions = Parameters<typeof torrentsApi.addTorrentFile>[1];
+
+/**
+ * Add URLs, handing them to the search plugin that must fetch them when
+ * `planPluginUrlAdd` says the server can (#284). `searchDownloadTorrent` takes
+ * no options, which is why callers tell the user their options didn't apply.
+ */
+function addUrls(
+  urls: string[],
+  opts: AddTorrentOptions,
+  downloader: string | undefined,
+  plan: PluginUrlAddPlan,
+): Promise<void> {
+  if (plan === 'searchDownloadTorrent' && downloader) {
+    return Promise.all(urls.map((url) => searchApi.downloadTorrent(url, downloader))).then(
+      () => undefined,
+    );
+  }
+  return torrentsApi.addTorrent(
+    urls,
+    plan === 'addWithDownloader' ? { ...opts, downloader } : opts,
+  );
+}
 
 export default function AddTorrentFullScreen() {
   const { t } = useTranslation();
@@ -56,6 +86,7 @@ export default function AddTorrentFullScreen() {
     torrentFileUri?: string | string[];
     torrentFileName?: string | string[];
     sourceUrl?: string | string[];
+    sourcePlugin?: string | string[];
     fromCart?: string | string[];
   }>();
   const lastAppliedMagnetRef = useRef<{ value: string; at: number } | null>(null);
@@ -78,6 +109,9 @@ export default function AddTorrentFullScreen() {
 
   // Source
   const [torrentUrl, setTorrentUrl] = useState('');
+  // The search plugin that must fetch `torrentUrl` when it was pre-filled from a
+  // Search result whose link only that plugin can resolve (#284).
+  const [sourcePlugin, setSourcePlugin] = useState<PrefilledPlugin | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<
     { uri: string; name: string; mimeType?: string }[]
   >([]);
@@ -308,6 +342,13 @@ export default function AddTorrentFullScreen() {
     setAdding(true);
     try {
       const opts = buildOptions();
+      const features = apiClient.getApiFeatures();
+      // Plugin-resolved Search links (HTML page → magnet, …) must be fetched by their
+      // plugin, or qBittorrent downloads the page, fails to parse it and still
+      // answers 200 (#284). The typed/pre-filled URL only qualifies while untouched.
+      const typedDownloader = getPrefilledDownloader(urls, sourcePlugin);
+      const typedPlan = planPluginUrlAdd(typedDownloader, features);
+      let usedDefaultOptions = typedPlan === 'searchDownloadTorrent';
       const tasks: Promise<void>[] = [];
       if (selectedFiles.length > 0) {
         tasks.push(
@@ -318,31 +359,43 @@ export default function AddTorrentFullScreen() {
         );
       }
       if (urls.length > 0) {
-        tasks.push(torrentsApi.addTorrent(urls, opts));
+        tasks.push(addUrls(urls, opts, typedDownloader, typedPlan));
       }
       if (cartItems.length > 0) {
-        // Cart checkout always goes through torrents/add (#217) — the whole
-        // point of the batch dialogue is that savepath/category/tags apply,
-        // and search/downloadTorrent (used by the Search tab's instant-add
-        // for cookie-gated plugin URLs) takes no options at all.
+        // Cart checkout goes through torrents/add (#217) — the whole point of the
+        // batch dialogue is that savepath/category/tags apply. Plugin-resolved items
+        // (#284) are grouped apart (groupCartItemsForAdd) and added with their
+        // `downloader`; only on a server that can't do that (5.0–5.1) do they fall
+        // back to search/downloadTorrent, which takes no options at all.
         const prefs = await storageService.getPreferences().catch(() => null);
         const groups = groupCartItemsForAdd(cartItems, !!prefs?.autoCategorizeByTracker);
         for (const group of groups) {
+          const groupPlan = planPluginUrlAdd(group.downloader, features);
+          if (groupPlan === 'searchDownloadTorrent') usedDefaultOptions = true;
           tasks.push(
-            torrentsApi.addTorrent(group.urls, {
-              ...opts,
-              tags: group.tag ? [...(opts?.tags ?? []), group.tag] : opts?.tags,
-            }),
+            addUrls(
+              group.urls,
+              {
+                ...opts,
+                tags: group.tag ? [...(opts?.tags ?? []), group.tag] : opts?.tags,
+              },
+              group.downloader,
+              groupPlan,
+            ),
           );
         }
       }
       await Promise.all(tasks);
-      showToast(
-        t('toast.torrentAdded', {
-          count: urls.length + selectedFiles.length + cartItems.length,
-        }),
-        'success',
-      );
+      if (usedDefaultOptions) {
+        showToast(t('toast.pluginAddDefaultOptions'), 'info', 6000);
+      } else {
+        showToast(
+          t('toast.torrentAdded', {
+            count: urls.length + selectedFiles.length + cartItems.length,
+          }),
+          'success',
+        );
+      }
       if (cartItems.length > 0) cart.clear();
       router.back();
     } catch {
@@ -359,6 +412,7 @@ export default function AddTorrentFullScreen() {
     router,
     selectedFiles,
     showToast,
+    sourcePlugin,
     t,
     torrentUrl,
   ]);
@@ -387,17 +441,23 @@ export default function AddTorrentFullScreen() {
 
     lastAppliedMagnetRef.current = { value: magnetLink, at: now };
     setTorrentUrl(magnetLink);
+    setSourcePlugin(null);
   }, [params.magnet]);
 
   // Search tab's + button (#217), full-dialogue branch. Assigned verbatim —
   // NOT run through extractMagnetLink, which returns null for a plain
   // https://…/file.torrent — Search results are frequently non-magnet direct
   // download URLs, and this screen's textarea already accepts any URL typed
-  // by hand.
+  // by hand. A result only its own plugin can resolve also brings a sourcePlugin
+  // param, remembered with the URL so submit can hand the add to that plugin (#284).
   useEffect(() => {
     const rawSourceUrl = Array.isArray(params.sourceUrl) ? params.sourceUrl[0] : params.sourceUrl;
     const sourceUrl = rawSourceUrl?.trim();
     if (!sourceUrl) return;
+    const rawSourcePlugin = Array.isArray(params.sourcePlugin)
+      ? params.sourcePlugin[0]
+      : params.sourcePlugin;
+    const pluginName = rawSourcePlugin?.trim();
 
     const now = Date.now();
     if (
@@ -410,7 +470,8 @@ export default function AddTorrentFullScreen() {
 
     lastAppliedSourceUrlRef.current = { value: sourceUrl, at: now };
     setTorrentUrl(sourceUrl);
-  }, [params.sourceUrl]);
+    setSourcePlugin(pluginName ? { url: sourceUrl, plugin: pluginName } : null);
+  }, [params.sourceUrl, params.sourcePlugin]);
 
   useEffect(() => {
     const fileUri = Array.isArray(params.torrentFileUri)

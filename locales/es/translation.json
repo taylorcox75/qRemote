@@ -1134,6 +1134,7 @@
     "ulSpeed": "Vel. UL"
   },
   "toast": {
+    "pluginAddDefaultOptions": "Añadido mediante su plugin de búsqueda con las opciones predeterminadas de qBittorrent: esta versión no puede aplicarle la ruta de guardado, la categoría ni las etiquetas.",
     "notConnected": "No conectado a un servidor. Conecta primero.",
     "lostConnection": "Conexión perdida. Reconecta por favor.",
     "connectedTo": "Conectado a {{name}}",

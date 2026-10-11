@@ -43,12 +43,14 @@ import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
 import { SearchHistoryDropdown } from '@/components/SearchHistoryDropdown';
 import { torrentsApi } from '@/services/api/torrents';
+import { searchApi } from '@/services/api/search';
 import { applicationApi } from '@/services/api/application';
 import { apiClient } from '@/services/api/client';
 import { storageService } from '@/services/storage';
 import { ExpandedCardField, DEFAULT_PREFERENCES } from '@/types/preferences';
 import { ServerManager } from '@/services/server-manager';
 import { getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
+import { getPrefilledDownloader, planPluginUrlAdd, PrefilledPlugin } from '@/utils/search-download';
 import { formatSpeed, kbToBytes } from '@/utils/format';
 import { haptics } from '@/utils/haptics';
 import { shadows } from '@/constants/shadows';
@@ -106,6 +108,7 @@ export default function TorrentsScreen() {
     torrentFileUri?: string | string[];
     torrentFileName?: string | string[];
     sourceUrl?: string | string[];
+    sourcePlugin?: string | string[];
   }>();
 
   // State
@@ -113,6 +116,9 @@ export default function TorrentsScreen() {
   const [filter, setFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [torrentUrl, setTorrentUrl] = useState('');
+  // The search plugin that must fetch `torrentUrl` when it was pre-filled from a
+  // Search result whose link only that plugin can resolve (#284).
+  const [sourcePlugin, setSourcePlugin] = useState<PrefilledPlugin | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<
     { uri: string; name: string; mimeType?: string }[]
   >([]);
@@ -513,6 +519,7 @@ export default function TorrentsScreen() {
       }
 
       setTorrentUrl(magnetLink);
+      setSourcePlugin(null);
       setShowAddModal(true);
       router.setParams({ magnet: undefined });
     };
@@ -524,11 +531,17 @@ export default function TorrentsScreen() {
   // already decided the variant before navigating here, so unlike the magnet
   // handoff above this never redirects to the full screen. Uses a distinct
   // sourceUrl param (set verbatim, not run through extractMagnetLink) because
-  // Search results are often plain https:// download URLs, not magnets.
+  // Search results are often plain https:// download URLs, not magnets. A
+  // result only its own plugin can resolve also brings a sourcePlugin param,
+  // remembered with the URL so submit can hand the add to that plugin (#284).
   useEffect(() => {
     const rawSourceUrl = Array.isArray(params.sourceUrl) ? params.sourceUrl[0] : params.sourceUrl;
     const sourceUrl = rawSourceUrl?.trim();
     if (!sourceUrl) return;
+    const rawSourcePlugin = Array.isArray(params.sourcePlugin)
+      ? params.sourcePlugin[0]
+      : params.sourcePlugin;
+    const pluginName = rawSourcePlugin?.trim();
 
     const now = Date.now();
     if (
@@ -541,9 +554,10 @@ export default function TorrentsScreen() {
     lastAppliedSourceUrlRef.current = { value: sourceUrl, at: now };
 
     setTorrentUrl(sourceUrl);
+    setSourcePlugin(pluginName ? { url: sourceUrl, plugin: pluginName } : null);
     setShowAddModal(true);
-    router.setParams({ sourceUrl: undefined });
-  }, [params.sourceUrl, router]);
+    router.setParams({ sourceUrl: undefined, sourcePlugin: undefined });
+  }, [params.sourceUrl, params.sourcePlugin, router]);
 
   useEffect(() => {
     const fileUri = Array.isArray(params.torrentFileUri)
@@ -995,22 +1009,46 @@ export default function TorrentsScreen() {
         firstLastPiecePrio: Number(prefs.defaultPriority) > 0,
       };
 
+      // A Search result only its plugin can resolve (HTML page → magnet, …) must be
+      // fetched by that plugin, or qBittorrent downloads the page, fails to parse
+      // it and still answers 200 (#284). Only for the untouched pre-filled URL.
+      const downloader = getPrefilledDownloader(urls, sourcePlugin);
+      const plan = planPluginUrlAdd(downloader, apiClient.getApiFeatures());
+
       const tasks: Promise<void>[] = [];
       if (selectedFiles.length > 0) {
         tasks.push(torrentsApi.addTorrentFile(selectedFiles, addOptions));
       }
       if (urls.length > 0) {
-        tasks.push(torrentsApi.addTorrent(urls, addOptions));
+        if (plan === 'searchDownloadTorrent' && downloader) {
+          tasks.push(searchApi.downloadTorrent(urls[0], downloader));
+        } else {
+          tasks.push(
+            torrentsApi.addTorrent(
+              urls,
+              plan === 'addWithDownloader' ? { ...addOptions, downloader } : addOptions,
+            ),
+          );
+        }
       }
       await Promise.all(tasks);
 
       haptics.success();
       setTorrentUrl('');
+      setSourcePlugin(null);
       setSelectedFiles([]);
       setShowAddModal(false);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       refresh();
-      showToast(t('toast.torrentAdded', { count: urls.length + selectedFiles.length }), 'success');
+      if (plan === 'searchDownloadTorrent') {
+        // search/downloadTorrent takes no options — say so rather than a plain "added".
+        showToast(t('toast.pluginAddDefaultOptions'), 'info', 6000);
+      } else {
+        showToast(
+          t('toast.torrentAdded', { count: urls.length + selectedFiles.length }),
+          'success',
+        );
+      }
     } catch (error: unknown) {
       haptics.error();
       showToast(getErrorMessage(error), 'error');
@@ -2183,6 +2221,7 @@ export default function TorrentsScreen() {
                       onPress={() => {
                         setShowAddModal(false);
                         setTorrentUrl('');
+                        setSourcePlugin(null);
                         setSelectedFiles([]);
                       }}
                       accessibilityLabel={t('common.close')}
@@ -2299,6 +2338,7 @@ export default function TorrentsScreen() {
                       ]}
                       onPress={() => {
                         setTorrentUrl('');
+                        setSourcePlugin(null);
                         setSelectedFiles([]);
                         setShowAddModal(false);
                       }}

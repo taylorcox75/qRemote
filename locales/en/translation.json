@@ -1155,6 +1155,7 @@
     "ulSpeed": "UL Speed"
   },
   "toast": {
+    "pluginAddDefaultOptions": "Added through its search plugin using qBittorrent's default options — this version can't apply the save path, category or tags to it.",
     "notConnected": "Not connected to a server. Please connect to a server first.",
     "lostConnection": "Lost connection to server. Please reconnect.",
     "connectedTo": "Connected to {{name}}",

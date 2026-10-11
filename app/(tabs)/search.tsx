@@ -74,6 +74,7 @@ import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 import { compareByQuality } from '@/utils/video-quality';
 import { orderPluginsWithPins, prunePinnedPlugins } from '@/utils/search-plugins';
+import { getResultDownloader, planPluginUrlAdd } from '@/utils/search-download';
 import {
   GroupAddPlan,
   SearchResultGroup,
@@ -163,6 +164,7 @@ export default function SearchScreen() {
   const incomingParams = useLocalSearchParams<{ q?: string; ts?: string }>();
   const { isConnected } = useServer();
   const { features } = useApiFeatures();
+  const { supportsFetchMetadataDownloader, supportsSearchDownloadTorrent } = features;
   const { isDark, colors } = useTheme();
   const { showToast } = useToast();
   const cart = useSearchCart();
@@ -756,10 +758,10 @@ export default function SearchScreen() {
 
   // The escape hatch behind the new searchAddOpensDialogue pref (#217) and
   // the long-press action sheet's "Add now" item — unchanged from before the
-  // cart/dialogue feature. Also the only path that still routes eligible
-  // results through search/downloadTorrent (see the isMagnet branch below),
-  // which cart checkout (torrents/add only, see app/torrents/add.tsx)
-  // deliberately does not use.
+  // cart/dialogue feature. Plugin-resolved results (getResultDownloader) go
+  // through their plugin here, and the dialogue and cart checkout do the same
+  // (#284): the dialogue gets the plugin as the `sourcePlugin` route param, the
+  // cart item carries it as `downloader`.
   //
   // `extras` is only ever passed when adding a whole group (#267); for a single
   // result it is absent and nothing below changes.
@@ -780,21 +782,24 @@ export default function SearchScreen() {
 
         // Non-magnet result URLs from direct tracker plugins often need the
         // plugin's context to resolve (login cookies, magnet extraction from
-        // an HTML page, …) — delegate those to search/downloadTorrent
-        // (qBit 5.0+) so the owning plugin fetches server-side, the way
-        // qBittorrent's own WebUI adds results. Aggregator (Prowlarr/Jackett)
-        // URLs are the exception: they carry their own apikey, and their
-        // download links often answer with a redirect straight to a magnet
-        // URI — qBittorrent CORE follows that fine via torrents/add, while
-        // the Python search plugins choke on the non-HTTP redirect.
-        const isMagnet = result.fileUrl.trim().toLowerCase().startsWith('magnet:');
-        if (
-          !isMagnet &&
-          !isAggregatedSource &&
-          features.supportsSearchDownloadTorrent &&
-          result.engineName
-        ) {
-          await searchApi.downloadTorrent(result.fileUrl, result.engineName);
+        // an HTML page, …), so the owning plugin has to fetch them server-side,
+        // the way qBittorrent's own WebUI adds results (getResultDownloader
+        // says which plugin, and also why aggregator URLs are the exception).
+        // torrents/add can name the plugin itself on WebAPI ≥ 2.13.1;
+        // search/downloadTorrent does the same on 5.0–5.1.
+        const downloader = getResultDownloader(result);
+        const plan = planPluginUrlAdd(downloader, {
+          supportsFetchMetadataDownloader,
+          supportsSearchDownloadTorrent,
+        });
+        if (plan === 'addWithDownloader') {
+          // Tags are an add option here, so no background tagging is needed.
+          await torrentsApi.addTorrent(result.fileUrl, {
+            tags: trackerTag ? [trackerTag] : undefined,
+            downloader,
+          });
+        } else if (plan === 'searchDownloadTorrent' && downloader) {
+          await searchApi.downloadTorrent(result.fileUrl, downloader);
           // search/downloadTorrent never reports which torrent it added — tag
           // it in the background, best-effort, once it shows up by name.
           if (trackerTag) {
@@ -822,7 +827,13 @@ export default function SearchScreen() {
         setPendingAddUrl(null);
       }
     },
-    [features.supportsSearchDownloadTorrent, isAggregatedSource, showToast, t],
+    [
+      supportsFetchMetadataDownloader,
+      supportsSearchDownloadTorrent,
+      isAggregatedSource,
+      showToast,
+      t,
+    ],
   );
 
   // + button handler (#217). Gated by searchAddOpensDialogue (default true):
@@ -850,10 +861,17 @@ export default function SearchScreen() {
         const startTrackerTopUp = extras?.trackerFollowUp
           ? await prepareTrackerTopUp(extras.trackerFollowUp, activeTagPollsRef.current)
           : null;
+        // A plugin-resolved link (HTML page, cookie-gated download, …) must be
+        // fetched by its plugin or the add silently does nothing (#284). The dialog
+        // gets the plugin alongside the URL; a merged group magnet needs none.
+        const sourcePlugin = getResultDownloader(result);
+        const params = sourcePlugin
+          ? { sourceUrl: result.fileUrl, sourcePlugin }
+          : { sourceUrl: result.fileUrl };
         if (variant === 'full') {
-          router.push({ pathname: '/torrents/add', params: { sourceUrl: result.fileUrl } });
+          router.push({ pathname: '/torrents/add', params });
         } else {
-          router.push({ pathname: '/', params: { sourceUrl: result.fileUrl } });
+          router.push({ pathname: '/', params });
         }
         startTrackerTopUp?.();
       } catch {
@@ -897,6 +915,7 @@ export default function SearchScreen() {
         fileSize: result.fileSize,
         nbSeeders: result.nbSeeders ?? 0,
         indexerLabel: resultTrackerLabel(result, isAggregatedSource),
+        downloader: getResultDownloader(result),
       });
     },
     [cart, isAggregatedSource],

@@ -1134,6 +1134,7 @@
     "ulSpeed": "UL-Geschw."
   },
   "toast": {
+    "pluginAddDefaultOptions": "Über das zugehörige Suchplugin mit den Standardoptionen von qBittorrent hinzugefügt – diese Version kann Speicherpfad, Kategorie oder Tags dafür nicht anwenden.",
     "notConnected": "Nicht mit einem Server verbunden. Bitte zuerst verbinden.",
     "lostConnection": "Verbindung verloren. Bitte erneut verbinden.",
     "connectedTo": "Verbunden mit {{name}}",

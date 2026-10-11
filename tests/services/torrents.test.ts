@@ -272,6 +272,31 @@ describe('torrentsApi', () => {
       expect(formData.get('downloadPath')).toBe('/dl/incomplete');
     });
 
+    it('sends the downloader search plugin when provided, next to the other options (#284)', async () => {
+      mockPostFormData.mockResolvedValueOnce(undefined);
+      await torrentsApi.addTorrent('https://tracker.example/page.html', {
+        downloader: 'limetorrents',
+        savepath: '/dl',
+        category: 'Music',
+        tags: ['LimeTorrents'],
+      });
+      const formData = mockPostFormData.mock.calls[0][1] as FormData;
+      expect(formData.get('downloader')).toBe('limetorrents');
+      expect(formData.get('savepath')).toBe('/dl');
+      expect(formData.get('category')).toBe('Music');
+      expect(formData.get('tags')).toBe('LimeTorrents');
+    });
+
+    it('does not send a downloader when none (or an empty one) is given', async () => {
+      mockPostFormData.mockResolvedValueOnce(undefined);
+      await torrentsApi.addTorrent('magnet:?xt=1');
+      expect((mockPostFormData.mock.calls[0][1] as FormData).get('downloader')).toBeNull();
+
+      mockPostFormData.mockResolvedValueOnce(undefined);
+      await torrentsApi.addTorrent('magnet:?xt=1', { savepath: '/dl', downloader: '' });
+      expect((mockPostFormData.mock.calls[1][1] as FormData).get('downloader')).toBeNull();
+    });
+
     it('omits downloadPath when useDownloadPath is false and no path given', async () => {
       mockPostFormData.mockResolvedValueOnce(undefined);
       await torrentsApi.addTorrent('magnet:?xt=1', {

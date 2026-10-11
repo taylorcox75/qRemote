@@ -12,6 +12,13 @@ export interface SearchCartItem {
    * state the add screen can't see, and it's what checkout groups by (#217).
    */
   indexerLabel: string;
+  /**
+   * getResultDownloader(result) resolved at the moment the item was carted — the
+   * search plugin that must fetch this item's URL (an HTML page it turns into a
+   * magnet, …) or undefined for a plain add (#284). Captured here because the add
+   * screen only has the cart item, not the original SearchResult (its engineName).
+   */
+  downloader?: string;
 }
 
 interface SearchCartContextType {

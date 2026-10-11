@@ -35,6 +35,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           'Fixed qui proxy servers failing to connect when the URL was pasted into the Host field',
           'Fixed the connection diagnostic asking for a username and password in qui Proxy mode',
           'Fixed the loading spinner overlapping the torrent search box',
+          'Fixed some search results (like LimeTorrents) showing as added but never appearing',
         ],
       },
     ],

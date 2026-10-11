@@ -25,6 +25,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { torrentsApi } from '@/services/api/torrents';
 import { SearchResult } from '@/types/api';
 import { ApiFeatures } from '@/utils/apiVersion';
+import { getResultDownloader } from '@/utils/search-download';
 import { findResolutionCandidates, ResolvedSource } from '@/utils/search-grouping';
 import { siteHost } from '@/utils/searchResult';
 
@@ -156,9 +157,10 @@ export interface UseSearchHashResolverOptions {
   /**
    * The screen's latched "every result shares one siteUrl" flag — a proxying
    * plugin (Prowlarr/Jackett). Those download links must not be routed through
-   * the plugin, the same reason app/(tabs)/search.tsx skips search/downloadTorrent
-   * for them. The hook also checks `results` itself (see below), because the
-   * latch is set a render late and would let the first requests slip past it.
+   * the plugin (utils/search-download.ts `getResultDownloader` also rules them out
+   * per result, which is what the add paths rely on). The hook also checks
+   * `results` itself (see below), because the latch is set a render late and would
+   * let the first requests slip past it.
    */
   isAggregatedSource: boolean;
 }
@@ -192,7 +194,7 @@ export function useSearchHashResolver({
     if (!active) return [];
     return findResolutionCandidates(results).map((result) => ({
       fileUrl: result.fileUrl,
-      downloader: useDownloader && result.engineName ? result.engineName : undefined,
+      downloader: useDownloader ? getResultDownloader(result) : undefined,
     }));
   }, [active, results, useDownloader]);
 

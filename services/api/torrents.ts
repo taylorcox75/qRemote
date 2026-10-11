@@ -194,6 +194,15 @@ export const torrentsApi = {
     options?: {
       savepath?: string;
       cookie?: string;
+      /**
+       * Search plugin that fetches non-magnet URLs instead of qBittorrent itself —
+       * the way search/downloadTorrent does, but every other option here still
+       * applies. Needed for results whose link is an HTML page the plugin turns
+       * into a magnet (#284). WebAPI ≥ 2.13.1 only (`supportsFetchMetadataDownloader`):
+       * older servers silently ignore it, so never send it unguarded. Must name an
+       * installed plugin or the server answers 400.
+       */
+      downloader?: string;
       category?: string;
       tags?: string[];
       skip_checking?: boolean;
@@ -221,6 +230,7 @@ export const torrentsApi = {
     if (options) {
       if (options.savepath) formData.append('savepath', options.savepath);
       if (options.cookie) formData.append('cookie', options.cookie);
+      if (options.downloader) formData.append('downloader', options.downloader);
       if (options.category) formData.append('category', options.category);
       if (options.tags && options.tags.length > 0) {
         formData.append('tags', options.tags.join(','));

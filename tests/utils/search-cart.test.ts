@@ -67,4 +67,68 @@ describe('groupCartItemsForAdd', () => {
       { urls: ['url2'], tag: null },
     ]);
   });
+
+  describe('plugin downloaders (#284)', () => {
+    it('keeps one group, with no downloader key, when no item needs a plugin', () => {
+      const groups = groupCartItemsForAdd(
+        [item({ fileUrl: 'url1' }), item({ fileUrl: 'url2' })],
+        false,
+      );
+      expect(groups).toHaveLength(1);
+      expect('downloader' in groups[0]).toBe(false);
+    });
+
+    it('puts items that share a downloader in one group and returns it', () => {
+      const items = [
+        item({ fileUrl: 'url1', downloader: 'limetorrents' }),
+        item({ fileUrl: 'url2', downloader: 'limetorrents' }),
+      ];
+      expect(groupCartItemsForAdd(items, false)).toEqual([
+        { urls: ['url1', 'url2'], tag: null, downloader: 'limetorrents' },
+      ]);
+    });
+
+    it('splits plugin items from plain ones even with auto-tag off', () => {
+      const items = [
+        item({ fileUrl: 'magnet1' }),
+        item({ fileUrl: 'url2', downloader: 'limetorrents' }),
+        item({ fileUrl: 'magnet3' }),
+      ];
+      expect(groupCartItemsForAdd(items, false)).toEqual([
+        { urls: ['magnet1', 'magnet3'], tag: null },
+        { urls: ['url2'], tag: null, downloader: 'limetorrents' },
+      ]);
+    });
+
+    it('splits different downloaders into separate groups, in first-appearance order', () => {
+      const items = [
+        item({ fileUrl: 'url1', downloader: 'limetorrents' }),
+        item({ fileUrl: 'url2', downloader: 'otherplugin' }),
+        item({ fileUrl: 'url3', downloader: 'limetorrents' }),
+      ];
+      expect(groupCartItemsForAdd(items, false)).toEqual([
+        { urls: ['url1', 'url3'], tag: null, downloader: 'limetorrents' },
+        { urls: ['url2'], tag: null, downloader: 'otherplugin' },
+      ]);
+    });
+
+    it('splits by both indexer tag and downloader when auto-tag is on', () => {
+      const items = [
+        item({ fileUrl: 'url1', indexerLabel: 'IndexerA', downloader: 'limetorrents' }),
+        item({ fileUrl: 'url2', indexerLabel: 'IndexerA' }),
+        item({ fileUrl: 'url3', indexerLabel: 'IndexerB', downloader: 'limetorrents' }),
+        item({ fileUrl: 'url4', indexerLabel: 'IndexerA', downloader: 'limetorrents' }),
+      ];
+      expect(groupCartItemsForAdd(items, true)).toEqual([
+        { urls: ['url1', 'url4'], tag: 'IndexerA', downloader: 'limetorrents' },
+        { urls: ['url2'], tag: 'IndexerA' },
+        { urls: ['url3'], tag: 'IndexerB', downloader: 'limetorrents' },
+      ]);
+    });
+
+    it('treats an empty downloader like none', () => {
+      const items = [item({ fileUrl: 'url1', downloader: '' }), item({ fileUrl: 'url2' })];
+      expect(groupCartItemsForAdd(items, false)).toEqual([{ urls: ['url1', 'url2'], tag: null }]);
+    });
+  });
 });
