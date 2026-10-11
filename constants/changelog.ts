@@ -24,7 +24,10 @@ export const CHANGELOG: ChangelogRelease[] = [
     sections: [
       {
         title: 'New Features',
-        items: ['Added recent searches and a clear button to the torrent list search'],
+        items: [
+          'Added recent searches and a clear button to the torrent list search',
+          'Added pinning favorite search plugins to the front of the plugin list',
+        ],
       },
       {
         title: 'Bugs Fixed',

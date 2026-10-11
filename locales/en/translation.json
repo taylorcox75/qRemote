@@ -594,6 +594,8 @@
       "noPluginsSubtitle": "Add a plugin to enable searching from within the app.",
       "installPlugins": "Install plugins",
       "pluginsTitle": "Search plugins",
+      "pinnedPluginsTitle": "Pinned plugins",
+      "pinnedPluginsButton": "Choose pinned plugins",
       "installPlugin": "Install",
       "installPluginPrompt": "Install plugin",
       "installPluginHint": "Enter a plugin URL or filepath. qBittorrent accepts .py files and well-known URLs.",

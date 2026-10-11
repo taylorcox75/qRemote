@@ -198,6 +198,13 @@ export interface AppPreferences {
   searchInMode?: SearchInMode;
 
   /**
+   * Search tab: `name` ids of the plugins the user pinned (#283). Pinned
+   * plugins' chips are listed first in the plugin chip row. Names that are no
+   * longer installed are ignored (and pruned the next time the pins change).
+   */
+  searchPinnedPlugins?: string[];
+
+  /**
    * Last active category filter on the torrents tab.
    * null = All categories; '' = Uncategorized (torrents with no category set).
    */
@@ -285,6 +292,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   searchHideZeroSeeders: false,
   searchGroupDuplicates: true,
   searchInMode: 'everywhere',
+  searchPinnedPlugins: [],
   lastCategoryFilter: null,
   lastTagFilters: [],
 };

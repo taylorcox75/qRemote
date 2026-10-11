@@ -600,6 +600,8 @@
       "noPluginsSubtitle": "Dodaj wtyczkę, aby włączyć wyszukiwanie z poziomu aplikacji.",
       "installPlugins": "Zainstaluj wtyczki",
       "pluginsTitle": "Wtyczki wyszukiwania",
+      "pinnedPluginsTitle": "Przypięte wtyczki",
+      "pinnedPluginsButton": "Wybierz przypięte wtyczki",
       "installPlugin": "Zainstaluj",
       "installPluginPrompt": "Zainstaluj wtyczkę",
       "installPluginHint": "Wpisz adres URL lub ścieżkę pliku wtyczki. qBittorrent akceptuje pliki .py i znane adresy URL.",

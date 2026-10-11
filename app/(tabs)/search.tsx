@@ -37,6 +37,7 @@ import { SearchCartModal } from '@/components/SearchCartModal';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
 import { SearchFilterPanel } from '@/components/SearchFilterPanel';
+import { MultiSelectPicker } from '@/components/MultiSelectPicker';
 import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -72,6 +73,7 @@ import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 import { compareByQuality } from '@/utils/video-quality';
+import { orderPluginsWithPins, prunePinnedPlugins } from '@/utils/search-plugins';
 import {
   GroupAddPlan,
   SearchResultGroup,
@@ -285,6 +287,11 @@ export default function SearchScreen() {
   // lets "Add now" add the whole group rather than just the row's primary.
   const [actionGroup, setActionGroup] = useState<SearchResultGroup | null>(null);
 
+  // #283: persisted plugin `name` ids pinned to the front of the plugin chip
+  // row, and the visibility of the picker that edits them.
+  const [pinnedPlugins, setPinnedPlugins] = useState<string[]>([]);
+  const [showPinnedPicker, setShowPinnedPicker] = useState(false);
+
   // pubDate is a qBit 5.0+ (WebAPI >= 2.11.0) field — hide the option on older
   // servers rather than offering a sort that silently does nothing.
   const visibleSortOptions = useMemo(
@@ -307,6 +314,7 @@ export default function SearchScreen() {
         // Absent means on (the default); only an explicit opt-out turns it off.
         if (prefs.searchGroupDuplicates === false) setGroupDuplicates(false);
         if (prefs.searchInMode === 'names') setSearchInMode('names');
+        if (Array.isArray(prefs.searchPinnedPlugins)) setPinnedPlugins(prefs.searchPinnedPlugins);
       } catch {
         // ignore — defaults are fine
       }
@@ -352,6 +360,38 @@ export default function SearchScreen() {
       return a.fullName.localeCompare(b.fullName);
     });
   }, [plugins]);
+
+  // #283 plugin pinning (`pinnedPlugins` state is declared with the other
+  // state above). Only pins that are still installed count, so an uninstalled
+  // plugin never shows a star or reorders the chips.
+  const activePinnedPlugins = useMemo(
+    () => prunePinnedPlugins(pinnedPlugins, plugins),
+    [pinnedPlugins, plugins],
+  );
+  // Chip-row order: pinned plugins first, then the rest, each keeping the
+  // enabled-then-name order. `sortedPlugins` itself stays unpinned for the
+  // other consumers.
+  const pinOrderedPlugins = useMemo(
+    () => orderPluginsWithPins(sortedPlugins, activePinnedPlugins),
+    [sortedPlugins, activePinnedPlugins],
+  );
+
+  const handlePinnedPluginsChange = useCallback(
+    async (next: string[]) => {
+      haptics.light();
+      // Prune against what's installed now so uninstalled names don't pile up.
+      const pruned = prunePinnedPlugins(next, plugins);
+      setPinnedPlugins(pruned);
+      try {
+        const prefs = await storageService.getPreferences();
+        await storageService.savePreferences({ ...prefs, searchPinnedPlugins: pruned });
+      } catch (err: unknown) {
+        // The in-memory pins still work; only persistence across launches is lost.
+        clogWarn('SEARCH', `Failed to save pinned plugins preference: ${getErrorMessage(err)}`);
+      }
+    },
+    [plugins],
+  );
 
   // Categories supported by the currently selected plugin. When searching
   // across every plugin (ALL, or the legacy ENABLED value some users may
@@ -983,15 +1023,28 @@ export default function SearchScreen() {
 
   const pluginChips: PluginChip[] = useMemo(() => {
     const chips: PluginChip[] = [{ key: ALL, label: t('screens.search.allPlugins'), icon: 'apps' }];
-    for (const p of sortedPlugins) {
+    const pinnedSet = new Set(activePinnedPlugins);
+    // `pinOrderedPlugins` already puts pinned plugins first, right after "All plugins".
+    for (const p of pinOrderedPlugins) {
       chips.push({
         key: p.name,
         label: p.enabled ? p.fullName : `${p.fullName} (${t('common.disabled')})`,
-        icon: 'extension-puzzle',
+        icon: pinnedSet.has(p.name) ? 'star' : 'extension-puzzle',
       });
     }
     return chips;
-  }, [sortedPlugins, t]);
+  }, [pinOrderedPlugins, activePinnedPlugins, t]);
+
+  // Options for the "Pinned plugins" picker — every installed plugin, in the
+  // plain enabled-then-name order so the list doesn't reshuffle as you tick.
+  const pinnedPickerOptions = useMemo(
+    () =>
+      sortedPlugins.map((p) => ({
+        value: p.name,
+        label: p.enabled ? p.fullName : `${p.fullName} (${t('common.disabled')})`,
+      })),
+    [sortedPlugins, t],
+  );
 
   // ────────────────────────────────────────────────── empty states ────────
 
@@ -1282,6 +1335,27 @@ export default function SearchScreen() {
                       color={colors.textSecondary}
                     />
                   </TouchableOpacity>
+
+                  {/* #283: pin plugins — pinned ones move to the front of this row. */}
+                  {plugins.length > 0 && (
+                    <TouchableOpacity
+                      style={styles.pluginsCornerButton}
+                      onPress={() => {
+                        haptics.light();
+                        setShowPinnedPicker(true);
+                      }}
+                      activeOpacity={0.7}
+                      accessibilityLabel={t('screens.search.pinnedPluginsButton')}
+                    >
+                      <Ionicons
+                        name={activePinnedPlugins.length > 0 ? 'star' : 'star-outline'}
+                        size={20}
+                        color={
+                          activePinnedPlugins.length > 0 ? colors.primary : colors.textSecondary
+                        }
+                      />
+                    </TouchableOpacity>
+                  )}
 
                   {pluginChips.map((chip) => {
                     const isActive = plugin === chip.key;
@@ -1662,6 +1736,15 @@ export default function SearchScreen() {
           setActionGroup(null);
         }}
         items={actionItems}
+      />
+
+      <MultiSelectPicker
+        visible={showPinnedPicker}
+        title={t('screens.search.pinnedPluginsTitle')}
+        options={pinnedPickerOptions}
+        selectedValues={activePinnedPlugins}
+        onChange={handlePinnedPluginsChange}
+        onClose={() => setShowPinnedPicker(false)}
       />
 
       <SearchCartModal

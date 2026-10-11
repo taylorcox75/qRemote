@@ -573,6 +573,8 @@
       "noPluginsSubtitle": "添加插件以在应用内启用搜索功能。",
       "installPlugins": "Install plugins",
       "pluginsTitle": "Search plugins",
+      "pinnedPluginsTitle": "已固定的插件",
+      "pinnedPluginsButton": "选择要固定的插件",
       "installPlugin": "Install",
       "installPluginPrompt": "Install plugin",
       "installPluginHint": "输入插件的 URL 或文件路径。qBittorrent 支持 .py 文件及知名 URL。",

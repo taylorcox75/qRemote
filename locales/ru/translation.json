@@ -600,6 +600,8 @@
       "noPluginsSubtitle": "Добавьте плагин, чтобы включить поиск в приложении.",
       "installPlugins": "Установить плагины",
       "pluginsTitle": "Поисковые плагины",
+      "pinnedPluginsTitle": "Закреплённые плагины",
+      "pinnedPluginsButton": "Выбрать закреплённые плагины",
       "installPlugin": "Установить",
       "installPluginPrompt": "Установить плагин",
       "installPluginHint": "Введите URL или путь к файлу плагина. qBittorrent принимает файлы .py и известные URL.",
