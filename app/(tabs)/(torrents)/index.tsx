@@ -126,6 +126,10 @@ export default function TorrentsScreen() {
   >('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  // Drives only the pull-to-refresh spinner. `isLoading` also flips on every
+  // background poll/foreground re-sync, and wiring it to RefreshControl would
+  // pop the iOS spinner on top of the search box on every load (#275).
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [cardViewMode, setCardViewMode] = useState<'compact' | 'expanded'>('compact');
   const [expandedCardFields, setExpandedCardFields] = useState<Record<ExpandedCardField, boolean>>(
     DEFAULT_PREFERENCES.expandedCardFields,
@@ -209,6 +213,15 @@ export default function TorrentsScreen() {
       return () => setToastTopOffset(null);
     }, [setToastTopOffset, headerHeight]),
   );
+
+  const handlePullRefresh = useCallback(async () => {
+    setIsPullRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setIsPullRefreshing(false);
+    }
+  }, [refresh]);
 
   // Check for filter + card view mode preference changes on screen focus
   useFocusEffect(
@@ -1884,8 +1897,12 @@ export default function TorrentsScreen() {
             }}
             refreshControl={
               <RefreshControl
-                refreshing={isLoading}
-                onRefresh={refresh}
+                refreshing={isPullRefreshing}
+                onRefresh={handlePullRefresh}
+                // The header is an absolute overlay (see headerContainer), so
+                // push the spinner below it instead of under the search box.
+                // selectMode's header is in-flow and needs no offset.
+                progressViewOffset={selectMode ? 0 : headerHeight}
                 tintColor={colors.primary}
               />
             }
