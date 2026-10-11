@@ -131,6 +131,16 @@ describe('apiClient', () => {
       expect(config.baseURL).toBe('http://example.com:8080');
     });
 
+    it('puts the port before a path typed into the host field', () => {
+      apiClient.setServer(makeServer({ host: 'example.com/qbit/', port: 8443 }));
+      const config = runRequestInterceptor() as {
+        baseURL: string;
+        headers: Record<string, string>;
+      };
+      expect(config.baseURL).toBe('http://example.com:8443/qbit');
+      expect(config.headers.Origin).toBe('http://example.com:8443');
+    });
+
     it('omits port when not provided or invalid', () => {
       apiClient.setServer(makeServer({ port: undefined }));
       const config = runRequestInterceptor() as { baseURL: string };

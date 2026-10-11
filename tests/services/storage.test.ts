@@ -383,6 +383,28 @@ describe('storageService', () => {
   });
 
   describe('preferences', () => {
+    it('updatePreferences merges concurrent updates without losing keys', async () => {
+      await storageService.savePreferences({ hapticFeedback: true });
+      // Fired together, as overlapping UI saves would be.
+      await Promise.all([
+        storageService.updatePreferences({ searchPinnedPlugins: ['alpha'] }),
+        storageService.updatePreferences({ torrentSearchHistory: ['ubuntu'] }),
+      ]);
+      const prefs = await storageService.getPreferences();
+      expect(prefs.hapticFeedback).toBe(true);
+      expect(prefs.searchPinnedPlugins).toEqual(['alpha']);
+      expect(prefs.torrentSearchHistory).toEqual(['ubuntu']);
+    });
+
+    it('updatePreferences keeps working after a failed write', async () => {
+      (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('disk full'));
+      await expect(storageService.updatePreferences({ hapticFeedback: false })).rejects.toThrow(
+        'disk full',
+      );
+      await storageService.updatePreferences({ hapticFeedback: true });
+      expect((await storageService.getPreferences()).hapticFeedback).toBe(true);
+    });
+
     it('saves and retrieves preferences', async () => {
       await storageService.savePreferences({ theme: 'dark' } as never);
       const prefs = await storageService.getPreferences();

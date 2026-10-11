@@ -257,9 +257,7 @@ export default function TorrentsScreen() {
   // --- Recent searches (#282) -------------------------------------------
   const persistSearchHistory = useCallback(async (next: SearchHistoryState) => {
     try {
-      const prefs = await storageService.getPreferences();
-      await storageService.savePreferences({
-        ...prefs,
+      await storageService.updatePreferences({
         torrentSearchHistory: next.history,
         torrentSearchPinned: next.pinned,
       });
@@ -278,7 +276,8 @@ export default function TorrentsScreen() {
   );
 
   // Records `query` (ignored when too short or history is off) and skips the
-  // write when nothing would change, since blur and submit both call this.
+  // write when nothing would change. Only submit and picking an entry record:
+  // the filter is live, so recording on blur saved half-typed fragments.
   const recordSearch = useCallback(
     (query: string) => {
       if (searchHistoryLimit <= 0) return;
@@ -1512,7 +1511,6 @@ export default function TorrentsScreen() {
                   value={searchQuery}
                   onChangeText={handleSearchChange}
                   onSubmitEditing={() => recordSearch(searchQuery)}
-                  onBlur={() => recordSearch(searchQuery)}
                   returnKeyType="search"
                   placeholderTextColor={colors.textSecondary}
                 />

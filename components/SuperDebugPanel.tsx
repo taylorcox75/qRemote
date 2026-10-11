@@ -259,7 +259,11 @@ export function SuperDebugPanel({
 
   const buildUrl = useCallback((): string => {
     const protocol = useHttps ? 'https' : 'http';
-    const clean = sanitizeHost(host);
+    // Same split as services/api/client.ts: a path typed into Host goes after the port.
+    const sanitized = sanitizeHost(host);
+    const hostSlash = sanitized.indexOf('/');
+    const clean = hostSlash === -1 ? sanitized : sanitized.slice(0, hostSlash);
+    const hostPath = hostSlash === -1 ? '' : sanitized.slice(hostSlash).replace(/\/+$/, '');
     const portNum = port.trim() ? parseInt(port, 10) : undefined;
     const portPart = portNum && portNum > 0 && !isNaN(portNum) ? `:${portNum}` : '';
     const trimmedPath = basePath.trim().replace(/\/+$/, '');
@@ -268,7 +272,7 @@ export function SuperDebugPanel({
         ? trimmedPath
         : `/${trimmedPath}`
       : '';
-    return `${protocol}://${clean}${portPart}${pathPart}`;
+    return `${protocol}://${clean}${portPart}${hostPath}${pathPart}`;
   }, [host, port, useHttps, basePath]);
 
   /** Mask a qui proxy key anywhere in text that is displayed, copied or exported. */

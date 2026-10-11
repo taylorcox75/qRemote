@@ -21,9 +21,7 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
-// The pin glyph comes from MaterialCommunityIcons: Ionicons' `pin` is a map-style
-// needle that doesn't read as "pin this"; MCI's is the familiar thumbtack.
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { SearchHistoryEntry } from '@/utils/search-history';
@@ -89,7 +87,7 @@ export function SearchHistoryDropdown({
               accessibilityLabel={entry.query}
             >
               {entry.pinned ? (
-                <MaterialCommunityIcons name="pin" size={16} color={colors.primary} />
+                <Ionicons name="pin" size={16} color={colors.primary} style={styles.thumbtack} />
               ) : (
                 <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
               )}
@@ -107,10 +105,11 @@ export function SearchHistoryDropdown({
                 entry.pinned ? t('screens.torrents.unpinSearch') : t('screens.torrents.pinSearch')
               }
             >
-              <MaterialCommunityIcons
+              <Ionicons
                 name={entry.pinned ? 'pin' : 'pin-outline'}
                 size={18}
                 color={entry.pinned ? colors.primary : colors.textSecondary}
+                style={styles.thumbtack}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -183,6 +182,11 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: spacing.xs,
+  },
+  // Ionicons' pin is an upright map-style needle; tilted 45° it reads as a
+  // thumbtack without pulling in a second icon font.
+  thumbtack: {
+    transform: [{ rotate: '45deg' }],
   },
   emptyText: {
     ...typography.secondary,

@@ -14,6 +14,9 @@ const STORAGE_KEYS = {
 const stripProtocol = (host: string): string =>
   (host || '').replace(/^(https?:\/\/)/i, '').replace(/\/+$/, '');
 
+/** Serializes updatePreferences calls (see there). */
+let preferencesWriteQueue: Promise<void> = Promise.resolve();
+
 export const storageService = {
   /**
    * Save server configuration
@@ -248,6 +251,22 @@ export const storageService = {
   /**
    * Save preferences
    */
+  /**
+   * Merge `patch` into the stored preferences. Calls are queued, and each one
+   * reads the blob fresh inside the queue, so two quick updates can't overwrite
+   * each other's keys the way two overlapping getPreferences → savePreferences
+   * pairs can.
+   */
+  updatePreferences(patch: Partial<AppPreferences>): Promise<void> {
+    const run = preferencesWriteQueue.then(async () => {
+      const current = await this.getPreferences();
+      await this.savePreferences({ ...current, ...patch });
+    });
+    // Keep the queue alive after a failed write; the caller still sees the error.
+    preferencesWriteQueue = run.catch(() => undefined);
+    return run;
+  },
+
   async savePreferences(preferences: Partial<AppPreferences>): Promise<void> {
     await AsyncStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(preferences));
   },

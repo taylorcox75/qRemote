@@ -46,10 +46,9 @@ import { useSearchJob } from '@/hooks/useSearchJob';
 import { useSearchHashResolver } from '@/hooks/useSearchHashResolver';
 import { searchApi } from '@/services/api/search';
 import { torrentsApi } from '@/services/api/torrents';
-import { tagsApi } from '@/services/api/tags';
 import { storageService } from '@/services/storage';
-import { abortableDelay, prepareTrackerTopUp } from '@/services/search-tracker-topup';
-import { clogDebug, clogWarn } from '@/services/connectivity-log';
+import { prepareTrackerTopUp, tagNewlyDownloadedTorrent } from '@/services/search-tracker-topup';
+import { clogWarn } from '@/services/connectivity-log';
 import { SearchPlugin, SearchResult } from '@/types/api';
 import { SearchInMode } from '@/types/preferences';
 import { siteHost, resultTrackerLabel } from '@/utils/searchResult';
@@ -103,54 +102,6 @@ const SORT_OPTIONS: Array<{
   { key: 'date', labelKey: 'screens.search.sortDate', icon: 'calendar-outline' },
   { key: 'quality', labelKey: 'screens.search.sortQuality', icon: 'film-outline' },
 ];
-
-const TAG_MATCH_ATTEMPTS = 8;
-const TAG_MATCH_DELAY_MS = 2000;
-
-/**
- * search/downloadTorrent (used for plugin-native downloads, see
- * handleAddResult) never reports which torrent it added — it's fire-and-forget
- * server-side. Best-effort: poll the torrent list for a name match and tag it
- * once it appears, silently (no toast) since this is a background nicety, not
- * a user-initiated action. Prefers the newest match by `added_on` when several
- * share the same name. Aborts cleanly when `signal` is aborted (e.g. unmount).
- */
-async function tagNewlyDownloadedTorrent(
-  fileName: string,
-  tag: string,
-  signal?: AbortSignal,
-): Promise<void> {
-  for (let attempt = 0; attempt < TAG_MATCH_ATTEMPTS; attempt++) {
-    if (signal?.aborted) return;
-    await abortableDelay(TAG_MATCH_DELAY_MS, signal);
-    if (signal?.aborted) return;
-    try {
-      const list = await torrentsApi.getTorrentList();
-      if (signal?.aborted) return;
-      const match = list
-        .filter(
-          (torrent) =>
-            torrent.name === fileName &&
-            !torrent.tags
-              .split(',')
-              .map((existing) => existing.trim())
-              .includes(tag),
-        )
-        .sort((a, b) => (b.added_on ?? 0) - (a.added_on ?? 0))[0];
-      if (match) {
-        await tagsApi.createTags([tag]);
-        if (signal?.aborted) return;
-        await torrentsApi.addTorrentTags([match.hash], [tag]);
-        clogDebug('SEARCH', `Auto-tagged "${fileName}" with tracker tag "${tag}"`);
-        return;
-      }
-    } catch {
-      // Keep retrying — best-effort only, no user-facing error.
-    }
-  }
-  if (signal?.aborted) return;
-  clogWarn('SEARCH', `Could not find newly added torrent "${fileName}" to auto-tag with "${tag}"`);
-}
 
 /** What a group add carries beyond the single result handed to the normal add path. */
 interface GroupAddExtras {
@@ -295,6 +246,9 @@ export default function SearchScreen() {
   // #283: persisted plugin `name` ids pinned to the front of the plugin chip
   // row. Tapping a chip's icon toggles its pin (see handleTogglePin).
   const [pinnedPlugins, setPinnedPlugins] = useState<string[]>([]);
+  // Mirrors pinnedPlugins so back-to-back taps toggle from the latest list, not
+  // from whatever the callback closed over before the re-render.
+  const pinnedPluginsRef = useRef<string[]>([]);
   const pluginRowRef = useRef<ScrollView>(null);
 
   // pubDate is a qBit 5.0+ (WebAPI >= 2.11.0) field — hide the option on older
@@ -319,7 +273,10 @@ export default function SearchScreen() {
         // Absent means on (the default); only an explicit opt-out turns it off.
         if (prefs.searchGroupDuplicates === false) setGroupDuplicates(false);
         if (prefs.searchInMode === 'names') setSearchInMode('names');
-        if (Array.isArray(prefs.searchPinnedPlugins)) setPinnedPlugins(prefs.searchPinnedPlugins);
+        if (Array.isArray(prefs.searchPinnedPlugins)) {
+          pinnedPluginsRef.current = prefs.searchPinnedPlugins;
+          setPinnedPlugins(prefs.searchPinnedPlugins);
+        }
       } catch {
         // ignore — defaults are fine
       }
@@ -388,18 +345,18 @@ export default function SearchScreen() {
     async (name: string) => {
       haptics.light();
       // Toggling also prunes uninstalled names so they don't pile up in storage.
-      const next = togglePinnedPlugin(pinnedPlugins, name, plugins);
+      const next = togglePinnedPlugin(pinnedPluginsRef.current, name, plugins);
+      pinnedPluginsRef.current = next;
       setPinnedPlugins(next);
       if (next.includes(name)) pluginRowRef.current?.scrollTo({ x: 0, animated: true });
       try {
-        const prefs = await storageService.getPreferences();
-        await storageService.savePreferences({ ...prefs, searchPinnedPlugins: next });
+        await storageService.updatePreferences({ searchPinnedPlugins: next });
       } catch (err: unknown) {
         // The in-memory pins still work; only persistence across launches is lost.
         clogWarn('SEARCH', `Failed to save pinned plugins preference: ${getErrorMessage(err)}`);
       }
     },
-    [pinnedPlugins, plugins],
+    [plugins],
   );
 
   // Categories supported by the currently selected plugin. When searching

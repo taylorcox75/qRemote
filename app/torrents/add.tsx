@@ -40,6 +40,7 @@ import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { extractMagnetLink } from '@/utils/magnet';
 import { groupCartItemsForAdd } from '@/utils/search-cart';
+import { tagNewlyDownloadedTorrent } from '@/services/search-tracker-topup';
 import {
   getPrefilledDownloader,
   planPluginUrlAdd,
@@ -349,6 +350,8 @@ export default function AddTorrentFullScreen() {
       const typedDownloader = getPrefilledDownloader(urls, sourcePlugin);
       const typedPlan = planPluginUrlAdd(typedDownloader, features);
       let usedDefaultOptions = typedPlan === 'searchDownloadTorrent';
+      // Background tag polls to start once the adds succeed (5.0–5.1 cart only).
+      const postAddTagging: (() => Promise<void>)[] = [];
       const tasks: Promise<void>[] = [];
       if (selectedFiles.length > 0) {
         tasks.push(
@@ -371,7 +374,18 @@ export default function AddTorrentFullScreen() {
         const groups = groupCartItemsForAdd(cartItems, !!prefs?.autoCategorizeByTracker);
         for (const group of groups) {
           const groupPlan = planPluginUrlAdd(group.downloader, features);
-          if (groupPlan === 'searchDownloadTorrent') usedDefaultOptions = true;
+          if (groupPlan === 'searchDownloadTorrent') {
+            usedDefaultOptions = true;
+            // search/downloadTorrent takes no tags, so apply the indexer tag once
+            // each torrent shows up by name (same best-effort poll as instant add).
+            if (group.tag) {
+              const tag = group.tag;
+              for (const url of group.urls) {
+                const item = cartItems.find((cartItem) => cartItem.fileUrl === url);
+                if (item) postAddTagging.push(() => tagNewlyDownloadedTorrent(item.fileName, tag));
+              }
+            }
+          }
           tasks.push(
             addUrls(
               group.urls,
@@ -386,6 +400,7 @@ export default function AddTorrentFullScreen() {
         }
       }
       await Promise.all(tasks);
+      for (const startTagging of postAddTagging) void startTagging();
       if (usedDefaultOptions) {
         showToast(t('toast.pluginAddDefaultOptions'), 'info', 6000);
       } else {

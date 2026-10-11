@@ -526,7 +526,9 @@ Thin objects over `apiClient`.
   back the server-list export/import; import preserves this device's stored
   secrets when an id already exists.
 - **`storage.ts`** — AsyncStorage preferences (typed shape and defaults in
-  `types/preferences.ts`).
+  `types/preferences.ts`). Prefer `updatePreferences(patch)` for new writers: it
+  queues writes and re-reads inside the queue, so overlapping saves can't drop
+  each other's keys the way a bare `getPreferences` → `savePreferences` can.
 - **`incoming-file.ts`** — copies an incoming `.torrent` into the app cache
   before the iOS security-scoped access can lapse.
 - **`query-client.ts`** — the shared TanStack `QueryClient`.
@@ -537,7 +539,9 @@ Thin objects over `apiClient`.
   added, waits (up to ~3 min, abortable) for the torrent to appear by ID and calls
   `addTrackers` with the other sources' trackers. `prepareTrackerTopUp` first checks
   the client doesn't already have the torrent; everything is silent best-effort.
-  Also exports `abortableDelay`, shared with `search.tsx`'s auto-tag poll.
+  Also exports `abortableDelay` and `tagNewlyDownloadedTorrent` (the best-effort
+  tag-by-name poll after a `search/downloadTorrent` add, used by Search instant
+  add and 5.0–5.1 cart checkout).
 
 ### Native modules (`modules/`)
 
@@ -952,7 +956,8 @@ Keep entries factual and current; if you find one that's no longer true
   requests `/proxy/<key>:7476/api/v2/…`. Against qui that reads as "Invalid
   client API key" in qui's log and an auth failure in the app (#278) — it looks
   exactly like a wrong key. qui URLs are now caught at input
-  (`detectQuiProxyUrlInHost`); any other path-in-Host still has this problem.
+  (`detectQuiProxyUrlInHost`), and `services/api/client.ts` (plus the debug
+  panel's URL builder) now splits a path off Host so the port lands before it.
 - **A Search result whose link is an HTML page "adds" successfully and nothing
   appears.** Some plugins (LimeTorrents, …) return a description page as
   `fileUrl` and can only resolve it via their own `download_torrent()`. A plain

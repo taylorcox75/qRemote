@@ -13,6 +13,7 @@
  * abandoned), and a missing tracker is a nicety, not an error.
  */
 import { torrentsApi } from '@/services/api/torrents';
+import { tagsApi } from '@/services/api/tags';
 import { clogDebug, clogWarn } from '@/services/connectivity-log';
 import { TorrentInfo } from '@/types/api';
 import { getErrorMessage } from '@/utils/error';
@@ -127,4 +128,52 @@ export async function prepareTrackerTopUp(
         activePolls.delete(controller);
       });
   };
+}
+
+const TAG_MATCH_ATTEMPTS = 8;
+const TAG_MATCH_DELAY_MS = 2000;
+
+/**
+ * search/downloadTorrent (used for plugin-native downloads, see
+ * handleAddResult) never reports which torrent it added — it's fire-and-forget
+ * server-side. Best-effort: poll the torrent list for a name match and tag it
+ * once it appears, silently (no toast) since this is a background nicety, not
+ * a user-initiated action. Prefers the newest match by `added_on` when several
+ * share the same name. Aborts cleanly when `signal` is aborted (e.g. unmount).
+ */
+export async function tagNewlyDownloadedTorrent(
+  fileName: string,
+  tag: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  for (let attempt = 0; attempt < TAG_MATCH_ATTEMPTS; attempt++) {
+    if (signal?.aborted) return;
+    await abortableDelay(TAG_MATCH_DELAY_MS, signal);
+    if (signal?.aborted) return;
+    try {
+      const list = await torrentsApi.getTorrentList();
+      if (signal?.aborted) return;
+      const match = list
+        .filter(
+          (torrent) =>
+            torrent.name === fileName &&
+            !torrent.tags
+              .split(',')
+              .map((existing) => existing.trim())
+              .includes(tag),
+        )
+        .sort((a, b) => (b.added_on ?? 0) - (a.added_on ?? 0))[0];
+      if (match) {
+        await tagsApi.createTags([tag]);
+        if (signal?.aborted) return;
+        await torrentsApi.addTorrentTags([match.hash], [tag]);
+        clogDebug('SEARCH', `Auto-tagged "${fileName}" with tracker tag "${tag}"`);
+        return;
+      }
+    } catch {
+      // Keep retrying — best-effort only, no user-facing error.
+    }
+  }
+  if (signal?.aborted) return;
+  clogWarn('SEARCH', `Could not find newly added torrent "${fileName}" to auto-tag with "${tag}"`);
 }
