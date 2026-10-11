@@ -4,7 +4,7 @@
  * dropdown in app/(tabs)/(torrents)/index.tsx); the parent supplies `style` with
  * the `top`/`left`/`right` position and owns open/closed state.
  *
- * Each row: leading icon (pin if pinned, clock otherwise), the query (tap to
+ * Each row: leading icon (thumbtack if pinned, clock otherwise), the query (tap to
  * reuse it), a pin toggle and a remove button. The footer clears every unpinned
  * entry. With no entries yet it shows how searches get saved, so the feature
  * is discoverable before first use. Pure list logic lives in utils/search-history.ts.
@@ -21,7 +21,9 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// The pin glyph comes from MaterialCommunityIcons: Ionicons' `pin` is a map-style
+// needle that doesn't read as "pin this"; MCI's is the familiar thumbtack.
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { SearchHistoryEntry } from '@/utils/search-history';
@@ -86,11 +88,11 @@ export function SearchHistoryDropdown({
               accessibilityRole="button"
               accessibilityLabel={entry.query}
             >
-              <Ionicons
-                name={entry.pinned ? 'pin' : 'time-outline'}
-                size={16}
-                color={entry.pinned ? colors.primary : colors.textSecondary}
-              />
+              {entry.pinned ? (
+                <MaterialCommunityIcons name="pin" size={16} color={colors.primary} />
+              ) : (
+                <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+              )}
               <Text style={[styles.queryText, { color: colors.text }]} numberOfLines={1}>
                 {entry.query}
               </Text>
@@ -105,7 +107,7 @@ export function SearchHistoryDropdown({
                 entry.pinned ? t('screens.torrents.unpinSearch') : t('screens.torrents.pinSearch')
               }
             >
-              <Ionicons
+              <MaterialCommunityIcons
                 name={entry.pinned ? 'pin' : 'pin-outline'}
                 size={18}
                 color={entry.pinned ? colors.primary : colors.textSecondary}
