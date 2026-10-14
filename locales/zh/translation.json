@@ -445,7 +445,10 @@
         "addedTime": "时间"
       },
       "searchAddOpensDialogue": "搜索中的 + 打开对话框",
-      "searchAddOpensDialogueHint": "点击搜索结果上的 + 将打开添加种子对话框，而不是直接添加。"
+      "searchAddOpensDialogueHint": "点击搜索结果上的 + 将打开添加种子对话框，而不是直接添加。",
+      "defaultColors": "默认颜色",
+      "defaultCategoryColor": "默认分类颜色",
+      "defaultTagColor": "默认标签颜色"
     },
     "transfer": {
       "title": "传输",
@@ -903,7 +906,27 @@
     "useCustomHeaders": "自定义 HTTP 请求头",
     "useCustomHeadersHint": "在每次请求中附加额外的请求头，适用于使用自有请求头认证的隧道或代理（例如 Pangolin）",
     "addHeader": "添加请求头",
-    "removeHeader": "删除请求头"
+    "removeHeader": "删除请求头",
+    "debugInfo": "调试信息",
+    "copyDebugInfo": "将调试信息复制到剪贴板",
+    "debugConfigOk": "配置看起来没问题！",
+    "warnPortInHost": "在主机中检测到端口“:{{port}}”。请将其移到端口字段。",
+    "warnPathInHost": "在主机中检测到路径“/{{path}}”。",
+    "warnProtocolRemoved": "已移除“{{protocol}}”。请改用 HTTPS 开关。",
+    "warnLocalhost": "Localhost 在移动设备上无法使用。请使用服务器的网络 IP。",
+    "warnDdnsNoPort": "检测到未指定端口的 DDNS。除非使用反向代理，大多数需要端口 8080。",
+    "warnIpNoPort": "IP 地址未指定端口。通常需要端口 8080。",
+    "warnHttpsLocalIp": "在本地 IP 上使用 HTTPS 时，如果没有有效证书可能会失败。",
+    "warnCredentialsRequired": "需要用户名和密码（或选择其他身份验证方式）。",
+    "warnApiKeyRequired": "需要 API 密钥。",
+    "warnQuiUrlRequired": "需要有效的 qui 代理 URL（http(s)://host[:port]/proxy/<key>）。",
+    "hostTooltipText": "输入服务器地址，不要包含 http:// 或 https://",
+    "tooltipExamples": "示例：",
+    "portTooltipText": "如果服务器使用自定义端口，请指定端口号。",
+    "portTooltipLeaveBlank": "以下情况请留空：",
+    "portTooltipDomain": "使用域名（example.com）",
+    "portTooltipReverseProxy": "使用反向代理",
+    "portTooltipCommon": "常用 qBittorrent 端口：8080"
   },
   "torrentDetail": {
     "notFound": "未找到种子",
@@ -1321,7 +1344,22 @@
     "failedToCopyLog": "复制日志失败",
     "failedToLoadServer": "加载服务器失败",
     "crashTitle": "出现了问题",
-    "crashMessage": "qRemote 遇到了意外错误。您的服务器和设置未受影响。"
+    "crashMessage": "qRemote 遇到了意外错误。您的服务器和设置未受影响。",
+    "authFailed": "身份验证失败。请检查您的凭据。",
+    "authFailedUsernamePassword": "身份验证失败。请检查您的用户名和密码。",
+    "connectionFailedAddress": "连接失败。请检查服务器地址和网络连接。",
+    "failedToConnectServer": "无法连接到服务器。请检查您的设置。",
+    "connectionTimeout": "连接超时。请检查与服务器的连接。",
+    "certificateRejected": "证书被拒绝。如果您信任此服务器，请为其启用“{{setting}}”。",
+    "noServerConfigured": "未配置服务器",
+    "rateLimited": "服务器限制了请求频率。",
+    "rateLimitedRetry": "服务器限制了请求频率。请在 {{seconds}} 秒后重试。",
+    "endpointNotFound": "未找到端点：{{url}}。请检查您的 qBittorrent 版本和 API 兼容性。",
+    "queueingDisabled": "必须在 qBittorrent 中启用 Torrent 队列才能更改优先级。",
+    "torrentExistsOrFailed": "此种子已存在或无法添加。",
+    "unknown": "发生未知错误",
+    "quiKeyRejected": "qui 拒绝了代理密钥。请检查代理 URL。",
+    "quiKeyMissing": "此 qui 服务器没有代理密钥。请编辑它并重新粘贴代理 URL。"
   },
   "states": {
     "dlAndUl": "DL + UL",

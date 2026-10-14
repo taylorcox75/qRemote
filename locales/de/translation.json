@@ -445,7 +445,10 @@
         "addedTime": "Uhrzeit"
       },
       "searchAddOpensDialogue": "+ in der Suche öffnet den Dialog",
-      "searchAddOpensDialogueHint": "Ein Tippen auf + bei einem Suchergebnis öffnet den Torrent-Hinzufügen-Dialog, statt sofort hinzuzufügen."
+      "searchAddOpensDialogueHint": "Ein Tippen auf + bei einem Suchergebnis öffnet den Torrent-Hinzufügen-Dialog, statt sofort hinzuzufügen.",
+      "defaultColors": "Standardfarben",
+      "defaultCategoryColor": "Standardfarbe für Kategorien",
+      "defaultTagColor": "Standardfarbe für Tags"
     },
     "transfer": {
       "title": "Übertragung",
@@ -903,7 +906,27 @@
     "debugDefaultPort": "Standard (80/443)",
     "debugCustomHeaders": "Benutzerdefinierte Header",
     "debugCustomHeadersValue": "{{names}} (Werte ausgeblendet)",
-    "debugCustomHeadersNone": "Keine"
+    "debugCustomHeadersNone": "Keine",
+    "debugInfo": "DEBUG-INFOS",
+    "copyDebugInfo": "Debug-Infos in die Zwischenablage kopieren",
+    "debugConfigOk": "Konfiguration sieht gut aus!",
+    "warnPortInHost": "Port „:{{port}}“ im Host erkannt. Verschiebe ihn in das Port-Feld.",
+    "warnPathInHost": "Pfad „/{{path}}“ im Host erkannt.",
+    "warnProtocolRemoved": "„{{protocol}}“ entfernt. Verwende stattdessen den HTTPS-Schalter.",
+    "warnLocalhost": "Localhost funktioniert auf dem Handy nicht. Verwende die Netzwerk-IP deines Servers.",
+    "warnDdnsNoPort": "DDNS ohne Port erkannt. Meist wird Port 8080 benötigt, außer bei einem Reverse Proxy.",
+    "warnIpNoPort": "IP-Adresse ohne Port. Benötigt normalerweise Port 8080.",
+    "warnHttpsLocalIp": "HTTPS über eine lokale IP kann ohne gültiges Zertifikat fehlschlagen.",
+    "warnCredentialsRequired": "Benutzername und Passwort erforderlich (oder wähle eine andere Authentifizierungsmethode).",
+    "warnApiKeyRequired": "API-Schlüssel erforderlich.",
+    "warnQuiUrlRequired": "Gültige qui-Proxy-URL erforderlich (http(s)://host[:port]/proxy/<key>).",
+    "hostTooltipText": "Gib die Adresse deines Servers ohne http:// oder https:// ein",
+    "tooltipExamples": "Beispiele:",
+    "portTooltipText": "Gib die Portnummer an, wenn dein Server einen eigenen Port verwendet.",
+    "portTooltipLeaveBlank": "Leer lassen, wenn du Folgendes verwendest:",
+    "portTooltipDomain": "Einen Domainnamen (example.com)",
+    "portTooltipReverseProxy": "Einen Reverse Proxy",
+    "portTooltipCommon": "Üblicher qBittorrent-Port: 8080"
   },
   "torrentDetail": {
     "notFound": "Torrent nicht gefunden",
@@ -1321,7 +1344,22 @@
     "failedToCopyLog": "Protokoll konnte nicht kopiert werden",
     "failedToLoadServer": "Server konnte nicht geladen werden",
     "crashTitle": "Etwas ist schiefgelaufen",
-    "crashMessage": "In qRemote ist ein unerwarteter Fehler aufgetreten. Ihre Server und Einstellungen sind unversehrt."
+    "crashMessage": "In qRemote ist ein unerwarteter Fehler aufgetreten. Ihre Server und Einstellungen sind unversehrt.",
+    "authFailed": "Authentifizierung fehlgeschlagen. Bitte Anmeldedaten prüfen.",
+    "authFailedUsernamePassword": "Authentifizierung fehlgeschlagen. Bitte Benutzername und Passwort prüfen.",
+    "connectionFailedAddress": "Verbindung fehlgeschlagen. Bitte Serveradresse und Netzwerkverbindung prüfen.",
+    "failedToConnectServer": "Verbindung zum Server fehlgeschlagen. Bitte Einstellungen prüfen.",
+    "connectionTimeout": "Zeitüberschreitung der Verbindung. Bitte Verbindung zum Server prüfen.",
+    "certificateRejected": "Zertifikat abgelehnt. Aktiviere „{{setting}}“ für diesen Server, wenn du ihm vertraust.",
+    "noServerConfigured": "Kein Server konfiguriert",
+    "rateLimited": "Anfragen vom Server begrenzt.",
+    "rateLimitedRetry": "Anfragen vom Server begrenzt. Bitte in {{seconds}} Sekunden erneut versuchen.",
+    "endpointNotFound": "Endpunkt nicht gefunden: {{url}}. Bitte qBittorrent-Version und API-Kompatibilität prüfen.",
+    "queueingDisabled": "Die Torrent-Warteschlange muss in qBittorrent aktiviert sein, um Prioritäten zu ändern.",
+    "torrentExistsOrFailed": "Dieser Torrent existiert bereits oder konnte nicht hinzugefügt werden.",
+    "unknown": "Ein unbekannter Fehler ist aufgetreten",
+    "quiKeyRejected": "qui hat den Proxy-Schlüssel abgelehnt. Prüfe die Proxy-URL.",
+    "quiKeyMissing": "Dieser qui-Server hat keinen Proxy-Schlüssel. Bearbeite ihn und füge die Proxy-URL erneut ein."
   },
   "states": {
     "dlAndUl": "DL + UL",

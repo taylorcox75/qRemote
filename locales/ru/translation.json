@@ -466,7 +466,10 @@
         "addedTime": ""
       },
       "searchAddOpensDialogue": "+ в поиске открывает диалог",
-      "searchAddOpensDialogueHint": "Нажатие + на результате поиска открывает диалог добавления торрента вместо немедленного добавления."
+      "searchAddOpensDialogueHint": "Нажатие + на результате поиска открывает диалог добавления торрента вместо немедленного добавления.",
+      "defaultColors": "Цвета по умолчанию",
+      "defaultCategoryColor": "Цвет категории по умолчанию",
+      "defaultTagColor": "Цвет тега по умолчанию"
     },
     "transfer": {
       "title": "Передача",
@@ -938,7 +941,27 @@
     "debugDefaultPort": "по умолчанию (80/443)",
     "debugCustomHeaders": "Пользовательские заголовки",
     "debugCustomHeadersValue": "{{names}} (значения скрыты)",
-    "debugCustomHeadersNone": "Нет"
+    "debugCustomHeadersNone": "Нет",
+    "debugInfo": "ОТЛАДОЧНАЯ ИНФОРМАЦИЯ",
+    "copyDebugInfo": "Скопировать отладочную информацию в буфер обмена",
+    "debugConfigOk": "Конфигурация выглядит правильно!",
+    "warnPortInHost": "В адресе хоста обнаружен порт «:{{port}}». Перенесите его в поле «Порт».",
+    "warnPathInHost": "В адресе хоста обнаружен путь «/{{path}}».",
+    "warnProtocolRemoved": "«{{protocol}}» удалён. Используйте переключатель HTTPS.",
+    "warnLocalhost": "Localhost не работает на мобильном устройстве. Используйте сетевой IP-адрес сервера.",
+    "warnDdnsNoPort": "Обнаружен DDNS без порта. Обычно нужен порт 8080, если не используется обратный прокси.",
+    "warnIpNoPort": "IP-адрес без порта. Обычно нужен порт 8080.",
+    "warnHttpsLocalIp": "HTTPS на локальном IP может не работать без действительного сертификата.",
+    "warnCredentialsRequired": "Требуются имя пользователя и пароль (или выберите другой способ аутентификации).",
+    "warnApiKeyRequired": "Требуется API-ключ.",
+    "warnQuiUrlRequired": "Требуется действительный URL прокси qui (http(s)://host[:port]/proxy/<key>).",
+    "hostTooltipText": "Введите адрес сервера без http:// или https://",
+    "tooltipExamples": "Примеры:",
+    "portTooltipText": "Укажите номер порта, если сервер использует нестандартный порт.",
+    "portTooltipLeaveBlank": "Оставьте пустым, если используете:",
+    "portTooltipDomain": "Доменное имя (example.com)",
+    "portTooltipReverseProxy": "Обратный прокси",
+    "portTooltipCommon": "Стандартный порт qBittorrent: 8080"
   },
   "torrentDetail": {
     "notFound": "Торрент не найден",
@@ -1372,6 +1395,21 @@
     "failedToCopyLog": "Не удалось скопировать журнал",
     "failedToLoadServer": "Не удалось загрузить сервер",
     "crashTitle": "Что-то пошло не так",
-    "crashMessage": "В qRemote произошла непредвиденная ошибка. Ваши серверы и настройки не пострадали."
+    "crashMessage": "В qRemote произошла непредвиденная ошибка. Ваши серверы и настройки не пострадали.",
+    "authFailed": "Ошибка аутентификации. Проверьте учётные данные.",
+    "authFailedUsernamePassword": "Ошибка аутентификации. Проверьте имя пользователя и пароль.",
+    "connectionFailedAddress": "Не удалось подключиться. Проверьте адрес сервера и сетевое подключение.",
+    "failedToConnectServer": "Не удалось подключиться к серверу. Проверьте настройки.",
+    "connectionTimeout": "Истекло время ожидания подключения. Проверьте соединение с сервером.",
+    "certificateRejected": "Сертификат отклонён. Включите «{{setting}}» для этого сервера, если доверяете ему.",
+    "noServerConfigured": "Сервер не настроен",
+    "rateLimited": "Сервер ограничил частоту запросов.",
+    "rateLimitedRetry": "Сервер ограничил частоту запросов. Повторите попытку через {{seconds}} с.",
+    "endpointNotFound": "Конечная точка не найдена: {{url}}. Проверьте версию qBittorrent и совместимость API.",
+    "queueingDisabled": "Чтобы менять приоритеты, в qBittorrent должна быть включена очередь торрентов.",
+    "torrentExistsOrFailed": "Этот торрент уже существует или не может быть добавлен.",
+    "unknown": "Произошла неизвестная ошибка",
+    "quiKeyRejected": "qui отклонил ключ прокси. Проверьте URL прокси.",
+    "quiKeyMissing": "У этого сервера qui нет ключа прокси. Откройте его настройки и снова вставьте URL прокси."
   }
 }

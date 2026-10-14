@@ -445,7 +445,10 @@
         "addedTime": "Hora"
       },
       "searchAddOpensDialogue": "El + de búsqueda abre el diálogo",
-      "searchAddOpensDialogueHint": "Al tocar + en un resultado de búsqueda se abre el diálogo de añadir torrent en lugar de añadirlo directamente."
+      "searchAddOpensDialogueHint": "Al tocar + en un resultado de búsqueda se abre el diálogo de añadir torrent en lugar de añadirlo directamente.",
+      "defaultColors": "Colores predeterminados",
+      "defaultCategoryColor": "Color de categoría predeterminado",
+      "defaultTagColor": "Color de etiqueta predeterminado"
     },
     "transfer": {
       "title": "Transferencia",
@@ -903,7 +906,27 @@
     "debugDefaultPort": "predeterminado (80/443)",
     "debugCustomHeaders": "Cabeceras personalizadas",
     "debugCustomHeadersValue": "{{names}} (valores ocultos)",
-    "debugCustomHeadersNone": "Ninguna"
+    "debugCustomHeadersNone": "Ninguna",
+    "debugInfo": "INFORMACIÓN DE DEPURACIÓN",
+    "copyDebugInfo": "Copiar información de depuración al portapapeles",
+    "debugConfigOk": "¡La configuración parece correcta!",
+    "warnPortInHost": "Puerto \":{{port}}\" detectado en el host. Muévelo al campo Puerto.",
+    "warnPathInHost": "Ruta \"/{{path}}\" detectada en el host.",
+    "warnProtocolRemoved": "\"{{protocol}}\" eliminado. Usa el interruptor HTTPS en su lugar.",
+    "warnLocalhost": "Localhost no funciona en el móvil. Usa la IP de red de tu servidor.",
+    "warnDdnsNoPort": "DDNS detectado sin puerto. La mayoría necesita el puerto 8080 salvo que uses un proxy inverso.",
+    "warnIpNoPort": "Dirección IP sin puerto. Normalmente necesita el puerto 8080.",
+    "warnHttpsLocalIp": "HTTPS en una IP local puede fallar sin un certificado válido.",
+    "warnCredentialsRequired": "Se requieren usuario y contraseña (o elige otro método de autenticación).",
+    "warnApiKeyRequired": "Se requiere una clave de API.",
+    "warnQuiUrlRequired": "Se requiere una URL de proxy qui válida (http(s)://host[:port]/proxy/<key>).",
+    "hostTooltipText": "Introduce la dirección de tu servidor sin http:// ni https://",
+    "tooltipExamples": "Ejemplos:",
+    "portTooltipText": "Indica el número de puerto si tu servidor usa un puerto personalizado.",
+    "portTooltipLeaveBlank": "Déjalo en blanco si usas:",
+    "portTooltipDomain": "Un nombre de dominio (example.com)",
+    "portTooltipReverseProxy": "Un proxy inverso",
+    "portTooltipCommon": "Puerto habitual de qBittorrent: 8080"
   },
   "torrentDetail": {
     "notFound": "Torrent no encontrado",
@@ -1321,7 +1344,22 @@
     "failedToCopyLog": "Error al copiar el registro",
     "failedToLoadServer": "Error al cargar el servidor",
     "crashTitle": "Algo ha salido mal",
-    "crashMessage": "qRemote ha encontrado un error inesperado. Tus servidores y ajustes están a salvo."
+    "crashMessage": "qRemote ha encontrado un error inesperado. Tus servidores y ajustes están a salvo.",
+    "authFailed": "Error de autenticación. Comprueba tus credenciales.",
+    "authFailedUsernamePassword": "Error de autenticación. Comprueba tu nombre de usuario y contraseña.",
+    "connectionFailedAddress": "Error de conexión. Comprueba la dirección del servidor y tu conexión de red.",
+    "failedToConnectServer": "No se pudo conectar al servidor. Comprueba tu configuración.",
+    "connectionTimeout": "Tiempo de conexión agotado. Comprueba la conexión con tu servidor.",
+    "certificateRejected": "Certificado rechazado. Activa \"{{setting}}\" para este servidor si confías en él.",
+    "noServerConfigured": "No hay ningún servidor configurado",
+    "rateLimited": "El servidor ha limitado las solicitudes.",
+    "rateLimitedRetry": "El servidor ha limitado las solicitudes. Vuelve a intentarlo en {{seconds}} segundos.",
+    "endpointNotFound": "Endpoint no encontrado: {{url}}. Comprueba tu versión de qBittorrent y la compatibilidad de la API.",
+    "queueingDisabled": "La cola de torrents debe estar activada en qBittorrent para cambiar prioridades.",
+    "torrentExistsOrFailed": "Este torrent ya existe o no se pudo añadir.",
+    "unknown": "Se produjo un error desconocido",
+    "quiKeyRejected": "qui rechazó la clave del proxy. Comprueba la URL del proxy.",
+    "quiKeyMissing": "Este servidor qui no tiene clave de proxy. Edítalo y vuelve a pegar la URL del proxy."
   },
   "states": {
     "dlAndUl": "DL + UL",

@@ -31,6 +31,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { parseServerImport } from '@/utils/server-export';
 
 function SwipeableServerItem({
@@ -268,7 +269,7 @@ export default function ServersSettingsScreen() {
         showToast(t('errors.checkCredentials'), 'error');
       }
     } catch (error: unknown) {
-      showToast(getErrorMessage(error), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(error), t), 'error');
     }
   };
 

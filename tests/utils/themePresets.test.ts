@@ -100,8 +100,8 @@ describe('THEME_PRESETS data', () => {
     expect(preset.light).toEqual({});
   });
 
-  it('every preset name key resolves in all seven locales', () => {
-    for (const locale of ['en', 'es', 'zh', 'fr', 'de', 'ru', 'pl']) {
+  it('every preset name key resolves in every locale', () => {
+    for (const locale of ['en', 'es', 'zh', 'fr', 'de', 'ru', 'pl', 'tr']) {
       const json = JSON.parse(
         fs.readFileSync(path.join(__dirname, '../../locales', locale, 'translation.json'), 'utf8'),
       );

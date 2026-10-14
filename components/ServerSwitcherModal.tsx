@@ -29,6 +29,7 @@ import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { getServerIconColor, serverAddress } from '@/utils/server';
 import { withAlpha } from '@/utils/color';
 import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { haptics } from '@/utils/haptics';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -85,7 +86,10 @@ export function ServerSwitcherModal({
         haptics.error();
       }
     } catch (err: unknown) {
-      setSwitchErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
+      setSwitchErrors((prev) => ({
+        ...prev,
+        [server.id]: localizeErrorMessage(getErrorMessage(err), t),
+      }));
       haptics.error();
     } finally {
       setSwitchingId(null);

@@ -27,6 +27,7 @@ import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { ServerManager } from '@/services/server-manager';
 import { APP_VERSION } from '@/utils/version';
 import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { hasFallback } from '@/utils/server';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -167,10 +168,10 @@ export default function SettingsScreen() {
       if (success) {
         showToast(t('toast.connectedTo', { name: currentServer.name }), 'success');
       } else {
-        showToast(t('toast.failedToConnect'), 'error');
+        showToast(t('errors.failedToConnect'), 'error');
       }
     } catch (error) {
-      showToast(getErrorMessage(error), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(error), t), 'error');
     }
   };
 

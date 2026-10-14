@@ -18,7 +18,7 @@ import path from 'path';
 
 const LOCALES_DIR = path.join(__dirname, '..', '..', 'locales');
 const SOURCE_LOCALE = 'en';
-const TARGET_LOCALES = ['es', 'zh', 'fr', 'de', 'ru', 'pl'];
+const TARGET_LOCALES = ['es', 'zh', 'fr', 'de', 'ru', 'pl', 'tr'];
 
 type TranslationTree = { [key: string]: string | TranslationTree };
 

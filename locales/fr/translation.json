@@ -445,7 +445,10 @@
         "addedTime": "Heure"
       },
       "searchAddOpensDialogue": "Le + de la recherche ouvre la boîte de dialogue",
-      "searchAddOpensDialogueHint": "Appuyer sur + sur un résultat de recherche ouvre la boîte de dialogue d'ajout au lieu d'ajouter directement."
+      "searchAddOpensDialogueHint": "Appuyer sur + sur un résultat de recherche ouvre la boîte de dialogue d'ajout au lieu d'ajouter directement.",
+      "defaultColors": "Couleurs par défaut",
+      "defaultCategoryColor": "Couleur de catégorie par défaut",
+      "defaultTagColor": "Couleur d'étiquette par défaut"
     },
     "transfer": {
       "title": "Transfert",
@@ -903,7 +906,27 @@
     "debugDefaultPort": "par défaut (80/443)",
     "debugCustomHeaders": "En-têtes personnalisés",
     "debugCustomHeadersValue": "{{names}} (valeurs masquées)",
-    "debugCustomHeadersNone": "Aucun"
+    "debugCustomHeadersNone": "Aucun",
+    "debugInfo": "INFOS DE DÉBOGAGE",
+    "copyDebugInfo": "Copier les infos de débogage dans le presse-papiers",
+    "debugConfigOk": "La configuration semble correcte !",
+    "warnPortInHost": "Port « :{{port}} » détecté dans l'hôte. Déplacez-le dans le champ Port.",
+    "warnPathInHost": "Chemin « /{{path}} » détecté dans l'hôte.",
+    "warnProtocolRemoved": "« {{protocol}} » supprimé. Utilisez plutôt l'interrupteur HTTPS.",
+    "warnLocalhost": "Localhost ne fonctionne pas sur mobile. Utilisez l'IP réseau de votre serveur.",
+    "warnDdnsNoPort": "DDNS détecté sans port. La plupart nécessitent le port 8080, sauf avec un proxy inverse.",
+    "warnIpNoPort": "Adresse IP sans port. Nécessite généralement le port 8080.",
+    "warnHttpsLocalIp": "HTTPS sur une IP locale peut échouer sans certificat valide.",
+    "warnCredentialsRequired": "Nom d'utilisateur et mot de passe requis (ou choisissez une autre méthode d'authentification).",
+    "warnApiKeyRequired": "Clé API requise.",
+    "warnQuiUrlRequired": "URL de proxy qui valide requise (http(s)://host[:port]/proxy/<key>).",
+    "hostTooltipText": "Saisissez l'adresse de votre serveur sans http:// ni https://",
+    "tooltipExamples": "Exemples :",
+    "portTooltipText": "Indiquez le numéro de port si votre serveur utilise un port personnalisé.",
+    "portTooltipLeaveBlank": "Laissez vide si vous utilisez :",
+    "portTooltipDomain": "Un nom de domaine (example.com)",
+    "portTooltipReverseProxy": "Un proxy inverse",
+    "portTooltipCommon": "Port qBittorrent courant : 8080"
   },
   "torrentDetail": {
     "notFound": "Torrent introuvable",
@@ -1321,7 +1344,22 @@
     "failedToCopyLog": "Échec de la copie du journal",
     "failedToLoadServer": "Échec du chargement du serveur",
     "crashTitle": "Une erreur est survenue",
-    "crashMessage": "qRemote a rencontré une erreur inattendue. Vos serveurs et réglages sont intacts."
+    "crashMessage": "qRemote a rencontré une erreur inattendue. Vos serveurs et réglages sont intacts.",
+    "authFailed": "Échec de l'authentification. Vérifiez vos identifiants.",
+    "authFailedUsernamePassword": "Échec de l'authentification. Vérifiez votre nom d'utilisateur et votre mot de passe.",
+    "connectionFailedAddress": "Échec de la connexion. Vérifiez l'adresse du serveur et votre connexion réseau.",
+    "failedToConnectServer": "Impossible de se connecter au serveur. Vérifiez vos paramètres.",
+    "connectionTimeout": "Délai de connexion dépassé. Vérifiez la connexion à votre serveur.",
+    "certificateRejected": "Certificat rejeté. Activez « {{setting}} » pour ce serveur si vous lui faites confiance.",
+    "noServerConfigured": "Aucun serveur configuré",
+    "rateLimited": "Requêtes limitées par le serveur.",
+    "rateLimitedRetry": "Requêtes limitées par le serveur. Réessayez dans {{seconds}} secondes.",
+    "endpointNotFound": "Point de terminaison introuvable : {{url}}. Vérifiez votre version de qBittorrent et la compatibilité de l'API.",
+    "queueingDisabled": "La file d'attente des torrents doit être activée dans qBittorrent pour modifier les priorités.",
+    "torrentExistsOrFailed": "Ce torrent existe déjà ou n'a pas pu être ajouté.",
+    "unknown": "Une erreur inconnue s'est produite",
+    "quiKeyRejected": "qui a rejeté la clé du proxy. Vérifiez l'URL du proxy.",
+    "quiKeyMissing": "Ce serveur qui n'a pas de clé de proxy. Modifiez-le et collez à nouveau l'URL du proxy."
   },
   "states": {
     "dlAndUl": "DL + UL",

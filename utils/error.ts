@@ -23,7 +23,7 @@ export function getErrorStatus(error: unknown): number | undefined {
 }
 
 /**
- * "certificate" in each of the six locales this app ships (see
+ * "certificate" in each of the locales this app ships (see
  * locales/*\/translation.json), plus the language-neutral technical terms
  * "SSL"/"TLS" that iOS's error descriptions tend to carry regardless of
  * device language. Used to recognize a TLS-rejection failure (NSURLError
@@ -41,6 +41,7 @@ const TLS_REJECTION_KEYWORDS = [
   'zertifikat', // de
   'сертификат', // ru
   'certyfikat', // pl
+  'sertifika', // tr
 ];
 
 /**

@@ -40,6 +40,7 @@ import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
 import { APP_VERSION } from '@/utils/version';
 import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { ServerAuthMode, applyServerAuthMode } from '@/utils/authMode';
 import { withAlpha } from '@/utils/color';
 import {
@@ -155,28 +156,38 @@ export default function AddServerScreen() {
     const baseUrl = `${protocol}://${cleanHost}${portPart}${proxyPath}`;
 
     // Detect issues
-    const warnings: Array<{ type: 'error' | 'warning' | 'info'; message: string }> = [];
+    const warnings: Array<{
+      type: 'error' | 'warning' | 'info';
+      key: string;
+      params?: Record<string, string>;
+    }> = [];
 
     // Port in host
     const portInHost = cleanHost.match(/:(\d+)/);
     if (portInHost) {
       warnings.push({
         type: 'warning',
-        message: `Port ":${portInHost[1]}" detected in host. Move it to the Port field.`,
+        key: 'server.warnPortInHost',
+        params: { port: portInHost[1] },
       });
     }
 
     // Path in host
     const pathMatch = cleanHost.match(/\/(.+)/);
     if (pathMatch) {
-      warnings.push({ type: 'warning', message: `Path "/${pathMatch[1]}" detected in host.` });
+      warnings.push({
+        type: 'warning',
+        key: 'server.warnPathInHost',
+        params: { path: pathMatch[1] },
+      });
     }
 
     // Protocol stripped
     if (strippedProtocol) {
       warnings.push({
         type: 'info',
-        message: `"${strippedProtocol}" removed. Use the HTTPS toggle instead.`,
+        key: 'server.warnProtocolRemoved',
+        params: { protocol: strippedProtocol },
       });
     }
 
@@ -184,7 +195,7 @@ export default function AddServerScreen() {
     if (/^(localhost|127\.0\.0\.1)$/i.test(cleanHost.split(':')[0].split('/')[0])) {
       warnings.push({
         type: 'error',
-        message: "Localhost won't work on mobile. Use your server's network IP.",
+        key: 'server.warnLocalhost',
       });
     }
 
@@ -194,14 +205,14 @@ export default function AddServerScreen() {
     if (ddnsPatterns.test(cleanHost) && !portNum) {
       warnings.push({
         type: 'info',
-        message: 'DDNS detected without port. Most need port 8080 unless using a reverse proxy.',
+        key: 'server.warnDdnsNoPort',
       });
     }
 
     // IP without port
     const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(cleanHost.split(':')[0]);
     if (isIP && !portNum) {
-      warnings.push({ type: 'info', message: 'IP address without port. Usually needs port 8080.' });
+      warnings.push({ type: 'info', key: 'server.warnIpNoPort' });
     }
 
     // HTTPS on private IP
@@ -209,7 +220,7 @@ export default function AddServerScreen() {
     if (effectiveUseHttps && isPrivateIP) {
       warnings.push({
         type: 'warning',
-        message: 'HTTPS on local IP may fail without a valid certificate.',
+        key: 'server.warnHttpsLocalIp',
       });
     }
 
@@ -217,14 +228,14 @@ export default function AddServerScreen() {
     if (authMode === 'password' && (!username.trim() || !password.trim())) {
       warnings.push({
         type: 'error',
-        message: 'Username and password required (or choose a different authentication method).',
+        key: 'server.warnCredentialsRequired',
       });
     } else if (authMode === 'apiKey' && !apiKey.trim()) {
-      warnings.push({ type: 'error', message: 'API key required.' });
+      warnings.push({ type: 'error', key: 'server.warnApiKeyRequired' });
     } else if (isQui && !quiEndpoint) {
       warnings.push({
         type: 'error',
-        message: 'Valid qui proxy URL required (http(s)://host[:port]/proxy/<key>).',
+        key: 'server.warnQuiUrlRequired',
       });
     }
 
@@ -276,7 +287,7 @@ Custom Headers: ${debugInfo.customHeaderNames.length > 0 ? debugInfo.customHeade
 Login Endpoint: ${debugInfo.loginEndpoint}
 Version Endpoint: ${debugInfo.versionEndpoint}
 
-${debugInfo.warnings.length > 0 ? 'Warnings/Issues:\n' + debugInfo.warnings.map((w) => `- [${w.type.toUpperCase()}] ${w.message}`).join('\n') : 'No warnings detected.'}
+${debugInfo.warnings.length > 0 ? 'Warnings/Issues:\n' + debugInfo.warnings.map((w) => `- [${w.type.toUpperCase()}] ${t(w.key, { ...w.params, lng: 'en' })}`).join('\n') : 'No warnings detected.'}
 
 App Version: ${APP_VERSION}`;
 
@@ -423,7 +434,9 @@ App Version: ${APP_VERSION}`;
           }
         } catch (error: unknown) {
           showToast(
-            t('errors.connectionFailedManual', { error: getErrorMessage(error) }),
+            t('errors.connectionFailedManual', {
+              error: localizeErrorMessage(getErrorMessage(error), t),
+            }),
             'warning',
           );
         }
@@ -562,7 +575,10 @@ App Version: ${APP_VERSION}`;
       } else if (result.success) {
         showToast(t('toast.connectionTestSuccess'), 'success');
       } else {
-        showToast(result.error || t('errors.connectionTestFailed'), 'error');
+        showToast(
+          result.error ? localizeErrorMessage(result.error, t) : t('errors.connectionTestFailed'),
+          'error',
+        );
       }
     } catch (error: unknown) {
       const isCancelled =
@@ -570,7 +586,7 @@ App Version: ${APP_VERSION}`;
           (error.name === 'AbortError' || error.name === 'CanceledError')) ||
         getErrorMessage(error).includes('cancel');
       if (!isCancelled) {
-        showToast(getErrorMessage(error), 'error');
+        showToast(localizeErrorMessage(getErrorMessage(error), t), 'error');
       }
     } finally {
       testAbortController.current = null;
@@ -1117,12 +1133,13 @@ App Version: ${APP_VERSION}`;
             <View style={styles.section}>
               <View style={styles.debugHeaderRow}>
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-                  DEBUG INFO {debugInfo.hasErrors ? '⚠' : debugInfo.hasWarnings ? '!' : '✓'}
+                  {t('server.debugInfo')}{' '}
+                  {debugInfo.hasErrors ? '⚠' : debugInfo.hasWarnings ? '!' : '✓'}
                 </Text>
                 <TouchableOpacity
                   onPress={copyDebugInfo}
                   style={styles.copyButton}
-                  accessibilityLabel="Copy debug info to clipboard"
+                  accessibilityLabel={t('server.copyDebugInfo')}
                 >
                   <Ionicons name="copy-outline" size={18} color={colors.primary} />
                 </TouchableOpacity>
@@ -1205,7 +1222,7 @@ App Version: ${APP_VERSION}`;
                           }
                         />
                         <Text style={[styles.debugWarningText, { color: colors.text }]}>
-                          {w.message}
+                          {t(w.key, w.params)}
                         </Text>
                       </View>
                     ))}
@@ -1221,7 +1238,7 @@ App Version: ${APP_VERSION}`;
                   >
                     <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                     <Text style={[styles.debugWarningText, { color: colors.text }]}>
-                      Configuration looks good!
+                      {t('server.debugConfigOk')}
                     </Text>
                   </View>
                 )}
@@ -1274,10 +1291,10 @@ App Version: ${APP_VERSION}`;
               </Text>
             </View>
             <Text style={[styles.tooltipText, { color: colors.text }]}>
-              Enter your server's address without http:// or https://
+              {t('server.hostTooltipText')}
             </Text>
             <Text style={[styles.tooltipText, { color: colors.text, marginTop: 12 }]}>
-              Examples:
+              {t('server.tooltipExamples')}
             </Text>
             <Text style={[styles.tooltipExample, { color: colors.textSecondary }]}>
               • 192.168.1.100{'\n'}• qbittorrent.example.com{'\n'}• example.com/qbt
@@ -1310,16 +1327,18 @@ App Version: ${APP_VERSION}`;
               <Text style={[styles.tooltipTitle, { color: colors.text }]}>{t('server.port')}</Text>
             </View>
             <Text style={[styles.tooltipText, { color: colors.text }]}>
-              Specify the port number if your server uses a custom port.
+              {t('server.portTooltipText')}
             </Text>
             <Text style={[styles.tooltipText, { color: colors.text, marginTop: 12 }]}>
-              Leave blank if you're using:
+              {t('server.portTooltipLeaveBlank')}
             </Text>
             <Text style={[styles.tooltipExample, { color: colors.textSecondary }]}>
-              • A domain name (example.com){'\n'}• A reverse proxy{'\n'}
+              • {t('server.portTooltipDomain')}
+              {'\n'}• {t('server.portTooltipReverseProxy')}
+              {'\n'}
             </Text>
             <Text style={[styles.tooltipText, { color: colors.text, marginTop: 12 }]}>
-              Common qBittorrent port: 8080
+              {t('server.portTooltipCommon')}
             </Text>
             <TouchableOpacity
               style={[styles.tooltipButton, { backgroundColor: colors.primary }]}

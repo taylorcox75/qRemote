@@ -466,7 +466,10 @@
         "addedTime": ""
       },
       "searchAddOpensDialogue": "Search + opens dialogue",
-      "searchAddOpensDialogueHint": "Tapping + on a search result opens the add-torrent dialogue instead of adding straight away."
+      "searchAddOpensDialogueHint": "Tapping + on a search result opens the add-torrent dialogue instead of adding straight away.",
+      "defaultColors": "Default Colors",
+      "defaultCategoryColor": "Default Category Color",
+      "defaultTagColor": "Default Tag Color"
     },
     "transfer": {
       "title": "Transfer",
@@ -924,7 +927,27 @@
     "debugDefaultPort": "default (80/443)",
     "debugCustomHeaders": "Custom Headers",
     "debugCustomHeadersValue": "{{names}} (values hidden)",
-    "debugCustomHeadersNone": "None"
+    "debugCustomHeadersNone": "None",
+    "debugInfo": "DEBUG INFO",
+    "copyDebugInfo": "Copy debug info to clipboard",
+    "debugConfigOk": "Configuration looks good!",
+    "warnPortInHost": "Port \":{{port}}\" detected in host. Move it to the Port field.",
+    "warnPathInHost": "Path \"/{{path}}\" detected in host.",
+    "warnProtocolRemoved": "\"{{protocol}}\" removed. Use the HTTPS toggle instead.",
+    "warnLocalhost": "Localhost won't work on mobile. Use your server's network IP.",
+    "warnDdnsNoPort": "DDNS detected without port. Most need port 8080 unless using a reverse proxy.",
+    "warnIpNoPort": "IP address without port. Usually needs port 8080.",
+    "warnHttpsLocalIp": "HTTPS on local IP may fail without a valid certificate.",
+    "warnCredentialsRequired": "Username and password required (or choose a different authentication method).",
+    "warnApiKeyRequired": "API key required.",
+    "warnQuiUrlRequired": "Valid qui proxy URL required (http(s)://host[:port]/proxy/<key>).",
+    "hostTooltipText": "Enter your server's address without http:// or https://",
+    "tooltipExamples": "Examples:",
+    "portTooltipText": "Specify the port number if your server uses a custom port.",
+    "portTooltipLeaveBlank": "Leave blank if you're using:",
+    "portTooltipDomain": "A domain name (example.com)",
+    "portTooltipReverseProxy": "A reverse proxy",
+    "portTooltipCommon": "Common qBittorrent port: 8080"
   },
   "torrentDetail": {
     "notFound": "Torrent not found",
@@ -1342,6 +1365,21 @@
     "failedToCopyLog": "Failed to copy log",
     "failedToLoadServer": "Failed to load server",
     "crashTitle": "Something went wrong",
-    "crashMessage": "qRemote ran into an unexpected error. Your servers and settings are safe."
+    "crashMessage": "qRemote ran into an unexpected error. Your servers and settings are safe.",
+    "authFailed": "Authentication failed. Please check your credentials.",
+    "authFailedUsernamePassword": "Authentication failed. Please check your username and password.",
+    "connectionFailedAddress": "Connection failed. Please check your server address and network connection.",
+    "failedToConnectServer": "Failed to connect to server. Please check your settings.",
+    "connectionTimeout": "Connection timeout. Please check your server connection.",
+    "certificateRejected": "Certificate rejected. Enable \"{{setting}}\" for this server if you trust it.",
+    "noServerConfigured": "No server configured",
+    "rateLimited": "Rate limited by server.",
+    "rateLimitedRetry": "Rate limited by server. Please retry after {{seconds}} seconds.",
+    "endpointNotFound": "Endpoint not found: {{url}}. Please check your qBittorrent version and API compatibility.",
+    "queueingDisabled": "Torrent queueing must be enabled in qBittorrent to change priorities.",
+    "torrentExistsOrFailed": "This torrent already exists or could not be added.",
+    "unknown": "An unknown error occurred",
+    "quiKeyRejected": "qui rejected the proxy key. Check the proxy URL.",
+    "quiKeyMissing": "This qui server has no proxy key. Edit it and paste the proxy URL again."
   }
 }

@@ -28,6 +28,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           'Added recent searches and a clear button to the torrent list search',
           'Added pinning search plugins by tapping their icon to keep favorites at the front',
           'Added theme presets to Settings → Theme',
+		  'Merhaba Türk arkadaşlarım (Turkish language support)',
         ],
       },
       {

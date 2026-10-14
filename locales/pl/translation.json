@@ -466,7 +466,10 @@
         "addedTime": ""
       },
       "searchAddOpensDialogue": "Przycisk + w wyszukiwaniu otwiera okno",
-      "searchAddOpensDialogueHint": "Dotknięcie + przy wyniku wyszukiwania otwiera okno dodawania torrenta zamiast dodawać od razu."
+      "searchAddOpensDialogueHint": "Dotknięcie + przy wyniku wyszukiwania otwiera okno dodawania torrenta zamiast dodawać od razu.",
+      "defaultColors": "Domyślne kolory",
+      "defaultCategoryColor": "Domyślny kolor kategorii",
+      "defaultTagColor": "Domyślny kolor tagu"
     },
     "transfer": {
       "title": "Transfer",
@@ -938,7 +941,27 @@
     "debugDefaultPort": "domyślny (80/443)",
     "debugCustomHeaders": "Własne nagłówki",
     "debugCustomHeadersValue": "{{names}} (wartości ukryte)",
-    "debugCustomHeadersNone": "Brak"
+    "debugCustomHeadersNone": "Brak",
+    "debugInfo": "INFORMACJE DIAGNOSTYCZNE",
+    "copyDebugInfo": "Kopiuj informacje diagnostyczne do schowka",
+    "debugConfigOk": "Konfiguracja wygląda dobrze!",
+    "warnPortInHost": "Wykryto port „:{{port}}” w hoście. Przenieś go do pola Port.",
+    "warnPathInHost": "Wykryto ścieżkę „/{{path}}” w hoście.",
+    "warnProtocolRemoved": "Usunięto „{{protocol}}”. Zamiast tego użyj przełącznika HTTPS.",
+    "warnLocalhost": "Localhost nie działa na urządzeniu mobilnym. Użyj sieciowego adresu IP serwera.",
+    "warnDdnsNoPort": "Wykryto DDNS bez portu. Większość wymaga portu 8080, chyba że używasz odwrotnego proxy.",
+    "warnIpNoPort": "Adres IP bez portu. Zwykle wymaga portu 8080.",
+    "warnHttpsLocalIp": "HTTPS na lokalnym IP może nie działać bez ważnego certyfikatu.",
+    "warnCredentialsRequired": "Wymagane są nazwa użytkownika i hasło (lub wybierz inną metodę uwierzytelniania).",
+    "warnApiKeyRequired": "Wymagany jest klucz API.",
+    "warnQuiUrlRequired": "Wymagany jest prawidłowy adres URL proxy qui (http(s)://host[:port]/proxy/<key>).",
+    "hostTooltipText": "Wpisz adres serwera bez http:// ani https://",
+    "tooltipExamples": "Przykłady:",
+    "portTooltipText": "Podaj numer portu, jeśli serwer używa niestandardowego portu.",
+    "portTooltipLeaveBlank": "Pozostaw puste, jeśli używasz:",
+    "portTooltipDomain": "Nazwy domeny (example.com)",
+    "portTooltipReverseProxy": "Odwrotnego proxy",
+    "portTooltipCommon": "Typowy port qBittorrent: 8080"
   },
   "torrentDetail": {
     "notFound": "Nie znaleziono torrenta",
@@ -1372,6 +1395,21 @@
     "failedToCopyLog": "Nie udało się skopiować dziennika",
     "failedToLoadServer": "Nie udało się wczytać serwera",
     "crashTitle": "Coś poszło nie tak",
-    "crashMessage": "qRemote napotkał nieoczekiwany błąd. Twoje serwery i ustawienia są bezpieczne."
+    "crashMessage": "qRemote napotkał nieoczekiwany błąd. Twoje serwery i ustawienia są bezpieczne.",
+    "authFailed": "Uwierzytelnianie nie powiodło się. Sprawdź dane logowania.",
+    "authFailedUsernamePassword": "Uwierzytelnianie nie powiodło się. Sprawdź nazwę użytkownika i hasło.",
+    "connectionFailedAddress": "Połączenie nie powiodło się. Sprawdź adres serwera i połączenie sieciowe.",
+    "failedToConnectServer": "Nie udało się połączyć z serwerem. Sprawdź ustawienia.",
+    "connectionTimeout": "Przekroczono limit czasu połączenia. Sprawdź połączenie z serwerem.",
+    "certificateRejected": "Certyfikat odrzucony. Włącz „{{setting}}” dla tego serwera, jeśli mu ufasz.",
+    "noServerConfigured": "Brak skonfigurowanego serwera",
+    "rateLimited": "Serwer ograniczył liczbę żądań.",
+    "rateLimitedRetry": "Serwer ograniczył liczbę żądań. Spróbuj ponownie za {{seconds}} s.",
+    "endpointNotFound": "Nie znaleziono punktu końcowego: {{url}}. Sprawdź wersję qBittorrent i zgodność API.",
+    "queueingDisabled": "Aby zmieniać priorytety, kolejkowanie torrentów musi być włączone w qBittorrent.",
+    "torrentExistsOrFailed": "Ten torrent już istnieje lub nie można go dodać.",
+    "unknown": "Wystąpił nieznany błąd",
+    "quiKeyRejected": "qui odrzucił klucz proxy. Sprawdź adres URL proxy.",
+    "quiKeyMissing": "Ten serwer qui nie ma klucza proxy. Edytuj go i ponownie wklej adres URL proxy."
   }
 }
