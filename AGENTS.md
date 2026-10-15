@@ -470,6 +470,9 @@ All PascalCase function components taking a `…Props` interface.
   (#267 — one list row for a `SearchResultGroup`: a group of one is the plain
   `SearchResultRow`, a group of 2+ is its primary plus an "N sources" toggle and
   compact per-source add/cart rows in the card's `footer`), `FilterChip`,
+  `SwipeActionsPanel` (the torrents list's left/right swipe buttons — rounded
+  pills that grow from zero width with `progress`, side and actions passed in;
+  the host `Swipeable` must set `useNativeAnimations={false}`),
   `EmptyState`, `SkeletonLoader` (+ `SkeletonTorrentCard`, `SkeletonTorrentDetail` — the latter covers the
   detail screen while a dead session reconnects), `PieceMap`,
   `ServerIconBadge` (per-server tinted
