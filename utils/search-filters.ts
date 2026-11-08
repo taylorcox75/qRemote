@@ -3,14 +3,13 @@
  * server-side filtering beyond plugin/category, so these run on whatever the
  * job has returned so far. Pure — no React, no storage.
  *
- * The name / seeders / size filters mirror the qBittorrent WebUI's Search tab
- * (`SearchResultsTable.getFilteredAndSortedRows` + `containsAllTerms` in
- * qBittorrent's `src/webui/www/private/`), so a filter behaves the same here
- * as it does on the desktop/WebUI client. Deliberate differences are called
- * out where they occur.
+ * The free-text / seeders / size filters mirror the qBittorrent WebUI's Search
+ * tab. The submitted search's names-only scope also accepts close spellings,
+ * so a typo does not hide the results found by the broader retry.
  */
 import { SearchResult } from '@/types/api';
 import { getVideoQualityLabel, getVideoQualityRank } from '@/utils/video-quality';
+import { matchesTitleApproximately } from '@/utils/search-relevance';
 
 /** Size units offered by the filter UI, smallest to largest (IEC, 1024-based). */
 export const SEARCH_SIZE_UNITS = ['B', 'KiB', 'MiB', 'GiB', 'TiB'] as const;
@@ -42,8 +41,8 @@ export interface SearchFilterOptions {
    */
   hideZeroSeeders?: boolean;
   /**
-   * "Search in: names only" — the result name must contain every term of this
-   * text. Pass the *submitted* search pattern (not the live input box) while
+   * "Search in: names only" — the result name must approximately match every
+   * term of this text. Pass the *submitted* search pattern (not the live input box) while
    * that mode is active, and leave it undefined for "everywhere".
    */
   nameTerms?: string;
@@ -196,9 +195,22 @@ export function filterSearchResults(
     return results;
   }
 
-  return results.filter((r) => {
+  const nameMatches = nameTerms.length > 0
+    ? results.filter((r) => nameTerms.every((term) =>
+      term.startsWith('+') || term.startsWith('-')
+        ? matchesAllTerms(r.fileName, [term])
+        : matchesTitleApproximately(r.fileName ?? '', term),
+    ))
+    : results;
+  // A misspelling should not turn a nonempty result set into a blank screen.
+  // Keep the closest available rows for relevance sorting if no name matches.
+  const hasExplicitTermOperator = nameTerms.some((term) => term.startsWith('+') || term.startsWith('-'));
+  const candidates = nameTerms.length > 0 && nameMatches.length === 0 && !hasExplicitTermOperator
+    ? results
+    : nameMatches;
+
+  return candidates.filter((r) => {
     if (opts.hideZeroSeeders && r.nbSeeders === 0) return false;
-    if (nameTerms.length > 0 && !matchesAllTerms(r.fileName, nameTerms)) return false;
     if (filterTerms.length > 0 && !matchesAllTerms(r.fileName, filterTerms)) return false;
     if (qualities.length > 0) {
       const label = getVideoQualityLabel(getVideoQualityRank(r.fileName));

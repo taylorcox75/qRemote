@@ -610,6 +610,7 @@
       "updateStartedToast": "Mise à jour du plugin démarrée",
       "stop": "Stop",
       "foundCount": "{{count}} résultat(s)",
+      "sortRelevance": "Pertinence",
       "sortSeeders": "Seeders",
       "sortLeechers": "Leechers",
       "sortSize": "Size",

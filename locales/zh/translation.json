@@ -610,6 +610,7 @@
       "updateStartedToast": "插件更新已开始",
       "stop": "Stop",
       "foundCount": "{{count}} 个结果",
+      "sortRelevance": "相关性",
       "sortSeeders": "Seeders",
       "sortLeechers": "Leechers",
       "sortSize": "Size",
