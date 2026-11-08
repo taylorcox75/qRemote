@@ -984,3 +984,10 @@ Keep entries factual and current; if you find one that's no longer true
   `isAggregatorResult`, not the screen-level `isAggregatedSource` flag: that one
   ("all results share one siteUrl") is only a label heuristic and also fires for
   any single-plugin search.
+- **axios JSON-parses plain-text bodies that look like numbers.** qBittorrent
+  drops a zero patch from its WebAPI version (2.6.0 → `"2.6"`, master's 2.17.0
+  → `"2.17"`), and axios's default `transformResponse` turns that into the
+  number `2.6` — `"2.10"` even becomes `2.1`. A string method on it then throws
+  Hermes's bare "undefined is not a function"; in `ApiVersionProvider`'s render
+  that crashed the app on every launch via auto-connect (#308). Fetch plain-text
+  endpoints with `apiClient.get(url, params, signal, { responseType: 'text' })`.
