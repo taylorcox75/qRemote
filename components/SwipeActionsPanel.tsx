@@ -1,16 +1,20 @@
 /**
  * SwipeActionsPanel — the action buttons revealed behind a swiped row
- * (RNGH `Swipeable`'s `renderLeftActions` / `renderRightActions`).
+ * (RNGH `ReanimatedSwipeable`'s `renderLeftActions` / `renderRightActions`).
  *
  * Each action grows from zero width to its full width as the row opens
  * (`progress`: 0 = closed, 1 = fully open), with its icon and label scaling up
- * alongside. Height never changes — it always matches the row. Width can't run
- * on the native driver, so the host `Swipeable` must set
- * `useNativeAnimations={false}`.
+ * alongside. Height never changes — it always matches the row.
  */
 import React from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { spacing } from '@/constants/spacing';
@@ -27,7 +31,7 @@ export interface SwipeAction {
 }
 
 interface SwipeActionsPanelProps {
-  progress: Animated.AnimatedInterpolation<number>;
+  progress: SharedValue<number>;
   /** Which edge of the row the panel is revealed from. */
   side: 'left' | 'right';
   /** Corner radius of each action — pass the row's own radius. */
@@ -38,14 +42,17 @@ interface SwipeActionsPanelProps {
 export function SwipeActionsPanel({ progress, side, radius, actions }: SwipeActionsPanelProps) {
   const { colors } = useTheme();
 
-  const grow = (to: number) =>
-    progress.interpolate({ inputRange: [0, 1], outputRange: [0, to], extrapolate: 'clamp' });
-  const width = grow(SWIPE_ACTION_WIDTH);
-  const gap = grow(spacing.xs);
-  const scale = grow(1);
-
+  const slotStyle = useAnimatedStyle(() => ({
+    width: interpolate(progress.value, [0, 1], [0, SWIPE_ACTION_WIDTH], Extrapolation.CLAMP),
+  }));
   // The gap sits on the side of each action that faces the row.
-  const gapStyle = side === 'right' ? { marginLeft: gap } : { marginRight: gap };
+  const gapStyle = useAnimatedStyle(() => {
+    const gap = interpolate(progress.value, [0, 1], [0, spacing.xs], Extrapolation.CLAMP);
+    return side === 'right' ? { marginLeft: gap } : { marginRight: gap };
+  });
+  const scaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP) }],
+  }));
 
   return (
     // Fixed width: Swipeable measures this block to know how far the row
@@ -58,7 +65,7 @@ export function SwipeActionsPanel({ progress, side, radius, actions }: SwipeActi
       ]}
     >
       {actions.map((action) => (
-        <Animated.View key={action.key} style={[styles.slot, { width }]}>
+        <Animated.View key={action.key} style={[styles.slot, slotStyle]}>
           <Animated.View style={[styles.pill, gapStyle, { borderRadius: radius }]}>
             <RectButton
               style={[styles.button, { backgroundColor: action.color }]}
@@ -66,7 +73,7 @@ export function SwipeActionsPanel({ progress, side, radius, actions }: SwipeActi
             >
               {/* Laid out at full size so the label never truncates mid-swipe;
                   the scale alone makes it fit. */}
-              <Animated.View style={[styles.content, { transform: [{ scale }] }]}>
+              <Animated.View style={[styles.content, scaleStyle]}>
                 <Ionicons name={action.icon} size={22} color={colors.onAccent} />
                 <Text style={[styles.label, { color: colors.onAccent }]} numberOfLines={1}>
                   {action.label}

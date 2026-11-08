@@ -7,7 +7,7 @@ import React, {
   useRef,
   ReactNode,
 } from 'react';
-import { AppState, AppStateStatus, InteractionManager } from 'react-native';
+import { AppState, AppStateStatus } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { GlobalTransferInfo } from '@/types/api';
 import { transferApi } from '@/services/api/transfer';
@@ -15,6 +15,7 @@ import { applicationApi } from '@/services/api/application';
 import { useServer } from './ServerContext';
 import { getErrorMessage } from '@/utils/error';
 import { LONG_BACKGROUND_THRESHOLD_MS } from '@/constants/timing';
+import { runAfterInteractions } from '@/utils/afterInteractions';
 
 interface TransferContextType {
   transferInfo: GlobalTransferInfo | null;
@@ -125,7 +126,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
           setMutationError(null);
 
           await new Promise<void>((resolve) => {
-            InteractionManager.runAfterInteractions(() => {
+            runAfterInteractions(() => {
               queryClient.invalidateQueries({ queryKey: ['transfer'] }).finally(() => resolve());
             });
           });

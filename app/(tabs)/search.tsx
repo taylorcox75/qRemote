@@ -24,6 +24,8 @@ import {
   Animated,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  type ScrollViewInstance,
+  type TextInputInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
@@ -113,7 +115,7 @@ export default function SearchScreen() {
   const { showToast } = useToast();
   const cart = useSearchCart();
   const [cartModalVisible, setCartModalVisible] = useState(false);
-  const queryInputRef = useRef<TextInput>(null);
+  const queryInputRef = useRef<TextInputInstance>(null);
   const activeTagPollsRef = useRef(new Set<AbortController>());
 
   // Scroll-to-collapse header, matching the Torrents tab's pattern: the
@@ -239,7 +241,7 @@ export default function SearchScreen() {
   // Mirrors pinnedPlugins so back-to-back taps toggle from the latest list, not
   // from whatever the callback closed over before the re-render.
   const pinnedPluginsRef = useRef<string[]>([]);
-  const pluginRowRef = useRef<ScrollView>(null);
+  const pluginRowRef = useRef<ScrollViewInstance>(null);
 
   // pubDate is a qBit 5.0+ (WebAPI >= 2.11.0) field — hide the option on older
   // servers rather than offering a sort that silently does nothing.

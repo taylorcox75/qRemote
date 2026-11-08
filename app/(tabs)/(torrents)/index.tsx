@@ -20,10 +20,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   LayoutAnimation,
-  InteractionManager,
   GestureResponderEvent,
 } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,6 +81,7 @@ import {
   removeQuery,
   togglePin,
 } from '@/utils/search-history';
+import { runAfterInteractions } from '@/utils/afterInteractions';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -197,7 +200,7 @@ export default function TorrentsScreen() {
     title: string;
     message: string;
     hashes: string[];
-    swipeableRef?: Swipeable | null;
+    swipeableRef?: SwipeableMethods | null;
   } | null>(null);
   const {
     actionMenuItems,
@@ -227,7 +230,7 @@ export default function TorrentsScreen() {
   const [headerHeight, setHeaderHeight] = useState(136);
 
   // Swipeable refs for closing open rows
-  const openSwipeableRef = useRef<Swipeable | null>(null);
+  const openSwipeableRef = useRef<SwipeableMethods | null>(null);
   const swipeHapticFired = useRef(false);
 
   // Track last known default filter so we only sync when user changes it in Settings
@@ -512,7 +515,7 @@ export default function TorrentsScreen() {
 
       if (variant === 'full') {
         router.setParams({ magnet: undefined });
-        InteractionManager.runAfterInteractions(() => {
+        runAfterInteractions(() => {
           router.push({
             pathname: '/torrents/add',
             params: { magnet: magnetLink },
@@ -596,7 +599,7 @@ export default function TorrentsScreen() {
           torrentFileUri: undefined,
           torrentFileName: undefined,
         });
-        InteractionManager.runAfterInteractions(() => {
+        runAfterInteractions(() => {
           router.push({
             pathname: '/torrents/add',
             params: { torrentFileUri: fileUri, torrentFileName: fileName },
@@ -1062,7 +1065,7 @@ export default function TorrentsScreen() {
 
   // Swipe action handlers (call APIs directly, parameterized by torrent)
   const handleSwipePauseResume = useCallback(
-    async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    async (torrent: TorrentInfo, swipeableRef: SwipeableMethods | null) => {
       haptics.medium();
       const isPaused =
         torrent.state === 'pausedDL' ||
@@ -1115,7 +1118,7 @@ export default function TorrentsScreen() {
   );
 
   const handleSwipeDelete = useCallback(
-    (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    (torrent: TorrentInfo, swipeableRef: SwipeableMethods | null) => {
       haptics.warning();
       setListDeleteConfirm({
         title: t('common.delete'),
@@ -1128,7 +1131,7 @@ export default function TorrentsScreen() {
   );
 
   const handleSwipeForceStart = useCallback(
-    async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    async (torrent: TorrentInfo, swipeableRef: SwipeableMethods | null) => {
       haptics.medium();
       try {
         await torrentsApi.setForceStart([torrent.hash], true);
@@ -1914,12 +1917,12 @@ export default function TorrentsScreen() {
                 item.state === 'stoppedDL' ||
                 item.state === 'stoppedUP';
 
-              let swipeRef: Swipeable | null = null;
+              let swipeRef: SwipeableMethods | null = null;
 
               const swipeRadius =
                 cardViewMode === 'compact' ? borderRadius.medium : borderRadius.large;
 
-              const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => (
+              const renderRightActions = (progress: SharedValue<number>) => (
                 <SwipeActionsPanel
                   progress={progress}
                   side="right"
@@ -1943,7 +1946,7 @@ export default function TorrentsScreen() {
                 />
               );
 
-              const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>) => (
+              const renderLeftActions = (progress: SharedValue<number>) => (
                 <SwipeActionsPanel
                   progress={progress}
                   side="left"
@@ -1961,7 +1964,7 @@ export default function TorrentsScreen() {
               );
 
               return (
-                <Swipeable
+                <ReanimatedSwipeable
                   ref={(ref) => {
                     swipeRef = ref;
                   }}
@@ -1970,7 +1973,6 @@ export default function TorrentsScreen() {
                   leftThreshold={60}
                   overshootRight={false}
                   overshootLeft={false}
-                  useNativeAnimations={false}
                   renderRightActions={renderRightActions}
                   renderLeftActions={renderLeftActions}
                   onSwipeableWillOpen={() => {
@@ -2064,7 +2066,7 @@ export default function TorrentsScreen() {
                       />
                     </View>
                   </View>
-                </Swipeable>
+                </ReanimatedSwipeable>
               );
             }}
             refreshControl={

@@ -34,3 +34,7 @@ jest.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
   NotificationFeedbackType: { Success: 'success', Error: 'error', Warning: 'warning' },
 }));
+
+// Gesture Handler 3 binds to Worklets' UI runtime when it loads, which Jest
+// doesn't have; Worklets' own mock stands in for it.
+jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
