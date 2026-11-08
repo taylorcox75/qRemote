@@ -122,9 +122,7 @@ export function Toast({
     >
       <TouchableOpacity style={styles.content} onPress={hide} activeOpacity={0.9}>
         <Ionicons name={getIcon()} size={24} color={getColor()} />
-        <Text style={[styles.message, { color: colors.text }]} numberOfLines={2}>
-          {message}
-        </Text>
+        <Text style={[styles.message, { color: colors.text }]}>{message}</Text>
         <TouchableOpacity
           onPress={hide}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

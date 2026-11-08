@@ -1,7 +1,15 @@
 import '@/i18n';
 import * as ExpoLinking from 'expo-linking';
 import { ErrorBoundaryProps, Stack, useRootNavigationState, useRouter } from 'expo-router';
-import { Dimensions, Linking, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import {
+  Dimensions,
+  Linking,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  View,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -59,10 +67,12 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const muted = isDark ? '#9E9E9E' : '#6B6B6B';
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: bg,
+    // Scrolls so a long error message can be read in full instead of running
+    // off-screen (#293).
+    <ScrollView
+      style={{ flex: 1, backgroundColor: bg }}
+      contentContainerStyle={{
+        flexGrow: 1,
         alignItems: 'center',
         justifyContent: 'center',
         padding: 24,
@@ -106,7 +116,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
           {t('common.retry', { defaultValue: 'Try Again' })}
         </Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 

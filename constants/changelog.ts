@@ -19,7 +19,7 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.9.0',
+    version: '3.9.01',
     date: '2026-11-08',
     sections: [
       {
@@ -31,7 +31,10 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         title: 'Bugs Fixed',
-        items: ['Fixed a crash right after adding a server on some qBittorrent versions'],
+        items: [
+          'Fixed a crash right after adding a server on some qBittorrent versions',
+          'Long notification and error messages now show in full instead of being cut off',
+        ],
       },
       {
         title: 'Maintenance',
