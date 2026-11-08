@@ -19,6 +19,23 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.8.49',
+    date: '2026-11-08',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'Added a Relevance sort to Search, and quality searches like 1080p now also find other versions',
+          'Added a Default search sort setting to Settings → Appearance',
+        ],
+      },
+      {
+        title: 'Maintenance',
+        items: ['Swipe actions on the torrent list are now rounded pills that grow as you swipe'],
+      },
+    ],
+  },
+  {
     version: '3.8.48',
     date: '2026-10-13',
     sections: [
