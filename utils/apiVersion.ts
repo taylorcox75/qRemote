@@ -80,6 +80,9 @@ export interface ApiFeatures {
 }
 
 export function parseApiVersion(raw: string): ParsedVersion | null {
+  // Defensive: this runs during render (ApiVersionProvider), so a non-string
+  // here must not throw — a number once crashed the app on every launch (#308).
+  if (typeof raw !== 'string') return null;
   const parts = raw.trim().split('.');
   if (parts.length < 2) return null;
   const [major, minor, patch = '0'] = parts;

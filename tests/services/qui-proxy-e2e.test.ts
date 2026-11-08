@@ -62,7 +62,9 @@ beforeAll(async () => {
     }
     const replies: Record<string, string> = {
       '/api/v2/app/version': 'v5.2.2',
-      '/api/v2/app/webapiVersion': '2.14.1',
+      // Two-part on purpose: qBit sends "2.10" for WebAPI 2.10.0, and real
+      // axios used to JSON-parse it into the number 2.1 (#308).
+      '/api/v2/app/webapiVersion': '2.10',
     };
     const body = replies[match[2] ?? ''];
     if (body) res.writeHead(200).end(body);
@@ -107,6 +109,7 @@ it('connects with the key intact in every request path and no login call', async
     `GET /qui/proxy/${KEY}/api/v2/app/version`,
     `GET /qui/proxy/${KEY}/api/v2/app/webapiVersion`,
   ]);
+  expect(apiClient.getApiVersion()).toBe('2.10');
 });
 
 it('passes Test Connection', async () => {
