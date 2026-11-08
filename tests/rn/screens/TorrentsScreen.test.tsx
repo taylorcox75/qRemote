@@ -23,6 +23,13 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+// The real ReanimatedSwipeable needs Reanimated's UI runtime, which Jest
+// doesn't have; these tests never swipe, so render the row as-is.
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,

@@ -1,15 +1,7 @@
 import '@/i18n';
 import * as ExpoLinking from 'expo-linking';
 import { ErrorBoundaryProps, Stack, useRootNavigationState, useRouter } from 'expo-router';
-import {
-  Dimensions,
-  InteractionManager,
-  Linking,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { Dimensions, Linking, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -35,6 +27,7 @@ import {
 import { extractMagnetLink } from '@/utils/magnet';
 import { extractTorrentFile, IncomingTorrentFile } from '@/utils/torrent-file';
 import { persistIncomingTorrentFile } from '@/services/incoming-file';
+import { runAfterInteractions } from '@/utils/afterInteractions';
 
 const { width } = Dimensions.get('window');
 
@@ -44,7 +37,6 @@ const { width } = Dimensions.get('window');
 // full-screen route with no bottom tab bar. Settings and torrent detail
 // live under (tabs) so the tab bar stays visible there.
 export const unstable_settings = {
-  initialRouteName: '(tabs)',
   anchor: '(tabs)',
 };
 
@@ -146,7 +138,7 @@ function StackNavigator() {
 
   useEffect(() => {
     const navigateToMagnet = (magnetLink: string) => {
-      InteractionManager.runAfterInteractions(() => {
+      runAfterInteractions(() => {
         router.replace({
           pathname: '/',
           params: { magnet: magnetLink },
@@ -155,7 +147,7 @@ function StackNavigator() {
     };
 
     const navigateToTorrentFile = (torrentFile: IncomingTorrentFile) => {
-      InteractionManager.runAfterInteractions(() => {
+      runAfterInteractions(() => {
         router.replace({
           pathname: '/',
           params: { torrentFileUri: torrentFile.uri, torrentFileName: torrentFile.name },

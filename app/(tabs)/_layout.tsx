@@ -52,7 +52,11 @@ export default function TabsLayout() {
           options={{
             title: t('screens.torrents.tabTitle'),
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'list' : 'list-outline'} size={24} color={color} />
+              <Ionicons
+                name={focused ? 'list' : 'list-outline'}
+                size={24}
+                color={color as string}
+              />
             ),
           }}
         />
@@ -64,7 +68,7 @@ export default function TabsLayout() {
               <Ionicons
                 name={focused ? 'speedometer' : 'speedometer-outline'}
                 size={24}
-                color={color}
+                color={color as string}
               />
             ),
           }}
@@ -74,7 +78,11 @@ export default function TabsLayout() {
           options={{
             title: t('screens.search.tabTitle'),
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={color} />
+              <Ionicons
+                name={focused ? 'search' : 'search-outline'}
+                size={24}
+                color={color as string}
+              />
             ),
           }}
         />
@@ -83,7 +91,9 @@ export default function TabsLayout() {
           options={{
             title: t('screens.rss.feedsTitle'),
             href: showRssTab ? undefined : null,
-            tabBarIcon: ({ color }) => <Ionicons name="logo-rss" size={24} color={color} />,
+            tabBarIcon: ({ color }) => (
+              <Ionicons name="logo-rss" size={24} color={color as string} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -91,7 +101,11 @@ export default function TabsLayout() {
           options={{
             title: t('screens.settings.title'),
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'settings' : 'settings-outline'} size={24} color={color} />
+              <Ionicons
+                name={focused ? 'settings' : 'settings-outline'}
+                size={24}
+                color={color as string}
+              />
             ),
           }}
         />

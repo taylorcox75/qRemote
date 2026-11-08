@@ -13,7 +13,7 @@ import React, {
   useRef,
   ReactNode,
 } from 'react';
-import { AppState, AppStateStatus, InteractionManager } from 'react-native';
+import { AppState, AppStateStatus } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TorrentInfo, MainData, ServerState, Category } from '@/types/api';
 import { syncApi } from '@/services/api/sync';
@@ -21,6 +21,7 @@ import { useServer } from './ServerContext';
 import { getErrorMessage } from '@/utils/error';
 import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
 import { LONG_BACKGROUND_THRESHOLD_MS } from '@/constants/timing';
+import { runAfterInteractions } from '@/utils/afterInteractions';
 
 interface TorrentContextType {
   torrents: TorrentInfo[];
@@ -271,7 +272,7 @@ export function TorrentProvider({ children }: { children: ReactNode }) {
           syncVersionRef.current++;
           ridRef.current = 0;
           await new Promise<void>((resolve) => {
-            InteractionManager.runAfterInteractions(() => {
+            runAfterInteractions(() => {
               queryClient.invalidateQueries({ queryKey: ['torrents'] }).finally(() => resolve());
             });
           });

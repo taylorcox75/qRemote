@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AppState, AppStateStatus, InteractionManager } from 'react-native';
+import { AppState, AppStateStatus } from 'react-native';
 import { searchApi } from '@/services/api/search';
 import {
   SearchJobStatus,
@@ -25,6 +25,7 @@ import { getErrorMessage } from '@/utils/error';
 import { useServer } from '@/context/ServerContext';
 import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
 import { withoutQualityPattern } from '@/utils/search-relevance';
+import { runAfterInteractions } from '@/utils/afterInteractions';
 
 // Large bounded cap: the old 200 silently truncated aggregator searches
 // (Prowlarr fanning out across many indexers), hiding whole indexers whose
@@ -87,7 +88,7 @@ export function useSearchJob(): UseSearchJobResult {
   const searchGenerationRef = useRef(0);
   const stopRequestedRef = useRef(false);
   const completedResultsRef = useRef<SearchResult[]>([]);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState as AppStateStatus);
 
   const queryKey = jobId !== null ? ['search', 'job', jobId] : ['search', 'job', 'idle'];
 
@@ -290,7 +291,7 @@ export function useSearchJob(): UseSearchJobResult {
       appStateRef.current = next;
       setIsAppActive(next === 'active');
       if (next === 'active' && activeJobRef.current !== null) {
-        InteractionManager.runAfterInteractions(() => {
+        runAfterInteractions(() => {
           queryClient.invalidateQueries({
             queryKey: ['search', 'job', activeJobRef.current],
           });

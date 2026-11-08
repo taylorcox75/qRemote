@@ -1,6 +1,6 @@
 # AGENTS.md
 
-qRemote is an iOS-only React Native (Expo SDK 57) app for remotely controlling
+qRemote is an iOS-only React Native (Expo SDK 58) app for remotely controlling
 qBittorrent servers over the WebUI API v2.
 
 Read this file top to bottom once. The **File Index** is a complete map — trust
@@ -243,10 +243,12 @@ Consequences:
   block, which prebuild applies when generating the project. Hand-edits under
   `ios/` are wiped by the next prebuild.
 - **When `app.config.js` can't express it, write a config plugin.** There's one
-  precedent: `plugins/withNativeTorrentFileCopy.js`, which patches `AppDelegate`
-  so an incoming `.torrent` is copied natively inside the open-URL callback —
-  while the security-scoped access is still valid — instead of racing the async
-  JS Linking bridge on cold launch.
+  precedent: `plugins/withNativeTorrentFileCopy.js`, which patches the generated
+  `SceneDelegate.swift` (SDK 58's UIScene life cycle — URLs no longer reach
+  `AppDelegate`) so an incoming `.torrent` is copied natively inside the
+  scene's URL callbacks — while the security-scoped access is still valid —
+  instead of racing the async JS Linking bridge. It throws at prebuild if the
+  template's extension point moves, so a template change fails loudly.
 - **When you need actual new native code (not a patch to a generated file),
   write a local Expo module under `modules/`.** Precedent:
   `modules/insecure-cert-allowlist` — autolinked by Expo from `modules/*` with
@@ -471,8 +473,9 @@ All PascalCase function components taking a `…Props` interface.
   `SearchResultRow`, a group of 2+ is its primary plus an "N sources" toggle and
   compact per-source add/cart rows in the card's `footer`), `FilterChip`,
   `SwipeActionsPanel` (the torrents list's left/right swipe buttons — rounded
-  pills that grow from zero width with `progress`, side and actions passed in;
-  the host `Swipeable` must set `useNativeAnimations={false}`),
+  pills that grow from zero width with Reanimated `progress`, side and actions
+  passed in; hosted by RNGH 3's `ReanimatedSwipeable` — the legacy `Swipeable`
+  was removed),
   `EmptyState`, `SkeletonLoader` (+ `SkeletonTorrentCard`, `SkeletonTorrentDetail` — the latter covers the
   detail screen while a dead session reconnects), `PieceMap`,
   `ServerIconBadge` (per-server tinted
@@ -671,7 +674,7 @@ for the Search tab's `+` behavior — #217) · `search-cart.ts`
 endpoint applies one `tags` value per request) · `server-export.ts` (strips
 `password`/`basicAuthPassword`/`apiKey`/`quiProxyKey` on export, forces them empty on import) ·
 `save-paths.ts` (`getKnownSavePaths`, derived from live data — no API call) ·
-`version.ts` (`APP_VERSION`) · `trackers.ts` (`isRealTracker` — filters
+`version.ts` (`APP_VERSION`) · `afterInteractions.ts` (`runAfterInteractions` — stand-in for RN's removed `InteractionManager`, via `requestIdleCallback`) · `trackers.ts` (`isRealTracker` — filters
 qBittorrent's DHT/PeX/LSD pseudo-tracker entries out of `torrents/trackers`;
 `getPseudoTrackerStates` reads each channel's on/off/working state from those
 same entries — #234, #236) · `color.ts` (`withAlpha` —
@@ -1007,3 +1010,16 @@ Keep entries factual and current; if you find one that's no longer true
   Hermes's bare "undefined is not a function"; in `ApiVersionProvider`'s render
   that crashed the app on every launch via auto-connect (#308). Fetch plain-text
   endpoints with `apiClient.get(url, params, signal, { responseType: 'text' })`.
+- **`pod install` crashes with `Unicode Normalization not appropriate for
+  ASCII-8BIT`** when the shell has no UTF-8 locale (non-interactive shells,
+  agents). It's CocoaPods' error reporter failing, not the Podfile. Run it with
+  `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`.
+- **Reanimated 4 / Worklets / Gesture Handler 3 under Jest** need three pieces,
+  all in place: the `rn` project's `resolver: 'react-native-reanimated/jest/resolver'`,
+  `setupFiles: ['react-native-gesture-handler/jestSetup']`, and the Worklets
+  mock in `tests/rn/setup.ts`. Missing any one fails a suite _after_ its tests
+  pass ("`getUIRuntimeHolder` is not supported on web", "installUIRuntimeBindings
+  is not a function"), which reads like a leak, not a config gap.
+- **A Worklets "Mismatch between C++ code version and JavaScript code version"
+  red screen** means the installed dev client predates a dependency bump. It is
+  not a JS bug: re-run `npm run xcode` (clean prebuild) and reinstall.

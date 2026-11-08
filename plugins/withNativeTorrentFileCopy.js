@@ -1,82 +1,71 @@
-const { withAppDelegate } = require('expo/config-plugins');
+const fs = require('fs');
+const path = require('path');
+const { withDangerousMod } = require('expo/config-plugins');
 
-// Scene-lifecycle builds (see app.config.js's expo-build-properties
-// enableSceneSupport, added for Xcode 27) no longer create the UIWindow or
-// call factory.startReactNative from here — ExpoReactNativeFactoryProvider
-// conformance lets Expo's own scene delegate reach back into this AppDelegate
-// and drive startup itself, from its own UIScene connection options rather
-// than this method's launchOptions. That means this method can no longer
-// GUARANTEE the resolved URL reaches React's initial props the way it could
-// when it called startReactNative directly — see the doc comment on
-// withNativeTorrentFileCopy below for what that means in practice.
-const OLD_LAUNCH_METHOD = `  public override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-  ) -> Bool {
-    let delegate = ReactNativeDelegate()
-    let factory = ExpoReactNativeFactory(delegate: delegate)
-    delegate.dependencyProvider = RCTAppDependencyProvider()
+// Expo SDK 58's template adopts the UIScene life cycle (required by the iOS 27
+// SDK): AppDelegate no longer has an "open url" method, and URLs arrive at the
+// generated SceneDelegate (a subclass of Expo's ExpoAppSceneDelegate) instead —
+// a cold start through `scene(_:willConnectTo:options:)`'s connection options,
+// a warm one through `scene(_:openURLContexts:)`. This is the hook it leaves.
+const EXTENSION_POINT = '  // Extension point for config plugins.';
 
-    reactNativeDelegate = delegate
-    reactNativeFactory = factory
+const SCENE_DELEGATE_PATCH = `  // iOS hands "Open In Place" documents (Files app tap-to-open / long-press ->
+  // Open In) to the scene as security-scoped file:// URLs whose access is only
+  // guaranteed valid during the callback. Each override below copies the file
+  // into the app's caches synchronously, before returning, and gives JS the
+  // copy instead — the async JS Linking handler (app/_layout.tsx) would
+  // otherwise race that access lapsing. Non-file URLs (magnet:) take Expo's
+  // default path untouched.
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }`;
-
-// A cold launch (app not running) delivers the opening URL through
-// launchOptions[.url] here rather than through the "open url" delegate method
-// below — that method is only called when the app is already running. We
-// still copy it eagerly here (cheap, harmless) so the security-scoped access
-// window is as early as possible, but under scene lifecycle this method no
-// longer calls factory.startReactNative itself, so there is no longer a
-// direct path from here to feed the copied URL into React's initial launch
-// options. Verify cold-launch "Open In" from Files still works correctly —
-// if Expo's scene delegate reads its own connection options independently of
-// this method's (mutated) launchOptions, this early copy may be a no-op for
-// that path and a scene-delegate-level fix would be needed instead.
-const NEW_LAUNCH_METHOD = `  public override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-  ) -> Bool {
-    let delegate = ReactNativeDelegate()
-    let factory = ExpoReactNativeFactory(delegate: delegate)
-    delegate.dependencyProvider = RCTAppDependencyProvider()
-
-    reactNativeDelegate = delegate
-    reactNativeFactory = factory
-
-    if let originalURL = launchOptions?[UIApplication.LaunchOptionsKey.url] as? URL {
-      _ = AppDelegate.copySecurityScopedFileIfNeeded(originalURL)
+  // Cold start. Mirrors ExpoAppSceneDelegate's own implementation, except the
+  // launch options that Linking.getInitialURL() reads carry the copied URL.
+  // ExpoAppSceneDelegate also forwards the URL to app-delegate subscribers;
+  // React Native ignores that path under the scene life cycle, and this app
+  // registers no other subscriber, so it is skipped here.
+  override func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    guard let fileURL = connectionOptions.urlContexts.first?.url, fileURL.isFileURL,
+      let windowScene = scene as? UIWindowScene,
+      let provider = UIApplication.shared.delegate as? ExpoReactNativeFactoryProvider,
+      let factory = provider.reactNativeFactory else {
+      super.scene(scene, willConnectTo: session, options: connectionOptions)
+      return
     }
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }`;
-
-const OLD_METHOD = `  // Linking API
-  public override func application(
-    _ app: UIApplication,
-    open url: URL,
-    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-  ) -> Bool {
-    return super.application(app, open: url, options: options) || RCTLinkingManager.application(app, open: url, options: options)
-  }`;
-
-const NEW_METHOD = `  // Linking API
-  public override func application(
-    _ app: UIApplication,
-    open url: URL,
-    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-  ) -> Bool {
-    let resolvedURL = AppDelegate.copySecurityScopedFileIfNeeded(url)
-    return super.application(app, open: resolvedURL, options: options) || RCTLinkingManager.application(app, open: resolvedURL, options: options)
+    let resolvedURL = SceneDelegate.copySecurityScopedFileIfNeeded(fileURL)
+    let window = UIWindow(windowScene: windowScene)
+    self.window = window
+    provider.window = window
+    let urlKey = UIApplication.LaunchOptionsKey(rawValue: "UIApplicationLaunchOptionsURLKey")
+    factory.startReactNative(
+      withModuleName: provider.reactNativeFactoryModuleName,
+      in: window,
+      initialProperties: initialProperties,
+      launchOptions: [urlKey: resolvedURL]
+    )
   }
 
-  // iOS hands "Open In Place" documents (Files app tap-to-open / long-press ->
-  // Open In) to this callback as security-scoped file:// URLs whose access is
-  // only guaranteed valid for the lifetime of this call. Copying the file here
-  // — synchronously, before returning — avoids a race where that access lapses
-  // before the async JS Linking handler (app/_layout.tsx) gets a chance to read
-  // it. JS then only ever sees a plain, already-copied file it fully owns.
+  // App already running. Posts the same notification RCTLinkingManager's
+  // scene handler does, carrying the copied URL.
+  override func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+    let fileContexts = URLContexts.filter { $0.url.isFileURL }
+    for context in fileContexts {
+      let resolvedURL = SceneDelegate.copySecurityScopedFileIfNeeded(context.url)
+      NotificationCenter.default.post(
+        name: NSNotification.Name("RCTOpenURLNotification"),
+        object: nil,
+        userInfo: ["url": resolvedURL.absoluteString]
+      )
+    }
+    let otherContexts = URLContexts.subtracting(fileContexts)
+    if !otherContexts.isEmpty {
+      super.scene(scene, openURLContexts: otherContexts)
+    }
+  }
+
   private static func copySecurityScopedFileIfNeeded(_ url: URL) -> URL {
     guard url.isFileURL else { return url }
 
@@ -106,53 +95,49 @@ const NEW_METHOD = `  // Linking API
   }`;
 
 /**
- * Patches the generated AppDelegate.swift so incoming "Open In Place" file
+ * Patches the generated SceneDelegate.swift so incoming "Open In Place" file
  * handoffs (see LSSupportsOpeningDocumentsInPlace in app.config.js) are copied
  * into the app's sandbox natively, before JS ever sees the URL. Without this,
  * reading the security-scoped URL from JS is a race the async Linking bridge
  * usually loses (see services/incoming-file.ts).
  *
- * The "open url" delegate method (app already running) is patched the same
- * way it always was and is unaffected by scene lifecycle. The cold-launch
- * path (app not running) is weaker under scene lifecycle (see
- * app.config.js's expo-build-properties enableSceneSupport, added for Xcode
- * 27): factory.startReactNative used to be called from right here, fed the
- * resolved URL directly; now Expo's own scene delegate drives that call from
- * its own UIScene connection options, so this method copying the file no
- * longer has a direct path to feed the result into React's initial launch
- * options. Verify cold-launch "Open In" from Files still resolves correctly
- * after any Expo/scene-support version bump — if it regresses, the fix likely
- * needs to move to a custom UISceneDelegate rather than this method.
+ * Before Expo SDK 58 this patched AppDelegate.swift's "open url" method; under
+ * the scene life cycle that method is no longer called for URLs.
  *
  * ios/ is regenerated by every `expo prebuild` (npm run xcode), so this must
- * be a config plugin rather than a one-off hand-edit of AppDelegate.swift —
- * a hand-edit would be silently overwritten by the next prebuild.
+ * be a config plugin rather than a one-off hand-edit of SceneDelegate.swift —
+ * a hand-edit would be silently overwritten by the next prebuild. There is no
+ * built-in scene-delegate mod, hence the dangerous mod.
  */
 module.exports = function withNativeTorrentFileCopy(config) {
-  return withAppDelegate(config, (config) => {
-    let contents = config.modResults.contents;
+  return withDangerousMod(config, [
+    'ios',
+    (config) => {
+      const file = path.join(
+        config.modRequest.platformProjectRoot,
+        config.modRequest.projectName,
+        'SceneDelegate.swift',
+      );
+      let contents = fs.readFileSync(file, 'utf8');
 
-    if (contents.includes('copySecurityScopedFileIfNeeded')) {
-      // Already patched (e.g. re-running prebuild) — leave it alone.
+      if (contents.includes('copySecurityScopedFileIfNeeded')) {
+        // Already patched (e.g. re-running prebuild) — leave it alone.
+        return config;
+      }
+      if (!contents.includes(EXTENSION_POINT)) {
+        throw new Error(
+          'withNativeTorrentFileCopy: expected SceneDelegate.swift extension point not found. ' +
+            'The Expo template likely changed — update plugins/withNativeTorrentFileCopy.js to match.',
+        );
+      }
+
+      contents = contents.replace(EXTENSION_POINT, SCENE_DELEGATE_PATCH);
+      // startReactNative lives on React's RCTReactNativeFactory.
+      if (!/^import React$/m.test(contents)) {
+        contents = `import React\n${contents}`;
+      }
+      fs.writeFileSync(file, contents);
       return config;
-    }
-
-    if (!contents.includes(OLD_LAUNCH_METHOD)) {
-      throw new Error(
-        'withNativeTorrentFileCopy: expected AppDelegate.swift "didFinishLaunchingWithOptions" ' +
-          'method not found. The Expo template likely changed — update plugins/withNativeTorrentFileCopy.js to match.',
-      );
-    }
-    if (!contents.includes(OLD_METHOD)) {
-      throw new Error(
-        'withNativeTorrentFileCopy: expected AppDelegate.swift "open url" method not found. ' +
-          'The Expo template likely changed — update plugins/withNativeTorrentFileCopy.js to match.',
-      );
-    }
-
-    contents = contents.replace(OLD_LAUNCH_METHOD, NEW_LAUNCH_METHOD);
-    contents = contents.replace(OLD_METHOD, NEW_METHOD);
-    config.modResults.contents = contents;
-    return config;
-  });
+    },
+  ]);
 };
