@@ -1,6 +1,11 @@
 import { parseApiVersion, getApiFeatures, getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
 
 describe('parseApiVersion', () => {
+  it('returns null instead of throwing for a non-string (#308)', () => {
+    expect(parseApiVersion(2.6 as unknown as string)).toBeNull();
+    expect(getApiFeatures(2.6 as unknown as string).useStartStopEndpoints).toBe(true);
+  });
+
   it('parses a standard major.minor.patch string', () => {
     expect(parseApiVersion('2.11.3')).toEqual({ major: 2, minor: 11, patch: 3 });
   });

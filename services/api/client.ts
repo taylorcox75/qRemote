@@ -548,10 +548,17 @@ class ApiClient {
     throw lastError;
   }
 
+  /**
+   * `options.responseType: 'text'` stops axios from JSON-parsing a plain-text
+   * body. Without it a bare-number body such as `app/webapiVersion`'s "2.6"
+   * (qBit drops a zero patch: 2.6.0 → "2.6") comes back as the number 2.6 —
+   * or worse, "2.10" as 2.1 — and string code downstream crashes (#308).
+   */
   async get(
     url: string,
     params?: Record<string, string | number | boolean>,
     signal?: AbortSignal,
+    options?: { responseType?: 'text' },
   ): Promise<unknown> {
     if (!this.currentServer) {
       throw new Error('No server configured');
@@ -563,6 +570,7 @@ class ApiClient {
         params,
         signal: effectiveSignal,
         timeout: timeoutMs,
+        ...(options?.responseType ? { responseType: options.responseType } : {}),
       });
       return response.data;
     });
