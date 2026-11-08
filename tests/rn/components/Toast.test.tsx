@@ -12,7 +12,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock(
   'react-native-safe-area-context',
-  () => require('react-native-safe-area-context/jest/mock.tsx').default,
+  () => require('react-native-safe-area-context/jest/mock').default,
 );
 
 describe('Toast', () => {

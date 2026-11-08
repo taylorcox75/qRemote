@@ -24,6 +24,8 @@ import {
   Animated,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  type ScrollViewInstance,
+  type TextInputInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
@@ -50,7 +52,7 @@ import { storageService } from '@/services/storage';
 import { prepareTrackerTopUp, tagNewlyDownloadedTorrent } from '@/services/search-tracker-topup';
 import { clogWarn } from '@/services/connectivity-log';
 import { SearchPlugin, SearchResult } from '@/types/api';
-import { SearchInMode } from '@/types/preferences';
+import { SearchInMode, SearchSortKey } from '@/types/preferences';
 import { siteHost, resultTrackerLabel } from '@/utils/searchResult';
 import {
   EMPTY_SEARCH_FILTER_DRAFT,
@@ -71,6 +73,8 @@ import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 import { compareByQuality } from '@/utils/video-quality';
+import { compareByRelevance } from '@/utils/search-relevance';
+import { SEARCH_DEFAULT_SORT_OPTIONS, SEARCH_SORT_OPTIONS } from '@/constants/searchSort';
 import {
   orderPluginsWithPins,
   prunePinnedPlugins,
@@ -88,20 +92,8 @@ import {
 const ALL = 'all';
 const ENABLED = 'enabled';
 
-type SortKey = 'seeders' | 'size' | 'name' | 'leechers' | 'date' | 'quality';
-
-const SORT_OPTIONS: Array<{
-  key: SortKey;
-  labelKey: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-}> = [
-  { key: 'seeders', labelKey: 'screens.search.sortSeeders', icon: 'arrow-up-outline' },
-  { key: 'leechers', labelKey: 'screens.search.sortLeechers', icon: 'arrow-down-outline' },
-  { key: 'size', labelKey: 'screens.search.sortSize', icon: 'cube-outline' },
-  { key: 'name', labelKey: 'screens.search.sortName', icon: 'text-outline' },
-  { key: 'date', labelKey: 'screens.search.sortDate', icon: 'calendar-outline' },
-  { key: 'quality', labelKey: 'screens.search.sortQuality', icon: 'film-outline' },
-];
+type SortKey = SearchSortKey;
+const SORT_OPTIONS = SEARCH_SORT_OPTIONS;
 
 /** What a group add carries beyond the single result handed to the normal add path. */
 interface GroupAddExtras {
@@ -123,7 +115,7 @@ export default function SearchScreen() {
   const { showToast } = useToast();
   const cart = useSearchCart();
   const [cartModalVisible, setCartModalVisible] = useState(false);
-  const queryInputRef = useRef<TextInput>(null);
+  const queryInputRef = useRef<TextInputInstance>(null);
   const activeTagPollsRef = useRef(new Set<AbortController>());
 
   // Scroll-to-collapse header, matching the Torrents tab's pattern: the
@@ -249,7 +241,7 @@ export default function SearchScreen() {
   // Mirrors pinnedPlugins so back-to-back taps toggle from the latest list, not
   // from whatever the callback closed over before the re-render.
   const pinnedPluginsRef = useRef<string[]>([]);
-  const pluginRowRef = useRef<ScrollView>(null);
+  const pluginRowRef = useRef<ScrollViewInstance>(null);
 
   // pubDate is a qBit 5.0+ (WebAPI >= 2.11.0) field — hide the option on older
   // servers rather than offering a sort that silently does nothing.
@@ -273,6 +265,10 @@ export default function SearchScreen() {
         // Absent means on (the default); only an explicit opt-out turns it off.
         if (prefs.searchGroupDuplicates === false) setGroupDuplicates(false);
         if (prefs.searchInMode === 'names') setSearchInMode('names');
+        const defaultSort = prefs.searchDefaultSort;
+        if (defaultSort && SEARCH_DEFAULT_SORT_OPTIONS.some((opt) => opt.key === defaultSort)) {
+          setSortBy(defaultSort);
+        }
         if (Array.isArray(prefs.searchPinnedPlugins)) {
           pinnedPluginsRef.current = prefs.searchPinnedPlugins;
           setPinnedPlugins(prefs.searchPinnedPlugins);
@@ -482,6 +478,7 @@ export default function SearchScreen() {
     items.sort((groupA, groupB) => {
       const a = groupA.primary;
       const b = groupB.primary;
+      if (sortBy === 'relevance') return compareByRelevance(a, b, submittedPattern);
       // Quality (#268) keeps unknown-quality results last in BOTH directions,
       // so it can't use the negate-for-desc scheme below.
       if (sortBy === 'quality') return compareByQuality(a, b, sortDirection);
@@ -513,10 +510,10 @@ export default function SearchScreen() {
       return sortDirection === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [filteredResults, groupDuplicates, resolvedHashes, sortBy, sortDirection]);
+  }, [filteredResults, groupDuplicates, resolvedHashes, sortBy, sortDirection, submittedPattern]);
 
-  // Header count: `total` is the server's raw count, so with the zero-seeder
-  // or panel filters on, subtract the loaded results they hide. (Computed from
+  // Header count: `total` is the server's raw count; with zero-seeder or panel
+  // filters, subtract the loaded results they hide. (Computed from
   // `results` rather than the list so the tracker filter keeps not affecting it,
   // and counting every result, not rows, so grouping doesn't change it.)
   const visibleTotal = useMemo(() => {
@@ -1486,7 +1483,7 @@ export default function SearchScreen() {
                         ]}
                         onPress={() => {
                           haptics.light();
-                          if (isActive) {
+                          if (isActive && opt.key !== 'relevance') {
                             setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                           } else {
                             setSortBy(opt.key);

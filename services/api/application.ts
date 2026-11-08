@@ -12,13 +12,17 @@ export const applicationApi = {
     // Independent reads — run them concurrently instead of sequentially so a
     // connect (cold launch, reconnect) doesn't pay for two round trips where
     // one would do.
+    // Both bodies are plain text. Request them as text so axios doesn't
+    // JSON-parse a two-part WebAPI version ("2.6", sent for 2.6.0) into a
+    // number, which crashed ApiVersionProvider's render on connect (#308).
+    const text = { responseType: 'text' as const };
     const [version, apiVersion] = await Promise.all([
-      apiClient.get(`/api/${API_VERSION}/app/version`, undefined, signal),
-      apiClient.get(`/api/${API_VERSION}/app/webapiVersion`, undefined, signal),
+      apiClient.get(`/api/${API_VERSION}/app/version`, undefined, signal, text),
+      apiClient.get(`/api/${API_VERSION}/app/webapiVersion`, undefined, signal, text),
     ]);
     return {
-      version: version as string,
-      apiVersion: apiVersion as string,
+      version: String(version ?? '').trim(),
+      apiVersion: String(apiVersion ?? '').trim(),
     };
   },
 

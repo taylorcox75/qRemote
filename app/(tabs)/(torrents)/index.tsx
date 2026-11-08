@@ -20,10 +20,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   LayoutAnimation,
-  InteractionManager,
   GestureResponderEvent,
 } from 'react-native';
-import { Swipeable, RectButton } from 'react-native-gesture-handler';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +44,7 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
 import { SearchHistoryDropdown } from '@/components/SearchHistoryDropdown';
+import { SwipeActionsPanel } from '@/components/SwipeActionsPanel';
 import { torrentsApi } from '@/services/api/torrents';
 import { searchApi } from '@/services/api/search';
 import { applicationApi } from '@/services/api/application';
@@ -78,6 +81,7 @@ import {
   removeQuery,
   togglePin,
 } from '@/utils/search-history';
+import { runAfterInteractions } from '@/utils/afterInteractions';
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -196,7 +200,7 @@ export default function TorrentsScreen() {
     title: string;
     message: string;
     hashes: string[];
-    swipeableRef?: Swipeable | null;
+    swipeableRef?: SwipeableMethods | null;
   } | null>(null);
   const {
     actionMenuItems,
@@ -226,7 +230,7 @@ export default function TorrentsScreen() {
   const [headerHeight, setHeaderHeight] = useState(136);
 
   // Swipeable refs for closing open rows
-  const openSwipeableRef = useRef<Swipeable | null>(null);
+  const openSwipeableRef = useRef<SwipeableMethods | null>(null);
   const swipeHapticFired = useRef(false);
 
   // Track last known default filter so we only sync when user changes it in Settings
@@ -511,7 +515,7 @@ export default function TorrentsScreen() {
 
       if (variant === 'full') {
         router.setParams({ magnet: undefined });
-        InteractionManager.runAfterInteractions(() => {
+        runAfterInteractions(() => {
           router.push({
             pathname: '/torrents/add',
             params: { magnet: magnetLink },
@@ -595,7 +599,7 @@ export default function TorrentsScreen() {
           torrentFileUri: undefined,
           torrentFileName: undefined,
         });
-        InteractionManager.runAfterInteractions(() => {
+        runAfterInteractions(() => {
           router.push({
             pathname: '/torrents/add',
             params: { torrentFileUri: fileUri, torrentFileName: fileName },
@@ -1061,7 +1065,7 @@ export default function TorrentsScreen() {
 
   // Swipe action handlers (call APIs directly, parameterized by torrent)
   const handleSwipePauseResume = useCallback(
-    async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    async (torrent: TorrentInfo, swipeableRef: SwipeableMethods | null) => {
       haptics.medium();
       const isPaused =
         torrent.state === 'pausedDL' ||
@@ -1114,7 +1118,7 @@ export default function TorrentsScreen() {
   );
 
   const handleSwipeDelete = useCallback(
-    (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    (torrent: TorrentInfo, swipeableRef: SwipeableMethods | null) => {
       haptics.warning();
       setListDeleteConfirm({
         title: t('common.delete'),
@@ -1127,7 +1131,7 @@ export default function TorrentsScreen() {
   );
 
   const handleSwipeForceStart = useCallback(
-    async (torrent: TorrentInfo, swipeableRef: Swipeable | null) => {
+    async (torrent: TorrentInfo, swipeableRef: SwipeableMethods | null) => {
       haptics.medium();
       try {
         await torrentsApi.setForceStart([torrent.hash], true);
@@ -1913,118 +1917,54 @@ export default function TorrentsScreen() {
                 item.state === 'stoppedDL' ||
                 item.state === 'stoppedUP';
 
-              let swipeRef: Swipeable | null = null;
+              let swipeRef: SwipeableMethods | null = null;
 
               const swipeRadius =
                 cardViewMode === 'compact' ? borderRadius.medium : borderRadius.large;
 
-              // Canonical RNGH swipe-action pattern (matches the library's own
-              // examples): each action's content slides in with `progress`
-              // (0 = closed, 1 = fully open) from an offset equal to its
-              // distance from the reveal edge, arriving at 0 exactly when the
-              // row is fully open. This ties the visible reveal directly to
-              // the same drag progress RNGH uses to show/hide the panel,
-              // instead of guessing a scale timing against the card's
-              // position — which drifted out of sync and let pause and
-              // delete both flash before settling.
-              const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
-                const pauseTranslate = progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [160, 0],
-                  extrapolate: 'clamp',
-                });
-                const deleteTranslate = progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [80, 0],
-                  extrapolate: 'clamp',
-                });
+              const renderRightActions = (progress: SharedValue<number>) => (
+                <SwipeActionsPanel
+                  progress={progress}
+                  side="right"
+                  radius={swipeRadius}
+                  actions={[
+                    {
+                      key: 'pauseResume',
+                      icon: itemIsPaused ? 'play' : 'pause',
+                      label: itemIsPaused ? t('actions.resume') : t('actions.pause'),
+                      color: itemIsPaused ? colors.success : colors.warning,
+                      onPress: () => handleSwipePauseResume(item, swipeRef),
+                    },
+                    {
+                      key: 'delete',
+                      icon: 'trash',
+                      label: t('common.delete'),
+                      color: colors.error,
+                      onPress: () => handleSwipeDelete(item, swipeRef),
+                    },
+                  ]}
+                />
+              );
 
-                return (
-                  <View
-                    style={[
-                      styles.swipeActionsRight,
-                      {
-                        borderTopRightRadius: swipeRadius,
-                        borderBottomRightRadius: swipeRadius,
-                      },
-                    ]}
-                  >
-                    <Animated.View
-                      style={[
-                        styles.swipeActionFlex,
-                        { transform: [{ translateX: pauseTranslate }] },
-                      ]}
-                    >
-                      <RectButton
-                        style={[
-                          styles.swipeAction,
-                          { backgroundColor: itemIsPaused ? colors.success : colors.warning },
-                        ]}
-                        onPress={() => handleSwipePauseResume(item, swipeRef)}
-                      >
-                        <View style={styles.swipeActionContent}>
-                          <Ionicons
-                            name={itemIsPaused ? 'play' : 'pause'}
-                            size={22}
-                            color="#FFFFFF"
-                          />
-                          <Text style={styles.swipeActionText}>
-                            {itemIsPaused ? t('actions.resume') : t('actions.pause')}
-                          </Text>
-                        </View>
-                      </RectButton>
-                    </Animated.View>
-                    <Animated.View
-                      style={[
-                        styles.swipeActionFlex,
-                        { transform: [{ translateX: deleteTranslate }] },
-                      ]}
-                    >
-                      <RectButton
-                        style={[styles.swipeAction, { backgroundColor: colors.error }]}
-                        onPress={() => handleSwipeDelete(item, swipeRef)}
-                      >
-                        <View style={styles.swipeActionContent}>
-                          <Ionicons name="trash" size={22} color="#FFFFFF" />
-                          <Text style={styles.swipeActionText}>{t('common.delete')}</Text>
-                        </View>
-                      </RectButton>
-                    </Animated.View>
-                  </View>
-                );
-              };
-
-              const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>) => {
-                const translate = progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-80, 0],
-                  extrapolate: 'clamp',
-                });
-
-                return (
-                  <Animated.View
-                    style={[
-                      styles.swipeActionLeft,
-                      { backgroundColor: colors.primary },
-                      { borderTopLeftRadius: swipeRadius, borderBottomLeftRadius: swipeRadius },
-                      { transform: [{ translateX: translate }] },
-                    ]}
-                  >
-                    <RectButton
-                      style={styles.swipeActionFill}
-                      onPress={() => handleSwipeForceStart(item, swipeRef)}
-                    >
-                      <View style={styles.swipeActionContent}>
-                        <Ionicons name="flash" size={22} color="#FFFFFF" />
-                        <Text style={styles.swipeActionText}>{t('actions.forceStart')}</Text>
-                      </View>
-                    </RectButton>
-                  </Animated.View>
-                );
-              };
+              const renderLeftActions = (progress: SharedValue<number>) => (
+                <SwipeActionsPanel
+                  progress={progress}
+                  side="left"
+                  radius={swipeRadius}
+                  actions={[
+                    {
+                      key: 'forceStart',
+                      icon: 'flash',
+                      label: t('actions.forceStart'),
+                      color: colors.primary,
+                      onPress: () => handleSwipeForceStart(item, swipeRef),
+                    },
+                  ]}
+                />
+              );
 
               return (
-                <Swipeable
+                <ReanimatedSwipeable
                   ref={(ref) => {
                     swipeRef = ref;
                   }}
@@ -2126,7 +2066,7 @@ export default function TorrentsScreen() {
                       />
                     </View>
                   </View>
-                </Swipeable>
+                </ReanimatedSwipeable>
               );
             }}
             refreshControl={
@@ -2906,40 +2846,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.medium,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  swipeActionsRight: {
-    flexDirection: 'row',
-    width: 160,
-    marginVertical: spacing.xs,
-    overflow: 'hidden',
-  },
-  swipeAction: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  swipeActionFlex: {
-    flex: 1,
-  },
-  swipeActionFill: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  swipeActionLeft: {
-    width: 80,
-    marginVertical: spacing.xs,
-    overflow: 'hidden',
-  },
-  swipeActionContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swipeActionText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 3,
   },
   searchSortButton: {
     width: 42,

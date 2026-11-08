@@ -11,9 +11,9 @@
  * Returns a stable object that callers can pass into UI components without
  * worrying about polling, retries, or cleanup timing.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AppState, AppStateStatus, InteractionManager } from 'react-native';
+import { AppState, AppStateStatus } from 'react-native';
 import { searchApi } from '@/services/api/search';
 import {
   SearchJobStatus,
@@ -24,6 +24,8 @@ import {
 import { getErrorMessage } from '@/utils/error';
 import { useServer } from '@/context/ServerContext';
 import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
+import { withoutQualityPattern } from '@/utils/search-relevance';
+import { runAfterInteractions } from '@/utils/afterInteractions';
 
 // Large bounded cap: the old 200 silently truncated aggregator searches
 // (Prowlarr fanning out across many indexers), hiding whole indexers whose
@@ -78,7 +80,15 @@ export function useSearchJob(): UseSearchJobResult {
   const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   // Track active job in a ref so unmount cleanup always sees the latest value.
   const activeJobRef = useRef<number | null>(null);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const originalSearchRef = useRef<{ pattern: string; plugins: string; category: string } | null>(
+    null,
+  );
+  const fallbackStageRef = useRef(0);
+  const retryInFlightRef = useRef(false);
+  const searchGenerationRef = useRef(0);
+  const stopRequestedRef = useRef(false);
+  const completedResultsRef = useRef<SearchResult[]>([]);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState as AppStateStatus);
 
   const queryKey = jobId !== null ? ['search', 'job', jobId] : ['search', 'job', 'idle'];
 
@@ -120,7 +130,12 @@ export function useSearchJob(): UseSearchJobResult {
 
   const reset = useCallback(async () => {
     const currentId = activeJobRef.current;
+    searchGenerationRef.current += 1;
     activeJobRef.current = null;
+    originalSearchRef.current = null;
+    stopRequestedRef.current = true;
+    retryInFlightRef.current = false;
+    completedResultsRef.current = [];
     setJobId(null);
     setMutationError(null);
     if (currentId !== null && isConnected) {
@@ -137,6 +152,12 @@ export function useSearchJob(): UseSearchJobResult {
       }
       setIsStarting(true);
       setMutationError(null);
+      searchGenerationRef.current += 1;
+      originalSearchRef.current = null;
+      fallbackStageRef.current = 0;
+      stopRequestedRef.current = false;
+      retryInFlightRef.current = false;
+      completedResultsRef.current = [];
 
       // Clean up any in-flight job before starting a new one.
       const previousId = activeJobRef.current;
@@ -168,6 +189,7 @@ export function useSearchJob(): UseSearchJobResult {
       }
 
       activeJobRef.current = job.id;
+      originalSearchRef.current = { pattern, plugins, category };
       setJobId(job.id);
       setIsStarting(false);
       // Prime the cache so the first poll happens immediately.
@@ -176,9 +198,58 @@ export function useSearchJob(): UseSearchJobResult {
     [deleteInternal, isConnected, queryClient, stopInternal],
   );
 
+  // Plugins search the supplied text literally, so "Show 2160p" finds only the
+  // 2160p releases. Once the original job finishes, run it once more without
+  // the quality terms and keep the first job's results, so other versions of
+  // the same title show up too (Relevance sort still ranks 2160p first).
+  useEffect(() => {
+    const original = originalSearchRef.current;
+    if (
+      !original ||
+      jobId === null ||
+      activeJobRef.current !== jobId ||
+      stopRequestedRef.current ||
+      retryInFlightRef.current ||
+      !data ||
+      data.status !== 'Stopped'
+    )
+      return;
+    if (fallbackStageRef.current >= 1) return;
+    const relaxed = withoutQualityPattern(original.pattern);
+    if (!relaxed) return;
+    fallbackStageRef.current = 1;
+    retryInFlightRef.current = true;
+    const generation = searchGenerationRef.current;
+    setIsStarting(true);
+    void (async () => {
+      try {
+        const fallback = await searchApi.start(relaxed, original.plugins, original.category);
+        if (
+          activeJobRef.current !== jobId ||
+          searchGenerationRef.current !== generation ||
+          stopRequestedRef.current
+        ) {
+          await deleteInternal(fallback.id);
+          return;
+        }
+        completedResultsRef.current = [...completedResultsRef.current, ...data.results];
+        activeJobRef.current = fallback.id;
+        setJobId(fallback.id);
+        await deleteInternal(jobId);
+        await queryClient.invalidateQueries({ queryKey: ['search', 'job', fallback.id] });
+      } catch (err: unknown) {
+        setMutationError(getErrorMessage(err));
+      } finally {
+        retryInFlightRef.current = false;
+        setIsStarting(false);
+      }
+    })();
+  }, [data, deleteInternal, jobId, queryClient]);
+
   const stop = useCallback(async () => {
     const currentId = activeJobRef.current;
     if (currentId === null) return;
+    stopRequestedRef.current = true;
     try {
       await stopInternal(currentId);
       await queryClient.invalidateQueries({ queryKey: ['search', 'job', currentId] });
@@ -220,7 +291,7 @@ export function useSearchJob(): UseSearchJobResult {
       appStateRef.current = next;
       setIsAppActive(next === 'active');
       if (next === 'active' && activeJobRef.current !== null) {
-        InteractionManager.runAfterInteractions(() => {
+        runAfterInteractions(() => {
           queryClient.invalidateQueries({
             queryKey: ['search', 'job', activeJobRef.current],
           });
@@ -238,11 +309,23 @@ export function useSearchJob(): UseSearchJobResult {
 
   const error = mutationError ?? (queryError ? getErrorMessage(queryError) : null);
 
+  // Results of an earlier attempt (the quality-term search) stay visible while
+  // the relaxed retry runs. Memoized so consumers' useMemo deps stay stable
+  // between polls that return the same data. `jobId` is a dep because the ref
+  // only changes together with it.
+  const results = useMemo(
+    () => [...completedResultsRef.current, ...(data?.results ?? [])],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, jobId],
+  );
+  const earlier = completedResultsRef.current.length;
+  const total = earlier > 0 ? earlier + (data?.results.length ?? 0) : (data?.total ?? 0);
+
   return {
     jobId,
     status: data?.status ?? null,
-    results: data?.results ?? [],
-    total: data?.total ?? 0,
+    results,
+    total,
     isLoading: isStarting || isLoading,
     isFetching,
     error,

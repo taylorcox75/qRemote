@@ -19,6 +19,30 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.9.0',
+    date: '2026-11-08',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'Added a Relevance sort to Search, and quality searches like 1080p now also find other versions',
+          'Added a Default search sort setting to Settings → Appearance',
+        ],
+      },
+      {
+        title: 'Bugs Fixed',
+        items: ['Fixed a crash right after adding a server on some qBittorrent versions'],
+      },
+      {
+        title: 'Maintenance',
+        items: [
+          'Swipe actions on the torrent list are now rounded pills that grow as you swipe',
+          'Upgraded to Expo SDK 58 and React Native 0.88',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.8.48',
     date: '2026-10-13',
     sections: [

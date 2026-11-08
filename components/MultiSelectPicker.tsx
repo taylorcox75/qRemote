@@ -11,6 +11,7 @@ import {
   Dimensions,
   Platform,
   ScrollView,
+  type ViewInstance,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +47,7 @@ export function MultiSelectPicker({
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const menuContainerRef = useRef<View>(null);
+  const menuContainerRef = useRef<ViewInstance>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const hasAdjustedPosition = useRef(false);
 

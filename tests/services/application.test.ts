@@ -21,8 +21,18 @@ describe('applicationApi', () => {
     mockGet.mockResolvedValueOnce('v4.5.0').mockResolvedValueOnce('2.9.0');
     const result = await applicationApi.getVersion();
     expect(result).toEqual({ version: 'v4.5.0', apiVersion: '2.9.0' });
-    expect(mockGet).toHaveBeenNthCalledWith(1, '/api/v2/app/version', undefined, undefined);
-    expect(mockGet).toHaveBeenNthCalledWith(2, '/api/v2/app/webapiVersion', undefined, undefined);
+    expect(mockGet).toHaveBeenNthCalledWith(1, '/api/v2/app/version', undefined, undefined, {
+      responseType: 'text',
+    });
+    expect(mockGet).toHaveBeenNthCalledWith(2, '/api/v2/app/webapiVersion', undefined, undefined, {
+      responseType: 'text',
+    });
+  });
+
+  it('getVersion always returns strings, even if a body arrives as a number (#308)', async () => {
+    mockGet.mockResolvedValueOnce('v4.3.0').mockResolvedValueOnce(2.6);
+    const result = await applicationApi.getVersion();
+    expect(result).toEqual({ version: 'v4.3.0', apiVersion: '2.6' });
   });
 
   it('getBuildInfo returns build info', async () => {

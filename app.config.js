@@ -102,20 +102,6 @@ module.exports = {
       'expo-sharing',
       'expo-status-bar',
       './plugins/withNativeTorrentFileCopy',
-      // Xcode 27 / iOS 27 SDK hard-fails app launch unless the generated
-      // native project adopts the UIScene life cycle — Expo SDK 57.0.23+
-      // ships that support, but only behind this opt-in flag (full default
-      // adoption doesn't land until SDK 58). Without it, `npm run xcode`
-      // produces a build that crashes instantly on any Xcode 27 toolchain,
-      // regardless of which simulator OS it's run on.
-      [
-        'expo-build-properties',
-        {
-          ios: {
-            enableSceneSupport: true,
-          },
-        },
-      ],
     ],
     extra: {
       router: {},

@@ -15,6 +15,7 @@ import {
   Platform,
   Linking,
   Alert,
+  type ScrollViewInstance,
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
@@ -244,7 +245,7 @@ export function SuperDebugPanel({
   const [pinging, setPinging] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const idRef = useRef(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const validatedSessionRef = useRef<ValidatedSession | null>(null);
 
   // -------------------------------------------------------------------------
