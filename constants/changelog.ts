@@ -19,7 +19,7 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
-    version: '3.8.49',
+    version: '3.9.0',
     date: '2026-11-08',
     sections: [
       {
@@ -35,7 +35,10 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         title: 'Maintenance',
-        items: ['Swipe actions on the torrent list are now rounded pills that grow as you swipe'],
+        items: [
+          'Swipe actions on the torrent list are now rounded pills that grow as you swipe',
+          'Upgraded to Expo SDK 58 and React Native 0.88',
+        ],
       },
     ],
   },
