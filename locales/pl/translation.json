@@ -638,6 +638,8 @@
       "stop": "Zatrzymaj",
       "foundCount": "Wyniki: {{count}}",
       "sortRelevance": "Trafność",
+      "defaultSort": "Domyślne sortowanie wyszukiwania",
+      "defaultSortHint": "Sposób sortowania wyników po otwarciu karty Szukaj",
       "sortSeeders": "Seedujący",
       "sortLeechers": "Pijawki",
       "sortSize": "Rozmiar",

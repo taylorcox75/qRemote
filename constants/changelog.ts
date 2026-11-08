@@ -23,8 +23,19 @@ export const CHANGELOG: ChangelogRelease[] = [
     date: '2026-11-08',
     sections: [
       {
+        title: 'New Features',
+        items: [
+          'Added a Relevance sort to Search, and quality searches like 1080p now also find other versions',
+          'Added a Default search sort setting to Settings → Appearance',
+        ],
+      },
+      {
         title: 'Bugs Fixed',
         items: ['Fixed a crash right after adding a server on some qBittorrent versions'],
+      },
+      {
+        title: 'Maintenance',
+        items: ['Swipe actions on the torrent list are now rounded pills that grow as you swipe'],
       },
     ],
   },

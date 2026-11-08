@@ -638,6 +638,8 @@
       "stop": "Остановить",
       "foundCount": "Результатов: {{count}}",
       "sortRelevance": "Релевантность",
+      "defaultSort": "Сортировка поиска по умолчанию",
+      "defaultSortHint": "Как сортируются результаты при открытии вкладки «Поиск»",
       "sortSeeders": "Сиды",
       "sortLeechers": "Личи",
       "sortSize": "Размер",

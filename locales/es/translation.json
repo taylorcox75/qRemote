@@ -611,6 +611,8 @@
       "stop": "Stop",
       "foundCount": "{{count}} resultado(s)",
       "sortRelevance": "Relevancia",
+      "defaultSort": "Orden de búsqueda predeterminado",
+      "defaultSortHint": "Cómo se ordenan los resultados al abrir la pestaña Buscar",
       "sortSeeders": "Seeders",
       "sortLeechers": "Leechers",
       "sortSize": "Size",

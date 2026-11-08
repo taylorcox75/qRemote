@@ -17,6 +17,8 @@ import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { storageService } from '@/services/storage';
 import { DEFAULT_PREFERENCES } from '@/types/preferences';
 import { SEARCH_HISTORY_LIMIT_OPTIONS, applyHistoryLimit } from '@/utils/search-history';
+import { SEARCH_DEFAULT_SORT_OPTIONS } from '@/constants/searchSort';
+import type { SearchSortKey } from '@/types/preferences';
 import { setStoredLanguage } from '@/i18n';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -34,6 +36,8 @@ export default function AppearanceSettingsScreen() {
     DEFAULT_PREFERENCES.torrentSearchHistoryLimit,
   );
   const [searchHistoryPickerVisible, setSearchHistoryPickerVisible] = useState(false);
+  const [searchDefaultSort, setSearchDefaultSort] = useState<SearchSortKey>('seeders');
+  const [searchSortPickerVisible, setSearchSortPickerVisible] = useState(false);
 
   const languageOptions: OptionPickerItem[] = [
     { label: 'English', value: 'en', icon: 'language-outline' },
@@ -52,6 +56,12 @@ export default function AppearanceSettingsScreen() {
     icon: 'time-outline',
   }));
 
+  const searchSortOptions: OptionPickerItem[] = SEARCH_DEFAULT_SORT_OPTIONS.map((opt) => ({
+    label: t(opt.labelKey),
+    value: opt.key,
+    icon: opt.icon,
+  }));
+
   const loadPreferences = async () => {
     try {
       const prefs = await storageService.getPreferences();
@@ -62,6 +72,10 @@ export default function AppearanceSettingsScreen() {
         typeof prefs.torrentSearchHistoryLimit === 'number'
           ? prefs.torrentSearchHistoryLimit
           : DEFAULT_PREFERENCES.torrentSearchHistoryLimit,
+      );
+      const sort = prefs.searchDefaultSort;
+      setSearchDefaultSort(
+        sort && SEARCH_DEFAULT_SORT_OPTIONS.some((opt) => opt.key === sort) ? sort : 'seeders',
       );
     } catch {
       setAutoRefreshInterval('1000');
@@ -107,6 +121,15 @@ export default function AppearanceSettingsScreen() {
       }
       await storageService.savePreferences(prefs);
       setSearchHistoryLimit(limit);
+    } catch {
+      // Ignore save errors
+    }
+  };
+
+  const saveSearchDefaultSort = async (sort: SearchSortKey) => {
+    try {
+      await storageService.updatePreferences({ searchDefaultSort: sort });
+      setSearchDefaultSort(sort);
     } catch {
       // Ignore save errors
     }
@@ -273,6 +296,32 @@ export default function AppearanceSettingsScreen() {
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
+                  <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingTextWrap}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.search.defaultSort')}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {t('screens.search.defaultSortHint')}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setSearchSortPickerVisible(true)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.search.defaultSort')}
+                >
+                  <Text style={[styles.pickerText, { color: colors.text }]}>
+                    {searchSortOptions.find((opt) => opt.value === searchDefaultSort)?.label ??
+                      searchDefaultSort}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
                   <Ionicons name="refresh-outline" size={22} color={colors.primary} />
                   <View>
                     <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -323,6 +372,18 @@ export default function AppearanceSettingsScreen() {
           setSearchHistoryPickerVisible(false);
         }}
         onClose={() => setSearchHistoryPickerVisible(false)}
+      />
+
+      <OptionPicker
+        visible={searchSortPickerVisible}
+        title={t('screens.search.defaultSort')}
+        options={searchSortOptions}
+        selectedValue={searchDefaultSort}
+        onSelect={async (value) => {
+          await saveSearchDefaultSort(value as SearchSortKey);
+          setSearchSortPickerVisible(false);
+        }}
+        onClose={() => setSearchSortPickerVisible(false)}
       />
     </>
   );

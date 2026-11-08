@@ -611,6 +611,8 @@
       "stop": "Stop",
       "foundCount": "{{count}} Ergebnis(se)",
       "sortRelevance": "Relevanz",
+      "defaultSort": "Standard-Suchsortierung",
+      "defaultSortHint": "Wie Suchergebnisse beim Öffnen des Such-Tabs sortiert werden",
       "sortSeeders": "Seeders",
       "sortLeechers": "Leechers",
       "sortSize": "Size",
