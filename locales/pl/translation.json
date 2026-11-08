@@ -637,6 +637,7 @@
       "updateStartedToast": "Rozpoczęto aktualizację wtyczki",
       "stop": "Zatrzymaj",
       "foundCount": "Wyniki: {{count}}",
+      "sortRelevance": "Trafność",
       "sortSeeders": "Seedujący",
       "sortLeechers": "Pijawki",
       "sortSize": "Rozmiar",

@@ -631,6 +631,7 @@
       "updateStartedToast": "Eklenti güncellemesi başladı",
       "stop": "Durdur",
       "foundCount": "{{count}} sonuç",
+      "sortRelevance": "İlgililik",
       "sortSeeders": "Gönderenler",
       "sortLeechers": "Çekenler",
       "sortSize": "Boyut",

@@ -637,6 +637,7 @@
       "updateStartedToast": "Начато обновление плагина",
       "stop": "Остановить",
       "foundCount": "Результатов: {{count}}",
+      "sortRelevance": "Релевантность",
       "sortSeeders": "Сиды",
       "sortLeechers": "Личи",
       "sortSize": "Размер",

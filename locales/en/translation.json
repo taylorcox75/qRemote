@@ -631,6 +631,7 @@
       "updateStartedToast": "Plugin update started",
       "stop": "Stop",
       "foundCount": "{{count}} result(s)",
+      "sortRelevance": "Relevance",
       "sortSeeders": "Seeders",
       "sortLeechers": "Leechers",
       "sortSize": "Size",

@@ -71,6 +71,7 @@ import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 import { compareByQuality } from '@/utils/video-quality';
+import { compareByRelevance } from '@/utils/search-relevance';
 import {
   orderPluginsWithPins,
   prunePinnedPlugins,
@@ -88,13 +89,14 @@ import {
 const ALL = 'all';
 const ENABLED = 'enabled';
 
-type SortKey = 'seeders' | 'size' | 'name' | 'leechers' | 'date' | 'quality';
+type SortKey = 'relevance' | 'seeders' | 'size' | 'name' | 'leechers' | 'date' | 'quality';
 
 const SORT_OPTIONS: Array<{
   key: SortKey;
   labelKey: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
 }> = [
+  { key: 'relevance', labelKey: 'screens.search.sortRelevance', icon: 'sparkles-outline' },
   { key: 'seeders', labelKey: 'screens.search.sortSeeders', icon: 'arrow-up-outline' },
   { key: 'leechers', labelKey: 'screens.search.sortLeechers', icon: 'arrow-down-outline' },
   { key: 'size', labelKey: 'screens.search.sortSize', icon: 'cube-outline' },
@@ -212,7 +214,7 @@ export default function SearchScreen() {
   const [plugin, setPlugin] = useState<string>(ALL);
   const [category, setCategory] = useState<string>(ALL);
   const [selectedTrackers, setSelectedTrackers] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<SortKey>('seeders');
+  const [sortBy, setSortBy] = useState<SortKey>('relevance');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [hideZeroSeeders, setHideZeroSeeders] = useState(false);
@@ -482,6 +484,7 @@ export default function SearchScreen() {
     items.sort((groupA, groupB) => {
       const a = groupA.primary;
       const b = groupB.primary;
+      if (sortBy === 'relevance') return compareByRelevance(a, b, submittedPattern);
       // Quality (#268) keeps unknown-quality results last in BOTH directions,
       // so it can't use the negate-for-desc scheme below.
       if (sortBy === 'quality') return compareByQuality(a, b, sortDirection);
@@ -513,10 +516,10 @@ export default function SearchScreen() {
       return sortDirection === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [filteredResults, groupDuplicates, resolvedHashes, sortBy, sortDirection]);
+  }, [filteredResults, groupDuplicates, resolvedHashes, sortBy, sortDirection, submittedPattern]);
 
-  // Header count: `total` is the server's raw count, so with the zero-seeder
-  // or panel filters on, subtract the loaded results they hide. (Computed from
+  // Header count: `total` is the server's raw count; with zero-seeder or panel
+  // filters, subtract the loaded results they hide. (Computed from
   // `results` rather than the list so the tracker filter keeps not affecting it,
   // and counting every result, not rows, so grouping doesn't change it.)
   const visibleTotal = useMemo(() => {
@@ -1486,7 +1489,7 @@ export default function SearchScreen() {
                         ]}
                         onPress={() => {
                           haptics.light();
-                          if (isActive) {
+                          if (isActive && opt.key !== 'relevance') {
                             setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                           } else {
                             setSortBy(opt.key);

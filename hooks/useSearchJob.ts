@@ -24,6 +24,11 @@ import {
 import { getErrorMessage } from '@/utils/error';
 import { useServer } from '@/context/ServerContext';
 import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
+import {
+  broaderSearchPattern,
+  matchesTitleApproximately,
+  withoutQualityPattern,
+} from '@/utils/search-relevance';
 
 // Large bounded cap: the old 200 silently truncated aggregator searches
 // (Prowlarr fanning out across many indexers), hiding whole indexers whose
@@ -78,6 +83,12 @@ export function useSearchJob(): UseSearchJobResult {
   const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   // Track active job in a ref so unmount cleanup always sees the latest value.
   const activeJobRef = useRef<number | null>(null);
+  const originalSearchRef = useRef<{ pattern: string; plugins: string; category: string } | null>(null);
+  const fallbackStageRef = useRef(0);
+  const retryInFlightRef = useRef(false);
+  const searchGenerationRef = useRef(0);
+  const stopRequestedRef = useRef(false);
+  const completedResultsRef = useRef<SearchResult[]>([]);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const queryKey = jobId !== null ? ['search', 'job', jobId] : ['search', 'job', 'idle'];
@@ -120,7 +131,12 @@ export function useSearchJob(): UseSearchJobResult {
 
   const reset = useCallback(async () => {
     const currentId = activeJobRef.current;
+    searchGenerationRef.current += 1;
     activeJobRef.current = null;
+    originalSearchRef.current = null;
+    stopRequestedRef.current = true;
+    retryInFlightRef.current = false;
+    completedResultsRef.current = [];
     setJobId(null);
     setMutationError(null);
     if (currentId !== null && isConnected) {
@@ -137,6 +153,12 @@ export function useSearchJob(): UseSearchJobResult {
       }
       setIsStarting(true);
       setMutationError(null);
+      searchGenerationRef.current += 1;
+      originalSearchRef.current = null;
+      fallbackStageRef.current = 0;
+      stopRequestedRef.current = false;
+      retryInFlightRef.current = false;
+      completedResultsRef.current = [];
 
       // Clean up any in-flight job before starting a new one.
       const previousId = activeJobRef.current;
@@ -168,6 +190,7 @@ export function useSearchJob(): UseSearchJobResult {
       }
 
       activeJobRef.current = job.id;
+      originalSearchRef.current = { pattern, plugins, category };
       setJobId(job.id);
       setIsStarting(false);
       // Prime the cache so the first poll happens immediately.
@@ -176,9 +199,52 @@ export function useSearchJob(): UseSearchJobResult {
     [deleteInternal, isConnected, queryClient, stopInternal],
   );
 
+  // Plugins search the supplied text literally. Search again without quality
+  // terms to include other versions; if no title matches, try a short prefix
+  // to discover spelling variants. Keep earlier results across both retries.
+  useEffect(() => {
+    const original = originalSearchRef.current;
+    if (!original || jobId === null || activeJobRef.current !== jobId ||
+        stopRequestedRef.current || retryInFlightRef.current || !data || data.status !== 'Stopped') return;
+    const stage = fallbackStageRef.current;
+    if (stage >= 2) return;
+    const relaxed = withoutQualityPattern(original.pattern);
+    const hasCloseTitle = [...completedResultsRef.current, ...data.results].some((result) =>
+      matchesTitleApproximately(result.fileName ?? '', original.pattern),
+    );
+    const nextPattern = stage === 0 && relaxed
+      ? relaxed
+      : !hasCloseTitle ? broaderSearchPattern(original.pattern) : null;
+    if (!nextPattern) return;
+    fallbackStageRef.current = stage === 0 && relaxed ? 1 : 2;
+    retryInFlightRef.current = true;
+    const generation = searchGenerationRef.current;
+    setIsStarting(true);
+    void (async () => {
+      try {
+        const fallback = await searchApi.start(nextPattern, original.plugins, original.category);
+        if (activeJobRef.current !== jobId || searchGenerationRef.current !== generation || stopRequestedRef.current) {
+          await deleteInternal(fallback.id);
+          return;
+        }
+        completedResultsRef.current = [...completedResultsRef.current, ...data.results];
+        activeJobRef.current = fallback.id;
+        setJobId(fallback.id);
+        await deleteInternal(jobId);
+        await queryClient.invalidateQueries({ queryKey: ['search', 'job', fallback.id] });
+      } catch (err: unknown) {
+        setMutationError(getErrorMessage(err));
+      } finally {
+        retryInFlightRef.current = false;
+        setIsStarting(false);
+      }
+    })();
+  }, [data, deleteInternal, jobId, queryClient]);
+
   const stop = useCallback(async () => {
     const currentId = activeJobRef.current;
     if (currentId === null) return;
+    stopRequestedRef.current = true;
     try {
       await stopInternal(currentId);
       await queryClient.invalidateQueries({ queryKey: ['search', 'job', currentId] });
@@ -241,8 +307,10 @@ export function useSearchJob(): UseSearchJobResult {
   return {
     jobId,
     status: data?.status ?? null,
-    results: data?.results ?? [],
-    total: data?.total ?? 0,
+    results: [...completedResultsRef.current, ...(data?.results ?? [])],
+    total: completedResultsRef.current.length > 0
+      ? completedResultsRef.current.length + (data?.results.length ?? 0)
+      : (data?.total ?? 0),
     isLoading: isStarting || isLoading,
     isFetching,
     error,
