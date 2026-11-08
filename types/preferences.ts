@@ -52,6 +52,10 @@ export type ThemeMode = 'system' | 'light' | 'dark';
  */
 export type SearchInMode = 'names' | 'everywhere';
 
+/** Search tab sort keys. Persisted as `searchDefaultSort` — never rename one. */
+export type SearchSortKey =
+  'relevance' | 'seeders' | 'size' | 'name' | 'leechers' | 'date' | 'quality';
+
 export interface AppPreferences {
   /**
    * @deprecated Use `themeMode` instead. Kept for backward compatibility:
@@ -207,6 +211,13 @@ export interface AppPreferences {
   searchInMode?: SearchInMode;
 
   /**
+   * Search tab sort applied when the tab opens (#307 follow-up). Absent is
+   * treated as 'seeders', so existing users see no change. Set from Settings →
+   * Appearance; picking another sort on the Search tab doesn't change it.
+   */
+  searchDefaultSort?: SearchSortKey;
+
+  /**
    * Search tab: `name` ids of the plugins the user pinned (#283). Pinned
    * plugins' chips are listed first in the plugin chip row. Names that are no
    * longer installed are ignored (and pruned the next time the pins change).
@@ -301,6 +312,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   searchHideZeroSeeders: false,
   searchGroupDuplicates: true,
   searchInMode: 'everywhere',
+  searchDefaultSort: 'seeders',
   searchPinnedPlugins: [],
   lastCategoryFilter: null,
   lastTagFilters: [],

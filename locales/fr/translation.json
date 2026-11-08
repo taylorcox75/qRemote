@@ -611,6 +611,8 @@
       "stop": "Stop",
       "foundCount": "{{count}} résultat(s)",
       "sortRelevance": "Pertinence",
+      "defaultSort": "Tri de recherche par défaut",
+      "defaultSortHint": "Ordre des résultats à l'ouverture de l'onglet Recherche",
       "sortSeeders": "Seeders",
       "sortLeechers": "Leechers",
       "sortSize": "Size",

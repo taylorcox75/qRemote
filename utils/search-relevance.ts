@@ -2,7 +2,13 @@
 import { SearchResult } from '@/types/api';
 
 function terms(value: string): string[] {
-  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  return (
+    value
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]+/gu) ?? []
+  );
 }
 
 function isSeason(term: string): boolean {
@@ -59,20 +65,14 @@ function similarity(queryTerm: string, titleTerm: string): number {
   if (titleTerm.startsWith(queryTerm)) return 0.9;
   if (queryTerm.length < 4 || isSeason(queryTerm) || isQuality(queryTerm)) return 0;
   if (Math.abs(queryTerm.length - titleTerm.length) > Math.max(3, queryTerm.length / 3)) return 0;
-  const distanceScore = 1 - editDistance(queryTerm, titleTerm) / Math.max(queryTerm.length, titleTerm.length);
+  const distanceScore =
+    1 - editDistance(queryTerm, titleTerm) / Math.max(queryTerm.length, titleTerm.length);
   const runScore = longestRun(queryTerm, titleTerm) / queryTerm.length;
   return Math.max(0, distanceScore * 0.85 + runScore * 0.15);
 }
 
 function bestSimilarity(term: string, titleTerms: string[]): number {
   return titleTerms.reduce((best, titleTerm) => Math.max(best, similarity(term, titleTerm)), 0);
-}
-
-/** Match title words while leaving season and quality to the ranking. */
-export function matchesTitleApproximately(fileName: string, query: string): boolean {
-  const titleTerms = terms(fileName);
-  const queryTitleTerms = terms(query).filter((term) => !isSeason(term) && !isQuality(term));
-  return queryTitleTerms.every((term) => bestSimilarity(term, titleTerms) >= 0.65);
 }
 
 function relevanceScore(fileName: string, query: string): number {
@@ -108,12 +108,4 @@ export function withoutQualityPattern(query: string): string | null {
   const words = terms(query);
   const relaxed = words.filter((word) => !isQuality(word)).join(' ');
   return relaxed && relaxed !== words.join(' ') ? relaxed : null;
-}
-
-/** Use a short title prefix to discover spelling variants. */
-export function broaderSearchPattern(query: string): string | null {
-  const titleTerm = terms(query).find((term) => term.length >= 5 && !isSeason(term) && !isQuality(term));
-  if (!titleTerm) return null;
-  const prefix = titleTerm.slice(0, Math.min(4, Math.max(3, Math.floor(titleTerm.length / 3))));
-  return prefix === query.trim().toLowerCase() ? null : prefix;
 }

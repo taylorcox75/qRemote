@@ -50,7 +50,7 @@ import { storageService } from '@/services/storage';
 import { prepareTrackerTopUp, tagNewlyDownloadedTorrent } from '@/services/search-tracker-topup';
 import { clogWarn } from '@/services/connectivity-log';
 import { SearchPlugin, SearchResult } from '@/types/api';
-import { SearchInMode } from '@/types/preferences';
+import { SearchInMode, SearchSortKey } from '@/types/preferences';
 import { siteHost, resultTrackerLabel } from '@/utils/searchResult';
 import {
   EMPTY_SEARCH_FILTER_DRAFT,
@@ -72,6 +72,7 @@ import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 import { compareByQuality } from '@/utils/video-quality';
 import { compareByRelevance } from '@/utils/search-relevance';
+import { SEARCH_DEFAULT_SORT_OPTIONS, SEARCH_SORT_OPTIONS } from '@/constants/searchSort';
 import {
   orderPluginsWithPins,
   prunePinnedPlugins,
@@ -89,21 +90,8 @@ import {
 const ALL = 'all';
 const ENABLED = 'enabled';
 
-type SortKey = 'relevance' | 'seeders' | 'size' | 'name' | 'leechers' | 'date' | 'quality';
-
-const SORT_OPTIONS: Array<{
-  key: SortKey;
-  labelKey: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-}> = [
-  { key: 'relevance', labelKey: 'screens.search.sortRelevance', icon: 'sparkles-outline' },
-  { key: 'seeders', labelKey: 'screens.search.sortSeeders', icon: 'arrow-up-outline' },
-  { key: 'leechers', labelKey: 'screens.search.sortLeechers', icon: 'arrow-down-outline' },
-  { key: 'size', labelKey: 'screens.search.sortSize', icon: 'cube-outline' },
-  { key: 'name', labelKey: 'screens.search.sortName', icon: 'text-outline' },
-  { key: 'date', labelKey: 'screens.search.sortDate', icon: 'calendar-outline' },
-  { key: 'quality', labelKey: 'screens.search.sortQuality', icon: 'film-outline' },
-];
+type SortKey = SearchSortKey;
+const SORT_OPTIONS = SEARCH_SORT_OPTIONS;
 
 /** What a group add carries beyond the single result handed to the normal add path. */
 interface GroupAddExtras {
@@ -214,7 +202,7 @@ export default function SearchScreen() {
   const [plugin, setPlugin] = useState<string>(ALL);
   const [category, setCategory] = useState<string>(ALL);
   const [selectedTrackers, setSelectedTrackers] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<SortKey>('relevance');
+  const [sortBy, setSortBy] = useState<SortKey>('seeders');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [hideZeroSeeders, setHideZeroSeeders] = useState(false);
@@ -275,6 +263,10 @@ export default function SearchScreen() {
         // Absent means on (the default); only an explicit opt-out turns it off.
         if (prefs.searchGroupDuplicates === false) setGroupDuplicates(false);
         if (prefs.searchInMode === 'names') setSearchInMode('names');
+        const defaultSort = prefs.searchDefaultSort;
+        if (defaultSort && SEARCH_DEFAULT_SORT_OPTIONS.some((opt) => opt.key === defaultSort)) {
+          setSortBy(defaultSort);
+        }
         if (Array.isArray(prefs.searchPinnedPlugins)) {
           pinnedPluginsRef.current = prefs.searchPinnedPlugins;
           setPinnedPlugins(prefs.searchPinnedPlugins);
