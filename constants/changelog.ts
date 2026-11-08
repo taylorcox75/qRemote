@@ -19,6 +19,16 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.9.01',
+    date: '2026-11-08',
+    sections: [
+      {
+        title: 'Bugs Fixed',
+        items: ['Long notification and error messages now show in full instead of being cut off'],
+      },
+    ],
+  },
+  {
     version: '3.9.0',
     date: '2026-11-08',
     sections: [
