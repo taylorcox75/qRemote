@@ -42,6 +42,9 @@ import { SearchFilterPanel } from '@/components/SearchFilterPanel';
 import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { GlassSurface, GlassWrap } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useSearchCart } from '@/context/SearchCartContext';
 import { useSearchJob } from '@/hooks/useSearchJob';
@@ -71,6 +74,7 @@ import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { haptics } from '@/utils/haptics';
 import { compareByQuality } from '@/utils/video-quality';
 import { compareByRelevance } from '@/utils/search-relevance';
@@ -103,6 +107,11 @@ interface GroupAddExtras {
   trackerFollowUp?: GroupAddPlan['trackerFollowUp'];
 }
 
+/** Header row control height: capsule search field and round buttons (as Torrents). */
+const HEADER_CONTROL_SIZE = 40;
+/** Keeps the 40pt round buttons at a ≥44pt tap target. */
+const HEADER_BUTTON_HIT_SLOP = { top: 2, bottom: 2, left: 2, right: 2 };
+
 export default function SearchScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -112,6 +121,7 @@ export default function SearchScreen() {
   const { features } = useApiFeatures();
   const { supportsFetchMetadataDownloader, supportsSearchDownloadTorrent } = features;
   const { isDark, colors } = useTheme();
+  const { enabled: glass } = useLiquidGlass();
   const { showToast } = useToast();
   const cart = useSearchCart();
   const [cartModalVisible, setCartModalVisible] = useState(false);
@@ -783,7 +793,7 @@ export default function SearchScreen() {
         showToast(t('screens.search.addedToast'), 'success');
       } catch (err: unknown) {
         haptics.error();
-        showToast(getErrorMessage(err), 'error');
+        showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
       } finally {
         setPendingAddUrl(null);
       }
@@ -1153,82 +1163,102 @@ export default function SearchScreen() {
           style={[styles.headerContainer, { transform: [{ translateY: headerTranslateY }] }]}
           onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
         >
+          <GlassHeaderBackdrop />
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View style={[styles.searchCard, { backgroundColor: colors.background }]}>
+            <View
+              style={[
+                styles.searchCard,
+                { backgroundColor: glass ? 'transparent' : colors.background },
+              ]}
+            >
               {/* Search row: [42x42 plugins button] [search input] [42x42 submit] */}
               <View style={styles.searchRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.iconButton,
-                    {
-                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
-                      borderColor: colors.surfaceOutline,
-                    },
-                  ]}
-                  onPress={() => {
-                    haptics.light();
-                    // Only one of the sort menu / filter panel is open at a time.
-                    setShowFilterPanel(false);
-                    setShowSortMenu(!showSortMenu);
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel={t('screens.settings.sortBy')}
-                >
-                  <Ionicons
-                    name="swap-vertical"
-                    size={18}
-                    color={showSortMenu ? colors.primary : colors.text}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.iconButton,
-                    {
-                      backgroundColor: showFilterPanel ? colors.primaryOpac : colors.background,
-                      borderColor: colors.surfaceOutline,
-                    },
-                  ]}
-                  onPress={() => {
-                    haptics.light();
-                    setShowSortMenu(false);
-                    if (showFilterPanel) {
-                      closeFilterPanel();
-                    } else {
-                      // Stage a copy of the applied filters. The filter box is
-                      // seeded with the current search the first time the panel
-                      // opens for it; the user refines from there and taps Apply.
-                      const seed =
-                        submittedPattern &&
-                        prefilledPatternRef.current !== submittedPattern &&
-                        filterDraft.filterText === ''
-                          ? submittedPattern
-                          : filterDraft.filterText;
-                      setStagedDraft({ ...filterDraft, filterText: seed });
-                      setStagedSearchIn(searchInMode);
-                      setShowFilterPanel(true);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel={t('screens.search.filterResults')}
-                  accessibilityState={{ expanded: showFilterPanel, selected: filtersActive }}
-                >
-                  <Ionicons
-                    name={filtersActive || showFilterPanel ? 'funnel' : 'funnel-outline'}
-                    size={18}
-                    color={filtersActive || showFilterPanel ? colors.primary : colors.text}
-                  />
-                  {filtersActive && (
-                    <View
-                      style={[
-                        styles.filterActiveDot,
-                        { backgroundColor: colors.primary, borderColor: colors.background },
-                      ]}
+                <GlassWrap enabled={glass} interactive style={styles.iconButton}>
+                  <TouchableOpacity
+                    style={[
+                      glass ? styles.glassButtonFill : styles.iconButton,
+                      {
+                        backgroundColor: showSortMenu
+                          ? colors.primaryOpac
+                          : glass
+                            ? 'transparent'
+                            : colors.background,
+                        borderColor: colors.surfaceOutline,
+                      },
+                    ]}
+                    onPress={() => {
+                      haptics.light();
+                      // Only one of the sort menu / filter panel is open at a time.
+                      setShowFilterPanel(false);
+                      setShowSortMenu(!showSortMenu);
+                    }}
+                    activeOpacity={0.7}
+                    accessibilityLabel={t('screens.settings.sortBy')}
+                    hitSlop={HEADER_BUTTON_HIT_SLOP}
+                  >
+                    <Ionicons
+                      name="swap-vertical"
+                      size={18}
+                      color={showSortMenu ? colors.primary : colors.text}
                     />
-                  )}
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </GlassWrap>
 
-                <View
+                <GlassWrap enabled={glass} interactive style={styles.iconButton}>
+                  <TouchableOpacity
+                    style={[
+                      glass ? styles.glassButtonFill : styles.iconButton,
+                      {
+                        backgroundColor: showFilterPanel
+                          ? colors.primaryOpac
+                          : glass
+                            ? 'transparent'
+                            : colors.background,
+                        borderColor: colors.surfaceOutline,
+                      },
+                    ]}
+                    onPress={() => {
+                      haptics.light();
+                      setShowSortMenu(false);
+                      if (showFilterPanel) {
+                        closeFilterPanel();
+                      } else {
+                        // Stage a copy of the applied filters. The filter box is
+                        // seeded with the current search the first time the panel
+                        // opens for it; the user refines from there and taps Apply.
+                        const seed =
+                          submittedPattern &&
+                          prefilledPatternRef.current !== submittedPattern &&
+                          filterDraft.filterText === ''
+                            ? submittedPattern
+                            : filterDraft.filterText;
+                        setStagedDraft({ ...filterDraft, filterText: seed });
+                        setStagedSearchIn(searchInMode);
+                        setShowFilterPanel(true);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                    accessibilityLabel={t('screens.search.filterResults')}
+                    hitSlop={HEADER_BUTTON_HIT_SLOP}
+                    accessibilityState={{ expanded: showFilterPanel, selected: filtersActive }}
+                  >
+                    <Ionicons
+                      name={filtersActive || showFilterPanel ? 'funnel' : 'funnel-outline'}
+                      size={18}
+                      color={filtersActive || showFilterPanel ? colors.primary : colors.text}
+                    />
+                    {filtersActive && (
+                      <View
+                        style={[
+                          styles.filterActiveDot,
+                          { backgroundColor: colors.primary, borderColor: colors.background },
+                        ]}
+                      />
+                    )}
+                  </TouchableOpacity>
+                </GlassWrap>
+
+                <GlassSurface
                   style={[
                     styles.searchInputContainer,
                     {
@@ -1271,22 +1301,40 @@ export default function SearchScreen() {
                       style={{ marginLeft: spacing.xs }}
                     />
                   )}
-                </View>
+                </GlassSurface>
 
-                <TouchableOpacity
-                  style={[
-                    styles.submitButton,
-                    {
-                      backgroundColor: query.trim() ? colors.primary : colors.surfaceOutline,
-                    },
-                  ]}
-                  onPress={handleSubmit}
-                  activeOpacity={0.7}
-                  disabled={!query.trim()}
-                  accessibilityLabel={t('screens.search.tabTitle')}
+                <GlassWrap
+                  enabled={glass}
+                  interactive
+                  tintColor={query.trim() ? colors.primary : undefined}
+                  style={styles.submitButton}
                 >
-                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={
+                      glass
+                        ? styles.glassButtonFill
+                        : [
+                            styles.submitButton,
+                            {
+                              backgroundColor: query.trim()
+                                ? colors.primary
+                                : colors.surfaceOutline,
+                            },
+                          ]
+                    }
+                    onPress={handleSubmit}
+                    activeOpacity={0.7}
+                    disabled={!query.trim()}
+                    accessibilityLabel={t('screens.search.tabTitle')}
+                    hitSlop={HEADER_BUTTON_HIT_SLOP}
+                  >
+                    <Ionicons
+                      name="arrow-forward"
+                      size={20}
+                      color={glass && !query.trim() ? colors.textSecondary : colors.onAccent}
+                    />
+                  </TouchableOpacity>
+                </GlassWrap>
               </View>
 
               {/* Plugin chip row */}
@@ -1461,7 +1509,8 @@ export default function SearchScreen() {
 
               {/* Sort dropdown — appears when sort icon is toggled */}
               {showSortMenu && (
-                <View
+                <GlassSurface
+                  popover
                   style={[
                     styles.sortDropdown,
                     {
@@ -1600,7 +1649,7 @@ export default function SearchScreen() {
                       accessibilityState={{ checked: groupDuplicates }}
                     />
                   </TouchableOpacity>
-                </View>
+                </GlassSurface>
               )}
 
               {/* Filter panel (#266) — floats like the sort dropdown. */}
@@ -1730,7 +1779,8 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   searchCard: {
-    paddingHorizontal: spacing.md,
+    // 6pt side gutter, matching the result rows and the Torrents tab.
+    paddingHorizontal: spacing.xs + spacing.xs / 2,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
   },
@@ -1741,9 +1791,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: borderRadius.medium,
+    width: HEADER_CONTROL_SIZE,
+    height: HEADER_CONTROL_SIZE,
+    borderRadius: HEADER_CONTROL_SIZE / 2,
     borderWidth: 0.5,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1753,10 +1803,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: borderRadius.medium,
+    borderRadius: HEADER_CONTROL_SIZE / 2,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    height: 42,
+    height: HEADER_CONTROL_SIZE,
     borderWidth: 0.5,
     ...shadows.small,
   },
@@ -1767,10 +1816,19 @@ const styles = StyleSheet.create({
     flex: 1,
     ...typography.body,
   },
+  // Liquid Glass: a control's touchable filling its GlassWrap.
+  glassButtonFill: {
+    flex: 1,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Round like its GlassWrap, so an active-state fill stays a circle.
+    borderRadius: HEADER_CONTROL_SIZE / 2,
+  },
   submitButton: {
-    width: 42,
-    height: 42,
-    borderRadius: borderRadius.medium,
+    width: HEADER_CONTROL_SIZE,
+    height: HEADER_CONTROL_SIZE,
+    borderRadius: HEADER_CONTROL_SIZE / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -20,7 +20,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { withAlpha } from '@/utils/color';
 import { useToast } from '@/context/ToastContext';
+import { useApiFeatures } from '@/context/ApiVersionContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { InputModal } from '@/components/InputModal';
 import { EmptyState } from '@/components/EmptyState';
@@ -49,7 +54,9 @@ export default function TorrentFilesScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { isConnected } = useServer();
+  const { features } = useApiFeatures();
   const { colors, isDark } = useTheme();
+  const { enabled: glass } = useLiquidGlass();
   const { showToast } = useToast();
 
   const [files, setFiles] = useState<TorrentFile[]>([]);
@@ -255,7 +262,7 @@ export default function TorrentFilesScreen() {
         const newPath = parentPath ? `${parentPath}/${trimmed}` : trimmed;
         try {
           setUpdating(true);
-          await torrentsApi.renameFile(hash, file.name, newPath);
+          await torrentsApi.renameFile(hash, file.name, newPath, file.index);
           await loadFiles();
           showToast(t('toast.fileRenamed'), 'success');
         } catch (error: unknown) {
@@ -469,9 +476,13 @@ export default function TorrentFilesScreen() {
         <View
           style={[
             styles.topBar,
-            { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
+            {
+              backgroundColor: glass ? 'transparent' : colors.surface,
+              borderBottomColor: colors.surfaceOutline,
+            },
           ]}
         >
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
@@ -488,7 +499,7 @@ export default function TorrentFilesScreen() {
         ) : (
           <>
             {/* Bulk Actions Header */}
-            <View
+            <GlassSurface
               style={[
                 styles.bulkActionsHeader,
                 { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
@@ -538,195 +549,210 @@ export default function TorrentFilesScreen() {
                   {selectedCount} / {files.length}
                 </Text>
               </View>
-            </View>
+            </GlassSurface>
 
-            <FlatList
-              data={displayItems}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContent}
-              removeClippedSubviews={false}
-              initialNumToRender={10}
-              maxToRenderPerBatch={5}
-              windowSize={10}
-              renderItem={({ item }) => {
-                const indent = item.depth * 12;
+            {/* One glass card around the list; rows stay plain (a GlassView per
+                folder row is too heavy for big torrents). */}
+            <GlassSurface style={glass ? styles.glassListCard : styles.listWrap}>
+              <FlatList
+                data={displayItems}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                removeClippedSubviews={false}
+                initialNumToRender={10}
+                maxToRenderPerBatch={5}
+                windowSize={10}
+                renderItem={({ item }) => {
+                  const indent = item.depth * 12;
 
-                if (item.type === 'folder') {
-                  const isCollapsed = collapsedFolders.has(item.path);
+                  if (item.type === 'folder') {
+                    const isCollapsed = collapsedFolders.has(item.path);
+                    return (
+                      <View
+                        style={[
+                          styles.folderRow,
+                          {
+                            marginLeft: indent,
+                            backgroundColor: glass ? withAlpha(colors.text, 0.06) : colors.surface,
+                          },
+                          glass && styles.folderRowGlass,
+                        ]}
+                      >
+                        <TouchableOpacity
+                          style={styles.folderCheckbox}
+                          onPress={() => handleFolderToggle(item.path, item.fileIndices!)}
+                          disabled={updating}
+                          accessibilityLabel={
+                            item.allSelected
+                              ? t('screens.files.deselectFolder')
+                              : t('screens.files.selectFolder')
+                          }
+                        >
+                          <Ionicons
+                            name={
+                              item.allSelected
+                                ? 'checkbox'
+                                : item.someSelected
+                                  ? 'remove-outline'
+                                  : 'square-outline'
+                            }
+                            size={24}
+                            color={
+                              item.allSelected || item.someSelected
+                                ? colors.primary
+                                : colors.textSecondary
+                            }
+                          />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.folderContent}
+                          onPress={() => handleFolderExpand(item.path)}
+                          onLongPress={() => promptRenameFolder(item.path)}
+                          delayLongPress={350}
+                        >
+                          <Ionicons
+                            name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+                            size={20}
+                            color={colors.text}
+                          />
+                          <Ionicons
+                            name="folder"
+                            size={20}
+                            color={colors.primary}
+                            style={{ marginLeft: 8 }}
+                          />
+                          <View style={styles.folderInfo}>
+                            <Text style={[styles.folderName, { color: colors.text }]}>
+                              {item.name}
+                            </Text>
+                            <Text style={[styles.folderMeta, { color: colors.textSecondary }]}>
+                              {t('screens.files.filesCount', { count: item.fileCount })} •{' '}
+                              {formatSize(item.size || 0)}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        {/* torrents/renameFolder doesn't exist below WebAPI 2.7.0. */}
+                        {features.supportsRenameFolder && (
+                          <TouchableOpacity
+                            style={styles.folderRenameButton}
+                            onPress={() => promptRenameFolder(item.path)}
+                            disabled={updating}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            accessibilityLabel={t('screens.files.renameFolder')}
+                          >
+                            <Ionicons
+                              name="pencil-outline"
+                              size={18}
+                              color={colors.textSecondary}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  }
+
+                  // File row
+                  const file = item.file!;
                   return (
-                    <View
-                      style={[
-                        styles.folderRow,
-                        { marginLeft: indent, backgroundColor: colors.surface },
-                      ]}
-                    >
+                    <View style={[styles.fileRow, { marginLeft: indent }]}>
                       <TouchableOpacity
-                        style={styles.folderCheckbox}
-                        onPress={() => handleFolderToggle(item.path, item.fileIndices!)}
+                        style={styles.fileCheckbox}
+                        onPress={() => handleFileToggle(file)}
                         disabled={updating}
                         accessibilityLabel={
-                          item.allSelected
-                            ? t('screens.files.deselectFolder')
-                            : t('screens.files.selectFolder')
+                          file.priority === 0
+                            ? t('screens.files.selectFile')
+                            : t('screens.files.deselectFile')
                         }
                       >
                         <Ionicons
-                          name={
-                            item.allSelected
-                              ? 'checkbox'
-                              : item.someSelected
-                                ? 'remove-outline'
-                                : 'square-outline'
-                          }
+                          name={file.priority === 0 ? 'square-outline' : 'checkbox'}
                           size={24}
-                          color={
-                            item.allSelected || item.someSelected
-                              ? colors.primary
-                              : colors.textSecondary
-                          }
+                          color={file.priority === 0 ? colors.textSecondary : colors.primary}
                         />
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={styles.folderContent}
-                        onPress={() => handleFolderExpand(item.path)}
-                        onLongPress={() => promptRenameFolder(item.path)}
+                        style={[styles.fileCard, { backgroundColor: colors.surface }]}
+                        onPress={() => showPriorityMenu(file)}
+                        onLongPress={() => {
+                          setMenuFile(file);
+                          promptRenameFile(file);
+                        }}
                         delayLongPress={350}
-                      >
-                        <Ionicons
-                          name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
-                          size={20}
-                          color={colors.text}
-                        />
-                        <Ionicons
-                          name="folder"
-                          size={20}
-                          color={colors.primary}
-                          style={{ marginLeft: 8 }}
-                        />
-                        <View style={styles.folderInfo}>
-                          <Text style={[styles.folderName, { color: colors.text }]}>
-                            {item.name}
-                          </Text>
-                          <Text style={[styles.folderMeta, { color: colors.textSecondary }]}>
-                            {t('screens.files.filesCount', { count: item.fileCount })} •{' '}
-                            {formatSize(item.size || 0)}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.folderRenameButton}
-                        onPress={() => promptRenameFolder(item.path)}
                         disabled={updating}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        accessibilityLabel={t('screens.files.renameFolder')}
                       >
-                        <Ionicons name="pencil-outline" size={18} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                }
+                        <View style={styles.fileHeader}>
+                          <Ionicons
+                            name={getFileIcon(item.name)}
+                            size={20}
+                            color={getPriorityColor(file.priority)}
+                          />
+                          <View style={styles.fileInfo}>
+                            <Text
+                              style={[
+                                styles.fileName,
+                                { color: file.priority === 0 ? colors.textSecondary : colors.text },
+                              ]}
+                            >
+                              {item.name}
+                            </Text>
+                            <View style={styles.fileMetadata}>
+                              <Text style={[styles.fileSize, { color: colors.textSecondary }]}>
+                                {formatSize(file.size)}
+                              </Text>
+                              <Text style={[styles.fileSeparator, { color: colors.textSecondary }]}>
+                                •
+                              </Text>
+                              <Text style={[styles.fileProgress, { color: colors.textSecondary }]}>
+                                {formatProgress(file.progress)}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
 
-                // File row
-                const file = item.file!;
-                return (
-                  <View style={[styles.fileRow, { marginLeft: indent }]}>
-                    <TouchableOpacity
-                      style={styles.fileCheckbox}
-                      onPress={() => handleFileToggle(file)}
-                      disabled={updating}
-                      accessibilityLabel={
-                        file.priority === 0
-                          ? t('screens.files.selectFile')
-                          : t('screens.files.deselectFile')
-                      }
-                    >
-                      <Ionicons
-                        name={file.priority === 0 ? 'square-outline' : 'checkbox'}
-                        size={24}
-                        color={file.priority === 0 ? colors.textSecondary : colors.primary}
-                      />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.fileCard, { backgroundColor: colors.surface }]}
-                      onPress={() => showPriorityMenu(file)}
-                      onLongPress={() => {
-                        setMenuFile(file);
-                        promptRenameFile(file);
-                      }}
-                      delayLongPress={350}
-                      disabled={updating}
-                    >
-                      <View style={styles.fileHeader}>
-                        <Ionicons
-                          name={getFileIcon(item.name)}
-                          size={20}
-                          color={getPriorityColor(file.priority)}
-                        />
-                        <View style={styles.fileInfo}>
-                          <Text
+                        <View style={styles.fileFooter}>
+                          <View
+                            style={[styles.progressBar, { backgroundColor: colors.surfaceOutline }]}
+                          >
+                            <View
+                              style={[
+                                styles.progressFill,
+                                {
+                                  width: `${file.progress * 100}%`,
+                                  backgroundColor: getPriorityColor(file.priority),
+                                },
+                              ]}
+                            />
+                          </View>
+                          <View
                             style={[
-                              styles.fileName,
-                              { color: file.priority === 0 ? colors.textSecondary : colors.text },
+                              styles.priorityBadge,
+                              {
+                                backgroundColor: isDark
+                                  ? colors.surfaceOutline
+                                  : getPriorityColor(file.priority) + '20',
+                              },
                             ]}
                           >
-                            {item.name}
-                          </Text>
-                          <View style={styles.fileMetadata}>
-                            <Text style={[styles.fileSize, { color: colors.textSecondary }]}>
-                              {formatSize(file.size)}
-                            </Text>
-                            <Text style={[styles.fileSeparator, { color: colors.textSecondary }]}>
-                              •
-                            </Text>
-                            <Text style={[styles.fileProgress, { color: colors.textSecondary }]}>
-                              {formatProgress(file.progress)}
+                            <Text
+                              style={[
+                                styles.priorityText,
+                                { color: isDark ? colors.text : getPriorityColor(file.priority) },
+                              ]}
+                            >
+                              {getPriorityLabel(file.priority)}
                             </Text>
                           </View>
                         </View>
-                      </View>
-
-                      <View style={styles.fileFooter}>
-                        <View
-                          style={[styles.progressBar, { backgroundColor: colors.surfaceOutline }]}
-                        >
-                          <View
-                            style={[
-                              styles.progressFill,
-                              {
-                                width: `${file.progress * 100}%`,
-                                backgroundColor: getPriorityColor(file.priority),
-                              },
-                            ]}
-                          />
-                        </View>
-                        <View
-                          style={[
-                            styles.priorityBadge,
-                            {
-                              backgroundColor: isDark
-                                ? colors.surfaceOutline
-                                : getPriorityColor(file.priority) + '20',
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.priorityText,
-                              { color: isDark ? colors.text : getPriorityColor(file.priority) },
-                            ]}
-                          >
-                            {getPriorityLabel(file.priority)}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                );
-              }}
-            />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }}
+              />
+            </GlassSurface>
           </>
         )}
 
@@ -748,7 +774,7 @@ export default function TorrentFilesScreen() {
             activeOpacity={1}
             onPress={() => setMenuVisible(false)}
           >
-            <View
+            <GlassSurface
               style={[
                 styles.menuContainer,
                 {
@@ -816,7 +842,7 @@ export default function TorrentFilesScreen() {
                   {t('screens.files.maximumPriority')}
                 </Text>
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </TouchableOpacity>
         </Modal>
 
@@ -832,7 +858,7 @@ export default function TorrentFilesScreen() {
             activeOpacity={1}
             onPress={() => setBulkPriorityMenuVisible(false)}
           >
-            <View
+            <GlassSurface
               style={[
                 styles.menuContainer,
                 {
@@ -887,7 +913,7 @@ export default function TorrentFilesScreen() {
                   {t('screens.files.maximumPriority')}
                 </Text>
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </TouchableOpacity>
         </Modal>
 
@@ -968,6 +994,20 @@ const styles = StyleSheet.create({
   listContent: {
     padding: spacing.md,
     paddingBottom: spacing.xl,
+  },
+  listWrap: {
+    flex: 1,
+  },
+  // Glass on: the whole list sits in one glass card.
+  glassListCard: {
+    flex: 1,
+    margin: spacing.md,
+    marginBottom: 0,
+    borderRadius: borderRadius.medium,
+    overflow: 'hidden',
+  },
+  folderRowGlass: {
+    shadowOpacity: 0,
   },
   folderRow: {
     flexDirection: 'row',

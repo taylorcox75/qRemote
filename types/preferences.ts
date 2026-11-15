@@ -134,6 +134,18 @@ export interface AppPreferences {
   /** Last incomplete-torrents download path typed on the add-torrent screen */
   lastDownloadPath: string;
 
+  /**
+   * Per-server (keyed by ServerConfig.id) last "Use another download path"
+   * choice on the add-torrent screen. Replaces the device-wide
+   * lastUseDownloadPath / lastDownloadPath, which leaked one server's path
+   * into another's adds; those keys are kept (never deleted) and read only as
+   * an upgrade fallback when exactly one server is saved.
+   */
+  addTorrentDownloadPathByServer: Record<
+    string,
+    { useDownloadPath: boolean; downloadPath: string }
+  >;
+
   /** Default download priority for new torrents (0 = normal) */
   defaultPriority: number;
 
@@ -232,6 +244,20 @@ export interface AppPreferences {
 
   /** Last active tag filters on the torrents tab (OR semantics). */
   lastTagFilters?: string[];
+
+  /**
+   * Torrents tab: opaque header that stays pinned at the top while the list
+   * scrolls, instead of the translucent overlay that slides away.
+   */
+  solidPinnedHeader: boolean;
+
+  /**
+   * Liquid Glass materials (Settings → Appearance). Default on; only takes
+   * effect where glass can be drawn (iOS 26+ with the native module, Reduce
+   * Transparency / Increase Contrast off) — see context/LiquidGlassContext.tsx.
+   * Optional so stored preferences without it read as the default.
+   */
+  liquidGlassEnabled?: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -253,6 +279,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultSavePath: '',
   lastUseDownloadPath: false,
   lastDownloadPath: '',
+  addTorrentDownloadPathByServer: {},
   defaultPriority: 0,
   toastDuration: 3000,
   hapticFeedback: true,
@@ -316,4 +343,6 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   searchPinnedPlugins: [],
   lastCategoryFilter: null,
   lastTagFilters: [],
+  solidPinnedHeader: false,
+  liquidGlassEnabled: true,
 };

@@ -24,6 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { SearchHistoryEntry } from '@/utils/search-history';
 import { shadows } from '@/constants/shadows';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -39,6 +40,8 @@ interface SearchHistoryDropdownProps {
   onClearRecent: () => void;
   /** Absolute position (`top`/`left`/`right`) within the header. */
   style?: StyleProp<ViewStyle>;
+  /** Liquid Glass material override — see components/GlassSurface.tsx. */
+  glass?: boolean;
 }
 
 export function SearchHistoryDropdown({
@@ -48,13 +51,16 @@ export function SearchHistoryDropdown({
   onRemove,
   onClearRecent,
   style,
+  glass,
 }: SearchHistoryDropdownProps) {
   const { colors, isDark } = useTheme();
   const { t } = useTranslation();
   const hasRecent = entries.some((entry) => !entry.pinned);
 
   return (
-    <View
+    <GlassSurface
+      popover
+      glass={glass}
       style={[
         styles.container,
         {
@@ -139,7 +145,7 @@ export function SearchHistoryDropdown({
           </Text>
         </TouchableOpacity>
       )}
-    </View>
+    </GlassSurface>
   );
 }
 

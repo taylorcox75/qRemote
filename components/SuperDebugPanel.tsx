@@ -27,7 +27,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { APP_VERSION } from '@/utils/version';
 import { getConnectivityLog, formatConnectivityLog } from '@/services/connectivity-log';
 import { logsApi } from '@/services/api/logs';
-import { apiClient } from '@/services/api/client';
+import { apiClient, maskSecret, redactHeaderValue } from '@/services/api/client';
 import { getErrorMessage, isTlsRejection } from '@/utils/error';
 import { CustomHeaderPair, sanitizeCustomHeaders } from '@/utils/customHeaders';
 import { redactQuiProxyKey } from '@/utils/quiProxy';
@@ -773,13 +773,15 @@ export function SuperDebugPanel({
           }
           passed++;
 
-          // Log response headers for diagnosis
+          // Log response headers for diagnosis. Cookie / Authorization
+          // values are masked (names kept): this log is what Copy Report and
+          // Export Full Logs hand out, and a full session cookie is a login.
           const headerLines: string[] = [];
           const loginHeaders = loginResp.headers as unknown as Record<string, unknown>;
           for (const key of Object.keys(loginHeaders)) {
             const value = loginHeaders[key];
             headerLines.push(
-              `  ${key}: ${Array.isArray(value) ? value.join('; ') : String(value)}`,
+              `  ${key}: ${redactHeaderValue(key, Array.isArray(value) ? value.map(String) : String(value))}`,
             );
           }
           if (headerLines.length > 0) {
@@ -800,9 +802,11 @@ export function SuperDebugPanel({
             const eqIdx = cookiePair.indexOf('=');
             const cookieName = cookiePair.substring(0, eqIdx);
             const cookieValue = cookiePair.substring(eqIdx + 1);
-            const truncated =
-              cookieValue.length > 12 ? cookieValue.substring(0, 12) + '...' : cookieValue;
-            addEntry('COOKIE', `Session cookie captured: ${cookieName}=${truncated}`, 'success');
+            addEntry(
+              'COOKIE',
+              `Session cookie captured: ${cookieName}=${maskSecret(cookieValue)}`,
+              'success',
+            );
             passed++;
           } else {
             addEntry('COOKIE', 'No set-cookie header received from server.', 'warning');

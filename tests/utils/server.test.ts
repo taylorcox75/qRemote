@@ -9,6 +9,8 @@ import {
   getActiveEndpoint,
   getServerIcon,
   getServerIconColor,
+  splitHostAndPath,
+  insecureCertHostnames,
 } from '@/utils/server';
 import { DEFAULT_SERVER_ICON } from '@/constants/serverIcons';
 import { ServerConfig } from '@/types/api';
@@ -237,5 +239,41 @@ describe('getServerIconColor', () => {
 
   it('returns the server-chosen color when set', () => {
     expect(getServerIconColor({ ...baseServer, iconColor: '#123456' })).toBe('#123456');
+  });
+});
+
+describe('splitHostAndPath', () => {
+  it('splits a reverse-proxy path off Host', () => {
+    expect(splitHostAndPath('https://example.com/qbit/')).toEqual({
+      host: 'example.com',
+      path: '/qbit',
+    });
+    expect(splitHostAndPath('example.com:')).toEqual({ host: 'example.com', path: '' });
+  });
+});
+
+describe('insecureCertHostnames', () => {
+  it('reduces Host to the bare lowercase hostname', () => {
+    expect(insecureCertHostnames('NAS.example.com')).toEqual(['nas.example.com']);
+    expect(insecureCertHostnames('https://nas.example.com:8443/qbit')).toEqual(['nas.example.com']);
+    expect(insecureCertHostnames('user@nas.example.com')).toEqual(['nas.example.com']);
+  });
+
+  it('keeps both spellings of a trailing-dot name', () => {
+    expect(insecureCertHostnames('nas.example.com.')).toEqual([
+      'nas.example.com',
+      'nas.example.com.',
+    ]);
+  });
+
+  it('unwraps bracketed IPv6 and keeps unbracketed IPv6 whole', () => {
+    expect(insecureCertHostnames('[FD00::1]:8080/qbit')).toEqual(['fd00::1', '[fd00::1]']);
+    expect(insecureCertHostnames('fd00::1')).toEqual(['fd00::1', '[fd00::1]']);
+  });
+
+  it('returns nothing for an empty host', () => {
+    expect(insecureCertHostnames('')).toEqual([]);
+    expect(insecureCertHostnames(undefined)).toEqual([]);
+    expect(insecureCertHostnames('[]')).toEqual([]);
   });
 });

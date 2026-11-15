@@ -30,6 +30,8 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssFeeds } from '@/hooks/useRssFeeds';
@@ -39,6 +41,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { haptics } from '@/utils/haptics';
 import { getRssFeedDisplayName, sortArticlesByDateDesc, toSearchQuery } from '@/utils/rss';
 
@@ -258,7 +261,7 @@ export default function RssFeedArticlesScreen() {
         showToast(t('screens.rss.articleAddedToast'), 'success');
       } catch (err: unknown) {
         haptics.error();
-        showToast(getErrorMessage(err), 'error');
+        showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
       }
     },
     [showToast, t],
@@ -409,6 +412,7 @@ export default function RssFeedArticlesScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => (selectMode ? toggleSelectMode() : router.back())}
             style={styles.headerButton}
@@ -518,7 +522,7 @@ export default function RssFeedArticlesScreen() {
         )}
 
         {selectMode && (
-          <View
+          <GlassSurface
             style={[
               styles.bulkActionsBar,
               { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
@@ -561,7 +565,7 @@ export default function RssFeedArticlesScreen() {
                 {t('screens.rss.markSelectedRead')}
               </Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         )}
       </SafeAreaView>
 

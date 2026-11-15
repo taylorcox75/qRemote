@@ -109,3 +109,51 @@ export function getActiveEndpoint(
 
   return null;
 }
+
+/**
+ * Splits a Host field value into the hostname part and any reverse-proxy path
+ * typed after it. The server forms have no base-path field, so "example.com/qbit"
+ * can arrive in Host. Strips a leading `http(s)://` and trailing `:`/`/`.
+ * The returned host may still carry a `:port` the user typed.
+ */
+export function splitHostAndPath(rawHost: string): { host: string; path: string } {
+  const cleaned = (rawHost || '')
+    .trim()
+    .replace(/^(https?:\/\/)/i, '')
+    .replace(/[:/]+$/, '');
+  const slash = cleaned.indexOf('/');
+  if (slash === -1) return { host: cleaned, path: '' };
+  return { host: cleaned.slice(0, slash), path: cleaned.slice(slash).replace(/\/+$/, '') };
+}
+
+/**
+ * The names the native self-signed-certificate allowlist should hold for a
+ * Host field value. The native side exact-matches the bare hostname iOS puts
+ * in the TLS challenge, so a path, a typed port, user info or a trailing dot
+ * would never match. Bracketed IPv6 (`[::1]:8080`) is unwrapped; both the
+ * bracketed and bare spellings are returned, as is the trailing-dot spelling
+ * when one was typed, since which form iOS reports isn't guaranteed.
+ * Lowercased. Empty for an empty/unusable Host.
+ */
+export function insecureCertHostnames(rawHost: string | undefined | null): string[] {
+  let host = splitHostAndPath(rawHost ?? '').host;
+  const at = host.lastIndexOf('@');
+  if (at !== -1) host = host.slice(at + 1);
+  host = host.toLowerCase();
+
+  if (host.startsWith('[')) {
+    const close = host.indexOf(']');
+    const inner = close === -1 ? host.slice(1) : host.slice(1, close);
+    return inner ? [inner, `[${inner}]`] : [];
+  }
+  const colons = host.split(':').length - 1;
+  if (colons === 1) {
+    host = host.slice(0, host.indexOf(':'));
+  } else if (colons > 1) {
+    // Unbracketed IPv6 — no port can be told apart, keep it whole.
+    return [host, `[${host}]`];
+  }
+  const bare = host.replace(/\.+$/, '');
+  if (!bare) return [];
+  return bare === host ? [bare] : [bare, `${bare}.`];
+}

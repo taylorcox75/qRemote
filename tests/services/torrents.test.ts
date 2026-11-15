@@ -93,9 +93,9 @@ describe('torrentsApi', () => {
 
   describe('getTorrentContents', () => {
     it('without indexes', async () => {
-      mockGet.mockResolvedValueOnce([{ name: 'f' }]);
+      mockGet.mockResolvedValueOnce([{ name: 'f', index: 0 }]);
       const result = await torrentsApi.getTorrentContents('h1');
-      expect(result).toEqual([{ name: 'f' }]);
+      expect(result).toEqual([{ name: 'f', index: 0 }]);
       expect(mockGet).toHaveBeenCalledWith('/api/v2/torrents/files', { hash: 'h1' });
     });
     it('with indexes joined by pipe', async () => {
@@ -109,6 +109,17 @@ describe('torrentsApi', () => {
     it('returns [] for non-array', async () => {
       mockGet.mockResolvedValueOnce(null);
       expect(await torrentsApi.getTorrentContents('h1')).toEqual([]);
+    });
+    it('fills in the array position as index when the server omits it (WebAPI < 2.8.2)', async () => {
+      mockGet.mockResolvedValueOnce([{ name: 'a' }, { name: 'b' }]);
+      expect(await torrentsApi.getTorrentContents('h1')).toEqual([
+        { name: 'a', index: 0 },
+        { name: 'b', index: 1 },
+      ]);
+    });
+    it('keeps the server-reported index', async () => {
+      mockGet.mockResolvedValueOnce([{ name: 'b', index: 5 }]);
+      expect(await torrentsApi.getTorrentContents('h1', [5])).toEqual([{ name: 'b', index: 5 }]);
     });
   });
 
@@ -306,6 +317,32 @@ describe('torrentsApi', () => {
       const formData = mockPostFormData.mock.calls[0][1] as FormData;
       expect(formData.get('useDownloadPath')).toBe('false');
       expect(formData.get('downloadPath')).toBeNull();
+    });
+  });
+
+  describe('torrents/add "Fails." body (qBit <= 5.1 answers 200 when nothing was added)', () => {
+    it('addTorrent throws when the body is "Fails."', async () => {
+      mockPostFormData.mockResolvedValueOnce('Fails.');
+      await expect(torrentsApi.addTorrent('magnet:?xt=1')).rejects.toThrow(
+        'This torrent already exists or could not be added.',
+      );
+    });
+    it('addTorrentFile throws when the body is "Fails."', async () => {
+      mockPostFormData.mockResolvedValueOnce('Fails.\n');
+      await expect(
+        torrentsApi.addTorrentFile({ uri: 'file:///a.torrent', name: 'a.torrent' }),
+      ).rejects.toThrow('This torrent already exists or could not be added.');
+    });
+    it('resolves on "Ok." and on the 5.2+ JSON body', async () => {
+      mockPostFormData.mockResolvedValueOnce('Ok.');
+      await expect(torrentsApi.addTorrent('magnet:?xt=1')).resolves.toBeUndefined();
+      mockPostFormData.mockResolvedValueOnce({
+        success_count: 1,
+        failure_count: 0,
+        pending_count: 0,
+        added_torrent_ids: ['abc'],
+      });
+      await expect(torrentsApi.addTorrent('magnet:?xt=1')).resolves.toBeUndefined();
     });
   });
 
@@ -549,12 +586,7 @@ describe('torrentsApi', () => {
   });
 
   describe('setTorrentShareLimits', () => {
-    it('sends only provided limits', async () => {
-      mockPost.mockResolvedValueOnce(undefined);
-      await torrentsApi.setTorrentShareLimits(['h1']);
-      expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setShareLimits', { hashes: 'h1' });
-    });
-    it('sends both limits when provided', async () => {
+    it('sends ratioLimit and seedingTimeLimit only below 4.6 (WebAPI < 2.9.2)', async () => {
       mockPost.mockResolvedValueOnce(undefined);
       await torrentsApi.setTorrentShareLimits(['h1'], { ratioLimit: 2, seedingTimeLimit: 60 });
       expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setShareLimits', {
@@ -565,7 +597,10 @@ describe('torrentsApi', () => {
     });
 
     it('includes inactiveSeedingTimeLimit/shareLimitAction/shareLimitsMode on 5.x (required by qBittorrent 5.1+)', async () => {
-      mockGetApiFeatures.mockReturnValue({ supportsInactiveSeedingLimit: true });
+      mockGetApiFeatures.mockReturnValue({
+        supportsInactiveSeedingLimit: true,
+        supportsShareLimitAction: true,
+      });
       mockPost.mockResolvedValueOnce(undefined);
       await torrentsApi.setTorrentShareLimits(['h1'], { ratioLimit: 2, seedingTimeLimit: 60 });
       expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setShareLimits', {
@@ -582,7 +617,10 @@ describe('torrentsApi', () => {
     // unchanged". Hardcoding it wiped the torrent's own share-limit action, and
     // with a global action of "Remove torrent" the server deleted the torrent.
     it('round-trips the current share limit action/mode instead of resetting them to Default', async () => {
-      mockGetApiFeatures.mockReturnValue({ supportsInactiveSeedingLimit: true });
+      mockGetApiFeatures.mockReturnValue({
+        supportsInactiveSeedingLimit: true,
+        supportsShareLimitAction: true,
+      });
       mockPost.mockResolvedValueOnce(undefined);
       await torrentsApi.setTorrentShareLimits(['h1'], {
         ratioLimit: 2,
@@ -601,8 +639,32 @@ describe('torrentsApi', () => {
       });
     });
 
+    // qBit 4.6.x requires inactiveSeedingTimeLimit but predates shareLimitAction;
+    // gating it on 5.0 made every share-limit edit there answer 400.
+    it('includes inactiveSeedingTimeLimit without shareLimitAction on 4.6.x', async () => {
+      mockGetApiFeatures.mockReturnValue({
+        supportsInactiveSeedingLimit: true,
+        supportsShareLimitAction: false,
+      });
+      mockPost.mockResolvedValueOnce(undefined);
+      await torrentsApi.setTorrentShareLimits(['h1'], {
+        ratioLimit: -2,
+        seedingTimeLimit: 120,
+        inactiveSeedingTimeLimit: 30,
+      });
+      expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/setShareLimits', {
+        hashes: 'h1',
+        ratioLimit: -2,
+        seedingTimeLimit: 120,
+        inactiveSeedingTimeLimit: 30,
+      });
+    });
+
     it('uses provided inactiveSeedingTimeLimit on 5.x instead of the -2 default', async () => {
-      mockGetApiFeatures.mockReturnValue({ supportsInactiveSeedingLimit: true });
+      mockGetApiFeatures.mockReturnValue({
+        supportsInactiveSeedingLimit: true,
+        supportsShareLimitAction: true,
+      });
       mockPost.mockResolvedValueOnce(undefined);
       await torrentsApi.setTorrentShareLimits(['h1'], {
         ratioLimit: 2,
@@ -732,6 +794,27 @@ describe('torrentsApi', () => {
       oldPath: 'old.txt',
       newPath: 'new.txt',
     });
+  });
+
+  it('renameFile with an index sends both oldPath/newPath (4.3.3+) and id/name (≤ 4.3.2)', async () => {
+    mockPost.mockResolvedValueOnce(undefined);
+    await torrentsApi.renameFile('h1', 'dir/old.txt', 'dir/new.txt', 3);
+    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/renameFile', {
+      hash: 'h1',
+      oldPath: 'dir/old.txt',
+      newPath: 'dir/new.txt',
+      id: 3,
+      name: 'new.txt',
+    });
+  });
+
+  it('renameFile sends id 0 for the first file', async () => {
+    mockPost.mockResolvedValueOnce(undefined);
+    await torrentsApi.renameFile('h1', 'a.txt', 'b.txt', 0);
+    expect(mockPost).toHaveBeenCalledWith(
+      '/api/v2/torrents/renameFile',
+      expect.objectContaining({ id: 0, name: 'b.txt' }),
+    );
   });
 
   it('renameFolder', async () => {

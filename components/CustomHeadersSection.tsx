@@ -11,6 +11,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Switch } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { SettingRow } from '@/components/SettingRow';
 import { CustomHeaderPair, isReservedHeaderName } from '@/utils/customHeaders';
 
@@ -61,7 +62,7 @@ export function CustomHeadersSection({
       <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
         {t('server.customHeaders')}
       </Text>
-      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+      <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
         <SettingRow
           icon="code-slash-outline"
           label={t('server.useCustomHeaders')}
@@ -157,7 +158,7 @@ export function CustomHeadersSection({
             </TouchableOpacity>
           </>
         )}
-      </View>
+      </GlassSurface>
     </View>
   );
 }

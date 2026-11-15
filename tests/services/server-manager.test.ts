@@ -12,13 +12,21 @@ jest.mock('@/services/storage', () => ({
   },
 }));
 
+const mockIsolatedClient = { get: jest.fn() };
+
 jest.mock('@/services/api/client', () => ({
   apiClient: {
     getServer: jest.fn(),
     setServer: jest.fn(),
     setApiVersion: jest.fn(),
     abortInFlight: jest.fn(),
+    createIsolatedClient: jest.fn(() => mockIsolatedClient),
   },
+}));
+
+jest.mock('@/modules/insecure-cert-allowlist', () => ({
+  setInsecureCertAllowedHosts: jest.fn(),
+  isInsecureCertAllowlistAvailable: jest.fn(() => true),
 }));
 
 jest.mock('@/services/api/auth', () => ({
@@ -41,7 +49,13 @@ jest.mock('@/services/connectivity-log', () => ({
 }));
 
 import { AxiosError } from 'axios';
-import { ServerManager, isNetworkError } from '@/services/server-manager';
+import {
+  ServerManager,
+  isNetworkError,
+  isConnectSuperseded,
+  CONNECT_SUPERSEDED_MESSAGE,
+} from '@/services/server-manager';
+import { setInsecureCertAllowedHosts } from '@/modules/insecure-cert-allowlist';
 import { storageService } from '@/services/storage';
 import { apiClient } from '@/services/api/client';
 import { authApi } from '@/services/api/auth';
@@ -108,6 +122,7 @@ describe('ServerManager', () => {
     // self-signed-cert allowlist off the full server list as a side effect;
     // default it so tests that don't care about that list don't have to stub it.
     mockStorage.getServers.mockResolvedValue([]);
+    mockIsolatedClient.get.mockResolvedValue('v5.0.0');
   });
 
   describe('saveServer / getServers / getServer', () => {
@@ -488,15 +503,20 @@ describe('ServerManager', () => {
     it('returns success on happy path', async () => {
       mockApiClient.getServer.mockReturnValue(null);
       mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });
-      mockApp.getVersion.mockResolvedValueOnce({ version: '4.5', apiVersion: '2.9' });
+      mockIsolatedClient.get.mockResolvedValueOnce('v4.5.0');
       const result = await ServerManager.testConnection(makeServer());
       expect(result.success).toBe(true);
-      expect(mockApiClient.setServer).toHaveBeenLastCalledWith(null);
+      // Tested on an isolated client — the live session is never touched.
+      expect(mockApiClient.setServer).not.toHaveBeenCalled();
+      expect(mockApiClient.createIsolatedClient).toHaveBeenCalledWith(
+        expect.objectContaining({ host: 'example.com' }),
+      );
+      expect(mockAuth.login).toHaveBeenCalledWith('admin', 'secret', undefined, mockIsolatedClient);
     });
 
     it('skips login when bypassAuth is set', async () => {
       mockApiClient.getServer.mockReturnValue(null);
-      mockApp.getVersion.mockResolvedValueOnce({ version: '4.5', apiVersion: '2.9' });
+      mockIsolatedClient.get.mockResolvedValueOnce('v4.5.0');
       const result = await ServerManager.testConnection(makeServer({ bypassAuth: true }));
       expect(result.success).toBe(true);
       expect(mockAuth.login).not.toHaveBeenCalled();
@@ -548,7 +568,7 @@ describe('ServerManager', () => {
 
     it('skips login when useApiKey is set', async () => {
       mockApiClient.getServer.mockReturnValue(null);
-      mockApp.getVersion.mockResolvedValueOnce({ version: '5.2', apiVersion: '2.14' });
+      mockIsolatedClient.get.mockResolvedValueOnce('v5.2.0');
       const result = await ServerManager.testConnection(
         makeServer({ useApiKey: true, apiKey: 'qbt_thekey' }),
       );
@@ -567,7 +587,7 @@ describe('ServerManager', () => {
 
     it('skips login and succeeds on a version response', async () => {
       mockApiClient.getServer.mockReturnValue(null);
-      mockApp.getVersion.mockResolvedValueOnce({ version: '5.0', apiVersion: '2.11' });
+      mockIsolatedClient.get.mockResolvedValueOnce('v5.0.0');
       const result = await ServerManager.testConnection(quiServer);
       expect(result.success).toBe(true);
       expect(mockAuth.login).not.toHaveBeenCalled();
@@ -575,7 +595,7 @@ describe('ServerManager', () => {
 
     it('reports qui\'s key rejection verbatim rather than "check your credentials"', async () => {
       mockApiClient.getServer.mockReturnValue(null);
-      mockApp.getVersion.mockRejectedValueOnce(
+      mockIsolatedClient.get.mockRejectedValueOnce(
         Object.assign(new Error(QUI_KEY_REJECTED_MESSAGE), { status: 401 }),
       );
       const result = await ServerManager.testConnection(quiServer);
@@ -586,7 +606,7 @@ describe('ServerManager', () => {
       mockApiClient.getServer.mockReturnValue(null);
       const result = await ServerManager.testConnection({ ...quiServer, quiProxyKey: '' });
       expect(result).toEqual({ success: false, error: QUI_KEY_MISSING_MESSAGE });
-      expect(mockApp.getVersion).not.toHaveBeenCalled();
+      expect(mockIsolatedClient.get).not.toHaveBeenCalled();
     });
   });
 
@@ -600,7 +620,7 @@ describe('ServerManager', () => {
     it('succeeds when primary succeeds', async () => {
       mockApiClient.getServer.mockReturnValue(null);
       mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });
-      mockApp.getVersion.mockResolvedValueOnce({ version: '4.5', apiVersion: '2.9' });
+      mockIsolatedClient.get.mockResolvedValueOnce('v4.5.0');
       const result = await ServerManager.testConnection(serverWithFallback);
       expect(result.success).toBe(true);
       expect(result.primary?.success).toBe(true);
@@ -611,7 +631,7 @@ describe('ServerManager', () => {
       mockApiClient.getServer.mockReturnValue(null);
       mockAuth.login.mockResolvedValueOnce({ status: 'Fails' });
       mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });
-      mockApp.getVersion.mockResolvedValueOnce({ version: '4.5', apiVersion: '2.9' });
+      mockIsolatedClient.get.mockResolvedValueOnce('v4.5.0');
       const result = await ServerManager.testConnection(serverWithFallback);
       expect(result.success).toBe(true);
       expect(result.fallback?.success).toBe(true);
@@ -625,6 +645,131 @@ describe('ServerManager', () => {
       expect(result.success).toBe(false);
       expect(result.primary?.success).toBe(false);
       expect(result.fallback?.success).toBe(false);
+    });
+  });
+
+  describe('stale connect attempts (#audit-4)', () => {
+    function deferred<T>() {
+      let resolve!: (v: T) => void;
+      let reject!: (e: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    }
+
+    it('a superseded attempt does not clear the client the newer connect set up', async () => {
+      const staleLogin = deferred<{ status: 'Ok' | 'Fails' }>();
+      mockAuth.login.mockReturnValueOnce(staleLogin.promise);
+      const stale = ServerManager.connectToServer(makeServer({ id: 'A', host: 'a.example' }));
+
+      mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });
+      mockApp.getVersion.mockResolvedValueOnce({ version: '5.0', apiVersion: '2.11' });
+      await expect(
+        ServerManager.connectToServer(makeServer({ id: 'B', host: 'b.example' })),
+      ).resolves.toBe(true);
+
+      mockApiClient.setServer.mockClear();
+      staleLogin.reject(new Error('Request canceled.'));
+      await expect(stale).rejects.toThrow(CONNECT_SUPERSEDED_MESSAGE);
+      expect(mockApiClient.setServer).not.toHaveBeenCalled();
+      expect(mockStorage.setCurrentServerId).toHaveBeenLastCalledWith('B');
+    });
+
+    it('a superseded attempt never tries its fallback endpoint', async () => {
+      const staleLogin = deferred<{ status: 'Ok' | 'Fails' }>();
+      mockAuth.login.mockReturnValueOnce(staleLogin.promise);
+      const stale = ServerManager.connectToServer(
+        makeServer({ id: 'A', useFallback: true, fallbackHost: 'lan.example' }),
+      );
+      mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });
+      mockApp.getVersion.mockResolvedValueOnce({ version: '5.0', apiVersion: '2.11' });
+      await ServerManager.connectToServer(makeServer({ id: 'B' }));
+
+      const netErr = new AxiosError('timeout');
+      netErr.code = 'ECONNABORTED';
+      staleLogin.reject(netErr);
+      await expect(stale).rejects.toThrow(CONNECT_SUPERSEDED_MESSAGE);
+      expect(mockAuth.login).toHaveBeenCalledTimes(2);
+      expect(mockApiClient.setServer).not.toHaveBeenCalledWith(
+        expect.objectContaining({ host: 'lan.example' }),
+      );
+    });
+
+    it('a connect that succeeds after a disconnect does not record itself as current', async () => {
+      const version = deferred<{ version: string; apiVersion: string }>();
+      mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });
+      mockApp.getVersion.mockReturnValueOnce(version.promise);
+      const stale = ServerManager.connectToServer(makeServer());
+      await Promise.resolve();
+      await Promise.resolve();
+
+      mockApiClient.getServer.mockReturnValue(null);
+      await ServerManager.disconnect();
+      mockApiClient.setServer.mockClear();
+
+      version.resolve({ version: '5.0', apiVersion: '2.11' });
+      const error = await stale.catch((e: unknown) => e);
+      expect(isConnectSuperseded(error)).toBe(true);
+      expect(mockStorage.setCurrentServerId).not.toHaveBeenCalled();
+      expect(mockApiClient.setApiVersion).not.toHaveBeenCalled();
+      expect(mockApiClient.setServer).not.toHaveBeenCalled();
+    });
+
+    it('a canceled request on the current attempt is rethrown, not reported as a login failure', async () => {
+      mockAuth.login.mockRejectedValueOnce(new Error('Request canceled.'));
+      await expect(ServerManager.connectToServer(makeServer())).rejects.toThrow(
+        'Request canceled.',
+      );
+      expect(mockApiClient.setServer).toHaveBeenLastCalledWith(null);
+    });
+  });
+
+  describe('importServers keeps allowInsecureCert', () => {
+    it("keeps this device's self-signed-certificate choice on update", async () => {
+      mockStorage.getServers.mockResolvedValueOnce([makeServer({ allowInsecureCert: true })]);
+      await ServerManager.importServers([makeServer({ host: 'moved.example' })]);
+      expect(mockStorage.saveServer).toHaveBeenCalledWith(
+        expect.objectContaining({ host: 'moved.example', allowInsecureCert: true }),
+      );
+    });
+  });
+
+  describe('self-signed certificate allowlist', () => {
+    const mockSetHosts = setInsecureCertAllowedHosts as jest.Mock;
+
+    it('feeds bare hostnames (no path, port or trailing dot) to the native allowlist', async () => {
+      mockStorage.getServers.mockResolvedValueOnce([
+        makeServer({ host: 'https://NAS.example.com:8443/qbit', allowInsecureCert: true }),
+        makeServer({
+          id: 's2',
+          host: '[fd00::1]:8080',
+          allowInsecureCert: true,
+          useFallback: true,
+          fallbackHost: 'lan.example.',
+        }),
+        makeServer({ id: 's3', host: 'untrusted.example', allowInsecureCert: false }),
+      ]);
+      await ServerManager.getServers();
+      expect(mockSetHosts).toHaveBeenLastCalledWith([
+        'nas.example.com',
+        'fd00::1',
+        '[fd00::1]',
+        'lan.example',
+        'lan.example.',
+      ]);
+    });
+
+    it('drops an unsaved server from the allowlist once its test finishes', async () => {
+      mockStorage.getServers.mockResolvedValue([]);
+      mockApp.getVersion.mockResolvedValue({ version: '5.0', apiVersion: '2.11' });
+      mockAuth.login.mockResolvedValueOnce({ status: 'Ok' });
+      await ServerManager.testConnection(
+        makeServer({ host: 'selfsigned.example', allowInsecureCert: true }),
+      );
+      expect(mockSetHosts).toHaveBeenCalledWith(['selfsigned.example']);
+      expect(mockSetHosts).toHaveBeenLastCalledWith([]);
     });
   });
 });

@@ -255,12 +255,17 @@ export const storageService = {
    * Merge `patch` into the stored preferences. Calls are queued, and each one
    * reads the blob fresh inside the queue, so two quick updates can't overwrite
    * each other's keys the way two overlapping getPreferences → savePreferences
-   * pairs can.
+   * pairs can. Pass a function to derive the patch from the fresh blob (e.g. to
+   * merge into a nested map) inside the same queued read-modify-write.
    */
-  updatePreferences(patch: Partial<AppPreferences>): Promise<void> {
+  updatePreferences(
+    patch:
+      Partial<AppPreferences> | ((current: Partial<AppPreferences>) => Partial<AppPreferences>),
+  ): Promise<void> {
     const run = preferencesWriteQueue.then(async () => {
       const current = await this.getPreferences();
-      await this.savePreferences({ ...current, ...patch });
+      const resolved = typeof patch === 'function' ? patch(current) : patch;
+      await this.savePreferences({ ...current, ...resolved });
     });
     // Keep the queue alive after a failed write; the caller still sees the error.
     preferencesWriteQueue = run.catch(() => undefined);

@@ -196,7 +196,7 @@ describe('TorrentCard stats line', () => {
 });
 
 describe('TorrentCard container (left accent border + compact density)', () => {
-  it('paints a state-colored left accent and uses the tightened compact padding', async () => {
+  it('paints a state-colored left accent and uses the slim compact padding', async () => {
     await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} />);
 
     // name Text → headerRow View → card container.
@@ -206,7 +206,7 @@ describe('TorrentCard container (left accent border + compact density)', () => {
       borderLeftColor: downloadingColor,
       backgroundColor: mockColors.surface,
       paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      paddingVertical: spacing.xs + spacing.xs / 2,
       borderRadius: borderRadius.medium,
     });
   });
@@ -231,16 +231,59 @@ describe('TorrentCard container (left accent border + compact density)', () => {
     });
   });
 
-  it('renders the name at 15pt semibold with a tight line height', async () => {
+  it('renders the compact (slim) name at 14pt semibold with a tight line height', async () => {
     await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} />);
 
     const name = screen.getByText('Sample Torrent');
     expect(name.props.numberOfLines).toBe(2);
     expect(StyleSheet.flatten(name.props.style)).toMatchObject({
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '600',
       lineHeight: 18,
     });
+  });
+
+  it('keeps the 15pt name in detailed mode', async () => {
+    await render(
+      <TorrentCard
+        torrent={baseTorrent}
+        onPress={jest.fn()}
+        compact={false}
+        expandedCardFields={allFieldsOff}
+      />,
+    );
+    expect(StyleSheet.flatten(screen.getByText('Sample Torrent').props.style)).toMatchObject({
+      fontSize: 15,
+    });
+  });
+});
+
+describe('TorrentCard glass prop', () => {
+  // The name Text's grandparent is the card container in both modes.
+  const card = () => screen.getByText('Sample Torrent').parent?.parent;
+
+  it('is a solid surface card by default', async () => {
+    await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} />);
+    expect(StyleSheet.flatten(card()?.props.style).backgroundColor).toBe(mockColors.surface);
+  });
+
+  it('clears the card background and drops its shadow when glass is on', async () => {
+    await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} glass />);
+    expect(StyleSheet.flatten(card()?.props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+      shadowOpacity: 0,
+      borderLeftColor: downloadingColor,
+    });
+  });
+
+  it('re-renders when only the glass prop changes (memo comparator includes it)', async () => {
+    const onPress = jest.fn();
+    const { rerender } = await render(<TorrentCard torrent={baseTorrent} onPress={onPress} />);
+    expect(StyleSheet.flatten(card()?.props.style).backgroundColor).toBe(mockColors.surface);
+    await rerender(<TorrentCard torrent={baseTorrent} onPress={onPress} glass />);
+    expect(StyleSheet.flatten(card()?.props.style).backgroundColor).toBe('transparent');
+    await rerender(<TorrentCard torrent={baseTorrent} onPress={onPress} glass={false} />);
+    expect(StyleSheet.flatten(card()?.props.style).backgroundColor).toBe(mockColors.surface);
   });
 });
 

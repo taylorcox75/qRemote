@@ -21,6 +21,26 @@ import {
 
 const API_VERSION = 'v2';
 
+/**
+ * Message thrown when torrents/add added nothing. Deliberately the same text the
+ * client already throws for qBit 5.2+'s 409 on that endpoint, so both versions
+ * surface (and localize) one error.
+ */
+export const TORRENT_ADD_FAILED_MESSAGE = 'This torrent already exists or could not be added.';
+
+/**
+ * torrents/add answers HTTP 200 either way through qBit 5.1 — body "Ok." when at
+ * least one torrent was added, "Fails." when none was (duplicate, unparseable
+ * file, bad URL). qBit 5.2+ answers a JSON object, or 409 (handled in the client)
+ * when nothing was added. axios may hand the plain-text body over as-is or, if it
+ * ever looked like JSON, parsed — only the literal "Fails." string means failure.
+ */
+function assertTorrentAdded(body: unknown): void {
+  if (typeof body === 'string' && body.trim() === 'Fails.') {
+    throw new Error(TORRENT_ADD_FAILED_MESSAGE);
+  }
+}
+
 export const torrentsApi = {
   /**
    * Get torrent list
@@ -89,7 +109,13 @@ export const torrentsApi = {
       params.indexes = indexes.join('|');
     }
     const response = await apiClient.get(`/api/${API_VERSION}/torrents/files`, params);
-    return Array.isArray(response) ? (response as TorrentFile[]) : [];
+    if (!Array.isArray(response)) return [];
+    const files = response as TorrentFile[];
+    // Below WebAPI 2.8.2 entries carry no "index"; the file index is the array
+    // position (the indexes filter didn't exist there either, so it's the full list).
+    return files.map((f, i) =>
+      f.index === undefined || f.index === null ? { ...f, index: i } : f,
+    );
   },
 
   /**
@@ -289,7 +315,7 @@ export const torrentsApi = {
       }
     }
 
-    await apiClient.postFormData(`/api/${API_VERSION}/torrents/add`, formData);
+    assertTorrentAdded(await apiClient.postFormData(`/api/${API_VERSION}/torrents/add`, formData));
   },
 
   /**
@@ -408,7 +434,7 @@ export const torrentsApi = {
       }
     }
 
-    await apiClient.postFormData(`/api/${API_VERSION}/torrents/add`, formData);
+    assertTorrentAdded(await apiClient.postFormData(`/api/${API_VERSION}/torrents/add`, formData));
   },
 
   /**
@@ -581,8 +607,9 @@ export const torrentsApi = {
   /**
    * Set torrent share limits.
    *
-   * Newer qBittorrent (5.x / WebAPI ≥ 2.11.0) REQUIRES inactiveSeedingTimeLimit,
-   * shareLimitAction and shareLimitsMode — omitting them fails the request with
+   * ratioLimit and seedingTimeLimit are required on every version. qBittorrent
+   * 4.6+ (WebAPI ≥ 2.9.2) also REQUIRES inactiveSeedingTimeLimit, and 5.2+ also
+   * requires shareLimitAction — omitting one fails the request with
    * "Missing required parameters". They are not "leave unchanged" parameters
    * though: the server applies whatever it receives, and the sentinel values
    * ('Default', -2) mean "fall back to the global setting". Sending those blindly
@@ -596,24 +623,27 @@ export const torrentsApi = {
   async setTorrentShareLimits(
     hashes: string[],
     limits: {
-      ratioLimit?: number;
-      seedingTimeLimit?: number;
+      ratioLimit: number;
+      seedingTimeLimit: number;
       inactiveSeedingTimeLimit?: number;
       shareLimitAction?: string;
       shareLimitsMode?: string;
-    } = {},
+    },
   ): Promise<void> {
+    // ratioLimit and seedingTimeLimit are required on every version that has
+    // this endpoint, so they are always sent.
     const params: Record<string, string | number | boolean> = {
       hashes: hashes.join('|'),
+      ratioLimit: limits.ratioLimit,
+      seedingTimeLimit: limits.seedingTimeLimit,
     };
-    if (limits.ratioLimit !== undefined) {
-      params.ratioLimit = limits.ratioLimit;
-    }
-    if (limits.seedingTimeLimit !== undefined) {
-      params.seedingTimeLimit = limits.seedingTimeLimit;
-    }
-    if (apiClient.getApiFeatures().supportsInactiveSeedingLimit) {
+    const features = apiClient.getApiFeatures();
+    // Required from WebAPI 2.9.2 (qBit 4.6.0) — a separate gate from the action
+    // below, or every edit on 4.6.x answers 400.
+    if (features.supportsInactiveSeedingLimit) {
       params.inactiveSeedingTimeLimit = limits.inactiveSeedingTimeLimit ?? -2;
+    }
+    if (features.supportsShareLimitAction) {
       params.shareLimitAction = limits.shareLimitAction ?? 'Default';
       params.shareLimitsMode = limits.shareLimitsMode ?? 'Default';
     }
@@ -739,18 +769,30 @@ export const torrentsApi = {
   },
 
   /**
-   * Rename file
+   * Rename file.
+   *
+   * qBit 4.3.3+ reads oldPath/newPath; qBit ≤ 4.3.2 reads the file index as "id"
+   * and the new bare file name as "name". 4.3.2 and 4.3.3 BOTH report WebAPI 2.7.0,
+   * so no version gate can tell them apart — send both pairs every time (qBittorrent
+   * ignores form fields it doesn't read) and each version finds its own.
    */
-  async renameFile(hash: string, oldPath: string, newPath: string): Promise<void> {
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFile`, {
-      hash,
-      oldPath,
-      newPath,
-    });
+  async renameFile(
+    hash: string,
+    oldPath: string,
+    newPath: string,
+    fileIndex?: number,
+  ): Promise<void> {
+    const params: Record<string, string | number> = { hash, oldPath, newPath };
+    if (fileIndex !== undefined) {
+      params.id = fileIndex;
+      params.name = newPath.split('/').pop() ?? newPath;
+    }
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFile`, params);
   },
 
   /**
-   * Rename folder
+   * Rename folder (qBit 4.3.3+ only — gate the UI on ApiFeatures.supportsRenameFolder;
+   * qBit 4.3.2 reports the same WebAPI 2.7.0 but has no such endpoint).
    */
   async renameFolder(hash: string, oldPath: string, newPath: string): Promise<void> {
     await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFolder`, {

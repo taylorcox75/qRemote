@@ -23,11 +23,13 @@ import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSele
 import { InputModal } from '@/components/InputModal';
 import { PathAutocompleteInput } from '@/components/PathAutocompleteInput';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useSearchCart } from '@/context/SearchCartContext';
-import { torrentsApi } from '@/services/api/torrents';
+import { TORRENT_ADD_FAILED_MESSAGE, torrentsApi } from '@/services/api/torrents';
 import { searchApi } from '@/services/api/search';
 import { apiClient } from '@/services/api/client';
 import { categoriesApi } from '@/services/api/categories';
@@ -40,6 +42,22 @@ import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { extractMagnetLink } from '@/utils/magnet';
 import { groupCartItemsForAdd } from '@/utils/search-cart';
+import {
+  buildDownloadPathOptions,
+  formatKibLimitHint,
+  buildAddOptionPrefill,
+  parseKibLimitInput,
+  resolveDefaultSavePath,
+  supportsAddTorrentCookie,
+  withoutTouchedFields,
+  type LegacyDownloadPath,
+  type PrefillableAddField,
+  type SavedDownloadPath,
+} from '@/utils/add-torrent-options';
+import { summarizeAddBatch } from '@/utils/add-torrent-batch';
+import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
+import { useApiFeatures } from '@/context/ApiVersionContext';
 import { tagNewlyDownloadedTorrent } from '@/services/search-tracker-topup';
 import {
   getPrefilledDownloader,
@@ -47,6 +65,7 @@ import {
   PluginUrlAddPlan,
   PrefilledPlugin,
 } from '@/utils/search-download';
+import { clogDebug } from '@/services/connectivity-log';
 
 type AddTorrentOptions = Parameters<typeof torrentsApi.addTorrent>[1];
 type AddTorrentFileOptions = Parameters<typeof torrentsApi.addTorrentFile>[1];
@@ -79,7 +98,11 @@ export default function AddTorrentFullScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
-  const { isConnected } = useServer();
+  const { isConnected, currentServer } = useServer();
+  const serverId = currentServer?.id ?? null;
+  // torrents/add stopped reading `cookie` in qBit 5.1 — hide it there.
+  const { apiVersion } = useApiFeatures();
+  const cookieSupported = supportsAddTorrentCookie(apiVersion);
   const { categories, tags } = useTorrents();
   const cart = useSearchCart();
   const params = useLocalSearchParams<{
@@ -153,9 +176,24 @@ export default function AddTorrentFullScreen() {
 
   const [tmmTooltipVisible, setTmmTooltipVisible] = useState(false);
 
+  // Editable options are prefilled once per open (per server) and never over a
+  // field the user has already edited — a re-focus or a late server-preferences
+  // reply used to reset what they had typed. Field visibility still refreshes
+  // on every focus.
+  const touchedOptionsRef = useRef(new Set<PrefillableAddField>());
+  const prefilledServerRef = useRef<string | null | undefined>(undefined);
+  const touchOption = useCallback((...fields: PrefillableAddField[]) => {
+    fields.forEach((field) => touchedOptionsRef.current.add(field));
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
+      let cancelled = false;
       const load = async () => {
+        let savedDownloadPath: SavedDownloadPath | undefined;
+        let legacyDownloadPath: LegacyDownloadPath | undefined;
+        let localDefaultSavePath: string | undefined;
+        let localPrefs: { pauseOnAdd?: boolean; defaultPriority?: number | string } | null = null;
         try {
           const prefs = await storageService.getPreferences();
           const stored = (prefs.addTorrentDialogueFields as Partial<typeof fieldVisibility>) || {};
@@ -171,25 +209,77 @@ export default function AddTorrentFullScreen() {
               addTorrentDialogueFields: normalized,
             });
           }
-          setSavePath(prefs.defaultSavePath || '');
-          setStopped(!!prefs.pauseOnAdd);
-          setUseDownloadPath(!!prefs.lastUseDownloadPath);
-          setDownloadPath(prefs.lastDownloadPath || '');
-          setFirstLastPiecePrio(Number(prefs.defaultPriority) > 0);
+          localPrefs = prefs;
+          savedDownloadPath = serverId
+            ? prefs.addTorrentDownloadPathByServer?.[serverId]
+            : undefined;
+          localDefaultSavePath = prefs.defaultSavePath;
+          if (!savedDownloadPath && prefs.lastUseDownloadPath === true) {
+            // Pre-per-server choice — only trusted when there is a single server.
+            const servers = await storageService.getServers().catch(() => []);
+            legacyDownloadPath = {
+              lastUseDownloadPath: prefs.lastUseDownloadPath,
+              lastDownloadPath: prefs.lastDownloadPath,
+              serverCount: servers.length,
+            };
+          }
         } catch {
           setFieldVisibility(DEFAULT_PREFERENCES.addTorrentDialogueFields);
         }
 
-        const serverPrefs = await applicationApi.getPreferences().catch(() => null);
+        // Save path and download path come from the connected server, never from a
+        // device-wide cache — that cache belonged to whichever server last wrote it.
+        // The locally saved Default save path is only the last resort, when the
+        // server answers neither request.
+        const serverPrefs = await applicationApi.getPreferences().catch((error: unknown) => {
+          clogDebug(
+            'ADD',
+            `Preferences unavailable for save path prefill: ${getErrorMessage(error)}`,
+          );
+          return null;
+        });
+        const defaultSavePath = resolveDefaultSavePath({
+          serverSavePath: serverPrefs?.save_path,
+          serverPrefsLoaded: !!serverPrefs,
+          defaultSavePathResult: serverPrefs
+            ? undefined
+            : await applicationApi.getDefaultSavePath().catch((error: unknown) => {
+                clogDebug('ADD', `Default save path unavailable: ${getErrorMessage(error)}`);
+                return null;
+              }),
+          localDefaultSavePath,
+        });
+        if (cancelled) return;
         if (serverPrefs) {
-          setTmmMode(serverPrefs.auto_tmm_enabled ? 'automatic' : 'manual');
           setServerTempPath(serverPrefs.temp_path || '');
           setServerSavePath(serverPrefs.save_path || '');
-          if (serverPrefs.auto_tmm_enabled) setUseDownloadPath(false);
+        }
+        if (prefilledServerRef.current === serverId) return;
+        prefilledServerRef.current = serverId;
+        const prefill = withoutTouchedFields(
+          buildAddOptionPrefill({
+            localPrefs,
+            savedDownloadPath,
+            legacyDownloadPath,
+            serverPrefs,
+            defaultSavePath,
+          }),
+          touchedOptionsRef.current,
+        );
+        if (prefill.savePath !== undefined) setSavePath(prefill.savePath);
+        if (prefill.useDownloadPath !== undefined) setUseDownloadPath(prefill.useDownloadPath);
+        if (prefill.downloadPath !== undefined) setDownloadPath(prefill.downloadPath);
+        if (prefill.tmmMode !== undefined) setTmmMode(prefill.tmmMode);
+        if (prefill.stopped !== undefined) setStopped(prefill.stopped);
+        if (prefill.firstLastPiecePrio !== undefined) {
+          setFirstLastPiecePrio(prefill.firstLastPiecePrio);
         }
       };
       load();
-    }, []),
+      return () => {
+        cancelled = true;
+      };
+    }, [serverId]),
   );
 
   const categoryOptions: OptionPickerItem[] = useMemo(() => {
@@ -243,27 +333,34 @@ export default function AddTorrentFullScreen() {
   const persistDownloadPathPref = useCallback(
     async (overrides: { useDownloadPath?: boolean; downloadPath?: string }) => {
       try {
-        const prefs = await storageService.getPreferences();
-        await storageService.savePreferences({
-          ...prefs,
-          lastUseDownloadPath: overrides.useDownloadPath ?? useDownloadPath,
-          lastDownloadPath: overrides.downloadPath ?? downloadPath,
-        });
+        if (!serverId) return;
+        // Functional update: the map is read inside the write queue, so an
+        // overlapping write can't drop another server's entry.
+        await storageService.updatePreferences((prefs) => ({
+          addTorrentDownloadPathByServer: {
+            ...(prefs.addTorrentDownloadPathByServer || {}),
+            [serverId]: {
+              useDownloadPath: overrides.useDownloadPath ?? useDownloadPath,
+              downloadPath: overrides.downloadPath ?? downloadPath,
+            },
+          },
+        }));
       } catch {
         // Ignore save errors — this is a convenience default, not critical state.
       }
     },
-    [useDownloadPath, downloadPath],
+    [serverId, useDownloadPath, downloadPath],
   );
 
   const applyCategorySavePath = useCallback(
     (newCategory: string) => {
       const newPath = newCategory ? categories?.[newCategory]?.savePath || '' : '';
       if (newPath) {
+        touchOption('savePath');
         setSavePath(newPath);
       }
     },
-    [categories],
+    [categories, touchOption],
   );
 
   // Closes over ~18 individual field values and is recreated every render,
@@ -290,25 +387,26 @@ export default function AddTorrentFullScreen() {
     if (fieldVisibility.skipChecking) opts.skip_checking = skipChecking;
     if (fieldVisibility.rootFolder) opts.root_folder = rootFolder;
     if (fieldVisibility.autoTMM) opts.autoTMM = tmmMode === 'automatic';
-    if (
-      fieldVisibility.useDownloadPath &&
-      tmmMode === 'manual' &&
-      useDownloadPath &&
-      downloadPath.trim()
-    ) {
-      opts.useDownloadPath = true;
-      opts.downloadPath = downloadPath.trim();
-    }
+    Object.assign(
+      opts,
+      buildDownloadPathOptions({
+        fieldVisible: fieldVisibility.useDownloadPath,
+        manualTmm: tmmMode === 'manual',
+        useDownloadPath,
+        downloadPath,
+      }),
+    );
     if (fieldVisibility.sequentialDownload) opts.sequentialDownload = sequentialDownload;
     if (fieldVisibility.firstLastPiecePrio) opts.firstLastPiecePrio = firstLastPiecePrio;
 
-    if (fieldVisibility.dlLimit && dlLimit.trim()) {
-      const n = Number(dlLimit);
-      if (!Number.isNaN(n)) opts.dlLimit = n;
+    // Typed in KiB/s like every other limit input; torrents/add takes bytes/s.
+    if (fieldVisibility.dlLimit) {
+      const bytes = parseKibLimitInput(dlLimit);
+      if (bytes !== undefined) opts.dlLimit = bytes;
     }
-    if (fieldVisibility.upLimit && upLimit.trim()) {
-      const n = Number(upLimit);
-      if (!Number.isNaN(n)) opts.upLimit = n;
+    if (fieldVisibility.upLimit) {
+      const bytes = parseKibLimitInput(upLimit);
+      if (bytes !== undefined) opts.upLimit = bytes;
     }
     if (fieldVisibility.ratioLimit && ratioLimit.trim()) {
       const n = Number(ratioLimit);
@@ -318,7 +416,7 @@ export default function AddTorrentFullScreen() {
       const n = Number(seedingTimeLimit);
       if (!Number.isNaN(n)) opts.seedingTimeLimit = n;
     }
-    if (fieldVisibility.cookie && cookie.trim()) opts.cookie = cookie.trim();
+    if (fieldVisibility.cookie && cookieSupported && cookie.trim()) opts.cookie = cookie.trim();
 
     return opts as AddTorrentOptions & AddTorrentFileOptions;
   };
@@ -350,19 +448,33 @@ export default function AddTorrentFullScreen() {
       const typedDownloader = getPrefilledDownloader(urls, sourcePlugin);
       const typedPlan = planPluginUrlAdd(typedDownloader, features);
       let usedDefaultOptions = typedPlan === 'searchDownloadTorrent';
-      // Background tag polls to start once the adds succeed (5.0–5.1 cart only).
-      const postAddTagging: (() => Promise<void>)[] = [];
-      const tasks: Promise<void>[] = [];
+      // One entry per request. `source` is the form input it came from, `cartUrls` are
+      // the cart items it carries; `tagging` are background tag polls to start once it
+      // succeeds (5.0–5.1 cart only).
+      const tasks: {
+        promise: Promise<void>;
+        source: 'files' | 'urls' | 'cart';
+        cartUrls: string[];
+        tagging: (() => Promise<void>)[];
+      }[] = [];
       if (selectedFiles.length > 0) {
-        tasks.push(
-          torrentsApi.addTorrentFile(
+        tasks.push({
+          promise: torrentsApi.addTorrentFile(
             selectedFiles.map((file) => ({ uri: file.uri, name: file.name, type: file.mimeType })),
             opts,
           ),
-        );
+          source: 'files',
+          cartUrls: [],
+          tagging: [],
+        });
       }
       if (urls.length > 0) {
-        tasks.push(addUrls(urls, opts, typedDownloader, typedPlan));
+        tasks.push({
+          promise: addUrls(urls, opts, typedDownloader, typedPlan),
+          source: 'urls',
+          cartUrls: [],
+          tagging: [],
+        });
       }
       if (cartItems.length > 0) {
         // Cart checkout goes through torrents/add (#217) — the whole point of the
@@ -374,6 +486,7 @@ export default function AddTorrentFullScreen() {
         const groups = groupCartItemsForAdd(cartItems, !!prefs?.autoCategorizeByTracker);
         for (const group of groups) {
           const groupPlan = planPluginUrlAdd(group.downloader, features);
+          const tagging: (() => Promise<void>)[] = [];
           if (groupPlan === 'searchDownloadTorrent') {
             usedDefaultOptions = true;
             // search/downloadTorrent takes no tags, so apply the indexer tag once
@@ -382,12 +495,12 @@ export default function AddTorrentFullScreen() {
               const tag = group.tag;
               for (const url of group.urls) {
                 const item = cartItems.find((cartItem) => cartItem.fileUrl === url);
-                if (item) postAddTagging.push(() => tagNewlyDownloadedTorrent(item.fileName, tag));
+                if (item) tagging.push(() => tagNewlyDownloadedTorrent(item.fileName, tag));
               }
             }
           }
-          tasks.push(
-            addUrls(
+          tasks.push({
+            promise: addUrls(
               group.urls,
               {
                 ...opts,
@@ -396,12 +509,41 @@ export default function AddTorrentFullScreen() {
               group.downloader,
               groupPlan,
             ),
-          );
+            source: 'cart',
+            cartUrls: group.urls,
+            tagging,
+          });
         }
       }
-      await Promise.all(tasks);
-      for (const startTagging of postAddTagging) void startTagging();
-      if (usedDefaultOptions) {
+      // allSettled, not all: a request answering `Fails.` (all duplicates) must not
+      // fail the submit when the others added torrents (see utils/add-torrent-batch.ts).
+      const results = await Promise.allSettled(tasks.map((task) => task.promise));
+      const summary = summarizeAddBatch(results, TORRENT_ADD_FAILED_MESSAGE);
+      if (summary.outcome === 'allDuplicates') {
+        // Nothing was added because everything is already in qBittorrent.
+        showToast(localizeErrorMessage(getErrorMessage(summary.firstError), t), 'error');
+        return;
+      }
+      for (const index of summary.succeeded) {
+        for (const startTagging of tasks[index].tagging) void startTagging();
+      }
+      if (summary.hasRetryableFailures) {
+        // Stay open with only the failed inputs left, so they can be retried;
+        // anything added or already present leaves the form.
+        for (const index of summary.resolved) {
+          const task = tasks[index];
+          if (task.source === 'files') setSelectedFiles([]);
+          else if (task.source === 'urls') {
+            setTorrentUrl('');
+            setSourcePlugin(null);
+          } else for (const url of task.cartUrls) cart.remove(url);
+        }
+        showToast(localizeErrorMessage(getErrorMessage(summary.firstOtherError), t), 'error');
+        return;
+      }
+      if (summary.outcome === 'partialDuplicates') {
+        showToast(t('toast.someAlreadyInQbittorrent'), 'info');
+      } else if (usedDefaultOptions) {
         showToast(t('toast.pluginAddDefaultOptions'), 'info', 6000);
       } else {
         showToast(
@@ -411,6 +553,7 @@ export default function AddTorrentFullScreen() {
           'success',
         );
       }
+      // Every request either succeeded or found its torrents already present.
       if (cartItems.length > 0) cart.clear();
       router.back();
     } catch {
@@ -439,6 +582,7 @@ export default function AddTorrentFullScreen() {
   }, [t, tagValues]);
 
   const showField = (field: AddTorrentDialogField) => fieldVisibility[field] === true;
+  const showCookie = showField('cookie') && cookieSupported;
 
   useEffect(() => {
     const rawMagnet = Array.isArray(params.magnet) ? params.magnet[0] : params.magnet;
@@ -521,6 +665,7 @@ export default function AddTorrentFullScreen() {
         edges={['top']}
       >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -552,7 +697,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.source').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {cartItems.length > 0 && (
                     <>
                       <View style={styles.block}>
@@ -704,7 +849,7 @@ export default function AddTorrentFullScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </GlassSurface>
               </View>
             )}
 
@@ -732,7 +877,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.destination').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {showField('autoTMM') && (
                     <>
                       <View style={styles.settingRow}>
@@ -757,8 +902,10 @@ export default function AddTorrentFullScreen() {
                         <Switch
                           value={tmmMode === 'automatic'}
                           onValueChange={(value) => {
+                            touchOption('tmmMode');
                             setTmmMode(value ? 'automatic' : 'manual');
                             if (value && useDownloadPath) {
+                              touchOption('useDownloadPath');
                               setUseDownloadPath(false);
                               void persistDownloadPathPref({ useDownloadPath: false });
                             }
@@ -791,7 +938,10 @@ export default function AddTorrentFullScreen() {
                             },
                           ]}
                           value={tmmMode === 'automatic' ? serverSavePath : savePath}
-                          onChangeText={setSavePath}
+                          onChangeText={(value) => {
+                            touchOption('savePath');
+                            setSavePath(value);
+                          }}
                           editable={tmmMode === 'manual'}
                           placeholder={t('screens.addTorrent.savePathPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
@@ -818,8 +968,10 @@ export default function AddTorrentFullScreen() {
                           value={useDownloadPath}
                           disabled={tmmMode === 'automatic'}
                           onValueChange={(value) => {
+                            touchOption('useDownloadPath');
                             setUseDownloadPath(value);
                             if (value && !downloadPath.trim() && serverTempPath) {
+                              touchOption('downloadPath');
                               setDownloadPath(serverTempPath);
                               void persistDownloadPathPref({
                                 useDownloadPath: value,
@@ -856,7 +1008,10 @@ export default function AddTorrentFullScreen() {
                               },
                             ]}
                             value={downloadPath}
-                            onChangeText={setDownloadPath}
+                            onChangeText={(value) => {
+                              touchOption('downloadPath');
+                              setDownloadPath(value);
+                            }}
                             onBlur={() => void persistDownloadPathPref({})}
                             editable={tmmMode === 'manual'}
                             placeholder={t('screens.addTorrent.downloadPathPlaceholder')}
@@ -866,7 +1021,7 @@ export default function AddTorrentFullScreen() {
                       )}
                     </>
                   )}
-                </View>
+                </GlassSurface>
               </View>
             )}
 
@@ -875,7 +1030,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.categoryAndTags').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {showField('category') && (
                     <>
                       <View style={styles.settingRow}>
@@ -934,7 +1089,7 @@ export default function AddTorrentFullScreen() {
                       </View>
                     </View>
                   )}
-                </View>
+                </GlassSurface>
               </View>
             )}
 
@@ -948,7 +1103,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.options').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {showField('rename') && (
                     <>
                       <View style={styles.block}>
@@ -987,7 +1142,10 @@ export default function AddTorrentFullScreen() {
                         </View>
                         <Switch
                           value={stopped}
-                          onValueChange={setStopped}
+                          onValueChange={(value) => {
+                            touchOption('stopped');
+                            setStopped(value);
+                          }}
                           trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                           ios_backgroundColor={colors.surfaceOutline}
                         />
@@ -1078,13 +1236,16 @@ export default function AddTorrentFullScreen() {
                       </View>
                       <Switch
                         value={firstLastPiecePrio}
-                        onValueChange={setFirstLastPiecePrio}
+                        onValueChange={(value) => {
+                          touchOption('firstLastPiecePrio');
+                          setFirstLastPiecePrio(value);
+                        }}
                         trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                         ios_backgroundColor={colors.surfaceOutline}
                       />
                     </View>
                   )}
-                </View>
+                </GlassSurface>
               </View>
             )}
 
@@ -1092,17 +1253,17 @@ export default function AddTorrentFullScreen() {
               showField('upLimit') ||
               showField('ratioLimit') ||
               showField('seedingTimeLimit') ||
-              showField('cookie')) && (
+              showCookie) && (
               <View style={styles.section}>
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.limits').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {showField('dlLimit') && (
                     <>
                       <View style={styles.block}>
                         <Text style={[styles.label, { color: colors.textSecondary }]}>
-                          {t('screens.addTorrent.dlLimit')}
+                          {t('screens.addTorrent.dlLimitKib')}
                         </Text>
                         <TextInput
                           style={[
@@ -1119,6 +1280,11 @@ export default function AddTorrentFullScreen() {
                           placeholder={t('screens.addTorrent.numberPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
                         />
+                        {formatKibLimitHint(dlLimit) && (
+                          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                            = {formatKibLimitHint(dlLimit)}
+                          </Text>
+                        )}
                       </View>
                       <View
                         style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
@@ -1130,7 +1296,7 @@ export default function AddTorrentFullScreen() {
                     <>
                       <View style={styles.block}>
                         <Text style={[styles.label, { color: colors.textSecondary }]}>
-                          {t('screens.addTorrent.upLimit')}
+                          {t('screens.addTorrent.upLimitKib')}
                         </Text>
                         <TextInput
                           style={[
@@ -1147,6 +1313,11 @@ export default function AddTorrentFullScreen() {
                           placeholder={t('screens.addTorrent.numberPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
                         />
+                        {formatKibLimitHint(upLimit) && (
+                          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                            = {formatKibLimitHint(upLimit)}
+                          </Text>
+                        )}
                       </View>
                       <View
                         style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
@@ -1210,7 +1381,7 @@ export default function AddTorrentFullScreen() {
                     </>
                   )}
 
-                  {showField('cookie') && (
+                  {showCookie && (
                     <View style={styles.block}>
                       <Text style={[styles.label, { color: colors.textSecondary }]}>
                         {t('screens.addTorrent.cookie')}
@@ -1233,7 +1404,7 @@ export default function AddTorrentFullScreen() {
                       />
                     </View>
                   )}
-                </View>
+                </GlassSurface>
               </View>
             )}
           </ScrollView>
@@ -1271,7 +1442,7 @@ export default function AddTorrentFullScreen() {
           activeOpacity={1}
           onPress={() => setTmmTooltipVisible(false)}
         >
-          <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.tooltipHeader}>
               <Ionicons name="sync-outline" size={24} color={colors.primary} />
               <Text style={[styles.tooltipTitle, { color: colors.text }]}>
@@ -1287,7 +1458,7 @@ export default function AddTorrentFullScreen() {
             >
               <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         </TouchableOpacity>
       </Modal>
 
@@ -1335,7 +1506,10 @@ export default function AddTorrentFullScreen() {
           try {
             await categoriesApi.addCategory(pendingNewCategoryName, path || undefined);
             setCategory(pendingNewCategoryName);
-            if (path) setSavePath(path);
+            if (path) {
+              touchOption('savePath');
+              setSavePath(path);
+            }
             showToast(t('toast.categoryAdded', { name: pendingNewCategoryName }), 'success');
           } catch {
             showToast(t('errors.failedToAddCategory'), 'error');

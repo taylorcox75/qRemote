@@ -24,6 +24,8 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { InputModal } from '@/components/InputModal';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { searchApi } from '@/services/api/search';
@@ -189,6 +191,7 @@ export default function PluginsScreen() {
         edges={['top']}
       >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -239,7 +242,7 @@ export default function PluginsScreen() {
           </View>
 
           {/* Search add-dialogue behavior (#217) */}
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="albums-outline" size={22} color={colors.primary} />
@@ -259,7 +262,7 @@ export default function PluginsScreen() {
                 trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
               />
             </View>
-          </View>
+          </GlassSurface>
 
           {/* Plugin list */}
           {pluginsQuery.isLoading ? (
@@ -276,7 +279,7 @@ export default function PluginsScreen() {
               subtitle={t('screens.search.noPluginsSubtitle')}
             />
           ) : (
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               {plugins.map((plugin, index) => (
                 <PluginRow
                   key={plugin.name}
@@ -288,7 +291,7 @@ export default function PluginsScreen() {
                   colors={colors}
                 />
               ))}
-            </View>
+            </GlassSurface>
           )}
         </ScrollView>
       </SafeAreaView>

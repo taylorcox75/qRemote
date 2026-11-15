@@ -12,6 +12,7 @@ import { basicAuthHeader } from '@/utils/basicAuth';
 import { isReservedHeaderName } from '@/utils/customHeaders';
 import { getServerAuthMode } from '@/utils/authMode';
 import { QUI_KEY_REJECTED_MESSAGE, redactQuiProxyKey, withQuiProxyPath } from '@/utils/quiProxy';
+import { splitHostAndPath } from '@/utils/server';
 
 /** An error from the API client, carrying the HTTP status when the request got a response. */
 export interface ApiError extends Error {
@@ -46,6 +47,59 @@ type EpochedRequestConfig = InternalAxiosRequestConfig & {
 };
 
 const identity = (text: string): string => text;
+
+/**
+ * Masks a secret for diagnostics, revealing only its length. No characters are
+ * kept, so exported debug reports carry nothing of the credential itself.
+ */
+export function maskSecret(value: string): string {
+  if (!value) return '';
+  return `•••• (${value.length} chars)`;
+}
+
+/** `a=1; b=2` → `a=<masked>; b=<masked>` (names kept, attributes dropped). */
+export function describeCookieJar(cookies: string): string {
+  return cookies
+    .split(';')
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const eq = pair.indexOf('=');
+      return eq === -1 ? pair : `${pair.slice(0, eq)}=${maskSecret(pair.slice(eq + 1))}`;
+    })
+    .join('; ');
+}
+
+const SECRET_HEADER_NAMES = new Set([
+  'cookie',
+  'set-cookie',
+  'authorization',
+  'proxy-authorization',
+]);
+
+/**
+ * Header value safe for a debug dump: cookie headers keep cookie names with
+ * masked values, Authorization keeps its scheme ("Basic", "Bearer"). Other
+ * headers pass through unchanged.
+ */
+export function redactHeaderValue(name: string, value: string | string[]): string {
+  const values = Array.isArray(value) ? value : [value];
+  const lower = name.toLowerCase();
+  if (!SECRET_HEADER_NAMES.has(lower)) return values.join('; ');
+  if (lower === 'cookie' || lower === 'set-cookie') {
+    // Only the name=value pair of each Set-Cookie is secret; drop attributes.
+    return values.map((v) => describeCookieJar(String(v).split(';')[0])).join('; ');
+  }
+  return values
+    .map((v) => {
+      const text = String(v).trim();
+      const space = text.indexOf(' ');
+      return space === -1
+        ? maskSecret(text)
+        : `${text.slice(0, space)} ${maskSecret(text.slice(space + 1).trim())}`;
+    })
+    .join('; ');
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -101,16 +155,12 @@ class ApiClient {
         config.__quiProxy = getServerAuthMode(this.currentServer) === 'quiProxy';
 
         const protocol = this.currentServer.useHttps ? 'https' : 'http';
-        // Defense-in-depth: strip protocol and trailing colons/slashes from host even if already sanitized
-        const rawHost = (this.currentServer.host || '')
-          .replace(/^(https?:\/\/)/i, '')
-          .replace(/[:/]+$/, '');
-        // The server forms have no base-path field, so a reverse-proxy path can
-        // arrive inside Host ("example.com/qbit"). Split it off so the port goes
-        // after the hostname, not after the path ("example.com/qbit:8443").
-        const hostSlash = rawHost.indexOf('/');
-        const host = hostSlash === -1 ? rawHost : rawHost.slice(0, hostSlash);
-        const hostPath = hostSlash === -1 ? '' : rawHost.slice(hostSlash).replace(/\/+$/, '');
+        // Defense-in-depth: strip protocol and trailing colons/slashes from host
+        // even if already sanitized. The server forms have no base-path field,
+        // so a reverse-proxy path can arrive inside Host ("example.com/qbit").
+        // Split it off so the port goes after the hostname, not after the path
+        // ("example.com/qbit:8443").
+        const { host, path: hostPath } = splitHostAndPath(this.currentServer.host || '');
         const port = this.currentServer.port;
         const portNum = port !== undefined && port !== null ? Number(port) : undefined;
         const portPart =
@@ -216,7 +266,8 @@ class ApiClient {
 
         if (setCookieHeader) {
           this.mergeCookies(setCookieHeader);
-          clogDebug('HTTP', `Cookies captured: ${this.cookies.substring(0, 60)}...`);
+          // Names and lengths only — this log is part of the exported debug report.
+          clogDebug('HTTP', `Cookies captured: ${describeCookieJar(this.cookies)}`);
         }
         return response;
       },
@@ -389,6 +440,23 @@ class ApiClient {
 
   getServer(): ServerConfig | null {
     return this.currentServer;
+  }
+
+  /**
+   * A separate client bound to `server`, with its own cookie jar, session and
+   * abort controller, sharing only this client's timeout and retry settings.
+   * Used by Test Connection so testing a server never touches the live
+   * session: the singleton's server, cookies and in-flight polls are left
+   * exactly as they were.
+   */
+  createIsolatedClient(server: ServerConfig): ApiClient {
+    const isolated = new ApiClient();
+    isolated.updateSettings({
+      connectionTimeout: this.client.defaults.timeout,
+      retryAttempts: this.retryAttempts,
+    });
+    isolated.currentServer = server;
+    return isolated;
   }
 
   clearCookies() {
@@ -588,4 +656,5 @@ class ApiClient {
   }
 }
 
+export type { ApiClient };
 export const apiClient = new ApiClient();

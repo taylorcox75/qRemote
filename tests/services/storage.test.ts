@@ -396,6 +396,23 @@ describe('storageService', () => {
       expect(prefs.torrentSearchHistory).toEqual(['ubuntu']);
     });
 
+    it('updatePreferences with an updater merges a nested map inside the queue', async () => {
+      await storageService.savePreferences({ addTorrentDownloadPathByServer: {} });
+      const write = (id: string, path: string) =>
+        storageService.updatePreferences((prefs) => ({
+          addTorrentDownloadPathByServer: {
+            ...(prefs.addTorrentDownloadPathByServer || {}),
+            [id]: { useDownloadPath: true, downloadPath: path },
+          },
+        }));
+      await Promise.all([write('a', '/a'), write('b', '/b')]);
+      const prefs = await storageService.getPreferences();
+      expect(prefs.addTorrentDownloadPathByServer).toEqual({
+        a: { useDownloadPath: true, downloadPath: '/a' },
+        b: { useDownloadPath: true, downloadPath: '/b' },
+      });
+    });
+
     it('updatePreferences keeps working after a failed write', async () => {
       (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('disk full'));
       await expect(storageService.updatePreferences({ hapticFeedback: false })).rejects.toThrow(

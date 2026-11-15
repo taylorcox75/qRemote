@@ -30,6 +30,7 @@ import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssFeeds } from '@/hooks/useRssFeeds';
@@ -453,6 +454,7 @@ export default function RssFeedsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <View style={styles.headerButton} />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {t('screens.rss.feedsTitle')}

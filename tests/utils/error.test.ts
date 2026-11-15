@@ -1,5 +1,11 @@
 import { AxiosError } from 'axios';
-import { getErrorMessage, isAxiosError, isTlsRejection } from '@/utils/error';
+import {
+  CONNECT_SUPERSEDED_MESSAGE,
+  getErrorMessage,
+  isAxiosError,
+  isSupersededConnectError,
+  isTlsRejection,
+} from '@/utils/error';
 
 describe('getErrorMessage', () => {
   it('returns the message of an Error instance', () => {
@@ -127,5 +133,13 @@ describe('isTlsRejection', () => {
   it('ignores a non-string error.request.response', () => {
     const err = { message: 'Network Error', request: { response: { some: 'object' } } };
     expect(isTlsRejection(err)).toBe(false);
+  });
+});
+
+describe('isSupersededConnectError', () => {
+  it('matches only the superseded-connect error', () => {
+    expect(isSupersededConnectError(new Error(CONNECT_SUPERSEDED_MESSAGE))).toBe(true);
+    expect(isSupersededConnectError(new Error('Request canceled.'))).toBe(false);
+    expect(isSupersededConnectError(CONNECT_SUPERSEDED_MESSAGE)).toBe(false);
   });
 });

@@ -1,5 +1,7 @@
 /**
  * logs.tsx — Server log viewer with app-log and peer-log tabs, search, and severity filters.
+ * Pushed from Settings → Advanced ("Server Logs"); lives in the Settings stack
+ * The `/logs` URL redirects here (app/logs.tsx).
  *
  * Key exports: LogsScreen (default)
  * Known issues: Hardcoded English strings (Task 3.3).
@@ -9,7 +11,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
@@ -17,18 +19,25 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { spacing } from '@/constants/spacing';
 import { logsApi } from '@/services/api/logs';
 import { LogEntry, PeerLogEntry } from '@/types/api';
 
 export default function LogsScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { isConnected, isLoading: serverIsLoading } = useServer();
   const { initialLoadComplete } = useTorrents();
   const { colors, isDark } = useTheme();
+  const { enabled: glassEnabled } = useLiquidGlass();
   const [activeTab, setActiveTab] = useState<'app' | 'peer'>('app');
   const [appLogs, setAppLogs] = useState<LogEntry[]>([]);
   const [peerLogs, setPeerLogs] = useState<PeerLogEntry[]>([]);
@@ -162,19 +171,38 @@ export default function LogsScreen() {
     );
   }, [peerLogs, searchQuery]);
 
+  const header = (
+    <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+      <GlassHeaderBackdrop borderOverlap={1} />
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.headerButton}
+        activeOpacity={0.7}
+        accessibilityLabel={t('common.back')}
+      >
+        <Ionicons name="arrow-back" size={24} color={colors.text} />
+      </TouchableOpacity>
+      <Text style={[styles.headerTitle, { color: colors.text }]}>{t('screens.logs.title')}</Text>
+      <View style={styles.headerButton} />
+    </View>
+  );
+
   // Show the "Not Connected" screen whenever there is no live connection
   // (check FIRST). currentServer intentionally survives a disconnect, so it
   // must not gate this screen.
   if (!isConnected && !serverIsLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <Text style={[styles.message, { color: colors.text }]}>
-          {t('screens.logs.notConnected')}
-        </Text>
-        <Text style={[styles.subMessage, { color: colors.textSecondary }]}>
-          {t('screens.logs.notConnectedHint')}
-        </Text>
+        {header}
+        <View style={styles.center}>
+          <Text style={[styles.message, { color: colors.text }]}>
+            {t('screens.logs.notConnected')}
+          </Text>
+          <Text style={[styles.subMessage, { color: colors.textSecondary }]}>
+            {t('screens.logs.notConnectedHint')}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -182,21 +210,37 @@ export default function LogsScreen() {
   // Show loading screen during initial app launch (server connecting or first data fetch)
   if (!initialLoadComplete && (serverIsLoading || !isConnected)) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.subMessage, { color: colors.textSecondary, marginTop: 16 }]}>
-          {t('common.loading')}
-        </Text>
+        {header}
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.subMessage, { color: colors.textSecondary, marginTop: 16 }]}>
+            {t('common.loading')}
+          </Text>
+        </View>
       </View>
     );
   }
+
+  const refreshControl = (
+    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+  );
+  const loadingView = (
+    <View style={styles.center}>
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>
+  );
+  const rowStyle = glassEnabled
+    ? [styles.glassLogItem, { borderBottomColor: colors.surfaceOutline }]
+    : [styles.logItem, { backgroundColor: colors.surface }];
 
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View
+        {header}
+        <GlassSurface
           style={[
             styles.tabs,
             { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
@@ -230,10 +274,10 @@ export default function LogsScreen() {
               {t('screens.logs.peerLogs')}
             </Text>
           </TouchableOpacity>
-        </View>
+        </GlassSurface>
 
         {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+        <GlassSurface style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
           <View style={[styles.searchInputContainer, { backgroundColor: colors.background }]}>
             <Ionicons name="search" size={18} color={colors.textSecondary} />
             <TextInput
@@ -253,10 +297,10 @@ export default function LogsScreen() {
               </TouchableOpacity>
             )}
           </View>
-        </View>
+        </GlassSurface>
 
         {activeTab === 'app' && (
-          <View style={[styles.filters, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.filters, { backgroundColor: colors.surface }]}>
             <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
               {t('screens.logs.filter')}
             </Text>
@@ -321,33 +365,34 @@ export default function LogsScreen() {
                 {t('screens.logs.critical')}
               </Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         )}
 
-        <ScrollView
-          style={styles.scrollView}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={colors.primary}
-            />
-          }
-        >
-          {loading && appLogs.length === 0 && peerLogs.length === 0 ? (
-            <View style={styles.center}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : activeTab === 'app' ? (
-            filteredAppLogs.length === 0 ? (
-              <View style={styles.center}>
-                <Text style={[styles.message, { color: colors.textSecondary }]}>
-                  {searchQuery ? t('screens.logs.noLogsMatch') : t('screens.logs.noLogsAvailable')}
-                </Text>
-              </View>
-            ) : (
-              filteredAppLogs.map((log) => (
-                <View key={log.id} style={[styles.logItem, { backgroundColor: colors.surface }]}>
+        {/* One glass container for the whole list (rows are plain) — a
+            GlassView per entry is far too heavy for thousands of log lines.
+            With glass off the rows keep today's individual cards. */}
+        <GlassSurface style={glassEnabled ? styles.glassList : styles.scrollView}>
+          {activeTab === 'app' ? (
+            <FlatList
+              style={styles.scrollView}
+              data={filteredAppLogs}
+              keyExtractor={(log) => String(log.id)}
+              refreshControl={refreshControl}
+              ListEmptyComponent={
+                loading && appLogs.length === 0 && peerLogs.length === 0 ? (
+                  loadingView
+                ) : (
+                  <View style={styles.center}>
+                    <Text style={[styles.message, { color: colors.textSecondary }]}>
+                      {searchQuery
+                        ? t('screens.logs.noLogsMatch')
+                        : t('screens.logs.noLogsAvailable')}
+                    </Text>
+                  </View>
+                )
+              }
+              renderItem={({ item: log }) => (
+                <View style={rowStyle}>
                   <View style={styles.logHeader}>
                     <View
                       style={[styles.logTypeBadge, { backgroundColor: getLogTypeColor(log.type) }]}
@@ -360,40 +405,51 @@ export default function LogsScreen() {
                   </View>
                   <Text style={[styles.logMessage, { color: colors.text }]}>{log.message}</Text>
                 </View>
-              ))
-            )
-          ) : filteredPeerLogs.length === 0 ? (
-            <View style={styles.center}>
-              <Text style={[styles.message, { color: colors.textSecondary }]}>
-                {searchQuery
-                  ? t('screens.logs.noPeerLogsMatch')
-                  : t('screens.logs.noPeerLogsAvailable')}
-              </Text>
-            </View>
+              )}
+            />
           ) : (
-            filteredPeerLogs.map((log) => (
-              <View key={log.id} style={[styles.logItem, { backgroundColor: colors.surface }]}>
-                <View style={styles.logHeader}>
-                  <Text style={[styles.logIp, { color: colors.text }]}>
-                    {log.ip}:{log.port}
+            <FlatList
+              style={styles.scrollView}
+              data={filteredPeerLogs}
+              keyExtractor={(log) => String(log.id)}
+              refreshControl={refreshControl}
+              ListEmptyComponent={
+                loading && appLogs.length === 0 && peerLogs.length === 0 ? (
+                  loadingView
+                ) : (
+                  <View style={styles.center}>
+                    <Text style={[styles.message, { color: colors.textSecondary }]}>
+                      {searchQuery
+                        ? t('screens.logs.noPeerLogsMatch')
+                        : t('screens.logs.noPeerLogsAvailable')}
+                    </Text>
+                  </View>
+                )
+              }
+              renderItem={({ item: log }) => (
+                <View style={rowStyle}>
+                  <View style={styles.logHeader}>
+                    <Text style={[styles.logIp, { color: colors.text }]}>
+                      {log.ip}:{log.port}
+                    </Text>
+                    <Text style={[styles.logTimestamp, { color: colors.textSecondary }]}>
+                      {formatTimestamp(log.id)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.logMessage, { color: colors.text }]}>
+                    {t('screens.logs.client', { value: log.client })}
                   </Text>
-                  <Text style={[styles.logTimestamp, { color: colors.textSecondary }]}>
-                    {formatTimestamp(log.id)}
+                  <Text style={[styles.logMessage, { color: colors.text }]}>
+                    {t('screens.logs.connectionLabel', { value: log.connection })}
+                  </Text>
+                  <Text style={[styles.logMessage, { color: colors.text }]}>
+                    {t('screens.logs.flags', { value: log.flags })}
                   </Text>
                 </View>
-                <Text style={[styles.logMessage, { color: colors.text }]}>
-                  {t('screens.logs.client', { value: log.client })}
-                </Text>
-                <Text style={[styles.logMessage, { color: colors.text }]}>
-                  {t('screens.logs.connectionLabel', { value: log.connection })}
-                </Text>
-                <Text style={[styles.logMessage, { color: colors.text }]}>
-                  {t('screens.logs.flags', { value: log.flags })}
-                </Text>
-              </View>
-            ))
+              )}
+            />
           )}
-        </ScrollView>
+        </GlassSurface>
       </View>
     </>
   );
@@ -403,6 +459,24 @@ export default function LogsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   center: {
     flex: 1,
@@ -478,6 +552,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginHorizontal: 8,
     borderRadius: 16,
+  },
+  // Glass on: the list sits in one glass card and rows are plain dividers.
+  glassList: {
+    flex: 1,
+    marginHorizontal: 8,
+    marginBottom: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  glassLogItem: {
+    padding: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   logHeader: {
     flexDirection: 'row',

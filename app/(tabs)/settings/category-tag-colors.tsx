@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useTorrents } from '@/context/TorrentContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -195,6 +197,7 @@ export default function CategoryTagColorsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -214,7 +217,7 @@ export default function CategoryTagColorsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.defaultColors').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <ColorSettingRow
                 label={t('screens.settings.defaultCategoryColor')}
                 color={defaultCategoryColor}
@@ -230,14 +233,14 @@ export default function CategoryTagColorsScreen() {
                 textColor={colors.text}
                 outlineColor={colors.surfaceOutline}
               />
-            </View>
+            </GlassSurface>
           </View>
 
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.categories').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               {categoryNames.length === 0 ? (
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {t('screens.settings.noCategories')}
@@ -260,14 +263,14 @@ export default function CategoryTagColorsScreen() {
                   </View>
                 ))
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.tags').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               {tags.length === 0 ? (
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                   {t('screens.settings.noTags')}
@@ -290,7 +293,7 @@ export default function CategoryTagColorsScreen() {
                   </View>
                 ))
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           <View style={{ height: 40 }} />
