@@ -14,8 +14,25 @@ export interface ApiFeatures {
   hasRatioLimitFields: boolean;
   /** torrents/info response includes content_path field (WebAPI ≥ 2.11.0 / qBit 5.0). */
   hasContentPath: boolean;
-  /** setShareLimits / add torrent accept inactiveSeedingTimeLimit parameter (WebAPI ≥ 2.11.0). */
+  /**
+   * torrents/setShareLimits takes — and REQUIRES — inactiveSeedingTimeLimit
+   * (WebAPI ≥ 2.9.2 / qBit 4.6.0rc1+, confirmed against torrentscontroller.cpp:
+   * 4.6.0beta1 at 2.9.1 requires only ratioLimit + seedingTimeLimit). Below it
+   * the field doesn't exist; from it, omitting it answers 400.
+   */
   supportsInactiveSeedingLimit: boolean;
+  /**
+   * Send shareLimitAction / shareLimitsMode on torrents/setShareLimits (WebAPI ≥ 2.11.0).
+   * Source: setShareLimits reads shareLimitAction only from qBit 5.2.0 (where it is
+   * required); 5.0/5.1 ignore it, and no release reads shareLimitsMode yet. Sending
+   * from 2.11.0 covers every server that needs them at no cost to the rest.
+   */
+  supportsShareLimitAction: boolean;
+  /**
+   * torrents/renameFile takes oldPath/newPath (WebAPI ≥ 2.7.0 / qBit 4.3.2). Below it
+   * the endpoint takes the file index as "id" and a bare file name as "name".
+   */
+  useRenameFilePathParams: boolean;
   /** app/getCookies and app/setCookies endpoints exist (WebAPI ≥ 2.11.0). */
   supportsSetCookies: boolean;
   /** search/downloadTorrent endpoint exists (WebAPI ≥ 2.11.0 / qBit 5.0). */
@@ -63,7 +80,10 @@ export interface ApiFeatures {
    * single proxy_torrents_only flag stands in for the three granular toggles.
    */
   hasModernProxyFields: boolean;
-  /** I2P settings (i2p_enabled etc.) exist in app/preferences (WebAPI ≥ 2.11.0 / qBit 5.0). */
+  /**
+   * I2P settings (i2p_enabled etc.) are settable through app/setPreferences
+   * (WebAPI ≥ 2.9.3 / qBit 4.6.1). 4.6.0 (2.9.2) reports them but ignores writes.
+   */
   supportsI2p: boolean;
   /**
    * torrents/fetchMetadata endpoint exists (WebAPI ≥ 2.11.9, qBit 5.2+) — resolves a
@@ -106,6 +126,8 @@ const V5_FEATURES: ApiFeatures = {
   hasRatioLimitFields: true,
   hasContentPath: true,
   supportsInactiveSeedingLimit: true,
+  supportsShareLimitAction: true,
+  useRenameFilePathParams: true,
   supportsSetCookies: true,
   supportsSearchDownloadTorrent: true,
   useAddStoppedEnabledPreference: true,
@@ -130,7 +152,9 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     useStartStopEndpoints: isV5,
     hasRatioLimitFields: gte(v, 2, 8),
     hasContentPath: isV5,
-    supportsInactiveSeedingLimit: isV5,
+    supportsInactiveSeedingLimit: gte(v, 2, 9, 2),
+    supportsShareLimitAction: isV5,
+    useRenameFilePathParams: gte(v, 2, 7),
     supportsSetCookies: isV5,
     supportsSearchDownloadTorrent: isV5,
     useAddStoppedEnabledPreference: isV5,
@@ -140,7 +164,7 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     supportsSearchPubDate: isV5,
     hasIsPrivate: gte(v, 2, 9),
     hasModernProxyFields: gte(v, 2, 9),
-    supportsI2p: isV5,
+    supportsI2p: gte(v, 2, 9, 3),
     supportsFetchMetadata: gte(v, 2, 11, 9),
     supportsFetchMetadataDownloader: gte(v, 2, 13, 1),
   };

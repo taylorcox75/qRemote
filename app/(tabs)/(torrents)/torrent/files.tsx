@@ -255,7 +255,7 @@ export default function TorrentFilesScreen() {
         const newPath = parentPath ? `${parentPath}/${trimmed}` : trimmed;
         try {
           setUpdating(true);
-          await torrentsApi.renameFile(hash, file.name, newPath);
+          await torrentsApi.renameFile(hash, file.name, newPath, file.index);
           await loadFiles();
           showToast(t('toast.fileRenamed'), 'success');
         } catch (error: unknown) {

@@ -36,6 +36,8 @@ describe('getApiFeatures', () => {
       hasRatioLimitFields: true,
       hasContentPath: true,
       supportsInactiveSeedingLimit: true,
+      supportsShareLimitAction: true,
+      useRenameFilePathParams: true,
       supportsSetCookies: true,
       supportsSearchDownloadTorrent: true,
       useAddStoppedEnabledPreference: true,
@@ -59,14 +61,13 @@ describe('getApiFeatures', () => {
     const features = getApiFeatures('2.9.0');
     expect(features.useStartStopEndpoints).toBe(false);
     expect(features.hasContentPath).toBe(false);
-    expect(features.supportsInactiveSeedingLimit).toBe(false);
+    expect(features.supportsShareLimitAction).toBe(false);
     expect(features.supportsSetCookies).toBe(false);
     expect(features.supportsSearchDownloadTorrent).toBe(false);
     expect(features.useAddStoppedEnabledPreference).toBe(false);
     expect(features.useStoppedAddParam).toBe(false);
     expect(features.supportsGetDirectoryContent).toBe(false);
     expect(features.supportsSearchPubDate).toBe(false);
-    expect(features.supportsI2p).toBe(false);
     expect(features.supportsFetchMetadata).toBe(false);
     expect(features.supportsFetchMetadataDownloader).toBe(false);
     // ratio limit fields only require 2.8+, modern proxy fields and is_private only require 2.9+,
@@ -75,6 +76,33 @@ describe('getApiFeatures', () => {
     expect(features.hasModernProxyFields).toBe(true);
     expect(features.hasIsPrivate).toBe(true);
     expect(features.useContentLayoutAddParam).toBe(true);
+  });
+
+  it('gates inactiveSeedingTimeLimit on WebAPI 2.9.2 (qBit 4.6.0rc1), where setShareLimits starts requiring it', () => {
+    // 4.5.5 = 2.8.19, 4.6.0beta1 = 2.9.1: not accepted yet.
+    expect(getApiFeatures('2.8.19').supportsInactiveSeedingLimit).toBe(false);
+    expect(getApiFeatures('2.9.1').supportsInactiveSeedingLimit).toBe(false);
+    // 4.6.0 = 2.9.2, 4.6.7 = 2.9.3: required — omitting it answers 400.
+    expect(getApiFeatures('2.9.2').supportsInactiveSeedingLimit).toBe(true);
+    expect(getApiFeatures('2.9.3').supportsInactiveSeedingLimit).toBe(true);
+    expect(getApiFeatures('2.11.0').supportsInactiveSeedingLimit).toBe(true);
+  });
+
+  it('keeps shareLimitAction on the 5.0 gate, separate from inactiveSeedingTimeLimit', () => {
+    expect(getApiFeatures('2.9.3').supportsShareLimitAction).toBe(false);
+    expect(getApiFeatures('2.11.0').supportsShareLimitAction).toBe(true);
+    expect(getApiFeatures('2.15.1').supportsShareLimitAction).toBe(true);
+  });
+
+  it('gates I2P settings on WebAPI 2.9.3 (qBit 4.6.1), where setPreferences first writes them', () => {
+    expect(getApiFeatures('2.9.2').supportsI2p).toBe(false);
+    expect(getApiFeatures('2.9.3').supportsI2p).toBe(true);
+    expect(getApiFeatures('2.11.0').supportsI2p).toBe(true);
+  });
+
+  it('gates renameFile oldPath/newPath on WebAPI 2.7.0 (older servers take id/name)', () => {
+    expect(getApiFeatures('2.6.0').useRenameFilePathParams).toBe(false);
+    expect(getApiFeatures('2.7.0').useRenameFilePathParams).toBe(true);
   });
 
   it('gates useContentLayoutAddParam off below 2.7', () => {
