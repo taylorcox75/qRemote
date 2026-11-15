@@ -1029,8 +1029,11 @@ export default function TorrentsScreen() {
       const plan = planPluginUrlAdd(downloader, apiClient.getApiFeatures());
 
       const tasks: Promise<void>[] = [];
+      // The form input each request came from, parallel to `tasks`.
+      const taskSources: ('files' | 'urls')[] = [];
       if (selectedFiles.length > 0) {
         tasks.push(torrentsApi.addTorrentFile(selectedFiles, addOptions));
+        taskSources.push('files');
       }
       if (urls.length > 0) {
         if (plan === 'searchDownloadTorrent' && downloader) {
@@ -1043,6 +1046,7 @@ export default function TorrentsScreen() {
             ),
           );
         }
+        taskSources.push('urls');
       }
       // allSettled, not all: a request answering `Fails.` (all duplicates) must not
       // fail the add when the other one added torrents (utils/add-torrent-batch.ts).
@@ -1050,7 +1054,21 @@ export default function TorrentsScreen() {
         await Promise.allSettled(tasks),
         TORRENT_ADD_FAILED_MESSAGE,
       );
-      if (summary.outcome === 'failed') throw summary.firstError;
+      // All duplicates: firstError is the duplicate message, localized below.
+      if (summary.outcome === 'allDuplicates') throw summary.firstError;
+      if (summary.hasRetryableFailures) {
+        // Stay open with only the failed inputs left, so they can be retried;
+        // anything added or already present leaves the form.
+        for (const index of summary.resolved) {
+          if (taskSources[index] === 'files') setSelectedFiles([]);
+          else {
+            setTorrentUrl('');
+            setSourcePlugin(null);
+          }
+        }
+        if (summary.succeeded.length > 0) refresh();
+        throw summary.firstOtherError;
+      }
 
       haptics.success();
       setTorrentUrl('');
@@ -1059,9 +1077,7 @@ export default function TorrentsScreen() {
       setShowAddModal(false);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       refresh();
-      if (summary.outcome === 'partialFailed') {
-        showToast(localizeErrorMessage(getErrorMessage(summary.firstOtherError), t), 'error');
-      } else if (summary.outcome === 'partialDuplicates') {
+      if (summary.outcome === 'partialDuplicates') {
         showToast(t('toast.someAlreadyInQbittorrent'), 'info');
       } else if (plan === 'searchDownloadTorrent') {
         // search/downloadTorrent takes no options — say so rather than a plain "added".

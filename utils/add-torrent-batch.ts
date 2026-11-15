@@ -16,7 +16,9 @@ export type AddBatchOutcome =
   | 'partialDuplicates'
   /** Some succeeded; at least one failed for another reason. */
   | 'partialFailed'
-  /** Nothing succeeded (or there were no requests). */
+  /** Nothing succeeded, and every request answered "already exists or not added". */
+  | 'allDuplicates'
+  /** Nothing succeeded and at least one request failed for another reason (or there were no requests). */
   | 'failed';
 
 export interface AddBatchSummary {
@@ -27,6 +29,14 @@ export interface AddBatchSummary {
   duplicateFailures: number[];
   /** Indexes of the requests that failed for any other reason. */
   otherFailures: number[];
+  /**
+   * Indexes of the requests with nothing left to retry (succeeded or already
+   * present), ascending. Their inputs can leave the form while the
+   * `otherFailures` stay for a retry.
+   */
+  resolved: number[];
+  /** True when at least one request failed for a reason worth retrying. */
+  hasRetryableFailures: boolean;
   /** The first rejection reason, for the all-failed error toast. */
   firstError: unknown;
   /** The first rejection reason that is not `duplicateMessage`. */
@@ -60,10 +70,23 @@ export function summarizeAddBatch(
   });
 
   let outcome: AddBatchOutcome;
-  if (succeeded.length === 0) outcome = 'failed';
-  else if (otherFailures.length > 0) outcome = 'partialFailed';
+  if (succeeded.length === 0) {
+    outcome =
+      duplicateFailures.length > 0 && otherFailures.length === 0 ? 'allDuplicates' : 'failed';
+  } else if (otherFailures.length > 0) outcome = 'partialFailed';
   else if (duplicateFailures.length > 0) outcome = 'partialDuplicates';
   else outcome = 'success';
 
-  return { outcome, succeeded, duplicateFailures, otherFailures, firstError, firstOtherError };
+  const resolved = [...succeeded, ...duplicateFailures].sort((a, b) => a - b);
+
+  return {
+    outcome,
+    succeeded,
+    duplicateFailures,
+    otherFailures,
+    resolved,
+    hasRetryableFailures: otherFailures.length > 0,
+    firstError,
+    firstOtherError,
+  };
 }

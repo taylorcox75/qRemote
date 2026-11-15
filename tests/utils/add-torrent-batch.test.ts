@@ -18,10 +18,37 @@ describe('summarizeAddBatch', () => {
     });
   });
 
-  it('keeps a single-request failure a failure', () => {
+  it('reports allDuplicates when every request answered the duplicate message', () => {
     const summary = summarizeAddBatch([dup], DUP);
-    expect(summary.outcome).toBe('failed');
+    expect(summary).toMatchObject({
+      outcome: 'allDuplicates',
+      resolved: [0],
+      hasRetryableFailures: false,
+    });
     expect(summary.firstError).toBe((dup as PromiseRejectedResult).reason);
+    expect(summarizeAddBatch([dup, dup], DUP).outcome).toBe('allDuplicates');
+  });
+
+  it('keeps a single non-duplicate failure a retryable failure', () => {
+    expect(summarizeAddBatch([net], DUP)).toMatchObject({
+      outcome: 'failed',
+      resolved: [],
+      otherFailures: [0],
+      hasRetryableFailures: true,
+    });
+  });
+
+  it('lists succeeded and duplicate requests as resolved, in order', () => {
+    expect(summarizeAddBatch([net, dup, ok, net, ok], DUP)).toMatchObject({
+      outcome: 'partialFailed',
+      resolved: [1, 2, 4],
+      otherFailures: [0, 3],
+      hasRetryableFailures: true,
+    });
+    expect(summarizeAddBatch([ok, dup], DUP)).toMatchObject({
+      resolved: [0, 1],
+      hasRetryableFailures: false,
+    });
   });
 
   it('treats a duplicate-only failure alongside a success as partial success', () => {
@@ -46,7 +73,11 @@ describe('summarizeAddBatch', () => {
   });
 
   it('reports failed when nothing succeeded, whatever the reasons', () => {
-    expect(summarizeAddBatch([dup, net], DUP).outcome).toBe('failed');
+    expect(summarizeAddBatch([dup, net], DUP)).toMatchObject({
+      outcome: 'failed',
+      resolved: [0],
+      hasRetryableFailures: true,
+    });
     expect(summarizeAddBatch([], DUP).outcome).toBe('failed');
   });
 

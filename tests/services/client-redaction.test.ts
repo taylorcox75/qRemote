@@ -11,11 +11,12 @@ import type { ServerConfig } from '@/types/api';
 const SID = 'abcdefghijklmnopqrstuvwxyz012345';
 
 describe('maskSecret', () => {
-  it('keeps 4 characters and the length', () => {
-    expect(maskSecret(SID)).toBe('abcd…(32 chars)');
+  it('reveals only the length', () => {
+    expect(maskSecret(SID)).toBe('•••• (32 chars)');
+    expect(maskSecret(SID)).not.toContain('abcd');
   });
-  it('fully hides very short values', () => {
-    expect(maskSecret('abc')).toBe('…');
+  it('hides short values the same way', () => {
+    expect(maskSecret('abc')).toBe('•••• (3 chars)');
     expect(maskSecret('')).toBe('');
   });
 });
@@ -23,7 +24,7 @@ describe('maskSecret', () => {
 describe('describeCookieJar', () => {
   it('keeps cookie names and masks values', () => {
     const out = describeCookieJar(`SID=${SID}; __cf_bm=zzzzzzzzzz`);
-    expect(out).toBe('SID=abcd…(32 chars); __cf_bm=zzzz…(10 chars)');
+    expect(out).toBe('SID=•••• (32 chars); __cf_bm=•••• (10 chars)');
     expect(out).not.toContain(SID);
   });
 });
@@ -34,16 +35,16 @@ describe('redactHeaderValue', () => {
       `SID=${SID}; HttpOnly; path=/`,
       'QBT_SID_8080=secretsecret; SameSite=Strict',
     ]);
-    expect(out).toBe('SID=abcd…(32 chars); QBT_SID_8080=secr…(12 chars)');
+    expect(out).toBe('SID=•••• (32 chars); QBT_SID_8080=•••• (12 chars)');
     expect(out).not.toContain(SID);
   });
 
   it('keeps the Authorization scheme but not the credential', () => {
     expect(redactHeaderValue('Authorization', 'Basic dXNlcjpwYXNzd29yZA==')).toBe(
-      'Basic dXNl…(20 chars)',
+      'Basic •••• (20 chars)',
     );
     expect(redactHeaderValue('authorization', 'Bearer qbt_0123456789')).toBe(
-      'Bearer qbt_…(14 chars)',
+      'Bearer •••• (14 chars)',
     );
   });
 

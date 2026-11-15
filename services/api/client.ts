@@ -49,12 +49,12 @@ type EpochedRequestConfig = InternalAxiosRequestConfig & {
 const identity = (text: string): string => text;
 
 /**
- * Shortens a secret for diagnostics: the first 4 characters and its length,
- * enough to tell two values apart without handing out a usable credential.
+ * Masks a secret for diagnostics, revealing only its length. No characters are
+ * kept, so exported debug reports carry nothing of the credential itself.
  */
 export function maskSecret(value: string): string {
   if (!value) return '';
-  return value.length <= 4 ? '…' : `${value.slice(0, 4)}…(${value.length} chars)`;
+  return `•••• (${value.length} chars)`;
 }
 
 /** `a=1; b=2` → `a=<masked>; b=<masked>` (names kept, attributes dropped). */

@@ -53,6 +53,8 @@ import {
   type SavedDownloadPath,
 } from '@/utils/add-torrent-options';
 import { summarizeAddBatch } from '@/utils/add-torrent-batch';
+import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { useApiFeatures } from '@/context/ApiVersionContext';
 import { tagNewlyDownloadedTorrent } from '@/services/search-tracker-topup';
 import {
@@ -434,10 +436,12 @@ export default function AddTorrentFullScreen() {
       const typedDownloader = getPrefilledDownloader(urls, sourcePlugin);
       const typedPlan = planPluginUrlAdd(typedDownloader, features);
       let usedDefaultOptions = typedPlan === 'searchDownloadTorrent';
-      // One entry per request. `cartUrls` are the cart items that request carries;
-      // `tagging` are background tag polls to start once it succeeds (5.0–5.1 cart only).
+      // One entry per request. `source` is the form input it came from, `cartUrls` are
+      // the cart items it carries; `tagging` are background tag polls to start once it
+      // succeeds (5.0–5.1 cart only).
       const tasks: {
         promise: Promise<void>;
+        source: 'files' | 'urls' | 'cart';
         cartUrls: string[];
         tagging: (() => Promise<void>)[];
       }[] = [];
@@ -447,6 +451,7 @@ export default function AddTorrentFullScreen() {
             selectedFiles.map((file) => ({ uri: file.uri, name: file.name, type: file.mimeType })),
             opts,
           ),
+          source: 'files',
           cartUrls: [],
           tagging: [],
         });
@@ -454,6 +459,7 @@ export default function AddTorrentFullScreen() {
       if (urls.length > 0) {
         tasks.push({
           promise: addUrls(urls, opts, typedDownloader, typedPlan),
+          source: 'urls',
           cartUrls: [],
           tagging: [],
         });
@@ -491,6 +497,7 @@ export default function AddTorrentFullScreen() {
               group.downloader,
               groupPlan,
             ),
+            source: 'cart',
             cartUrls: group.urls,
             tagging,
           });
@@ -500,16 +507,29 @@ export default function AddTorrentFullScreen() {
       // fail the submit when the others added torrents (see utils/add-torrent-batch.ts).
       const results = await Promise.allSettled(tasks.map((task) => task.promise));
       const summary = summarizeAddBatch(results, TORRENT_ADD_FAILED_MESSAGE);
-      if (summary.outcome === 'failed') {
-        showToast(t('errors.failedToAdd'), 'error');
+      if (summary.outcome === 'allDuplicates') {
+        // Nothing was added because everything is already in qBittorrent.
+        showToast(localizeErrorMessage(getErrorMessage(summary.firstError), t), 'error');
         return;
       }
       for (const index of summary.succeeded) {
         for (const startTagging of tasks[index].tagging) void startTagging();
       }
-      if (summary.outcome === 'partialFailed') {
-        showToast(t('errors.failedToAdd'), 'error');
-      } else if (summary.outcome === 'partialDuplicates') {
+      if (summary.hasRetryableFailures) {
+        // Stay open with only the failed inputs left, so they can be retried;
+        // anything added or already present leaves the form.
+        for (const index of summary.resolved) {
+          const task = tasks[index];
+          if (task.source === 'files') setSelectedFiles([]);
+          else if (task.source === 'urls') {
+            setTorrentUrl('');
+            setSourcePlugin(null);
+          } else for (const url of task.cartUrls) cart.remove(url);
+        }
+        showToast(localizeErrorMessage(getErrorMessage(summary.firstOtherError), t), 'error');
+        return;
+      }
+      if (summary.outcome === 'partialDuplicates') {
         showToast(t('toast.someAlreadyInQbittorrent'), 'info');
       } else if (usedDefaultOptions) {
         showToast(t('toast.pluginAddDefaultOptions'), 'info', 6000);
@@ -521,17 +541,8 @@ export default function AddTorrentFullScreen() {
           'success',
         );
       }
-      if (cartItems.length > 0) {
-        if (summary.outcome === 'success') {
-          cart.clear();
-        } else {
-          // Keep only the items whose request failed for a real reason, so they can
-          // be retried; succeeded and already-present ones leave the cart.
-          for (const index of [...summary.succeeded, ...summary.duplicateFailures]) {
-            for (const url of tasks[index].cartUrls) cart.remove(url);
-          }
-        }
-      }
+      // Every request either succeeded or found its torrents already present.
+      if (cartItems.length > 0) cart.clear();
       router.back();
     } catch {
       showToast(t('errors.failedToAdd'), 'error');
