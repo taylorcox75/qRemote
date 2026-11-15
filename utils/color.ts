@@ -78,3 +78,22 @@ function parseColorToRgb(color: string): { r: number; g: number; b: number } | n
 
   return null;
 }
+
+/** Minimum text/background contrast for a highlighted (selected) list row. */
+const SELECTED_ROW_MIN_CONTRAST = 3;
+
+/**
+ * Background for a selected row in a picker: `surfaceOutline`, unless the
+ * theme makes it too close to the text colour (presets such as High Contrast
+ * set both to the same value), in which case a translucent `primary` is used
+ * so the selected label stays readable.
+ */
+export function selectedRowBackground(colors: {
+  text: string;
+  surfaceOutline: string;
+  primary: string;
+}): string {
+  return contrastRatio(colors.text, colors.surfaceOutline) >= SELECTED_ROW_MIN_CONTRAST
+    ? colors.surfaceOutline
+    : withAlpha(colors.primary, 0.25);
+}

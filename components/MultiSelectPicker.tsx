@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { selectedRowBackground } from '@/utils/color';
 import { GlassSurface } from '@/components/GlassSurface';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -158,7 +159,7 @@ export function MultiSelectPicker({
                   <TouchableOpacity
                     style={[
                       styles.menuOption,
-                      selected && { backgroundColor: colors.surfaceOutline },
+                      selected && { backgroundColor: selectedRowBackground(colors) },
                     ]}
                     onPress={() => toggleValue(option.value)}
                     activeOpacity={0.7}

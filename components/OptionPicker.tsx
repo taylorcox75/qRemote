@@ -19,6 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { selectedRowBackground } from '@/utils/color';
 import { GlassSurface } from '@/components/GlassSurface';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -164,7 +165,9 @@ export function OptionPicker({
                 <TouchableOpacity
                   style={[
                     styles.menuOption,
-                    selectedValue === option.value && { backgroundColor: colors.surfaceOutline },
+                    selectedValue === option.value && {
+                      backgroundColor: selectedRowBackground(colors),
+                    },
                   ]}
                   onPress={() => handleSelect(option.value)}
                   activeOpacity={0.7}
