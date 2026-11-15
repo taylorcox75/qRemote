@@ -250,6 +250,14 @@ export interface AppPreferences {
    * scrolls, instead of the translucent overlay that slides away.
    */
   solidPinnedHeader: boolean;
+
+  /**
+   * Liquid Glass materials (Settings → Appearance). Default on; only takes
+   * effect where glass can be drawn (iOS 26+ with the native module, Reduce
+   * Transparency / Increase Contrast off) — see context/LiquidGlassContext.tsx.
+   * Optional so stored preferences without it read as the default.
+   */
+  liquidGlassEnabled?: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -336,4 +344,5 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   lastCategoryFilter: null,
   lastTagFilters: [],
   solidPinnedHeader: false,
+  liquidGlassEnabled: true,
 };

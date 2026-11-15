@@ -12,6 +12,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { IconPicker } from '@/components/IconPicker';
 import { ColorPicker } from '@/components/ColorPicker';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -48,7 +49,7 @@ export function ServerAppearanceSection({
       <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
         {t('server.appearance')}
       </Text>
-      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+      <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
         <TouchableOpacity
           style={styles.row}
           onPress={() => setIconPickerVisible(true)}
@@ -101,7 +102,7 @@ export function ServerAppearanceSection({
             <Ionicons name="color-palette-outline" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
-      </View>
+      </GlassSurface>
 
       <IconPicker
         visible={iconPickerVisible}

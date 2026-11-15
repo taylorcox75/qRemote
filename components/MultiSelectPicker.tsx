@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
@@ -88,7 +89,8 @@ export function MultiSelectPicker({
         accessibilityRole="button"
         accessibilityLabel="Close picker"
       >
-        <View
+        <GlassSurface
+          popover
           ref={menuContainerRef}
           onLayout={(event) => {
             if (hasAdjustedPosition.current) return;
@@ -198,7 +200,7 @@ export function MultiSelectPicker({
               );
             })}
           </ScrollView>
-        </View>
+        </GlassSurface>
       </TouchableOpacity>
     </Modal>
   );

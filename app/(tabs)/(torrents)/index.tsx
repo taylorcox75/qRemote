@@ -45,6 +45,9 @@ import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
 import { SearchHistoryDropdown } from '@/components/SearchHistoryDropdown';
 import { SwipeActionsPanel } from '@/components/SwipeActionsPanel';
+import { GlassSurface, GlassWrap } from '@/components/GlassSurface';
+import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { TORRENT_ADD_FAILED_MESSAGE, torrentsApi } from '@/services/api/torrents';
 import { summarizeAddBatch } from '@/utils/add-torrent-batch';
 import { localizeErrorMessage } from '@/utils/localize-error';
@@ -84,6 +87,13 @@ import {
   togglePin,
 } from '@/utils/search-history';
 import { runAfterInteractions } from '@/utils/afterInteractions';
+
+/** Header row control height: capsule search field and round sort / + buttons. */
+const HEADER_CONTROL_SIZE = 40;
+/** Keeps the 40pt round buttons at a ≥44pt tap target. */
+const HEADER_BUTTON_HIT_SLOP = { top: 2, bottom: 2, left: 2, right: 2 };
+/** Side gutter shared by the list cards and the header content (6pt). */
+const SIDE_GUTTER = spacing.xs + spacing.xs / 2;
 
 export default function TorrentsScreen() {
   const { t } = useTranslation();
@@ -151,6 +161,7 @@ export default function TorrentsScreen() {
   // Settings → Appearance "Solid pinned header": an opaque, in-flow header
   // that never collapses on scroll. Off = the floating overlay header.
   const [solidPinnedHeader, setSolidPinnedHeader] = useState(DEFAULT_PREFERENCES.solidPinnedHeader);
+  const { enabled: liquidGlass } = useLiquidGlass();
   // Drives only the pull-to-refresh spinner. `isLoading` also flips on every
   // background poll/foreground re-sync, and wiring it to RefreshControl would
   // pop the iOS spinner on top of the search box on every load (#275).
@@ -1166,6 +1177,10 @@ export default function TorrentsScreen() {
   // / Close must stay reachable without scrolling back up, per #252-adjacent
   // feedback) and whenever the user turned on the solid pinned header.
   const headerPinned = selectMode || solidPinnedHeader;
+  // Liquid Glass: popovers and controls always; the header panel itself only
+  // while it isn't the solid pinned header (that setting wins and stays opaque).
+  const glassPopovers = liquidGlass;
+  const glassHeader = glassPopovers && !solidPinnedHeader;
 
   // Scroll handler — header show/hide only. No-op while the header is pinned.
   const handleScroll = useCallback(
@@ -1494,6 +1509,7 @@ export default function TorrentsScreen() {
             },
           ]}
         >
+          <GlassHeaderBackdrop glass={glassHeader} />
           <View style={[styles.searchCard, { backgroundColor: 'transparent' }]}>
             {/* Current server — opens the quick server switcher (#249) */}
             {!selectMode && currentServer && (
@@ -1524,32 +1540,40 @@ export default function TorrentsScreen() {
             >
               {/* LEFT: Sort button — fixed 42×42 */}
               {!selectMode && (
-                <TouchableOpacity
-                  style={[
-                    styles.searchSortButton,
-                    {
-                      backgroundColor: showSortMenu ? colors.primaryOpac : colors.background,
-                      borderColor: colors.surface,
-                    },
-                  ]}
-                  onPress={() => {
-                    setShowSortMenu(!showSortMenu);
-                    setShowSearchHistory(false);
-                  }}
-                  activeOpacity={0.7}
-                  testID="torrents-sort-button"
-                  accessibilityLabel={t('screens.settings.sortBy')}
-                >
-                  <Ionicons
-                    name="swap-vertical"
-                    size={18}
-                    color={showSortMenu ? colors.primary : colors.text}
-                  />
-                </TouchableOpacity>
+                <GlassWrap enabled={glassPopovers} interactive style={styles.roundButton}>
+                  <TouchableOpacity
+                    style={[
+                      glassPopovers ? styles.glassButtonFill : styles.searchSortButton,
+                      {
+                        backgroundColor: showSortMenu
+                          ? colors.primaryOpac
+                          : glassPopovers
+                            ? 'transparent'
+                            : colors.background,
+                        borderColor: colors.surface,
+                      },
+                    ]}
+                    onPress={() => {
+                      setShowSortMenu(!showSortMenu);
+                      setShowSearchHistory(false);
+                    }}
+                    hitSlop={HEADER_BUTTON_HIT_SLOP}
+                    activeOpacity={0.7}
+                    testID="torrents-sort-button"
+                    accessibilityLabel={t('screens.settings.sortBy')}
+                  >
+                    <Ionicons
+                      name="swap-vertical"
+                      size={18}
+                      color={showSortMenu ? colors.primary : colors.text}
+                    />
+                  </TouchableOpacity>
+                </GlassWrap>
               )}
 
               {/* CENTER: Search input — flex:1, loading indicator inside */}
-              <View
+              <GlassSurface
+                glass={glassPopovers}
                 style={[
                   styles.searchInputContainer,
                   {
@@ -1607,20 +1631,32 @@ export default function TorrentsScreen() {
                     style={{ marginLeft: spacing.xs }}
                   />
                 )}
-              </View>
+              </GlassSurface>
 
               {/* RIGHT: Add torrent button — fixed 42×42 */}
               {!selectMode && (
-                <TouchableOpacity
-                  style={[styles.headerAddButton, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    void handleOpenAddTorrent();
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel={t('screens.torrents.addTorrent')}
+                <GlassWrap
+                  enabled={glassPopovers}
+                  interactive
+                  tintColor={colors.primary}
+                  style={styles.roundButton}
                 >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={
+                      glassPopovers
+                        ? styles.glassButtonFill
+                        : [styles.headerAddButton, { backgroundColor: colors.primary }]
+                    }
+                    onPress={() => {
+                      void handleOpenAddTorrent();
+                    }}
+                    hitSlop={HEADER_BUTTON_HIT_SLOP}
+                    activeOpacity={0.7}
+                    accessibilityLabel={t('screens.torrents.addTorrent')}
+                  >
+                    <Ionicons name="add" size={20} color={colors.onAccent} />
+                  </TouchableOpacity>
+                </GlassWrap>
               )}
             </View>
 
@@ -1764,6 +1800,7 @@ export default function TorrentsScreen() {
                 onTogglePin={handleToggleHistoryPin}
                 onRemove={handleRemoveHistoryQuery}
                 onClearRecent={handleClearRecentSearches}
+                glass={glassPopovers}
                 style={{
                   top: searchRowLayout.y + searchRowLayout.height + spacing.xs,
                   left: searchRowLayout.x + searchInputX,
@@ -1774,7 +1811,9 @@ export default function TorrentsScreen() {
 
             {/* Sort options dropdown - positioned near search bar */}
             {showSortMenu && !selectMode && (
-              <View
+              <GlassSurface
+                popover
+                glass={glassPopovers}
                 testID="torrents-sort-menu"
                 style={[
                   styles.sortDropdown,
@@ -1855,7 +1894,7 @@ export default function TorrentsScreen() {
                     )}
                   </TouchableOpacity>
                 ))}
-              </View>
+              </GlassSurface>
             )}
           </View>
         </Animated.View>
@@ -2078,6 +2117,7 @@ export default function TorrentsScreen() {
                     <View style={{ flex: 1 }}>
                       <TorrentCard
                         torrent={item}
+                        glass={liquidGlass}
                         onPress={() => {
                           if (selectMode) {
                             toggleSelection(item.hash);
@@ -2656,7 +2696,7 @@ const styles = StyleSheet.create({
   },
   searchCard: {
     borderRadius: borderRadius.medium,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: SIDE_GUTTER,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
   },
@@ -2685,10 +2725,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: borderRadius.medium,
+    borderRadius: HEADER_CONTROL_SIZE / 2,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    height: 42,
+    height: HEADER_CONTROL_SIZE,
     borderWidth: 0.5,
     ...shadows.small,
   },
@@ -2741,12 +2780,12 @@ const styles = StyleSheet.create({
   listContent: {
     // paddingTop is applied dynamically (see headerHeight) — headerContainer
     // is an absolute overlay whose height varies with selectMode.
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: SIDE_GUTTER,
     borderRadius: borderRadius.large,
   },
   skeletonList: {
     paddingTop: 100,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: SIDE_GUTTER,
   },
   selectionHeader: {
     flexDirection: 'row',
@@ -2900,17 +2939,33 @@ const styles = StyleSheet.create({
   modalButtonText: {
     ...buttonText.primary,
   },
+  // Liquid Glass: a control's touchable filling its GlassWrap (the glass
+  // supplies the size, radius and background).
+  glassButtonFill: {
+    flex: 1,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Round like its GlassWrap, so an active-state fill stays a circle.
+    borderRadius: HEADER_CONTROL_SIZE / 2,
+  },
+  // Size/shape of the round header buttons (a GlassWrap uses it too).
+  roundButton: {
+    width: HEADER_CONTROL_SIZE,
+    height: HEADER_CONTROL_SIZE,
+    borderRadius: HEADER_CONTROL_SIZE / 2,
+  },
   headerAddButton: {
-    width: 42,
-    height: 42,
-    borderRadius: borderRadius.medium,
+    width: HEADER_CONTROL_SIZE,
+    height: HEADER_CONTROL_SIZE,
+    borderRadius: HEADER_CONTROL_SIZE / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
   searchSortButton: {
-    width: 42,
-    height: 42,
-    borderRadius: borderRadius.medium,
+    width: HEADER_CONTROL_SIZE,
+    height: HEADER_CONTROL_SIZE,
+    borderRadius: HEADER_CONTROL_SIZE / 2,
     borderWidth: 0.5,
     justifyContent: 'center',
     alignItems: 'center',

@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { haptics } from '@/utils/haptics';
@@ -103,7 +104,8 @@ export function ActionMenu({ visible, onClose, items, anchor }: ActionMenuProps)
     const top = Math.max(minTop, Math.min(anchorPoint.y + POPOVER_ANCHOR_GAP, maxTop));
 
     return (
-      <View
+      <GlassSurface
+        popover
         testID="action-menu-popover"
         onLayout={handlePopoverLayout}
         style={[
@@ -122,7 +124,7 @@ export function ActionMenu({ visible, onClose, items, anchor }: ActionMenuProps)
         ]}
       >
         {renderItems()}
-      </View>
+      </GlassSurface>
     );
   };
 
@@ -132,7 +134,8 @@ export function ActionMenu({ visible, onClose, items, anchor }: ActionMenuProps)
         {anchor ? (
           renderPopover(anchor)
         ) : (
-          <View
+          <GlassSurface
+            popover
             style={[
               styles.sheet,
               {
@@ -143,7 +146,7 @@ export function ActionMenu({ visible, onClose, items, anchor }: ActionMenuProps)
           >
             <View style={[styles.handle, { backgroundColor: colors.surfaceOutline }]} />
             {renderItems()}
-          </View>
+          </GlassSurface>
         )}
       </TouchableOpacity>
     </Modal>

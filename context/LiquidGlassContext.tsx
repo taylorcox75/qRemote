@@ -1,0 +1,164 @@
+/**
+ * LiquidGlassContext — whether iOS 26 Liquid Glass is drawn, from the
+ * `liquidGlassEnabled` preference (Settings → Appearance → "Liquid Glass",
+ * default on). Glass only ever changes the material; the layout is the same
+ * with it on or off.
+ *
+ * - `available` — this binary/OS can draw glass (utils/liquidGlass.ts: iOS 26+
+ *   with the ExpoGlassEffect native module). Fixed for the process lifetime.
+ * - `preference` — the stored setting (what the Settings switch shows).
+ * - `enabled` — glass materials are drawn right now: available, preference on,
+ *   and neither iOS "Reduce Transparency" nor "Increase Contrast" is on. All
+ *   three are followed live; a change only swaps materials (GlassView ⇄ solid
+ *   View) and never touches the navigator.
+ * - `tabBarGlass` — the system glass tab bar (expo-router NativeTabs) is used.
+ *   Latched from available && preference at the first preference load: the two
+ *   tab bars are different navigators, so switching takes an app restart and
+ *   the current tab bar stays until then. The system tab bar handles the
+ *   accessibility settings natively.
+ * - `loaded` — the preference has been read. Where glass is available the tab
+ *   layout waits for it (a few ms) so a launch never mounts one navigator and
+ *   then swaps to the other.
+ *
+ * While the glass tab bar is in use, the app window's interface style is pinned
+ * to the app theme (`Appearance.setColorScheme`) so UIKit chrome — the system
+ * tab bar above all — follows a manual Light/Dark choice instead of the system
+ * appearance. Theme mode "System" leaves it unspecified (they agree, and
+ * overriding would stop ThemeContext's useColorScheme from seeing OS changes).
+ * Without the glass tab bar this is never called.
+ *
+ * Outside the provider (e.g. component tests) everything reads as off.
+ *
+ * Key exports: LiquidGlassProvider, useLiquidGlass, useGlassStackTopInset
+ */
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { AccessibilityInfo, Appearance } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/context/ThemeContext';
+import { storageService } from '@/services/storage';
+import { DEFAULT_PREFERENCES } from '@/types/preferences';
+import { getLiquidGlassSupport, isGlassAllowedByAccessibility } from '@/utils/liquidGlass';
+
+interface LiquidGlassContextValue {
+  /** Liquid Glass can be drawn in this binary on this OS. */
+  available: boolean;
+  /** The stored `liquidGlassEnabled` setting. */
+  preference: boolean;
+  /** Glass materials are drawn right now. */
+  enabled: boolean;
+  /** The system glass tab bar is used (fixed for the session). */
+  tabBarGlass: boolean;
+  /** The stored preference has been read. */
+  loaded: boolean;
+  setPreference: (value: boolean) => Promise<void>;
+}
+
+const OFF: LiquidGlassContextValue = {
+  available: false,
+  preference: false,
+  enabled: false,
+  tabBarGlass: false,
+  loaded: true,
+  setPreference: async () => undefined,
+};
+
+const LiquidGlassContext = createContext<LiquidGlassContextValue>(OFF);
+
+const DEFAULT_ON = DEFAULT_PREFERENCES.liquidGlassEnabled !== false;
+
+export function LiquidGlassProvider({ children }: { children: React.ReactNode }) {
+  const available = getLiquidGlassSupport().available;
+  const [preference, setPreferenceState] = useState(DEFAULT_ON);
+  const [loaded, setLoaded] = useState(!available);
+  const [tabBarGlass, setTabBarGlass] = useState(false);
+  const [reduceTransparency, setReduceTransparency] = useState(false);
+  const [increaseContrast, setIncreaseContrast] = useState(false);
+
+  useEffect(() => {
+    if (!available) return;
+    let cancelled = false;
+    storageService
+      .getPreferences()
+      .then((prefs) => {
+        if (cancelled) return;
+        const on = prefs.liquidGlassEnabled ?? DEFAULT_ON;
+        setPreferenceState(on);
+        setTabBarGlass(on);
+      })
+      .catch(() => {
+        if (!cancelled) setTabBarGlass(DEFAULT_ON);
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [available]);
+
+  // iOS accessibility: Reduce Transparency / Increase Contrast (RN exposes the
+  // latter as "darker system colors"). Read once, then follow live changes.
+  useEffect(() => {
+    if (!available) return;
+    let cancelled = false;
+    AccessibilityInfo.isReduceTransparencyEnabled()
+      .then((on) => {
+        if (!cancelled) setReduceTransparency(on);
+      })
+      .catch(() => undefined);
+    AccessibilityInfo.isDarkerSystemColorsEnabled()
+      .then((on) => {
+        if (!cancelled) setIncreaseContrast(on);
+      })
+      .catch(() => undefined);
+    const subs = [
+      AccessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency),
+      AccessibilityInfo.addEventListener('darkerSystemColorsChanged', setIncreaseContrast),
+    ];
+    return () => {
+      cancelled = true;
+      subs.forEach((sub) => sub?.remove());
+    };
+  }, [available]);
+
+  const { themeMode } = useTheme();
+  useEffect(() => {
+    if (!tabBarGlass) return;
+    Appearance.setColorScheme(themeMode === 'system' ? 'unspecified' : themeMode);
+  }, [tabBarGlass, themeMode]);
+
+  const setPreference = useCallback(async (value: boolean) => {
+    await storageService.updatePreferences({ liquidGlassEnabled: value });
+    setPreferenceState(value);
+  }, []);
+
+  const enabled =
+    available &&
+    preference &&
+    isGlassAllowedByAccessibility({ reduceTransparency, increaseContrast });
+
+  const value = useMemo<LiquidGlassContextValue>(
+    () => ({ available, preference, enabled, tabBarGlass, loaded, setPreference }),
+    [available, preference, enabled, tabBarGlass, loaded, setPreference],
+  );
+
+  return <LiquidGlassContext.Provider value={value}>{children}</LiquidGlassContext.Provider>;
+}
+
+export function useLiquidGlass(): LiquidGlassContextValue {
+  return useContext(LiquidGlassContext);
+}
+
+/**
+ * Status-bar inset for the Stack inside a tab while the glass tab bar is used.
+ * A native stack clips its screens to its own bounds, so if the tab scene were
+ * padded below the status bar, a screen's glass header could never reach up
+ * under it. The inset is applied inside each stack screen instead
+ * (`contentStyle.paddingTop`), where the header's GlassHeaderBackdrop can extend
+ * into it. Undefined with the JS tab bar (its wrapper pads the top as before).
+ */
+export function useGlassStackTopInset(): number | undefined {
+  const { tabBarGlass } = useLiquidGlass();
+  const insets = useSafeAreaInsets();
+  return tabBarGlass ? insets.top : undefined;
+}

@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
+import { useGlassStackTopInset } from '@/context/LiquidGlassContext';
 
 /**
  * Stack under the RSS tab so feed list -> articles/rules/rule editor
@@ -7,13 +8,17 @@ import { useTheme } from '@/context/ThemeContext';
  */
 export default function RssLayout() {
   const { colors } = useTheme();
+  const glassTopInset = useGlassStackTopInset();
 
   return (
     <Stack
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
-        contentStyle: { backgroundColor: colors.background },
+        contentStyle:
+          glassTopInset === undefined
+            ? { backgroundColor: colors.background }
+            : { backgroundColor: colors.background, paddingTop: glassTopInset },
       }}
     />
   );

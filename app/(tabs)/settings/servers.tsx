@@ -17,6 +17,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -375,6 +377,7 @@ export default function ServersSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -402,7 +405,7 @@ export default function ServersSettingsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.serverManagement').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="flash-outline" size={22} color={colors.primary} />
@@ -458,7 +461,7 @@ export default function ServersSettingsScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </View>
 
           {/* Server List */}
@@ -477,7 +480,9 @@ export default function ServersSettingsScreen() {
                 <Ionicons name="add-circle" size={24} color={colors.primary} />
               </TouchableOpacity>
             </View>
-            <View style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}>
+            <GlassSurface
+              style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}
+            >
               {servers.length === 0 ? (
                 <EmptyState
                   compact
@@ -503,7 +508,7 @@ export default function ServersSettingsScreen() {
                   />
                 ))
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           <View style={{ height: 40 }} />

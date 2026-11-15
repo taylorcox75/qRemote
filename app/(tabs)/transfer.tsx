@@ -27,6 +27,7 @@ import { ServerConfig, ApplicationPreferences } from '@/types/api';
 import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { torrentsApi } from '@/services/api/torrents';
@@ -636,7 +637,7 @@ export default function TransferScreen() {
           onRequestClose={() => setLimitModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.modalContent, { backgroundColor: colors.surface }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
                 {getLimitModalTitle()}
               </Text>
@@ -682,7 +683,7 @@ export default function TransferScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </GlassSurface>
           </View>
         </Modal>
 
@@ -774,7 +775,7 @@ export default function TransferScreen() {
             activeOpacity={1}
             onPress={() => setInfoTooltip(null)}
           >
-            <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
               <View style={styles.tooltipHeader}>
                 <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
                 <Text style={[styles.tooltipTitle, { color: colors.text }]}>
@@ -800,7 +801,7 @@ export default function TransferScreen() {
               >
                 <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </TouchableOpacity>
         </Modal>
 
@@ -841,7 +842,7 @@ export default function TransferScreen() {
                 </Text>
               </View>
             </View>
-            <View style={[styles.heroGraphCard, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.heroGraphCard, { backgroundColor: colors.surface }]}>
               <View style={styles.heroGraphContainer}>
                 <View style={styles.heroGraphOverlay}>
                   <SpeedGraph
@@ -865,7 +866,7 @@ export default function TransferScreen() {
               <Text style={[styles.graphScaleCaption, { color: colors.textSecondary }]}>
                 {t('screens.transfer.graphScale', { value: formatSpeed(graphMax) })}
               </Text>
-            </View>
+            </GlassSurface>
           </View>
 
           {/* ========== SPEED LIMITS ========== */}
@@ -873,7 +874,7 @@ export default function TransferScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.transfer.speedLimits')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.row}
                 onPress={() => openLimitModal('download')}
@@ -979,7 +980,7 @@ export default function TransferScreen() {
                   />
                 </View>
               </View>
-            </View>
+            </GlassSurface>
           </View>
 
           {/* ========== SEEDING LIMITS ========== */}
@@ -988,7 +989,7 @@ export default function TransferScreen() {
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('screens.transfer.seedingLimits')}
               </Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                 <View style={styles.row}>
                   <Text style={[styles.rowLabel, { color: colors.text }]}>
                     {t('screens.transfer.ratioLimitEnabled')}
@@ -1077,7 +1078,7 @@ export default function TransferScreen() {
                     </TouchableOpacity>
                   </>
                 )}
-              </View>
+              </GlassSurface>
             </View>
           )}
 
@@ -1086,7 +1087,7 @@ export default function TransferScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.transfer.actions')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.row}
                 onPress={handleResumeAll}
@@ -1179,7 +1180,7 @@ export default function TransferScreen() {
                   </Text>
                 </View>
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </View>
 
           {/* ========== THIS SESSION ========== */}
@@ -1187,7 +1188,7 @@ export default function TransferScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.transfer.thisSession')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.row}>
                 <Text style={[styles.rowLabel, { color: colors.text }]}>
                   {t('screens.transfer.downloaded')}
@@ -1234,7 +1235,7 @@ export default function TransferScreen() {
                   </View>
                 </>
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           {/* ========== ALL TIME ========== */}
@@ -1243,7 +1244,7 @@ export default function TransferScreen() {
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('screens.transfer.allTime')}
               </Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                 <View style={styles.row}>
                   <Text style={[styles.rowLabel, { color: colors.text }]}>
                     {t('screens.transfer.downloaded')}
@@ -1274,7 +1275,7 @@ export default function TransferScreen() {
                     {serverState.global_ratio || '0.00'}
                   </Text>
                 </View>
-              </View>
+              </GlassSurface>
             </View>
           )}
 
@@ -1283,7 +1284,7 @@ export default function TransferScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.transfer.connection')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.row}>
                 <View style={styles.rowLeading}>
                   <View
@@ -1369,7 +1370,7 @@ export default function TransferScreen() {
                   </View>
                 </>
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           <View style={{ height: 40 }} />

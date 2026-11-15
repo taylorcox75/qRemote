@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { CHANGELOG } from '@/constants/changelog';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -42,6 +44,7 @@ export default function WhatsNewScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -70,7 +73,7 @@ export default function WhatsNewScreen() {
                   {formatReleaseDate(release.date)}
                 </Text>
               </View>
-              <View style={[styles.changesList, { backgroundColor: colors.surface }]}>
+              <GlassSurface style={[styles.changesList, { backgroundColor: colors.surface }]}>
                 {release.sections
                   ? release.sections.map((section, sectionIndex) => (
                       <View
@@ -112,7 +115,7 @@ export default function WhatsNewScreen() {
                         <Text style={[styles.changeText, { color: colors.text }]}>{change}</Text>
                       </View>
                     ))}
-              </View>
+              </GlassSurface>
             </View>
           ))}
           <View style={{ height: 40 }} />

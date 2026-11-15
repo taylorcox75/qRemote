@@ -4,6 +4,8 @@ import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { shadows } from '@/constants/shadows';
 import { spacing, borderRadius } from '@/constants/spacing';
 
@@ -105,6 +107,10 @@ export function Toast({
     }
   };
 
+  // Liquid Glass: the material sits behind the content inside the animated
+  // container (a GlassView can't take the slide/fade animation itself).
+  const { enabled: glass } = useLiquidGlass();
+
   const topOffset = topOffsetOverride ?? safeTop + spacing.sm;
 
   const toastContent = (
@@ -112,7 +118,7 @@ export function Toast({
       style={[
         styles.container,
         {
-          backgroundColor: colors.surface,
+          backgroundColor: glass ? 'transparent' : colors.surface,
           top: topOffset,
           transform: [{ translateY }],
           opacity,
@@ -120,6 +126,7 @@ export function Toast({
         shadows.large,
       ]}
     >
+      {glass && <GlassSurface glass pointerEvents="none" style={styles.glass} />}
       <TouchableOpacity style={styles.content} onPress={hide} activeOpacity={0.9}>
         <Ionicons name={getIcon()} size={24} color={getColor()} />
         <Text style={[styles.message, { color: colors.text }]}>{message}</Text>
@@ -144,6 +151,14 @@ const styles = StyleSheet.create({
     right: spacing.xxl,
     borderRadius: borderRadius.medium,
     zIndex: 9999,
+  },
+  glass: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: borderRadius.medium,
   },
   content: {
     flexDirection: 'row',

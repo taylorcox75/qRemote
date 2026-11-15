@@ -22,6 +22,7 @@ import { TorrentProvider } from '@/context/TorrentContext';
 import { TransferProvider } from '@/context/TransferContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { ToastProvider, useToast } from '@/context/ToastContext';
+import { LiquidGlassProvider } from '@/context/LiquidGlassContext';
 import { SearchCartProvider } from '@/context/SearchCartContext';
 import { storageService } from '@/services/storage';
 import { apiClient } from '@/services/api/client';
@@ -343,21 +344,23 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <QueryClientProvider client={queryClient}>
-            <ToastProvider>
-              <ServerProvider>
-                <ApiVersionProvider>
-                  <TorrentProvider>
-                    <TransferProvider>
-                      <SearchCartProvider>
-                        <StackNavigator />
-                      </SearchCartProvider>
-                    </TransferProvider>
-                  </TorrentProvider>
-                </ApiVersionProvider>
-              </ServerProvider>
-            </ToastProvider>
-          </QueryClientProvider>
+          <LiquidGlassProvider>
+            <QueryClientProvider client={queryClient}>
+              <ToastProvider>
+                <ServerProvider>
+                  <ApiVersionProvider>
+                    <TorrentProvider>
+                      <TransferProvider>
+                        <SearchCartProvider>
+                          <StackNavigator />
+                        </SearchCartProvider>
+                      </TransferProvider>
+                    </TorrentProvider>
+                  </ApiVersionProvider>
+                </ServerProvider>
+              </ToastProvider>
+            </QueryClientProvider>
+          </LiquidGlassProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -25,6 +25,8 @@ import { ServerManager } from '@/services/server-manager';
 import { ServerConfig } from '@/types/api';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useServer } from '@/context/ServerContext';
 import { useToast, ModalToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -610,6 +612,7 @@ App Version: ${APP_VERSION}`;
       >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} underStatusBar={false} />
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButtonLeft}>
             <Text
               style={[styles.headerButtonText, { color: colors.primary }]}
@@ -655,7 +658,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.serverInfo')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.inputRow}>
                 <Ionicons
                   name="server-outline"
@@ -736,7 +739,7 @@ App Version: ${APP_VERSION}`;
                   </View>
                 </>
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           <ServerAppearanceSection
@@ -751,7 +754,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.fallbackUrl')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <SettingRow
                 icon="swap-horizontal-outline"
                 label={t('server.useFallback')}
@@ -820,7 +823,7 @@ App Version: ${APP_VERSION}`;
                   </SettingRow>
                 </>
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           {/* Authentication Section */}
@@ -828,7 +831,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.authentication')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity onPress={() => setShowAuthMethodPicker(true)} activeOpacity={0.7}>
                 <SettingRow icon="key-outline" label={t('server.authMethod')}>
                   <View style={styles.authMethodValue}>
@@ -932,7 +935,7 @@ App Version: ${APP_VERSION}`;
               {authMode === 'quiProxy' && (
                 <QuiProxyUrlField value={quiProxyUrl} onChangeText={setQuiProxyUrl} />
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           {/* Security Section — in qui mode the scheme comes from the proxy URL, so only the cert opt-in remains */}
@@ -941,7 +944,7 @@ App Version: ${APP_VERSION}`;
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('server.security')}
               </Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                 {!isQui && (
                   <SettingRow icon="shield-checkmark-outline" label={t('server.useHttps')}>
                     <Switch
@@ -981,7 +984,7 @@ App Version: ${APP_VERSION}`;
                     )}
                   </>
                 )}
-              </View>
+              </GlassSurface>
             </View>
           )}
 
@@ -990,7 +993,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.proxyAuthentication')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               {authMode === 'apiKey' ? (
                 <View style={styles.inputRow}>
                   <Ionicons
@@ -1072,7 +1075,7 @@ App Version: ${APP_VERSION}`;
                   )}
                 </>
               )}
-            </View>
+            </GlassSurface>
           </View>
 
           <CustomHeadersSection
@@ -1087,7 +1090,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.connectionTest')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               {testing ? (
                 <View style={styles.testingContainer}>
                   <View style={styles.testingContent}>
@@ -1129,7 +1132,7 @@ App Version: ${APP_VERSION}`;
                   thumbColor="#FFFFFF"
                 />
               </SettingRow>
-            </View>
+            </GlassSurface>
           </View>
 
           {/* Debug Info - Only shown when toggle is ON */}
@@ -1148,7 +1151,7 @@ App Version: ${APP_VERSION}`;
                   <Ionicons name="copy-outline" size={18} color={colors.primary} />
                 </TouchableOpacity>
               </View>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                 {/* Full URL */}
                 <DebugRow label={t('server.debugFullUrl')} value={debugInfo.baseUrl} selectable />
 
@@ -1246,7 +1249,7 @@ App Version: ${APP_VERSION}`;
                     </Text>
                   </View>
                 )}
-              </View>
+              </GlassSurface>
 
               {/* Network Diagnostics - part of debug mode */}
               <SuperDebugPanel
@@ -1287,7 +1290,7 @@ App Version: ${APP_VERSION}`;
           activeOpacity={1}
           onPress={() => setShowHostTooltip(false)}
         >
-          <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.tooltipHeader}>
               <Ionicons name="globe-outline" size={24} color={colors.primary} />
               <Text style={[styles.tooltipTitle, { color: colors.text }]}>
@@ -1309,7 +1312,7 @@ App Version: ${APP_VERSION}`;
             >
               <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         </TouchableOpacity>
       </Modal>
 
@@ -1325,7 +1328,7 @@ App Version: ${APP_VERSION}`;
           activeOpacity={1}
           onPress={() => setShowPortTooltip(false)}
         >
-          <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.tooltipHeader}>
               <Ionicons name="link-outline" size={24} color={colors.primary} />
               <Text style={[styles.tooltipTitle, { color: colors.text }]}>{t('server.port')}</Text>
@@ -1350,7 +1353,7 @@ App Version: ${APP_VERSION}`;
             >
               <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         </TouchableOpacity>
       </Modal>
 
