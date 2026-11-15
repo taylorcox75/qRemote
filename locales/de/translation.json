@@ -103,6 +103,8 @@
       "numberPlaceholder": "0",
       "dlLimit": "Download-Limit",
       "upLimit": "Upload-Limit",
+      "dlLimitKib": "Download-Limit (KiB/s)",
+      "upLimitKib": "Upload-Limit (KiB/s)",
       "ratioLimit": "Verhältnis-Limit",
       "seedingTimeLimit": "Seed-Zeit-Limit",
       "cookie": "Cookie",

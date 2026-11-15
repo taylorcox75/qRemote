@@ -124,6 +124,8 @@
       "numberPlaceholder": "0",
       "dlLimit": "İndirme sınırı",
       "upLimit": "Gönderme sınırı",
+      "dlLimitKib": "İndirme sınırı (KiB/s)",
+      "upLimitKib": "Gönderme sınırı (KiB/s)",
       "ratioLimit": "Paylaşım oranı sınırı",
       "seedingTimeLimit": "Paylaşım süresi sınırı",
       "cookie": "Çerez",

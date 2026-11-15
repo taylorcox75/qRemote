@@ -134,6 +134,17 @@ export interface AppPreferences {
   /** Last incomplete-torrents download path typed on the add-torrent screen */
   lastDownloadPath: string;
 
+  /**
+   * Per-server (keyed by ServerConfig.id) last "Use another download path"
+   * choice on the add-torrent screen. Replaces the device-wide
+   * lastUseDownloadPath / lastDownloadPath, which leaked one server's path
+   * into another's adds; those keys are kept but no longer read.
+   */
+  addTorrentDownloadPathByServer: Record<
+    string,
+    { useDownloadPath: boolean; downloadPath: string }
+  >;
+
   /** Default download priority for new torrents (0 = normal) */
   defaultPriority: number;
 
@@ -253,6 +264,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultSavePath: '',
   lastUseDownloadPath: false,
   lastDownloadPath: '',
+  addTorrentDownloadPathByServer: {},
   defaultPriority: 0,
   toastDuration: 3000,
   hapticFeedback: true,

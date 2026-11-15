@@ -124,6 +124,8 @@
       "numberPlaceholder": "0",
       "dlLimit": "Лимит загрузки",
       "upLimit": "Лимит отдачи",
+      "dlLimitKib": "Лимит загрузки (КиБ/с)",
+      "upLimitKib": "Лимит отдачи (КиБ/с)",
       "ratioLimit": "Лимит коэффициента раздачи",
       "seedingTimeLimit": "Лимит времени раздачи",
       "cookie": "Cookie",
