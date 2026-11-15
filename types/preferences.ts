@@ -232,6 +232,12 @@ export interface AppPreferences {
 
   /** Last active tag filters on the torrents tab (OR semantics). */
   lastTagFilters?: string[];
+
+  /**
+   * Torrents tab: opaque header that stays pinned at the top while the list
+   * scrolls, instead of the translucent overlay that slides away.
+   */
+  solidPinnedHeader: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -316,4 +322,5 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   searchPinnedPlugins: [],
   lastCategoryFilter: null,
   lastTagFilters: [],
+  solidPinnedHeader: false,
 };

@@ -436,6 +436,8 @@
       "detailedCardView": "Detailed Card View",
       "detailedCardFields": "Detailed Card Fields",
       "detailedCardFieldsDescription": "Choose which fields appear in detailed card view",
+      "solidPinnedHeader": "Solid pinned header",
+      "solidPinnedHeaderDescription": "Keep the Torrents header opaque and fixed at the top while scrolling",
       "detailedCardGridColumns": "Grid Columns",
       "detailedCardGridColumnsDescription": "How many stats columns to show per row",
       "detailedCardGridColumns3": "3 columns",

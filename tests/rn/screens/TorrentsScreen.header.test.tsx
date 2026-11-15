@@ -206,4 +206,24 @@ describe('TorrentsScreen — header popovers and server switch', () => {
     await view.rerender(<TorrentsScreen />);
     await waitFor(() => expect(screen.getByLabelText('screens.torrents.selectMode')).toBeTruthy());
   });
+
+  it('pins the header in-flow when the solid pinned header setting is on', async () => {
+    const { storageService } = require('@/services/storage');
+    const { StyleSheet } = require('react-native');
+    const listPaddingTop = () =>
+      StyleSheet.flatten(screen.getByTestId('torrents-list').props.contentContainerStyle)
+        .paddingTop;
+    mockUseServer.mockReturnValue(connectedServer(serverA));
+
+    // Off (default): the overlay header reserves its measured height (136).
+    await render(<TorrentsScreen />);
+    await waitFor(() => expect(listPaddingTop()).toBe(136));
+    screen.unmount();
+
+    // On: the header is in-flow, so the list only needs the small gap.
+    storageService.getPreferences.mockResolvedValue({ solidPinnedHeader: true });
+    await render(<TorrentsScreen />);
+    await waitFor(() => expect(listPaddingTop()).toBeLessThan(136));
+    storageService.getPreferences.mockResolvedValue({});
+  });
 });

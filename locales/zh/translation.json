@@ -415,6 +415,8 @@
       "detailedCardView": "详细卡片视图",
       "detailedCardFields": "详细卡片字段",
       "detailedCardFieldsDescription": "选择在详细卡片视图中显示的字段",
+      "solidPinnedHeader": "固定不透明标题栏",
+      "solidPinnedHeaderDescription": "滚动时让种子页面的标题栏保持不透明并固定在顶部",
       "detailedCardGridColumns": "网格列数",
       "detailedCardGridColumnsDescription": "详细卡片每行显示的统计列数",
       "detailedCardGridColumns3": "3 列",

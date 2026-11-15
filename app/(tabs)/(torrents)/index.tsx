@@ -146,6 +146,9 @@ export default function TorrentsScreen() {
   >('added_on');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  // Settings → Appearance "Solid pinned header": an opaque, in-flow header
+  // that never collapses on scroll. Off = the floating overlay header.
+  const [solidPinnedHeader, setSolidPinnedHeader] = useState(DEFAULT_PREFERENCES.solidPinnedHeader);
   // Drives only the pull-to-refresh spinner. `isLoading` also flips on every
   // background poll/foreground re-sync, and wiring it to RefreshControl would
   // pop the iOS spinner on top of the search box on every load (#275).
@@ -378,6 +381,7 @@ export default function TorrentsScreen() {
           }
           lastDefaultFilterRef.current = newDefault;
           setCardViewMode(prefs.cardViewMode ?? 'compact');
+          setSolidPinnedHeader(prefs.solidPinnedHeader === true);
           if (prefs.expandedCardFields) {
             setExpandedCardFields({
               ...DEFAULT_PREFERENCES.expandedCardFields,
@@ -1145,12 +1149,15 @@ export default function TorrentsScreen() {
     [refresh, showToast, t],
   );
 
-  // Scroll handler — header show/hide only. Pinned (never hides) in
-  // selectMode: Select All / Close must stay reachable without scrolling
-  // back up, per #252-adjacent feedback.
+  // The header is pinned — in-flow, never hides — in selectMode (Select All
+  // / Close must stay reachable without scrolling back up, per #252-adjacent
+  // feedback) and whenever the user turned on the solid pinned header.
+  const headerPinned = selectMode || solidPinnedHeader;
+
+  // Scroll handler — header show/hide only. No-op while the header is pinned.
   const handleScroll = useCallback(
     (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-      if (selectMode) return;
+      if (headerPinned) return;
 
       const currentScrollY = event.nativeEvent.contentOffset.y;
 
@@ -1213,7 +1220,7 @@ export default function TorrentsScreen() {
 
       lastScrollY.current = currentScrollY;
     },
-    [headerTranslateY, selectMode, showSortMenu, showSearchHistory],
+    [headerTranslateY, headerPinned, showSortMenu, showSearchHistory],
   );
 
   // A drag on the list dismisses the header's popovers (sort menu, recent
@@ -1223,16 +1230,17 @@ export default function TorrentsScreen() {
     setShowSearchHistory(false);
   }, []);
 
-  // Snap the header back to visible when entering selectMode — it may have
-  // been scrolled out of view before selection started, and while selected
-  // it must stay pinned (handleScroll no-ops during selectMode above).
+  // Snap the header back to visible when it becomes pinned — it may have
+  // been scrolled out of view before selection started (or before the solid
+  // header setting was turned on), and while pinned it must stay put
+  // (handleScroll no-ops above).
   useEffect(() => {
-    if (selectMode) {
+    if (headerPinned) {
       isHeaderVisible.current = true;
       isAnimating.current = false;
       headerTranslateY.setValue(0);
     }
-  }, [selectMode, headerTranslateY]);
+  }, [headerPinned, headerTranslateY]);
 
   // Bulk selection (and any pending delete confirm) refers to the hashes of
   // the server it was made on — drop it when a different server connects.
@@ -1460,15 +1468,15 @@ export default function TorrentsScreen() {
           onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
           style={[
             styles.headerContainer,
-            // In selectMode the header is pinned (see the selectMode effect
-            // above) — switch it from an absolute overlay to a normal in-flow
-            // sibling so it physically pushes the list down instead of
+            // A pinned header (selectMode or the solid-header setting — see
+            // headerPinned) switches from an absolute overlay to a normal
+            // in-flow sibling so it physically pushes the list down instead of
             // floating on top of it. Cards can only render underneath it (as
             // in normal browsing, by design) when it's an overlay; pinned +
             // overlay together is exactly the overlap this avoids.
-            selectMode && styles.headerContainerPinned,
+            headerPinned && styles.headerContainerPinned,
             {
-              backgroundColor: 'transparent',
+              backgroundColor: solidPinnedHeader ? colors.background : 'transparent',
               transform: [{ translateY: headerTranslateY }],
             },
           ]}
@@ -2113,18 +2121,18 @@ export default function TorrentsScreen() {
                 onRefresh={handlePullRefresh}
                 // The header is an absolute overlay (see headerContainer), so
                 // push the spinner below it instead of under the search box.
-                // selectMode's header is in-flow and needs no offset.
-                progressViewOffset={selectMode ? 0 : headerHeight}
+                // A pinned header is in-flow and needs no offset.
+                progressViewOffset={headerPinned ? 0 : headerHeight}
                 tintColor={colors.primary}
               />
             }
             contentContainerStyle={[
               styles.listContent,
-              // Only the absolute-overlay (non-selectMode) header needs the
-              // list content pushed down by its height — in selectMode the
-              // header is a normal in-flow sibling (see headerContainerPinned)
-              // and already occupies that space in the layout itself.
-              selectMode ? { paddingTop: spacing.sm } : { paddingTop: headerHeight },
+              // Only the absolute-overlay (unpinned) header needs the list
+              // content pushed down by its height — a pinned header is a
+              // normal in-flow sibling (see headerContainerPinned) and
+              // already occupies that space in the layout itself.
+              headerPinned ? { paddingTop: spacing.sm } : { paddingTop: headerHeight },
               selectMode && selectedHashes.size > 0 && { paddingBottom: bulkActionsBarHeight },
             ]}
             onScroll={handleScroll}

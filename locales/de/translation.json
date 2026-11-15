@@ -415,6 +415,8 @@
       "detailedCardView": "Detailansicht",
       "detailedCardFields": "Detailkartenfelder",
       "detailedCardFieldsDescription": "Wähle Felder für die Detailkartenansicht",
+      "solidPinnedHeader": "Fester, deckender Kopfbereich",
+      "solidPinnedHeaderDescription": "Torrent-Kopfbereich beim Scrollen deckend oben fixiert lassen",
       "detailedCardGridColumns": "Rasterspalten",
       "detailedCardGridColumnsDescription": "Anzahl der Statistikspalten pro Zeile",
       "detailedCardGridColumns3": "3 Spalten",
