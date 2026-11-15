@@ -26,7 +26,7 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { ServerManager } from '@/services/server-manager';
 import { APP_VERSION } from '@/utils/version';
-import { getErrorMessage } from '@/utils/error';
+import { getErrorMessage, isSupersededConnectError } from '@/utils/error';
 import { localizeErrorMessage } from '@/utils/localize-error';
 import { hasFallback } from '@/utils/server';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -171,6 +171,7 @@ export default function SettingsScreen() {
         showToast(t('errors.failedToConnect'), 'error');
       }
     } catch (error) {
+      if (isSupersededConnectError(error)) return; // a newer connect/disconnect took over
       showToast(localizeErrorMessage(getErrorMessage(error), t), 'error');
     }
   };

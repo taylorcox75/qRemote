@@ -10,6 +10,7 @@ import { hasFallback, insecureCertHostnames, resolveServerEndpoint } from '@/uti
 import { getServerAuthMode } from '@/utils/authMode';
 import { QUI_KEY_MISSING_MESSAGE, isQuiKeyRejection } from '@/utils/quiProxy';
 import { buildServerExport, ServerExportFile } from '@/utils/server-export';
+import { CONNECT_SUPERSEDED_MESSAGE, isSupersededConnectError } from '@/utils/error';
 import { storageService } from './storage';
 import { apiClient } from './api/client';
 import { authApi } from './api/auth';
@@ -49,18 +50,10 @@ function syncInsecureCertAllowlist(servers: ServerConfig[]): void {
   setInsecureCertAllowedHosts([...hosts]);
 }
 
-/**
- * Thrown by connectToServer when a newer connect, a disconnect or the current
- * server's deletion took over while this attempt was in flight. The attempt
- * has left the API client alone; callers should drop its result silently.
- * Avoids the words "Connection"/"Network"/"timeout" so isNetworkError (and
- * with it the fallback endpoint) never fires for it.
- */
-export const CONNECT_SUPERSEDED_MESSAGE = 'Connect attempt superseded by a newer one.';
-
-export function isConnectSuperseded(error: unknown): boolean {
-  return error instanceof Error && error.message === CONNECT_SUPERSEDED_MESSAGE;
-}
+// The superseded-connect error lives in utils/error.ts so screens can test
+// for it without importing this module. Re-exported for existing callers.
+export { CONNECT_SUPERSEDED_MESSAGE };
+export const isConnectSuperseded = isSupersededConnectError;
 
 function supersededError(cause?: unknown): Error {
   return new Error(CONNECT_SUPERSEDED_MESSAGE, cause === undefined ? undefined : { cause });

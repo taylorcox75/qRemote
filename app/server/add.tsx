@@ -39,7 +39,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import * as Clipboard from 'expo-clipboard';
 import { APP_VERSION } from '@/utils/version';
-import { getErrorMessage } from '@/utils/error';
+import { getErrorMessage, isSupersededConnectError } from '@/utils/error';
 import { localizeErrorMessage } from '@/utils/localize-error';
 import { ServerAuthMode, applyServerAuthMode } from '@/utils/authMode';
 import { withAlpha } from '@/utils/color';
@@ -433,12 +433,16 @@ App Version: ${APP_VERSION}`;
             showToast(t('toast.connectionFailedCheck'), 'warning');
           }
         } catch (error: unknown) {
-          showToast(
-            t('errors.connectionFailedManual', {
-              error: localizeErrorMessage(getErrorMessage(error), t),
-            }),
-            'warning',
-          );
+          // A newer connect/disconnect took over — not a failure to report,
+          // and the screen must still close below.
+          if (!isSupersededConnectError(error)) {
+            showToast(
+              t('errors.connectionFailedManual', {
+                error: localizeErrorMessage(getErrorMessage(error), t),
+              }),
+              'warning',
+            );
+          }
         }
       }
 

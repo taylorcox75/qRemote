@@ -84,3 +84,17 @@ export function isTlsRejection(error: unknown): boolean {
   if (!text) return false;
   return TLS_REJECTION_KEYWORDS.some((keyword) => text.includes(keyword));
 }
+
+/**
+ * Thrown by ServerManager.connectToServer when a newer connect, a disconnect
+ * or the current server's deletion took over mid-attempt. It is not a
+ * failure the user can act on — the newer action's own outcome is what they
+ * see — so it is never displayed and has no translation. Avoids the words
+ * "Connection"/"Network"/"timeout" so isNetworkError never matches it.
+ */
+export const CONNECT_SUPERSEDED_MESSAGE = 'Connect attempt superseded by a newer one.';
+
+/** True for the superseded-connect error; callers drop it silently. */
+export function isSupersededConnectError(error: unknown): boolean {
+  return error instanceof Error && error.message === CONNECT_SUPERSEDED_MESSAGE;
+}

@@ -40,7 +40,7 @@ import { SpeedGraph, computeSpeedGraphMax, niceGraphCeiling } from '@/components
 import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { InputModal } from '@/components/InputModal';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
-import { getErrorMessage } from '@/utils/error';
+import { getErrorMessage, isSupersededConnectError } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 import { useGracefulError } from '@/hooks/useGracefulError';
 
@@ -118,6 +118,7 @@ export default function TransferScreen() {
           setConnectErrors((prev) => ({ ...prev, [server.id]: t('errors.checkCredentials') }));
         }
       } catch (err: unknown) {
+        if (isSupersededConnectError(err)) return; // a newer connect/disconnect took over
         setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
       } finally {
         setConnectingId(null);

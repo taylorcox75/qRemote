@@ -30,7 +30,7 @@ import { AppPreferences } from '@/types/preferences';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
-import { getErrorMessage } from '@/utils/error';
+import { getErrorMessage, isSupersededConnectError } from '@/utils/error';
 import { localizeErrorMessage } from '@/utils/localize-error';
 import { parseServerImport } from '@/utils/server-export';
 
@@ -269,6 +269,7 @@ export default function ServersSettingsScreen() {
         showToast(t('errors.checkCredentials'), 'error');
       }
     } catch (error: unknown) {
+      if (isSupersededConnectError(error)) return; // a newer connect/disconnect took over
       showToast(localizeErrorMessage(getErrorMessage(error), t), 'error');
     }
   };
