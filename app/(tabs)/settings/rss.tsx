@@ -53,6 +53,9 @@ export default function RssSettingsScreen() {
   // per-keystroke) to avoid a setPreferences round-trip on every digit typed.
   const [refreshIntervalText, setRefreshIntervalText] = useState('');
   const [fetchDelayText, setFetchDelayText] = useState('');
+  // rss_fetch_delay is qBit 5.0+; older servers ignore it, so the row only
+  // shows once the server has reported the key.
+  const [hasFetchDelay, setHasFetchDelay] = useState(false);
   const [maxArticlesText, setMaxArticlesText] = useState('');
   const savedNumbersRef = React.useRef({
     rss_refresh_interval: '',
@@ -85,6 +88,7 @@ export default function RssSettingsScreen() {
               : '';
           setRefreshIntervalText(refreshInterval);
           setFetchDelayText(fetchDelay);
+          setHasFetchDelay('rss_fetch_delay' in p);
           setMaxArticlesText(maxArticles);
           savedNumbersRef.current = {
             rss_refresh_interval: refreshInterval,
@@ -220,18 +224,22 @@ export default function RssSettingsScreen() {
                   )
                 }
               />
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-              <NumberRow
-                label={t('screens.settings.rssFetchDelay')}
-                unit={t('screens.settings.rssSeconds')}
-                value={fetchDelayText}
-                disabled={disabled}
-                colors={colors}
-                onChangeText={setFetchDelayText}
-                onBlur={() =>
-                  void handleNumberBlur('rss_fetch_delay', fetchDelayText, setFetchDelayText)
-                }
-              />
+              {hasFetchDelay && (
+                <>
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  <NumberRow
+                    label={t('screens.settings.rssFetchDelay')}
+                    unit={t('screens.settings.rssSeconds')}
+                    value={fetchDelayText}
+                    disabled={disabled}
+                    colors={colors}
+                    onChangeText={setFetchDelayText}
+                    onBlur={() =>
+                      void handleNumberBlur('rss_fetch_delay', fetchDelayText, setFetchDelayText)
+                    }
+                  />
+                </>
+              )}
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <NumberRow
                 label={t('screens.settings.rssMaxArticlesPerFeed')}

@@ -30,6 +30,11 @@ import { tagsApi } from '@/services/api/tags';
 import { AppPreferences, SortField, DEFAULT_PREFERENCES } from '@/types/preferences';
 import { ApplicationPreferences, ScanDirOverride, Category } from '@/types/api';
 import { getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
+import {
+  getContentLayoutKey,
+  getPreferenceKeys,
+  readContentLayout,
+} from '@/utils/server-preferences';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
@@ -68,6 +73,12 @@ export default function TorrentDefaultsScreen() {
   const [contentLayout, setContentLayout] = useState<'Original' | 'Subfolder' | 'NoSubfolder'>(
     'Original',
   );
+  // Keys the server's app/preferences reported. Rows for keys it doesn't know
+  // are hidden (setPreferences would 200 and ignore them); empty after a failed
+  // fetch, which also keeps scan_dirs from being rewritten from an empty map.
+  const [serverPrefKeys, setServerPrefKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const hasServerPref = (key: string) => serverPrefKeys.has(key);
+  const contentLayoutKey = getContentLayoutKey(serverPrefKeys);
   const [tempPathEnabled, setTempPathEnabled] = useState(false);
   const [tempPath, setTempPath] = useState('');
   const [preallocateAll, setPreallocateAll] = useState(false);
@@ -269,14 +280,13 @@ export default function TorrentDefaultsScreen() {
 
       // Saving Management fields come straight off the same serverPrefs fetch above
       const sp = serverPrefs as Record<string, unknown> | null;
+      setServerPrefKeys(getPreferenceKeys(sp));
       setAutoTmmEnabled(!!sp?.auto_tmm_enabled);
       setTorrentChangedTmmEnabled(!!sp?.torrent_changed_tmm_enabled);
       setSavePathChangedTmmEnabled(!!sp?.save_path_changed_tmm_enabled);
       setCategoryChangedTmmEnabled(!!sp?.category_changed_tmm_enabled);
       setUseCategoryPathsInManualMode(!!sp?.use_category_paths_in_manual_mode);
-      setContentLayout(
-        (sp?.torrent_content_layout as 'Original' | 'Subfolder' | 'NoSubfolder') || 'Original',
-      );
+      setContentLayout(readContentLayout(sp));
       setTempPathEnabled(!!sp?.temp_path_enabled);
       setTempPath((sp?.temp_path as string) || '');
       setPreallocateAll(!!sp?.preallocate_all);
@@ -925,71 +935,97 @@ export default function TorrentDefaultsScreen() {
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('screens.settings.addTorrentSection').toUpperCase()}
               </Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
-                <View style={styles.settingRow}>
-                  <View style={styles.settingLeft}>
-                    <Ionicons name="albums-outline" size={22} color={colors.primary} />
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>
-                      {t('screens.settings.contentLayout')}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.pickerButton}
-                    onPress={() => setContentLayoutPickerVisible(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.pickerText, { color: colors.text }]}>
-                      {contentLayoutOptions.find((opt) => opt.value === contentLayout)?.label}
-                    </Text>
-                    <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
+              {(contentLayoutKey ||
+                hasServerPref('add_to_top_of_queue') ||
+                hasServerPref('torrent_stop_condition')) && (
+                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                  {contentLayoutKey && (
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                        <Ionicons name="albums-outline" size={22} color={colors.primary} />
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>
+                          {t('screens.settings.contentLayout')}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.pickerButton}
+                        onPress={() => setContentLayoutPickerVisible(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.pickerText, { color: colors.text }]}>
+                          {contentLayoutOptions.find((opt) => opt.value === contentLayout)?.label}
+                        </Text>
+                        <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {hasServerPref('add_to_top_of_queue') && (
+                    <>
+                      {contentLayoutKey && (
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                      )}
+                      <View style={styles.settingRow}>
+                        <View style={styles.settingLeft}>
+                          <Ionicons
+                            name="arrow-up-circle-outline"
+                            size={22}
+                            color={colors.primary}
+                          />
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.settings.addToTopOfQueue')}
+                          </Text>
+                        </View>
+                        <Switch
+                          value={addToTopOfQueue}
+                          onValueChange={(value) => {
+                            const prev = addToTopOfQueue;
+                            setServerPreference(
+                              'add_to_top_of_queue',
+                              value,
+                              () => setAddToTopOfQueue(value),
+                              () => setAddToTopOfQueue(prev),
+                            );
+                          }}
+                          trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                          ios_backgroundColor={colors.surfaceOutline}
+                        />
+                      </View>
+                    </>
+                  )}
+                  {hasServerPref('torrent_stop_condition') && (
+                    <>
+                      {(contentLayoutKey || hasServerPref('add_to_top_of_queue')) && (
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                      )}
+                      <View style={styles.settingRow}>
+                        <View style={styles.settingLeft}>
+                          <Ionicons name="stop-circle-outline" size={22} color={colors.primary} />
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.settings.torrentStopCondition')}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.pickerButton}
+                          onPress={() => setStopConditionPickerVisible(true)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.pickerText, { color: colors.text }]}>
+                            {
+                              stopConditionOptions.find((opt) => opt.value === torrentStopCondition)
+                                ?.label
+                            }
+                          </Text>
+                          <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
                 </View>
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                <View style={styles.settingRow}>
-                  <View style={styles.settingLeft}>
-                    <Ionicons name="arrow-up-circle-outline" size={22} color={colors.primary} />
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>
-                      {t('screens.settings.addToTopOfQueue')}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={addToTopOfQueue}
-                    onValueChange={(value) => {
-                      const prev = addToTopOfQueue;
-                      setServerPreference(
-                        'add_to_top_of_queue',
-                        value,
-                        () => setAddToTopOfQueue(value),
-                        () => setAddToTopOfQueue(prev),
-                      );
-                    }}
-                    trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                    ios_backgroundColor={colors.surfaceOutline}
-                  />
-                </View>
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                <View style={styles.settingRow}>
-                  <View style={styles.settingLeft}>
-                    <Ionicons name="stop-circle-outline" size={22} color={colors.primary} />
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>
-                      {t('screens.settings.torrentStopCondition')}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.pickerButton}
-                    onPress={() => setStopConditionPickerVisible(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.pickerText, { color: colors.text }]}>
-                      {
-                        stopConditionOptions.find((opt) => opt.value === torrentStopCondition)
-                          ?.label
-                      }
-                    </Text>
-                    <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+              )}
 
               <Text
                 style={[
@@ -1000,29 +1036,33 @@ export default function TorrentDefaultsScreen() {
                 {t('screens.settings.duplicateTorrents').toUpperCase()}
               </Text>
               <View style={[styles.card, { backgroundColor: colors.surface }]}>
-                <View style={styles.settingRow}>
-                  <View style={styles.settingLeft}>
-                    <Ionicons name="git-merge-outline" size={22} color={colors.primary} />
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>
-                      {t('screens.settings.mergeTrackers')}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={mergeTrackers}
-                    onValueChange={(value) => {
-                      const prev = mergeTrackers;
-                      setServerPreference(
-                        'merge_trackers',
-                        value,
-                        () => setMergeTrackers(value),
-                        () => setMergeTrackers(prev),
-                      );
-                    }}
-                    trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                    ios_backgroundColor={colors.surfaceOutline}
-                  />
-                </View>
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                {hasServerPref('merge_trackers') && (
+                  <>
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                        <Ionicons name="git-merge-outline" size={22} color={colors.primary} />
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>
+                          {t('screens.settings.mergeTrackers')}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={mergeTrackers}
+                        onValueChange={(value) => {
+                          const prev = mergeTrackers;
+                          setServerPreference(
+                            'merge_trackers',
+                            value,
+                            () => setMergeTrackers(value),
+                            () => setMergeTrackers(prev),
+                          );
+                        }}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                        ios_backgroundColor={colors.surfaceOutline}
+                      />
+                    </View>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                  </>
+                )}
                 <View style={styles.settingRow}>
                   <View style={styles.settingLeft}>
                     <Ionicons name="trash-outline" size={22} color={colors.primary} />
@@ -1110,34 +1150,38 @@ export default function TorrentDefaultsScreen() {
                     ios_backgroundColor={colors.surfaceOutline}
                   />
                 </View>
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                <View style={styles.settingRow}>
-                  <View style={styles.settingLeft}>
-                    <Ionicons name="file-tray-outline" size={22} color={colors.primary} />
-                    <View style={styles.settingTextGroup}>
-                      <Text style={[styles.settingLabel, { color: colors.text }]}>
-                        {t('screens.settings.useUnwantedFolder')}
-                      </Text>
-                      <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
-                        {t('screens.settings.useUnwantedFolderHint')}
-                      </Text>
+                {hasServerPref('use_unwanted_folder') && (
+                  <>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                        <Ionicons name="file-tray-outline" size={22} color={colors.primary} />
+                        <View style={styles.settingTextGroup}>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.settings.useUnwantedFolder')}
+                          </Text>
+                          <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                            {t('screens.settings.useUnwantedFolderHint')}
+                          </Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={useUnwantedFolder}
+                        onValueChange={(value) => {
+                          const prev = useUnwantedFolder;
+                          setServerPreference(
+                            'use_unwanted_folder',
+                            value,
+                            () => setUseUnwantedFolder(value),
+                            () => setUseUnwantedFolder(prev),
+                          );
+                        }}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                        ios_backgroundColor={colors.surfaceOutline}
+                      />
                     </View>
-                  </View>
-                  <Switch
-                    value={useUnwantedFolder}
-                    onValueChange={(value) => {
-                      const prev = useUnwantedFolder;
-                      setServerPreference(
-                        'use_unwanted_folder',
-                        value,
-                        () => setUseUnwantedFolder(value),
-                        () => setUseUnwantedFolder(prev),
-                      );
-                    }}
-                    trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                    ios_backgroundColor={colors.surfaceOutline}
-                  />
-                </View>
+                  </>
+                )}
               </View>
             </View>
           )}
@@ -1232,34 +1276,38 @@ export default function TorrentDefaultsScreen() {
                     <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                <View style={styles.settingRow}>
-                  <View style={styles.settingLeft}>
-                    <Ionicons name="git-branch-outline" size={22} color={colors.primary} />
-                    <View style={styles.settingTextGroup}>
-                      <Text style={[styles.settingLabel, { color: colors.text }]}>
-                        {t('screens.settings.useCategoryPathsInManualMode')}
-                      </Text>
-                      <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
-                        {t('screens.settings.useCategoryPathsInManualModeHint')}
-                      </Text>
+                {hasServerPref('use_category_paths_in_manual_mode') && (
+                  <>
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                        <Ionicons name="git-branch-outline" size={22} color={colors.primary} />
+                        <View style={styles.settingTextGroup}>
+                          <Text style={[styles.settingLabel, { color: colors.text }]}>
+                            {t('screens.settings.useCategoryPathsInManualMode')}
+                          </Text>
+                          <Text style={[styles.settingHint, { color: colors.textSecondary }]}>
+                            {t('screens.settings.useCategoryPathsInManualModeHint')}
+                          </Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={useCategoryPathsInManualMode}
+                        onValueChange={(value) => {
+                          const prev = useCategoryPathsInManualMode;
+                          setServerPreference(
+                            'use_category_paths_in_manual_mode',
+                            value,
+                            () => setUseCategoryPathsInManualMode(value),
+                            () => setUseCategoryPathsInManualMode(prev),
+                          );
+                        }}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                        ios_backgroundColor={colors.surfaceOutline}
+                      />
                     </View>
-                  </View>
-                  <Switch
-                    value={useCategoryPathsInManualMode}
-                    onValueChange={(value) => {
-                      const prev = useCategoryPathsInManualMode;
-                      setServerPreference(
-                        'use_category_paths_in_manual_mode',
-                        value,
-                        () => setUseCategoryPathsInManualMode(value),
-                        () => setUseCategoryPathsInManualMode(prev),
-                      );
-                    }}
-                    trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                    ios_backgroundColor={colors.surfaceOutline}
-                  />
-                </View>
+                  </>
+                )}
                 <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
                 <View style={styles.settingRow}>
                   <View style={styles.settingLeft}>
@@ -1422,202 +1470,227 @@ export default function TorrentDefaultsScreen() {
           )}
 
           {/* Automatic Import (only when connected — real server preferences) */}
-          {isConnected && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-                {t('screens.settings.automaticImport').toUpperCase()}
-              </Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
-                {Object.keys(scanDirs).length === 0 ? (
-                  <View style={styles.emptyStateSmall}>
-                    <Ionicons
-                      name="eye-outline"
-                      size={32}
-                      color={colors.textSecondary}
-                      style={{ marginBottom: 8 }}
-                    />
-                    <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>
-                      {t('screens.settings.noMonitoredFolders')}
-                    </Text>
-                  </View>
-                ) : (
-                  Object.entries(scanDirs).map(([folder, override], index) => {
-                    const overrideLabel =
-                      override === 0
-                        ? t('screens.settings.monitoredFolderOverrideWatch')
-                        : override === 1
-                          ? t('screens.settings.monitoredFolderOverrideDefault')
-                          : (override as string);
-                    return (
-                      <View key={folder}>
-                        <View style={styles.settingRow}>
-                          <View style={styles.settingLeft}>
-                            <Ionicons name="eye-outline" size={22} color={colors.primary} />
-                            <Text
-                              style={[styles.settingLabel, { color: colors.text }]}
-                              numberOfLines={1}
-                            >
-                              {folder}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            onPress={() => {
-                              const next = { ...scanDirs };
-                              delete next[folder];
-                              setServerPreference(
-                                'scan_dirs',
-                                next,
-                                () => setScanDirs(next),
-                                () => setScanDirs(scanDirs),
-                              );
-                            }}
-                            accessibilityLabel={t('common.delete')}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Ionicons name="trash-outline" size={20} color={colors.error} />
-                          </TouchableOpacity>
-                        </View>
-                        <View style={styles.nestedSettingRow}>
-                          <View style={styles.settingLeft}>
-                            <Text
-                              style={[styles.settingHint, { color: colors.textSecondary }]}
-                              numberOfLines={1}
-                            >
-                              {overrideLabel}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            style={styles.pickerButton}
-                            onPress={() => setOverridePickerFolder(folder)}
-                            activeOpacity={0.7}
-                          >
-                            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-                          </TouchableOpacity>
-                        </View>
-                        {index < Object.keys(scanDirs).length - 1 && (
-                          <View
-                            style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
-                          />
-                        )}
+          {isConnected &&
+            (hasServerPref('scan_dirs') || hasServerPref('excluded_file_names_enabled')) && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.settings.automaticImport').toUpperCase()}
+                </Text>
+                {/* scan_dirs is written as a whole map: only offer edits once the
+                  server's real map has loaded, never from the empty default. */}
+                {hasServerPref('scan_dirs') && (
+                  <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                    {Object.keys(scanDirs).length === 0 ? (
+                      <View style={styles.emptyStateSmall}>
+                        <Ionicons
+                          name="eye-outline"
+                          size={32}
+                          color={colors.textSecondary}
+                          style={{ marginBottom: 8 }}
+                        />
+                        <Text style={[styles.emptyTextSmall, { color: colors.textSecondary }]}>
+                          {t('screens.settings.noMonitoredFolders')}
+                        </Text>
                       </View>
-                    );
-                  })
-                )}
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                {showAddMonitoredFolder ? (
-                  <View style={styles.addForm}>
-                    <PathAutocompleteInput
-                      style={[
-                        styles.formInput,
-                        {
-                          backgroundColor: colors.background,
-                          borderColor: colors.surfaceOutline,
-                          color: colors.text,
-                        },
-                      ]}
-                      placeholder={t('screens.settings.monitoredFolderPlaceholder')}
-                      placeholderTextColor={colors.textSecondary}
-                      value={newMonitoredFolderPath}
-                      onChangeText={setNewMonitoredFolderPath}
-                    />
-                    <TouchableOpacity
-                      style={[styles.formButton, { backgroundColor: colors.primary }]}
-                      onPress={() => {
-                        const path = newMonitoredFolderPath.trim();
-                        if (!path) return;
-                        const next: Record<string, ScanDirOverride> = { ...scanDirs, [path]: 1 };
-                        setNewMonitoredFolderPath('');
-                        setShowAddMonitoredFolder(false);
-                        setServerPreference(
-                          'scan_dirs',
-                          next,
-                          () => setScanDirs(next),
-                          () => setScanDirs(scanDirs),
+                    ) : (
+                      Object.entries(scanDirs).map(([folder, override], index) => {
+                        const overrideLabel =
+                          override === 0
+                            ? t('screens.settings.monitoredFolderOverrideWatch')
+                            : override === 1
+                              ? t('screens.settings.monitoredFolderOverrideDefault')
+                              : (override as string);
+                        return (
+                          <View key={folder}>
+                            <View style={styles.settingRow}>
+                              <View style={styles.settingLeft}>
+                                <Ionicons name="eye-outline" size={22} color={colors.primary} />
+                                <Text
+                                  style={[styles.settingLabel, { color: colors.text }]}
+                                  numberOfLines={1}
+                                >
+                                  {folder}
+                                </Text>
+                              </View>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  const next = { ...scanDirs };
+                                  delete next[folder];
+                                  setServerPreference(
+                                    'scan_dirs',
+                                    next,
+                                    () => setScanDirs(next),
+                                    () => setScanDirs(scanDirs),
+                                  );
+                                }}
+                                accessibilityLabel={t('common.delete')}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <Ionicons name="trash-outline" size={20} color={colors.error} />
+                              </TouchableOpacity>
+                            </View>
+                            <View style={styles.nestedSettingRow}>
+                              <View style={styles.settingLeft}>
+                                <Text
+                                  style={[styles.settingHint, { color: colors.textSecondary }]}
+                                  numberOfLines={1}
+                                >
+                                  {overrideLabel}
+                                </Text>
+                              </View>
+                              <TouchableOpacity
+                                style={styles.pickerButton}
+                                onPress={() => setOverridePickerFolder(folder)}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons
+                                  name="chevron-down"
+                                  size={20}
+                                  color={colors.textSecondary}
+                                />
+                              </TouchableOpacity>
+                            </View>
+                            {index < Object.keys(scanDirs).length - 1 && (
+                              <View
+                                style={[
+                                  styles.separator,
+                                  { backgroundColor: colors.surfaceOutline },
+                                ]}
+                              />
+                            )}
+                          </View>
                         );
-                      }}
-                    >
-                      <Text style={styles.formButtonText}>
-                        {t('screens.settings.addMonitoredFolder')}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.settingRow}
-                    onPress={() => setShowAddMonitoredFolder(true)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.settingLeft}>
-                      <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
-                      <Text style={[styles.settingLabel, { color: colors.primary }]}>
-                        {t('screens.settings.addMonitoredFolder')}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <View
-                style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}
-              >
-                <View style={styles.settingRow}>
-                  <View style={styles.settingLeft}>
-                    <Ionicons name="funnel-outline" size={22} color={colors.primary} />
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>
-                      {t('screens.settings.excludedFileNames')}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={excludedFileNamesEnabled}
-                    onValueChange={(value) => {
-                      const prev = excludedFileNamesEnabled;
-                      setServerPreference(
-                        'excluded_file_names_enabled',
-                        value,
-                        () => setExcludedFileNamesEnabled(value),
-                        () => setExcludedFileNamesEnabled(prev),
-                      );
-                    }}
-                    trackColor={{ false: colors.surfaceOutline, true: colors.success }}
-                    ios_backgroundColor={colors.surfaceOutline}
-                  />
-                </View>
-                {excludedFileNamesEnabled && (
-                  <>
+                      })
+                    )}
                     <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <View style={{ padding: spacing.md }}>
-                      <TextInput
-                        style={[
-                          styles.formInput,
-                          {
-                            backgroundColor: colors.background,
-                            borderColor: colors.surfaceOutline,
-                            color: colors.text,
-                            minHeight: 100,
-                            textAlignVertical: 'top',
-                          },
-                        ]}
-                        multiline
-                        placeholder={t('screens.settings.excludedFileNamesPlaceholder')}
-                        placeholderTextColor={colors.textSecondary}
-                        value={excludedFileNames}
-                        onChangeText={setExcludedFileNames}
-                        onBlur={() => {
-                          const prev = excludedFileNames;
+                    {showAddMonitoredFolder ? (
+                      <View style={styles.addForm}>
+                        <PathAutocompleteInput
+                          style={[
+                            styles.formInput,
+                            {
+                              backgroundColor: colors.background,
+                              borderColor: colors.surfaceOutline,
+                              color: colors.text,
+                            },
+                          ]}
+                          placeholder={t('screens.settings.monitoredFolderPlaceholder')}
+                          placeholderTextColor={colors.textSecondary}
+                          value={newMonitoredFolderPath}
+                          onChangeText={setNewMonitoredFolderPath}
+                        />
+                        <TouchableOpacity
+                          style={[styles.formButton, { backgroundColor: colors.primary }]}
+                          onPress={() => {
+                            const path = newMonitoredFolderPath.trim();
+                            if (!path) return;
+                            const next: Record<string, ScanDirOverride> = {
+                              ...scanDirs,
+                              [path]: 1,
+                            };
+                            setNewMonitoredFolderPath('');
+                            setShowAddMonitoredFolder(false);
+                            setServerPreference(
+                              'scan_dirs',
+                              next,
+                              () => setScanDirs(next),
+                              () => setScanDirs(scanDirs),
+                            );
+                          }}
+                        >
+                          <Text style={styles.formButtonText}>
+                            {t('screens.settings.addMonitoredFolder')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.settingRow}
+                        onPress={() => setShowAddMonitoredFolder(true)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.settingLeft}>
+                          <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                          <Text style={[styles.settingLabel, { color: colors.primary }]}>
+                            {t('screens.settings.addMonitoredFolder')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
+                {hasServerPref('excluded_file_names_enabled') && (
+                  <View
+                    style={[
+                      styles.card,
+                      {
+                        backgroundColor: colors.surface,
+                        marginTop: hasServerPref('scan_dirs') ? spacing.sm : 0,
+                      },
+                    ]}
+                  >
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                        <Ionicons name="funnel-outline" size={22} color={colors.primary} />
+                        <Text style={[styles.settingLabel, { color: colors.text }]}>
+                          {t('screens.settings.excludedFileNames')}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={excludedFileNamesEnabled}
+                        onValueChange={(value) => {
+                          const prev = excludedFileNamesEnabled;
                           setServerPreference(
-                            'excluded_file_names',
-                            excludedFileNames,
-                            () => {},
-                            () => setExcludedFileNames(prev),
+                            'excluded_file_names_enabled',
+                            value,
+                            () => setExcludedFileNamesEnabled(value),
+                            () => setExcludedFileNamesEnabled(prev),
                           );
                         }}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                        ios_backgroundColor={colors.surfaceOutline}
                       />
                     </View>
-                  </>
+                    {excludedFileNamesEnabled && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <View style={{ padding: spacing.md }}>
+                          <TextInput
+                            style={[
+                              styles.formInput,
+                              {
+                                backgroundColor: colors.background,
+                                borderColor: colors.surfaceOutline,
+                                color: colors.text,
+                                minHeight: 100,
+                                textAlignVertical: 'top',
+                              },
+                            ]}
+                            multiline
+                            placeholder={t('screens.settings.excludedFileNamesPlaceholder')}
+                            placeholderTextColor={colors.textSecondary}
+                            value={excludedFileNames}
+                            onChangeText={setExcludedFileNames}
+                            onBlur={() => {
+                              const prev = excludedFileNames;
+                              setServerPreference(
+                                'excluded_file_names',
+                                excludedFileNames,
+                                () => {},
+                                () => setExcludedFileNames(prev),
+                              );
+                            }}
+                          />
+                        </View>
+                      </>
+                    )}
+                  </View>
                 )}
               </View>
-            </View>
-          )}
+            )}
 
           {/* Advanced (Email Notifications + Automation) — kept off the main screen */}
           {isConnected && (
@@ -1744,12 +1817,26 @@ export default function TorrentDefaultsScreen() {
       <OptionPicker
         visible={contentLayoutPickerVisible}
         title={t('screens.settings.contentLayout')}
-        options={contentLayoutOptions}
+        options={
+          contentLayoutKey === 'create_subfolder_enabled'
+            ? contentLayoutOptions.filter((opt) => opt.value !== 'Subfolder')
+            : contentLayoutOptions
+        }
         selectedValue={contentLayout}
         onSelect={(value) => {
           const layout = value as 'Original' | 'Subfolder' | 'NoSubfolder';
           const prev = contentLayout;
           setContentLayoutPickerVisible(false);
+          if (contentLayoutKey === 'create_subfolder_enabled') {
+            // qBit < 4.3.2: a bool, migrated by 4.3.2 as true → Original, false → NoSubfolder.
+            setServerPreference(
+              'create_subfolder_enabled',
+              layout !== 'NoSubfolder',
+              () => setContentLayout(layout),
+              () => setContentLayout(prev),
+            );
+            return;
+          }
           setServerPreference(
             'torrent_content_layout',
             layout,

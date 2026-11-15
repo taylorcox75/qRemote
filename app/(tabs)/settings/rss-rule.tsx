@@ -44,6 +44,7 @@ import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
 import { haptics } from '@/utils/haptics';
 import { getRssFeedDisplayName } from '@/utils/rss';
+import { buildRssRuleDef } from '@/utils/rss-rule';
 
 const DEFAULT_RULE: RssRule = {
   enabled: true,
@@ -199,7 +200,9 @@ export default function RssRuleEditorScreen() {
         await renameRule(originalName, trimmedName);
       }
 
-      const ruleDef: RssRule = {
+      // Merge over the fetched rule so fields the editor doesn't expose
+      // (priority, torrentParams, …) survive the whole-rule replace.
+      const ruleDef = buildRssRuleDef(existingRule, {
         enabled,
         mustContain,
         mustNotContain,
@@ -214,7 +217,7 @@ export default function RssRuleEditorScreen() {
         assignedCategory,
         savePath,
         torrentContentLayout: contentLayout || null,
-      };
+      });
       await setRule(trimmedName, ruleDef);
 
       haptics.success();

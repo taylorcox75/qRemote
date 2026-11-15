@@ -135,6 +135,7 @@
       "emailSmtpServer": "SMTP 服务器",
       "emailSmtpServerPlaceholder": "smtp.example.com:465",
       "emailEncryption": "SMTP 加密",
+      "emailRequiresSsl": "SMTP 需要 SSL",
       "emailEncryptionNone": "无",
       "emailEncryptionStartTls": "STARTTLS",
       "emailEncryptionSmtps": "SMTPS",

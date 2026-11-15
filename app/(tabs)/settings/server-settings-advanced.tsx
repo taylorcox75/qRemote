@@ -35,6 +35,11 @@ export default function ServerSettingsAdvancedScreen() {
   const [mailRecipient, setMailRecipient] = useState('');
   const [mailSmtp, setMailSmtp] = useState('');
   const [mailEncryption, setMailEncryption] = useState<'None' | 'STARTTLS' | 'SMTPS'>('None');
+  // Released qBittorrent (4.1 → 5.2) only has the `mail_notification_ssl_enabled`
+  // bool; the `mail_notification_encryption_type` enum exists only on newer
+  // builds. Pick the editor by which key the server actually reports.
+  const [mailEncryptionKey, setMailEncryptionKey] = useState<'enum' | 'ssl' | null>(null);
+  const [mailSslEnabled, setMailSslEnabled] = useState(false);
   const [mailAuthEnabled, setMailAuthEnabled] = useState(false);
   const [mailUsername, setMailUsername] = useState('');
   const [mailPassword, setMailPassword] = useState('');
@@ -73,6 +78,14 @@ export default function ServerSettingsAdvancedScreen() {
       setMailSmtp((prefs.mail_notification_smtp as string) || '');
       setMailEncryption(
         (prefs.mail_notification_encryption_type as 'None' | 'STARTTLS' | 'SMTPS') || 'None',
+      );
+      setMailSslEnabled(!!prefs.mail_notification_ssl_enabled);
+      setMailEncryptionKey(
+        'mail_notification_encryption_type' in prefs
+          ? 'enum'
+          : 'mail_notification_ssl_enabled' in prefs
+            ? 'ssl'
+            : null,
       );
       setMailAuthEnabled(!!prefs.mail_notification_auth_enabled);
       setMailUsername((prefs.mail_notification_username as string) || '');
@@ -243,31 +256,75 @@ export default function ServerSettingsAdvancedScreen() {
                           }}
                         />
                       </View>
-                      <View
-                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
-                      />
-                      <View style={styles.settingRow}>
-                        <View style={styles.settingLeft}>
-                          <Ionicons
-                            name="shield-checkmark-outline"
-                            size={22}
-                            color={colors.primary}
+                      {mailEncryptionKey === 'enum' && (
+                        <>
+                          <View
+                            style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
                           />
-                          <Text style={[styles.settingLabel, { color: colors.text }]}>
-                            {t('screens.settings.emailEncryption')}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.pickerButton}
-                          onPress={() => setEncryptionPickerVisible(true)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[styles.pickerText, { color: colors.text }]}>
-                            {encryptionOptions.find((opt) => opt.value === mailEncryption)?.label}
-                          </Text>
-                          <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-                        </TouchableOpacity>
-                      </View>
+                          <View style={styles.settingRow}>
+                            <View style={styles.settingLeft}>
+                              <Ionicons
+                                name="shield-checkmark-outline"
+                                size={22}
+                                color={colors.primary}
+                              />
+                              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                                {t('screens.settings.emailEncryption')}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={styles.pickerButton}
+                              onPress={() => setEncryptionPickerVisible(true)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.pickerText, { color: colors.text }]}>
+                                {
+                                  encryptionOptions.find((opt) => opt.value === mailEncryption)
+                                    ?.label
+                                }
+                              </Text>
+                              <Ionicons
+                                name="chevron-down"
+                                size={20}
+                                color={colors.textSecondary}
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        </>
+                      )}
+                      {mailEncryptionKey === 'ssl' && (
+                        <>
+                          <View
+                            style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                          />
+                          <View style={styles.settingRow}>
+                            <View style={styles.settingLeft}>
+                              <Ionicons
+                                name="shield-checkmark-outline"
+                                size={22}
+                                color={colors.primary}
+                              />
+                              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                                {t('screens.settings.emailRequiresSsl')}
+                              </Text>
+                            </View>
+                            <Switch
+                              value={mailSslEnabled}
+                              onValueChange={(value) => {
+                                const prev = mailSslEnabled;
+                                setServerPreference(
+                                  'mail_notification_ssl_enabled',
+                                  value,
+                                  () => setMailSslEnabled(value),
+                                  () => setMailSslEnabled(prev),
+                                );
+                              }}
+                              trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                              ios_backgroundColor={colors.surfaceOutline}
+                            />
+                          </View>
+                        </>
+                      )}
                       <View
                         style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
                       />

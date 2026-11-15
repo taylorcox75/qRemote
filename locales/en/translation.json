@@ -156,6 +156,7 @@
       "emailSmtpServer": "SMTP Server",
       "emailSmtpServerPlaceholder": "smtp.example.com:465",
       "emailEncryption": "SMTP Encryption",
+      "emailRequiresSsl": "SMTP requires SSL",
       "emailEncryptionNone": "None",
       "emailEncryptionStartTls": "STARTTLS",
       "emailEncryptionSmtps": "SMTPS",
