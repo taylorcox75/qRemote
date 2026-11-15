@@ -76,7 +76,7 @@ describe('GlassSurface', () => {
     const popover = screen.getByTestId('popover');
     const tinted = screen.getByTestId('tinted');
     const plain = screen.getByTestId('plain');
-    expect(popover.props.tintColor).toBe('rgba(17, 17, 17, 0.55)');
+    expect(popover.props.tintColor).toBe('rgba(17, 17, 17, 0.75)');
     expect(tinted.props.tintColor).toBe('#ff0000');
     expect(plain.props.tintColor).toBeUndefined();
   });

@@ -87,7 +87,7 @@ export function GlassSurface({
 }
 
 /** Opacity of the `colors.surface` tint on popover glass. */
-const POPOVER_TINT_ALPHA = 0.55;
+const POPOVER_TINT_ALPHA = 0.75;
 
 const styles = StyleSheet.create({
   // No opaque fill to hide the material, and no shadow: RN can't rasterize a
