@@ -1153,6 +1153,16 @@ export default function TorrentsScreen() {
       if (selectMode) return;
 
       const currentScrollY = event.nativeEvent.contentOffset.y;
+
+      // The sort menu and recent-searches dropdown are absolute children of
+      // this header, so translating the header away drags them with it and
+      // leaves them floating mid-list. handleScrollBeginDrag closes them; until
+      // that re-render lands (or for a momentum/programmatic scroll), keep the
+      // header where it is and just track the offset.
+      if (showSortMenu || showSearchHistory) {
+        lastScrollY.current = currentScrollY;
+        return;
+      }
       const scrollDifference = currentScrollY - lastScrollY.current;
 
       if (currentScrollY <= 10) {
@@ -1203,8 +1213,15 @@ export default function TorrentsScreen() {
 
       lastScrollY.current = currentScrollY;
     },
-    [headerTranslateY, selectMode],
+    [headerTranslateY, selectMode, showSortMenu, showSearchHistory],
   );
+
+  // A drag on the list dismisses the header's popovers (sort menu, recent
+  // searches) — they're anchored to the header, which scrolling moves.
+  const handleScrollBeginDrag = useCallback(() => {
+    setShowSortMenu(false);
+    setShowSearchHistory(false);
+  }, []);
 
   // Snap the header back to visible when entering selectMode — it may have
   // been scrolled out of view before selection started, and while selected
@@ -1216,6 +1233,24 @@ export default function TorrentsScreen() {
       headerTranslateY.setValue(0);
     }
   }, [selectMode, headerTranslateY]);
+
+  // Bulk selection (and any pending delete confirm) refers to the hashes of
+  // the server it was made on — drop it when a different server connects.
+  // Keyed on the last connected server id rather than isConnected alone, so
+  // an automatic reconnect to the same server doesn't wipe the selection.
+  const connectedServerId = isConnected ? (currentServer?.id ?? null) : null;
+  const lastConnectedServerIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (connectedServerId === null) return;
+    const previous = lastConnectedServerIdRef.current;
+    lastConnectedServerIdRef.current = connectedServerId;
+    if (previous === null || previous === connectedServerId) return;
+    setSelectMode(false);
+    setSelectedHashes(new Set());
+    setListDeleteConfirm(null);
+    setDeleteConfirmVisible(false);
+    setBulkMenuVisible(false);
+  }, [connectedServerId, setDeleteConfirmVisible]);
 
   // Whether any secondary (category/tag) filter is active
   const hasSecondaryFilter = categoryFilter !== null || tagFilters.length > 0;
@@ -1481,6 +1516,7 @@ export default function TorrentsScreen() {
                     setShowSearchHistory(false);
                   }}
                   activeOpacity={0.7}
+                  testID="torrents-sort-button"
                   accessibilityLabel={t('screens.settings.sortBy')}
                 >
                   <Ionicons
@@ -1718,6 +1754,7 @@ export default function TorrentsScreen() {
             {/* Sort options dropdown - positioned near search bar */}
             {showSortMenu && !selectMode && (
               <View
+                testID="torrents-sort-menu"
                 style={[
                   styles.sortDropdown,
                   {
@@ -1907,6 +1944,7 @@ export default function TorrentsScreen() {
           </View>
         ) : (
           <FlatList
+            testID="torrents-list"
             data={filteredTorrents}
             keyExtractor={(item) => item.hash}
             style={{ flex: 1, backgroundColor: colors.background }}
@@ -2090,6 +2128,7 @@ export default function TorrentsScreen() {
               selectMode && selectedHashes.size > 0 && { paddingBottom: bulkActionsBarHeight },
             ]}
             onScroll={handleScroll}
+            onScrollBeginDrag={handleScrollBeginDrag}
             scrollEventThrottle={50}
             removeClippedSubviews={false}
             initialNumToRender={10}
