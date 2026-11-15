@@ -460,12 +460,27 @@ export default function TorrentDetail() {
   const handleConfirmDelete = async (deleteFiles: boolean) => {
     if (!torrent) return;
     setDeleteConfirmVisible(false);
+    // Hold the "torrent gone" latch for the duration of the delete: a poll tick
+    // that lands mid-request sees the torrent missing and would otherwise pop
+    // the screen too, so router.back() ran twice.
+    const wasGone = torrentGoneRef.current;
+    torrentGoneRef.current = true;
     try {
       await torrentsApi.deleteTorrents([torrent.hash], deleteFiles);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       haptics.success();
       showToast(t('toast.torrentDeleted'), 'success');
-      router.back();
+      if (wasGone) return; // handleTorrentGone already left the screen
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
     } catch (error: unknown) {
+      torrentGoneRef.current = wasGone;
       showToast(getErrorMessage(error), 'error');
     }
   };
