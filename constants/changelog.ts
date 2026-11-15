@@ -19,6 +19,47 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.9.10',
+    date: '2026-11-15',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'Added a Solid pinned header option to Settings → Appearance',
+          'Use another download path is now remembered per server',
+        ],
+      },
+      {
+        title: 'Bugs Fixed',
+        items: [
+          'The sort menu and recent searches now close when you scroll the Torrents list',
+          'Improved how global seeding limits are saved to qBittorrent',
+          'Improved share limit compatibility with qBittorrent 4.6',
+          'Improved RSS rule compatibility with newer qBittorrent versions',
+          'New torrents now default to the connected server’s own save path',
+          'Add-torrent speed limits now use KiB/s like the rest of the app',
+          'Clearer message when a torrent can’t be added, such as a duplicate',
+          'Speed limit changes now show an error if the server doesn’t apply them',
+          'Improved reliability when switching servers or disconnecting',
+          'Torrent selection is now cleared when switching servers',
+          'The self-signed certificate setting now works with hosts that include a port or path',
+        ],
+      },
+      {
+        title: 'Maintenance',
+        items: [
+          'Test Connection no longer affects your current connection',
+          'Debug reports now hide session cookies and authorization values',
+          'Server Settings now show only the options your qBittorrent version supports',
+          'Email encryption setting now matches your qBittorrent version',
+          'I2P settings are now available on qBittorrent 4.6.1 and later',
+          'Improved file renaming and priority compatibility with older qBittorrent versions',
+          'Importing servers now keeps your self-signed certificate setting',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.9.01',
     date: '2026-11-08',
     sections: [
