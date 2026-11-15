@@ -8,7 +8,7 @@ it instead of re-exploring, and open only the files you're actually changing.
 
 **This is a living document, not a snapshot.** It drifts — a rename lands and a
 File Index entry doesn't follow, a branch gets retired and the branching
-section still names it. [§8 Rule 10](#8-critical-rules) says not to trust it
+section still names it. [§8 Rule 11](#8-critical-rules) says not to trust it
 blindly; the flip side is: when you hit something it got wrong, or something
 that cost you real time because nothing here warned you, **fix it in the same
 change** — correct the stale claim where it lives, or add a line to
@@ -906,27 +906,33 @@ rather than a translation gap.
    changes. No skipped edge cases, no "probably fine", no partial implementations
    presented as done, no timeboxes that trade away correctness. If a deadline and
    correctness conflict, correctness wins and the owner is told.
-3. **Never hardcode a color.** Always `useTheme()` → `colors.*`.
-4. **Never rename a key in the `colors` object.** Users' saved overrides are keyed
+3. **Public repository — keep all text professional.** Thousands of people
+   read this code. Comments, commit messages, PR titles/bodies, changelog lines
+   and docs must be neutral and factual: describe what the code does and why,
+   never internal mishaps, blame, jokes, profanity, "oops/hack/temporary" notes,
+   references to AI sessions or agents, or remarks that a feature "never worked".
+   No debug leftovers. Squash or reword WIP commits before they reach `main`.
+4. **Never hardcode a color.** Always `useTheme()` → `colors.*`.
+5. **Never rename a key in the `colors` object.** Users' saved overrides are keyed
    by name in AsyncStorage; renaming silently breaks their customizations.
-5. **Never rename a preference key.** There is no migration system — old keys
+6. **Never rename a preference key.** There is no migration system — old keys
    just become orphaned.
-6. **Color defaults mix formats** (rgb, rgba, hex) and the picker only handles
+7. **Color defaults mix formats** (rgb, rgba, hex) and the picker only handles
    6-digit hex. Changing an `rgba(...)` default to `#hex` drops the alpha channel
    and visibly changes the UI.
-7. **All user-facing strings go through i18n** — `const { t } = useTranslation()`.
-8. **Prefer themed dialogs**: `InputModal` over `Alert.prompt`, `ConfirmModal`
+8. **All user-facing strings go through i18n** — `const { t } = useTranslation()`.
+9. **Prefer themed dialogs**: `InputModal` over `Alert.prompt`, `ConfirmModal`
    over `Alert.alert`. Native alerts ignore the app theme. **Don't add a new
    one.** _Known deviations_ — nine existing calls across eight files:
    `settings/advanced`, `settings/torrent-defaults` ×2, `search/plugins`,
    `server/[id]`, `TagsModal`, `CategoryModal`, `SuperDebugPanel`, and
    `ConfirmModal` itself. Converting one while you're already in that file is
    welcome, but it's never required.
-9. **Delete superseded files in the same change.** When a component is replaced
-   by a route-level screen or vice versa, remove the old one rather than leaving
-   dead code. Precedent: `components/TorrentDetails.tsx` was deleted once its
-   markup moved into `app/(tabs)/(torrents)/torrent/[hash].tsx`.
-10. **Don't trust a static bug list** — including this file's. Read the code and
+10. **Delete superseded files in the same change.** When a component is replaced
+    by a route-level screen or vice versa, remove the old one rather than leaving
+    dead code. Precedent: `components/TorrentDetails.tsx` was deleted once its
+    markup moved into `app/(tabs)/(torrents)/torrent/[hash].tsx`.
+11. **Don't trust a static bug list** — including this file's. Read the code and
     run the checks before concluding a defect exists.
 
 ### Naming conventions
