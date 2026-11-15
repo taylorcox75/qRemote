@@ -3,6 +3,7 @@
 // Mocks mirror TorrentsScreen.test.tsx; TorrentCard is stubbed so a minimal
 // torrent object is enough to mount the FlatList.
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render, fireEvent, waitFor, screen } from '@testing-library/react-native';
 import TorrentsScreen from '@/app/(tabs)/(torrents)/index';
 import { ServerConfig } from '@/types/api';
@@ -69,10 +70,12 @@ jest.mock('@/hooks/useTorrentActions', () => ({
   }),
 }));
 
+const mockGetPreferences = jest.fn();
+const mockSavePreferences = jest.fn();
 jest.mock('@/services/storage', () => ({
   storageService: {
-    getPreferences: jest.fn().mockResolvedValue({}),
-    savePreferences: jest.fn().mockResolvedValue(undefined),
+    getPreferences: (...args: unknown[]) => mockGetPreferences(...args),
+    savePreferences: (...args: unknown[]) => mockSavePreferences(...args),
   },
 }));
 
@@ -159,6 +162,11 @@ const connectedServer = (server: ServerConfig) => ({
 
 describe('TorrentsScreen — header popovers and server switch', () => {
   beforeEach(() => {
+    mockGetPreferences.mockReset().mockResolvedValue({});
+    mockSavePreferences.mockReset().mockResolvedValue(undefined);
+    mockGetServers.mockReset();
+    mockUseServer.mockReset();
+    mockUseTorrents.mockReset();
     jest.clearAllMocks();
     mockGetServers.mockResolvedValue([serverA, serverB]);
     mockUseTorrents.mockReturnValue({
@@ -207,23 +215,19 @@ describe('TorrentsScreen — header popovers and server switch', () => {
     await waitFor(() => expect(screen.getByLabelText('screens.torrents.selectMode')).toBeTruthy());
   });
 
-  it('pins the header in-flow when the solid pinned header setting is on', async () => {
-    const { storageService } = require('@/services/storage');
-    const { StyleSheet } = require('react-native');
-    const listPaddingTop = () =>
-      StyleSheet.flatten(screen.getByTestId('torrents-list').props.contentContainerStyle)
-        .paddingTop;
-    mockUseServer.mockReturnValue(connectedServer(serverA));
+  const listPaddingTop = () =>
+    StyleSheet.flatten(screen.getByTestId('torrents-list').props.contentContainerStyle).paddingTop;
 
-    // Off (default): the overlay header reserves its measured height (136).
+  it('keeps the overlay header (list padded by its measured height) by default', async () => {
+    mockUseServer.mockReturnValue(connectedServer(serverA));
     await render(<TorrentsScreen />);
     await waitFor(() => expect(listPaddingTop()).toBe(136));
-    screen.unmount();
+  });
 
-    // On: the header is in-flow, so the list only needs the small gap.
-    storageService.getPreferences.mockResolvedValue({ solidPinnedHeader: true });
+  it('pins the header in-flow when the solid pinned header setting is on', async () => {
+    mockGetPreferences.mockResolvedValue({ solidPinnedHeader: true });
+    mockUseServer.mockReturnValue(connectedServer(serverA));
     await render(<TorrentsScreen />);
     await waitFor(() => expect(listPaddingTop()).toBeLessThan(136));
-    storageService.getPreferences.mockResolvedValue({});
   });
 });
