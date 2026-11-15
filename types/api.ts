@@ -189,6 +189,8 @@ export interface ApplicationPreferences {
   category_changed_tmm_enabled?: boolean;
   use_category_paths_in_manual_mode?: boolean;
   torrent_content_layout?: 'Original' | 'Subfolder' | 'NoSubfolder';
+  /** qBit < 4.3.2 predecessor of `torrent_content_layout` (true = Original, false = NoSubfolder). */
+  create_subfolder_enabled?: boolean;
   temp_path_enabled?: boolean;
   temp_path?: string;
   preallocate_all?: boolean;
@@ -209,6 +211,8 @@ export interface ApplicationPreferences {
   mail_notification_email?: string;
   mail_notification_smtp?: string;
   mail_notification_encryption_type?: 'None' | 'STARTTLS' | 'SMTPS';
+  /** Released qBittorrent (4.1 → 5.2): SMTP over SSL. Replaced by `mail_notification_encryption_type` on newer builds. */
+  mail_notification_ssl_enabled?: boolean;
   mail_notification_auth_enabled?: boolean;
   mail_notification_username?: string;
   mail_notification_password?: string;
@@ -625,6 +629,15 @@ export interface RssRule {
   assignedCategory: string;
   savePath: string;
   torrentContentLayout: string | null;
+  /** qBit 4.6+. Not edited by the app; round-tripped via utils/rss-rule.ts. */
+  priority?: number;
+  /**
+   * qBit 4.6+ per-rule add options (`save_path`, `category`, `stopped`,
+   * `content_layout`, `use_auto_tmm`, `tags`, limits, …). When present the
+   * server reads add options from here and ignores the legacy flat fields
+   * above — see utils/rss-rule.ts.
+   */
+  torrentParams?: Record<string, unknown>;
 }
 
 export type RssRulesResponse = Record<string, RssRule>; // keyed by rule name

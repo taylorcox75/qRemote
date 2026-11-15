@@ -156,6 +156,7 @@
       "emailSmtpServer": "SMTP Sunucusu",
       "emailSmtpServerPlaceholder": "smtp.example.com:465",
       "emailEncryption": "SMTP Şifrelemesi",
+      "emailRequiresSsl": "SMTP SSL gerektirir",
       "emailEncryptionNone": "Yok",
       "emailEncryptionStartTls": "STARTTLS",
       "emailEncryptionSmtps": "SMTPS",
