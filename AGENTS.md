@@ -8,7 +8,7 @@ it instead of re-exploring, and open only the files you're actually changing.
 
 **This is a living document, not a snapshot.** It drifts — a rename lands and a
 File Index entry doesn't follow, a branch gets retired and the branching
-section still names it. [§8 Rule 8](#8-critical-rules) says not to trust it
+section still names it. [§8 Rule 9](#8-critical-rules) says not to trust it
 blindly; the flip side is: when you hit something it got wrong, or something
 that cost you real time because nothing here warned you, **fix it in the same
 change** — correct the stale claim where it lives, or add a line to
@@ -64,6 +64,7 @@ the meaning of a stored key silently breaks them, and there is **no migration
 system**. Check against: preference keys (`types/preferences.ts`), `colors` keys
 (ThemeContext), stored `ServerConfig` records, and saved color themes. Adding is
 safe; renaming and repurposing are not. See [§8 Critical Rules](#8-critical-rules).
+**Rule 1 there — never break backwards compatibility — is a hard rule.**
 
 **3. Does it still work on qBittorrent 4.x?**
 ([4.1 reference](<https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)>))
@@ -880,27 +881,40 @@ rather than a translation gap.
 
 ## 8. Critical Rules
 
-1. **Never hardcode a color.** Always `useTheme()` → `colors.*`.
-2. **Never rename a key in the `colors` object.** Users' saved overrides are keyed
+1. **HARD RULE — DO NOT BREAK BACKWARDS COMPATIBILITY.** A user who updates the
+   app must never have anything that worked stop working or change behaviour
+   unexpectedly. It covers:
+   - **Stored preference keys and values** — never stop reading a key users have
+     data in. When a key is superseded, read the old one as a fallback; never
+     delete it.
+   - **`ServerConfig`, secure-store secrets and saved themes / color overrides**
+     — existing records must load and behave exactly as before.
+   - **Server-export files, both directions** — files from older versions must
+     import, and new exports must not break older importers.
+   - **qBittorrent 4.x** — existing features keep working there (gate, don't drop).
+   - **Defaults and visible behaviour of existing settings** — don't change what a
+     setting does or defaults to for people who already rely on it.
+2. **Never hardcode a color.** Always `useTheme()` → `colors.*`.
+3. **Never rename a key in the `colors` object.** Users' saved overrides are keyed
    by name in AsyncStorage; renaming silently breaks their customizations.
-3. **Never rename a preference key.** There is no migration system — old keys
+4. **Never rename a preference key.** There is no migration system — old keys
    just become orphaned.
-4. **Color defaults mix formats** (rgb, rgba, hex) and the picker only handles
+5. **Color defaults mix formats** (rgb, rgba, hex) and the picker only handles
    6-digit hex. Changing an `rgba(...)` default to `#hex` drops the alpha channel
    and visibly changes the UI.
-5. **All user-facing strings go through i18n** — `const { t } = useTranslation()`.
-6. **Prefer themed dialogs**: `InputModal` over `Alert.prompt`, `ConfirmModal`
+6. **All user-facing strings go through i18n** — `const { t } = useTranslation()`.
+7. **Prefer themed dialogs**: `InputModal` over `Alert.prompt`, `ConfirmModal`
    over `Alert.alert`. Native alerts ignore the app theme. **Don't add a new
    one.** _Known deviations_ — nine existing calls across eight files:
    `settings/advanced`, `settings/torrent-defaults` ×2, `search/plugins`,
    `server/[id]`, `TagsModal`, `CategoryModal`, `SuperDebugPanel`, and
    `ConfirmModal` itself. Converting one while you're already in that file is
    welcome, but it's never required.
-7. **Delete superseded files in the same change.** When a component is replaced
+8. **Delete superseded files in the same change.** When a component is replaced
    by a route-level screen or vice versa, remove the old one rather than leaving
    dead code. Precedent: `components/TorrentDetails.tsx` was deleted once its
    markup moved into `app/(tabs)/(torrents)/torrent/[hash].tsx`.
-8. **Don't trust a static bug list** — including this file's. Read the code and
+9. **Don't trust a static bug list** — including this file's. Read the code and
    run the checks before concluding a defect exists.
 
 ### Naming conventions
