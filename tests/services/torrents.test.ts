@@ -796,26 +796,25 @@ describe('torrentsApi', () => {
     });
   });
 
-  it('renameFile sends id/name below WebAPI 2.7.0', async () => {
-    mockGetApiFeatures.mockReturnValue({ useRenameFilePathParams: false });
-    mockPost.mockResolvedValueOnce(undefined);
-    await torrentsApi.renameFile('h1', 'dir/old.txt', 'dir/new.txt', 3);
-    expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/renameFile', {
-      hash: 'h1',
-      id: 3,
-      name: 'new.txt',
-    });
-  });
-
-  it('renameFile sends oldPath/newPath from WebAPI 2.7.0 even with an index', async () => {
-    mockGetApiFeatures.mockReturnValue({ useRenameFilePathParams: true });
+  it('renameFile with an index sends both oldPath/newPath (4.3.3+) and id/name (≤ 4.3.2)', async () => {
     mockPost.mockResolvedValueOnce(undefined);
     await torrentsApi.renameFile('h1', 'dir/old.txt', 'dir/new.txt', 3);
     expect(mockPost).toHaveBeenCalledWith('/api/v2/torrents/renameFile', {
       hash: 'h1',
       oldPath: 'dir/old.txt',
       newPath: 'dir/new.txt',
+      id: 3,
+      name: 'new.txt',
     });
+  });
+
+  it('renameFile sends id 0 for the first file', async () => {
+    mockPost.mockResolvedValueOnce(undefined);
+    await torrentsApi.renameFile('h1', 'a.txt', 'b.txt', 0);
+    expect(mockPost).toHaveBeenCalledWith(
+      '/api/v2/torrents/renameFile',
+      expect.objectContaining({ id: 0, name: 'b.txt' }),
+    );
   });
 
   it('renameFolder', async () => {

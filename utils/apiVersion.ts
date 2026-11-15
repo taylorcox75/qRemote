@@ -29,10 +29,13 @@ export interface ApiFeatures {
    */
   supportsShareLimitAction: boolean;
   /**
-   * torrents/renameFile takes oldPath/newPath (WebAPI ≥ 2.7.0 / qBit 4.3.3). Below it
-   * the endpoint takes the file index as "id" and a bare file name as "name".
+   * torrents/renameFolder exists (WebAPI ≥ 2.7.0). It was added in qBit 4.3.3, but
+   * 4.3.2 reports the same WebAPI 2.7.0 without it, so on 4.3.2 the folder rename
+   * still fails (404) — the best a WebAPI gate can do. renameFile needs no flag:
+   * torrentsApi.renameFile sends both the 4.3.3+ (oldPath/newPath) and ≤ 4.3.2
+   * (id/name) parameter pairs.
    */
-  useRenameFilePathParams: boolean;
+  supportsRenameFolder: boolean;
   /** app/getCookies and app/setCookies endpoints exist (WebAPI ≥ 2.11.0). */
   supportsSetCookies: boolean;
   /** search/downloadTorrent endpoint exists (WebAPI ≥ 2.11.0 / qBit 5.0). */
@@ -82,7 +85,7 @@ export interface ApiFeatures {
   hasModernProxyFields: boolean;
   /**
    * I2P settings (i2p_enabled etc.) are settable through app/setPreferences
-   * (WebAPI ≥ 2.9.3 / qBit 4.6.1). 4.6.0 (2.9.2) reports them but ignores writes.
+   * (WebAPI ≥ 2.9.3 / qBit 4.6.1, which added them). 4.6.0 (2.9.2) has no I2P keys.
    */
   supportsI2p: boolean;
   /**
@@ -127,7 +130,7 @@ const V5_FEATURES: ApiFeatures = {
   hasContentPath: true,
   supportsInactiveSeedingLimit: true,
   supportsShareLimitAction: true,
-  useRenameFilePathParams: true,
+  supportsRenameFolder: true,
   supportsSetCookies: true,
   supportsSearchDownloadTorrent: true,
   useAddStoppedEnabledPreference: true,
@@ -154,7 +157,7 @@ export function getApiFeatures(apiVersion: string | null): ApiFeatures {
     hasContentPath: isV5,
     supportsInactiveSeedingLimit: gte(v, 2, 9, 2),
     supportsShareLimitAction: isV5,
-    useRenameFilePathParams: gte(v, 2, 7),
+    supportsRenameFolder: gte(v, 2, 7),
     supportsSetCookies: isV5,
     supportsSearchDownloadTorrent: isV5,
     useAddStoppedEnabledPreference: isV5,

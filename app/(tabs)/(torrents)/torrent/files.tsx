@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
+import { useApiFeatures } from '@/context/ApiVersionContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { InputModal } from '@/components/InputModal';
 import { EmptyState } from '@/components/EmptyState';
@@ -49,6 +50,7 @@ export default function TorrentFilesScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { isConnected } = useServer();
+  const { features } = useApiFeatures();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
 
@@ -615,15 +617,18 @@ export default function TorrentFilesScreen() {
                         </View>
                       </TouchableOpacity>
 
-                      <TouchableOpacity
-                        style={styles.folderRenameButton}
-                        onPress={() => promptRenameFolder(item.path)}
-                        disabled={updating}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        accessibilityLabel={t('screens.files.renameFolder')}
-                      >
-                        <Ionicons name="pencil-outline" size={18} color={colors.textSecondary} />
-                      </TouchableOpacity>
+                      {/* torrents/renameFolder doesn't exist below WebAPI 2.7.0. */}
+                      {features.supportsRenameFolder && (
+                        <TouchableOpacity
+                          style={styles.folderRenameButton}
+                          onPress={() => promptRenameFolder(item.path)}
+                          disabled={updating}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          accessibilityLabel={t('screens.files.renameFolder')}
+                        >
+                          <Ionicons name="pencil-outline" size={18} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   );
                 }

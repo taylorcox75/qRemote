@@ -4,7 +4,7 @@
  * Key exports: TransferScreen (default)
  * Known issues: Some hardcoded English strings remain (Task 3.3 will add i18n coverage).
  */
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -47,6 +47,7 @@ import { QuickConnectPanel } from '@/components/QuickConnectPanel';
 import { InputModal } from '@/components/InputModal';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { getErrorMessage, isSupersededConnectError } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { haptics } from '@/utils/haptics';
 import { useGracefulError } from '@/hooks/useGracefulError';
 
@@ -72,7 +73,14 @@ export default function TransferScreen() {
     setAltDownloadLimit,
     setAltUploadLimit,
   } = useTransfer();
-  const { isConnected, connectedAt, isLoading: serverIsLoading, connectToServer } = useServer();
+  const {
+    isConnected,
+    connectedAt,
+    isLoading: serverIsLoading,
+    connectToServer,
+    currentServer,
+  } = useServer();
+  const serverId = currentServer?.id;
   const {
     torrents,
     serverState,
@@ -125,7 +133,10 @@ export default function TransferScreen() {
         }
       } catch (err: unknown) {
         if (isSupersededConnectError(err)) return; // a newer connect/disconnect took over
-        setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
+        setConnectErrors((prev) => ({
+          ...prev,
+          [server.id]: localizeErrorMessage(getErrorMessage(err), t),
+        }));
       } finally {
         setConnectingId(null);
       }
@@ -162,9 +173,22 @@ export default function TransferScreen() {
   const [maxSeedingTimeModalVisible, setMaxSeedingTimeModalVisible] = useState(false);
   const [maxRatioActPickerVisible, setMaxRatioActPickerVisible] = useState(false);
 
+  // The remembered ratio / seeding-time values belong to one server: forget
+  // them when the connected server changes, or switching B's limit on would
+  // silently apply A's value instead of prompting for one.
+  const serverIdRef = useRef(serverId);
+  serverIdRef.current = serverId;
+  useEffect(() => {
+    setMaxRatio(null);
+    setMaxSeedingTime(null);
+  }, [serverId]);
+
   const loadSeedingLimits = useCallback(async () => {
+    const requestedFor = serverIdRef.current;
     try {
       const prefs = (await applicationApi.getPreferences()) as ApplicationPreferences;
+      // A reply from the previous server must not repopulate its values.
+      if (serverIdRef.current !== requestedFor) return;
       setRatioLimitEnabled(!!prefs.max_ratio_enabled);
       setMaxRatio((prev) => rememberLimitValue(prefs.max_ratio, prev));
       setSeedingTimeLimitEnabled(!!prefs.max_seeding_time_enabled);
@@ -180,7 +204,9 @@ export default function TransferScreen() {
       if (isConnected) {
         loadSeedingLimits();
       }
-    }, [isConnected, loadSeedingLimits]),
+      // serverId: reload when the connected server changes while focused.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isConnected, serverId, loadSeedingLimits]),
   );
 
   const setSeedingLimitPreference = async (
@@ -322,7 +348,7 @@ export default function TransferScreen() {
       await syncTorrents();
       showToast(t('screens.transfer.allPaused'), 'success');
     } catch (err: unknown) {
-      showToast(getErrorMessage(err), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -335,7 +361,7 @@ export default function TransferScreen() {
       await syncTorrents();
       showToast(t('screens.transfer.allResumed'), 'success');
     } catch (err: unknown) {
-      showToast(getErrorMessage(err), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -348,7 +374,7 @@ export default function TransferScreen() {
       await syncTorrents();
       showToast(t('screens.transfer.forceStartEnabled'), 'success');
     } catch (err: unknown) {
-      showToast(getErrorMessage(err), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -369,7 +395,7 @@ export default function TransferScreen() {
       await syncTorrents();
       showToast(t('screens.transfer.pausedDl', { count: downloadingHashes.length }), 'success');
     } catch (err: unknown) {
-      showToast(getErrorMessage(err), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -390,7 +416,7 @@ export default function TransferScreen() {
       await syncTorrents();
       showToast(t('screens.transfer.pausedUl', { count: uploadingHashes.length }), 'success');
     } catch (err: unknown) {
-      showToast(getErrorMessage(err), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -402,7 +428,7 @@ export default function TransferScreen() {
     try {
       await toggleAlternativeSpeedLimits();
     } catch (err: unknown) {
-      showToast(getErrorMessage(err), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
     } finally {
       setActionLoading(null);
     }
@@ -467,7 +493,7 @@ export default function TransferScreen() {
       setLimitInput('');
       setLimitType(null);
     } catch (err: unknown) {
-      showToast(getErrorMessage(err), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
     } finally {
       setSettingLimit(false);
     }

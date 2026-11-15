@@ -37,7 +37,7 @@ describe('getApiFeatures', () => {
       hasContentPath: true,
       supportsInactiveSeedingLimit: true,
       supportsShareLimitAction: true,
-      useRenameFilePathParams: true,
+      supportsRenameFolder: true,
       supportsSetCookies: true,
       supportsSearchDownloadTorrent: true,
       useAddStoppedEnabledPreference: true,
@@ -100,9 +100,9 @@ describe('getApiFeatures', () => {
     expect(getApiFeatures('2.11.0').supportsI2p).toBe(true);
   });
 
-  it('gates renameFile oldPath/newPath on WebAPI 2.7.0 (older servers take id/name)', () => {
-    expect(getApiFeatures('2.6.0').useRenameFilePathParams).toBe(false);
-    expect(getApiFeatures('2.7.0').useRenameFilePathParams).toBe(true);
+  it('gates renameFolder on WebAPI 2.7.0', () => {
+    expect(getApiFeatures('2.6.0').supportsRenameFolder).toBe(false);
+    expect(getApiFeatures('2.7.0').supportsRenameFolder).toBe(true);
   });
 
   it('gates useContentLayoutAddParam off below 2.7', () => {

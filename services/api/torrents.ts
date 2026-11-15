@@ -769,7 +769,12 @@ export const torrentsApi = {
   },
 
   /**
-   * Rename file
+   * Rename file.
+   *
+   * qBit 4.3.3+ reads oldPath/newPath; qBit ≤ 4.3.2 reads the file index as "id"
+   * and the new bare file name as "name". 4.3.2 and 4.3.3 BOTH report WebAPI 2.7.0,
+   * so no version gate can tell them apart — send both pairs every time (qBittorrent
+   * ignores form fields it doesn't read) and each version finds its own.
    */
   async renameFile(
     hash: string,
@@ -777,25 +782,17 @@ export const torrentsApi = {
     newPath: string,
     fileIndex?: number,
   ): Promise<void> {
-    if (!apiClient.getApiFeatures().useRenameFilePathParams && fileIndex !== undefined) {
-      // WebAPI < 2.7.0 (qBit ≤ 4.3.2): file index + new bare file name.
-      const name = newPath.split('/').pop() ?? newPath;
-      await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFile`, {
-        hash,
-        id: fileIndex,
-        name,
-      });
-      return;
+    const params: Record<string, string | number> = { hash, oldPath, newPath };
+    if (fileIndex !== undefined) {
+      params.id = fileIndex;
+      params.name = newPath.split('/').pop() ?? newPath;
     }
-    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFile`, {
-      hash,
-      oldPath,
-      newPath,
-    });
+    await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFile`, params);
   },
 
   /**
-   * Rename folder
+   * Rename folder (qBit 4.3.3+ only — gate the UI on ApiFeatures.supportsRenameFolder;
+   * qBit 4.3.2 reports the same WebAPI 2.7.0 but has no such endpoint).
    */
   async renameFolder(hash: string, oldPath: string, newPath: string): Promise<void> {
     await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFolder`, {

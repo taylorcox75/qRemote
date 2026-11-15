@@ -6,6 +6,7 @@ import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useTransfer } from '@/context/TransferContext';
 import { useToast } from '@/context/ToastContext';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { apiClient } from '@/services/api/client';
 import * as Clipboard from 'expo-clipboard';
 import { ActionMenuItemDef } from '@/components/ActionMenu';
@@ -58,7 +59,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       }
       sync().catch(() => {});
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(
         msg || (isPaused ? t('errors.failedToResume') : t('errors.failedToPause')),
         'error',
@@ -77,7 +78,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       await torrentsApi.setForceStart([torrent.hash], true);
       sync().catch(() => {});
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(msg || t('errors.generic'), 'error');
     } finally {
       setLoading(false);
@@ -91,7 +92,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       showToast(t('toast.verificationStarted'), 'success');
       sync().catch(() => {});
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(msg || t('errors.failedToVerify'), 'error');
     }
   }, [torrent, sync, showToast, t]);
@@ -102,7 +103,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       await torrentsApi.reannounceTorrents([torrent.hash]);
       showToast(t('toast.reannounceSent'), 'success');
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(msg || t('errors.failedToConnect'), 'error');
     }
   }, [torrent, showToast, t]);
@@ -117,7 +118,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
         showToast(t('toast.noMagnetAvailable'), 'error');
       }
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(msg || t('errors.generic'), 'error');
     }
   }, [torrent, showToast, t]);
@@ -136,7 +137,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
         sync().catch(() => {});
         showToast(t('toast.torrentDeleted'), 'success');
       } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : '';
+        const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
         showToast(msg || t('errors.failedToDelete'), 'error');
       }
     },
@@ -153,7 +154,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       sync().catch(() => {});
       showToast(t('toast.prioritySetMax'), 'success');
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(msg || t('errors.generic'), 'error');
     } finally {
       setLoading(false);
@@ -170,7 +171,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       sync().catch(() => {});
       showToast(t('toast.priorityIncreased'), 'success');
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(msg || t('errors.failedToIncreasePriority'), 'error');
     } finally {
       setLoading(false);
@@ -187,7 +188,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
       sync().catch(() => {});
       showToast(t('toast.priorityDecreased'), 'success');
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(msg || t('errors.failedToDecreasePriority'), 'error');
     } finally {
       setLoading(false);
@@ -211,7 +212,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
             'success',
           );
         } catch (error: unknown) {
-          const msg = error instanceof Error ? error.message : '';
+          const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
           showToast(msg || t('errors.generic'), 'error');
         } finally {
           setLoading(false);
@@ -238,7 +239,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
             'success',
           );
         } catch (error: unknown) {
-          const msg = error instanceof Error ? error.message : '';
+          const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
           showToast(msg || t('errors.generic'), 'error');
         } finally {
           setLoading(false);
@@ -263,7 +264,7 @@ export function useTorrentActions(torrent: TorrentInfo | null) {
         'success',
       );
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : '';
+      const msg = error instanceof Error ? localizeErrorMessage(error.message, t) : '';
       showToast(msg || t('errors.generic'), 'error');
     } finally {
       setLoading(false);
