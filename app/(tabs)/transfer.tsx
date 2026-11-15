@@ -33,6 +33,12 @@ import { torrentsApi } from '@/services/api/torrents';
 import { applicationApi } from '@/services/api/application';
 import { formatSize, formatSpeed, formatTime, kbToBytes, bytesToKb } from '@/utils/format';
 import { parseSpeedLimitInput } from '@/utils/limit-input';
+import {
+  buildGlobalShareLimitPatch,
+  rememberLimitValue,
+  SUGGESTED_GLOBAL_MAX_RATIO,
+  SUGGESTED_GLOBAL_MAX_SEEDING_MINUTES,
+} from '@/utils/global-share-limits';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { useSpeedTracker } from '@/hooks/useSpeedTracker';
@@ -143,9 +149,13 @@ export default function TransferScreen() {
 
   // Global seeding limits (server preferences)
   const [ratioLimitEnabled, setRatioLimitEnabled] = useState(false);
-  const [maxRatio, setMaxRatio] = useState(0);
+  // Last known non-negative value of each limit, or null when none is known.
+  // A disabled limit reads back from the server as -1, so these deliberately
+  // survive a disable — switching back on restores the value instead of
+  // sending a missing (→ 0) one. See utils/global-share-limits.ts.
+  const [maxRatio, setMaxRatio] = useState<number | null>(null);
   const [seedingTimeLimitEnabled, setSeedingTimeLimitEnabled] = useState(false);
-  const [maxSeedingTime, setMaxSeedingTime] = useState(0);
+  const [maxSeedingTime, setMaxSeedingTime] = useState<number | null>(null);
   const [maxRatioAct, setMaxRatioAct] = useState(0);
   const [maxRatioModalVisible, setMaxRatioModalVisible] = useState(false);
   const [maxSeedingTimeModalVisible, setMaxSeedingTimeModalVisible] = useState(false);
@@ -155,9 +165,9 @@ export default function TransferScreen() {
     try {
       const prefs = (await applicationApi.getPreferences()) as ApplicationPreferences;
       setRatioLimitEnabled(!!prefs.max_ratio_enabled);
-      setMaxRatio(typeof prefs.max_ratio === 'number' ? prefs.max_ratio : 0);
+      setMaxRatio((prev) => rememberLimitValue(prefs.max_ratio, prev));
       setSeedingTimeLimitEnabled(!!prefs.max_seeding_time_enabled);
-      setMaxSeedingTime(typeof prefs.max_seeding_time === 'number' ? prefs.max_seeding_time : 0);
+      setMaxSeedingTime((prev) => rememberLimitValue(prefs.max_seeding_time, prev));
       setMaxRatioAct(typeof prefs.max_ratio_act === 'number' ? prefs.max_ratio_act : 0);
     } catch {
       // Not connected / failed to load — leave previous state
@@ -172,21 +182,81 @@ export default function TransferScreen() {
     }, [isConnected, loadSeedingLimits]),
   );
 
-  const setSeedingLimitPreference = async <K extends keyof ApplicationPreferences>(
-    key: K,
-    value: ApplicationPreferences[K],
+  const setSeedingLimitPreference = async (
+    patch: Partial<ApplicationPreferences>,
     applyLocally: () => void,
     rollback: () => void,
   ) => {
     applyLocally();
     try {
-      await applicationApi.setPreferences({ [key]: value });
+      await applicationApi.setPreferences(patch);
       showToast(t('toast.serverSettingUpdated'), 'success');
     } catch {
       rollback();
       showToast(t('errors.failedToUpdateServerSetting'), 'error');
+      return;
     }
+    // Show what the server actually stored rather than trusting local state.
+    loadSeedingLimits();
   };
+
+  // Ratio / seeding-time limits: the enabled flag and the value are always
+  // sent together (buildGlobalShareLimitPatch explains why).
+  const applyRatioLimit = (enabled: boolean, value: number | null) => {
+    const prevEnabled = ratioLimitEnabled;
+    const prevValue = maxRatio;
+    setSeedingLimitPreference(
+      buildGlobalShareLimitPatch('ratio', enabled, value ?? -1),
+      () => {
+        setRatioLimitEnabled(enabled);
+        if (value !== null) setMaxRatio(value);
+      },
+      () => {
+        setRatioLimitEnabled(prevEnabled);
+        setMaxRatio(prevValue);
+      },
+    );
+  };
+
+  const applySeedingTimeLimit = (enabled: boolean, value: number | null) => {
+    const prevEnabled = seedingTimeLimitEnabled;
+    const prevValue = maxSeedingTime;
+    const rounded = value === null ? null : Math.round(value);
+    setSeedingLimitPreference(
+      buildGlobalShareLimitPatch('seedingTime', enabled, rounded ?? -1),
+      () => {
+        setSeedingTimeLimitEnabled(enabled);
+        if (rounded !== null) setMaxSeedingTime(rounded);
+      },
+      () => {
+        setSeedingTimeLimitEnabled(prevEnabled);
+        setMaxSeedingTime(prevValue);
+      },
+    );
+  };
+
+  // Switching a limit on restores its last known value; with none known it
+  // opens the value prompt instead, and nothing is sent unless confirmed.
+  const handleRatioSwitch = (value: boolean) => {
+    if (value && maxRatio === null) {
+      setMaxRatioModalVisible(true);
+      return;
+    }
+    applyRatioLimit(value, value ? maxRatio : null);
+  };
+
+  const handleSeedingTimeSwitch = (value: boolean) => {
+    if (value && maxSeedingTime === null) {
+      setMaxSeedingTimeModalVisible(true);
+      return;
+    }
+    applySeedingTimeLimit(value, value ? maxSeedingTime : null);
+  };
+
+  // An empty field is rejected here (it would parse as 0, a limit every
+  // completed torrent meets at once); "Unlimited" is the way to turn it off.
+  const validateShareLimitInput = (value: string) =>
+    value.trim() === '' || parseSpeedLimitInput(value) === null ? t('errors.validNumber') : null;
 
   const maxRatioActOptions: OptionPickerItem[] = [
     { label: t('screens.transfer.actionPause'), value: '0' },
@@ -592,11 +662,9 @@ export default function TransferScreen() {
         <InputModal
           visible={maxRatioModalVisible}
           title={t('screens.transfer.maxRatio')}
-          defaultValue={maxRatio.toFixed(2)}
+          defaultValue={(maxRatio ?? SUGGESTED_GLOBAL_MAX_RATIO).toFixed(2)}
           keyboardType="numeric"
-          validate={(value) =>
-            parseSpeedLimitInput(value) === null ? t('errors.validNumber') : null
-          }
+          validate={validateShareLimitInput}
           presets={[
             {
               label: t('common.unlimited'),
@@ -606,74 +674,47 @@ export default function TransferScreen() {
               // limits have.
               action: () => {
                 setMaxRatioModalVisible(false);
-                const prev = ratioLimitEnabled;
-                setSeedingLimitPreference(
-                  'max_ratio_enabled',
-                  false,
-                  () => setRatioLimitEnabled(false),
-                  () => setRatioLimitEnabled(prev),
-                );
+                applyRatioLimit(false, null);
               },
             },
           ]}
           onCancel={() => setMaxRatioModalVisible(false)}
           onConfirm={(value) => {
-            const parsed = parseSpeedLimitInput(value);
+            const parsed = validateShareLimitInput(value) ? null : parseSpeedLimitInput(value);
             if (parsed === null) {
               showToast(t('errors.validNumber'), 'error');
               return;
             }
             setMaxRatioModalVisible(false);
-            const prev = maxRatio;
-            setSeedingLimitPreference(
-              'max_ratio',
-              parsed,
-              () => setMaxRatio(parsed),
-              () => setMaxRatio(prev),
-            );
+            applyRatioLimit(true, parsed);
           }}
         />
 
         <InputModal
           visible={maxSeedingTimeModalVisible}
           title={t('screens.transfer.maxSeedingTime')}
-          defaultValue={String(maxSeedingTime)}
+          defaultValue={String(maxSeedingTime ?? SUGGESTED_GLOBAL_MAX_SEEDING_MINUTES)}
           keyboardType="numeric"
-          validate={(value) =>
-            parseSpeedLimitInput(value) === null ? t('errors.validNumber') : null
-          }
+          validate={validateShareLimitInput}
           presets={[
             {
               label: t('common.unlimited'),
               value: '',
               action: () => {
                 setMaxSeedingTimeModalVisible(false);
-                const prev = seedingTimeLimitEnabled;
-                setSeedingLimitPreference(
-                  'max_seeding_time_enabled',
-                  false,
-                  () => setSeedingTimeLimitEnabled(false),
-                  () => setSeedingTimeLimitEnabled(prev),
-                );
+                applySeedingTimeLimit(false, null);
               },
             },
           ]}
           onCancel={() => setMaxSeedingTimeModalVisible(false)}
           onConfirm={(value) => {
-            const parsed = parseSpeedLimitInput(value);
+            const parsed = validateShareLimitInput(value) ? null : parseSpeedLimitInput(value);
             if (parsed === null) {
               showToast(t('errors.validNumber'), 'error');
               return;
             }
-            const rounded = Math.round(parsed);
             setMaxSeedingTimeModalVisible(false);
-            const prev = maxSeedingTime;
-            setSeedingLimitPreference(
-              'max_seeding_time',
-              rounded,
-              () => setMaxSeedingTime(rounded),
-              () => setMaxSeedingTime(prev),
-            );
+            applySeedingTimeLimit(true, parsed);
           }}
         />
 
@@ -687,8 +728,7 @@ export default function TransferScreen() {
             const prev = maxRatioAct;
             setMaxRatioActPickerVisible(false);
             setSeedingLimitPreference(
-              'max_ratio_act',
-              act,
+              { max_ratio_act: act },
               () => setMaxRatioAct(act),
               () => setMaxRatioAct(prev),
             );
@@ -929,15 +969,7 @@ export default function TransferScreen() {
                   <View style={styles.switchHost}>
                     <Switch
                       value={ratioLimitEnabled}
-                      onValueChange={(value) => {
-                        const prev = ratioLimitEnabled;
-                        setSeedingLimitPreference(
-                          'max_ratio_enabled',
-                          value,
-                          () => setRatioLimitEnabled(value),
-                          () => setRatioLimitEnabled(prev),
-                        );
-                      }}
+                      onValueChange={handleRatioSwitch}
                       trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                     />
                   </View>
@@ -955,7 +987,7 @@ export default function TransferScreen() {
                       </Text>
                       <View style={styles.rowTrailing}>
                         <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                          {maxRatio.toFixed(2)}
+                          {(maxRatio ?? 0).toFixed(2)}
                         </Text>
                         <Ionicons name="pencil" size={14} color={colors.textSecondary} />
                       </View>
@@ -972,15 +1004,7 @@ export default function TransferScreen() {
                   <View style={styles.switchHost}>
                     <Switch
                       value={seedingTimeLimitEnabled}
-                      onValueChange={(value) => {
-                        const prev = seedingTimeLimitEnabled;
-                        setSeedingLimitPreference(
-                          'max_seeding_time_enabled',
-                          value,
-                          () => setSeedingTimeLimitEnabled(value),
-                          () => setSeedingTimeLimitEnabled(prev),
-                        );
-                      }}
+                      onValueChange={handleSeedingTimeSwitch}
                       trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                     />
                   </View>
@@ -998,7 +1022,7 @@ export default function TransferScreen() {
                       </Text>
                       <View style={styles.rowTrailing}>
                         <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                          {formatTime(maxSeedingTime * 60)}
+                          {formatTime((maxSeedingTime ?? 0) * 60)}
                         </Text>
                         <Ionicons name="pencil" size={14} color={colors.textSecondary} />
                       </View>

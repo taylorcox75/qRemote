@@ -60,7 +60,6 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   const lastActiveTime = useRef(Date.now());
   const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   const [isRecoveringState, setIsRecoveringState] = useState(false);
-  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const {
     data: transferData,
@@ -78,10 +77,9 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     retry: 0,
   });
 
-  // Clear mutation errors and recovery state after each successful fetch
+  // Clear the recovery state after each successful fetch
   useEffect(() => {
     if (dataUpdatedAt > 0) {
-      setMutationError(null);
       setIsRecoveringState(false);
     }
   }, [dataUpdatedAt]);
@@ -90,7 +88,6 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isConnected) {
       queryClient.removeQueries({ queryKey: ['transfer'] });
-      setMutationError(null);
     }
   }, [isConnected, queryClient]);
 
@@ -123,7 +120,6 @@ export function TransferProvider({ children }: { children: ReactNode }) {
           }
 
           setIsRecoveringState(true);
-          setMutationError(null);
 
           await new Promise<void>((resolve) => {
             runAfterInteractions(() => {
@@ -155,25 +151,21 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     await queryClient.invalidateQueries({ queryKey: ['transfer'] });
   }, [isConnected, queryClient]);
 
+  // Mutations let a failure propagate to the caller, which reports it (a toast)
+  // and only shows success once the server actually accepted the change. They
+  // deliberately don't feed `error`: that drives the screen-level error state
+  // and would swap the whole Transfer screen out over one rejected setting.
   const toggleAlternativeSpeedLimits = useCallback(async () => {
     if (!isConnected) return;
-    try {
-      await transferApi.toggleAlternativeSpeedLimits();
-      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-    } catch (err: unknown) {
-      setMutationError(getErrorMessage(err));
-    }
+    await transferApi.toggleAlternativeSpeedLimits();
+    await queryClient.invalidateQueries({ queryKey: ['transfer'] });
   }, [isConnected, queryClient]);
 
   const setDownloadLimit = useCallback(
     async (limit: number) => {
       if (!isConnected) return;
-      try {
-        await transferApi.setGlobalDownloadLimit(limit);
-        await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-      } catch (err: unknown) {
-        setMutationError(getErrorMessage(err));
-      }
+      await transferApi.setGlobalDownloadLimit(limit);
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
     },
     [isConnected, queryClient],
   );
@@ -181,12 +173,8 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   const setUploadLimit = useCallback(
     async (limit: number) => {
       if (!isConnected) return;
-      try {
-        await transferApi.setGlobalUploadLimit(limit);
-        await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-      } catch (err: unknown) {
-        setMutationError(getErrorMessage(err));
-      }
+      await transferApi.setGlobalUploadLimit(limit);
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
     },
     [isConnected, queryClient],
   );
@@ -198,12 +186,8 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   const setAltDownloadLimit = useCallback(
     async (bytesLimit: number) => {
       if (!isConnected) return;
-      try {
-        await applicationApi.setPreferences({ alt_dl_limit: bytesLimit });
-        await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-      } catch (err: unknown) {
-        setMutationError(getErrorMessage(err));
-      }
+      await applicationApi.setPreferences({ alt_dl_limit: bytesLimit });
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
     },
     [isConnected, queryClient],
   );
@@ -211,19 +195,14 @@ export function TransferProvider({ children }: { children: ReactNode }) {
   const setAltUploadLimit = useCallback(
     async (bytesLimit: number) => {
       if (!isConnected) return;
-      try {
-        await applicationApi.setPreferences({ alt_up_limit: bytesLimit });
-        await queryClient.invalidateQueries({ queryKey: ['transfer'] });
-      } catch (err: unknown) {
-        setMutationError(getErrorMessage(err));
-      }
+      await applicationApi.setPreferences({ alt_up_limit: bytesLimit });
+      await queryClient.invalidateQueries({ queryKey: ['transfer'] });
     },
     [isConnected, queryClient],
   );
 
   const transferInfo = isConnected ? (transferData ?? null) : null;
-  const error =
-    mutationError ?? (isRecoveringState ? null : queryError ? getErrorMessage(queryError) : null);
+  const error = isRecoveringState ? null : queryError ? getErrorMessage(queryError) : null;
 
   return (
     <TransferContext.Provider
