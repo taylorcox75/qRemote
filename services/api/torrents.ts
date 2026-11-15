@@ -778,7 +778,7 @@ export const torrentsApi = {
     fileIndex?: number,
   ): Promise<void> {
     if (!apiClient.getApiFeatures().useRenameFilePathParams && fileIndex !== undefined) {
-      // WebAPI < 2.7.0 (qBit 4.2.x): file index + new bare file name.
+      // WebAPI < 2.7.0 (qBit ≤ 4.3.2): file index + new bare file name.
       const name = newPath.split('/').pop() ?? newPath;
       await apiClient.postUrlEncoded(`/api/${API_VERSION}/torrents/renameFile`, {
         hash,

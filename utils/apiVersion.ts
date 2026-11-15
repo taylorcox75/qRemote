@@ -29,7 +29,7 @@ export interface ApiFeatures {
    */
   supportsShareLimitAction: boolean;
   /**
-   * torrents/renameFile takes oldPath/newPath (WebAPI ≥ 2.7.0 / qBit 4.3.2). Below it
+   * torrents/renameFile takes oldPath/newPath (WebAPI ≥ 2.7.0 / qBit 4.3.3). Below it
    * the endpoint takes the file index as "id" and a bare file name as "name".
    */
   useRenameFilePathParams: boolean;

@@ -138,7 +138,8 @@ export interface AppPreferences {
    * Per-server (keyed by ServerConfig.id) last "Use another download path"
    * choice on the add-torrent screen. Replaces the device-wide
    * lastUseDownloadPath / lastDownloadPath, which leaked one server's path
-   * into another's adds; those keys are kept but no longer read.
+   * into another's adds; those keys are kept (never deleted) and read only as
+   * an upgrade fallback when exactly one server is saved.
    */
   addTorrentDownloadPathByServer: Record<
     string,

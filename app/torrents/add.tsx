@@ -42,9 +42,14 @@ import { extractMagnetLink } from '@/utils/magnet';
 import { groupCartItemsForAdd } from '@/utils/search-cart';
 import {
   buildDownloadPathOptions,
-  getDownloadPathPrefill,
+  formatKibLimitHint,
+  buildAddOptionPrefill,
   parseKibLimitInput,
+  resolveDefaultSavePath,
   supportsAddTorrentCookie,
+  withoutTouchedFields,
+  type LegacyDownloadPath,
+  type PrefillableAddField,
   type SavedDownloadPath,
 } from '@/utils/add-torrent-options';
 import { useApiFeatures } from '@/context/ApiVersionContext';
@@ -165,11 +170,24 @@ export default function AddTorrentFullScreen() {
 
   const [tmmTooltipVisible, setTmmTooltipVisible] = useState(false);
 
+  // Editable options are prefilled once per open (per server) and never over a
+  // field the user has already edited — a re-focus or a late server-preferences
+  // reply used to reset what they had typed. Field visibility still refreshes
+  // on every focus.
+  const touchedOptionsRef = useRef(new Set<PrefillableAddField>());
+  const prefilledServerRef = useRef<string | null | undefined>(undefined);
+  const touchOption = useCallback((...fields: PrefillableAddField[]) => {
+    fields.forEach((field) => touchedOptionsRef.current.add(field));
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       const load = async () => {
         let savedDownloadPath: SavedDownloadPath | undefined;
+        let legacyDownloadPath: LegacyDownloadPath | undefined;
+        let localDefaultSavePath: string | undefined;
+        let localPrefs: { pauseOnAdd?: boolean; defaultPriority?: number | string } | null = null;
         try {
           const prefs = await storageService.getPreferences();
           const stored = (prefs.addTorrentDialogueFields as Partial<typeof fieldVisibility>) || {};
@@ -185,31 +203,61 @@ export default function AddTorrentFullScreen() {
               addTorrentDialogueFields: normalized,
             });
           }
-          setStopped(!!prefs.pauseOnAdd);
-          setFirstLastPiecePrio(Number(prefs.defaultPriority) > 0);
+          localPrefs = prefs;
           savedDownloadPath = serverId
             ? prefs.addTorrentDownloadPathByServer?.[serverId]
             : undefined;
+          localDefaultSavePath = prefs.defaultSavePath;
+          if (!savedDownloadPath && prefs.lastUseDownloadPath === true) {
+            // Pre-per-server choice — only trusted when there is a single server.
+            const servers = await storageService.getServers().catch(() => []);
+            legacyDownloadPath = {
+              lastUseDownloadPath: prefs.lastUseDownloadPath,
+              lastDownloadPath: prefs.lastDownloadPath,
+              serverCount: servers.length,
+            };
+          }
         } catch {
           setFieldVisibility(DEFAULT_PREFERENCES.addTorrentDialogueFields);
         }
 
         // Save path and download path come from the connected server, never from a
         // device-wide cache — that cache belonged to whichever server last wrote it.
+        // The locally saved Default save path is only the last resort, when the
+        // server answers neither request.
         const serverPrefs = await applicationApi.getPreferences().catch(() => null);
-        const defaultSavePath = serverPrefs
-          ? serverPrefs.save_path || ''
-          : await applicationApi.getDefaultSavePath().catch(() => '');
+        const defaultSavePath = resolveDefaultSavePath({
+          serverSavePath: serverPrefs?.save_path,
+          serverPrefsLoaded: !!serverPrefs,
+          defaultSavePathResult: serverPrefs
+            ? undefined
+            : await applicationApi.getDefaultSavePath().catch(() => null),
+          localDefaultSavePath,
+        });
         if (cancelled) return;
-        setSavePath(typeof defaultSavePath === 'string' ? defaultSavePath : '');
-        const downloadPathPrefill = getDownloadPathPrefill(savedDownloadPath, serverPrefs);
-        setUseDownloadPath(downloadPathPrefill.useDownloadPath);
-        setDownloadPath(downloadPathPrefill.downloadPath);
         if (serverPrefs) {
-          setTmmMode(serverPrefs.auto_tmm_enabled ? 'automatic' : 'manual');
           setServerTempPath(serverPrefs.temp_path || '');
           setServerSavePath(serverPrefs.save_path || '');
-          if (serverPrefs.auto_tmm_enabled) setUseDownloadPath(false);
+        }
+        if (prefilledServerRef.current === serverId) return;
+        prefilledServerRef.current = serverId;
+        const prefill = withoutTouchedFields(
+          buildAddOptionPrefill({
+            localPrefs,
+            savedDownloadPath,
+            legacyDownloadPath,
+            serverPrefs,
+            defaultSavePath,
+          }),
+          touchedOptionsRef.current,
+        );
+        if (prefill.savePath !== undefined) setSavePath(prefill.savePath);
+        if (prefill.useDownloadPath !== undefined) setUseDownloadPath(prefill.useDownloadPath);
+        if (prefill.downloadPath !== undefined) setDownloadPath(prefill.downloadPath);
+        if (prefill.tmmMode !== undefined) setTmmMode(prefill.tmmMode);
+        if (prefill.stopped !== undefined) setStopped(prefill.stopped);
+        if (prefill.firstLastPiecePrio !== undefined) {
+          setFirstLastPiecePrio(prefill.firstLastPiecePrio);
         }
       };
       load();
@@ -271,8 +319,9 @@ export default function AddTorrentFullScreen() {
     async (overrides: { useDownloadPath?: boolean; downloadPath?: string }) => {
       try {
         if (!serverId) return;
-        const prefs = await storageService.getPreferences();
-        await storageService.updatePreferences({
+        // Functional update: the map is read inside the write queue, so an
+        // overlapping write can't drop another server's entry.
+        await storageService.updatePreferences((prefs) => ({
           addTorrentDownloadPathByServer: {
             ...(prefs.addTorrentDownloadPathByServer || {}),
             [serverId]: {
@@ -280,7 +329,7 @@ export default function AddTorrentFullScreen() {
               downloadPath: overrides.downloadPath ?? downloadPath,
             },
           },
-        });
+        }));
       } catch {
         // Ignore save errors — this is a convenience default, not critical state.
       }
@@ -292,10 +341,11 @@ export default function AddTorrentFullScreen() {
     (newCategory: string) => {
       const newPath = newCategory ? categories?.[newCategory]?.savePath || '' : '';
       if (newPath) {
+        touchOption('savePath');
         setSavePath(newPath);
       }
     },
-    [categories],
+    [categories, touchOption],
   );
 
   // Closes over ~18 individual field values and is recreated every render,
@@ -791,8 +841,10 @@ export default function AddTorrentFullScreen() {
                         <Switch
                           value={tmmMode === 'automatic'}
                           onValueChange={(value) => {
+                            touchOption('tmmMode');
                             setTmmMode(value ? 'automatic' : 'manual');
                             if (value && useDownloadPath) {
+                              touchOption('useDownloadPath');
                               setUseDownloadPath(false);
                               void persistDownloadPathPref({ useDownloadPath: false });
                             }
@@ -825,7 +877,10 @@ export default function AddTorrentFullScreen() {
                             },
                           ]}
                           value={tmmMode === 'automatic' ? serverSavePath : savePath}
-                          onChangeText={setSavePath}
+                          onChangeText={(value) => {
+                            touchOption('savePath');
+                            setSavePath(value);
+                          }}
                           editable={tmmMode === 'manual'}
                           placeholder={t('screens.addTorrent.savePathPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
@@ -852,8 +907,10 @@ export default function AddTorrentFullScreen() {
                           value={useDownloadPath}
                           disabled={tmmMode === 'automatic'}
                           onValueChange={(value) => {
+                            touchOption('useDownloadPath');
                             setUseDownloadPath(value);
                             if (value && !downloadPath.trim() && serverTempPath) {
+                              touchOption('downloadPath');
                               setDownloadPath(serverTempPath);
                               void persistDownloadPathPref({
                                 useDownloadPath: value,
@@ -890,7 +947,10 @@ export default function AddTorrentFullScreen() {
                               },
                             ]}
                             value={downloadPath}
-                            onChangeText={setDownloadPath}
+                            onChangeText={(value) => {
+                              touchOption('downloadPath');
+                              setDownloadPath(value);
+                            }}
                             onBlur={() => void persistDownloadPathPref({})}
                             editable={tmmMode === 'manual'}
                             placeholder={t('screens.addTorrent.downloadPathPlaceholder')}
@@ -1021,7 +1081,10 @@ export default function AddTorrentFullScreen() {
                         </View>
                         <Switch
                           value={stopped}
-                          onValueChange={setStopped}
+                          onValueChange={(value) => {
+                            touchOption('stopped');
+                            setStopped(value);
+                          }}
                           trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                           ios_backgroundColor={colors.surfaceOutline}
                         />
@@ -1112,7 +1175,10 @@ export default function AddTorrentFullScreen() {
                       </View>
                       <Switch
                         value={firstLastPiecePrio}
-                        onValueChange={setFirstLastPiecePrio}
+                        onValueChange={(value) => {
+                          touchOption('firstLastPiecePrio');
+                          setFirstLastPiecePrio(value);
+                        }}
                         trackColor={{ false: colors.surfaceOutline, true: colors.success }}
                         ios_backgroundColor={colors.surfaceOutline}
                       />
@@ -1153,6 +1219,11 @@ export default function AddTorrentFullScreen() {
                           placeholder={t('screens.addTorrent.numberPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
                         />
+                        {formatKibLimitHint(dlLimit) && (
+                          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                            = {formatKibLimitHint(dlLimit)}
+                          </Text>
+                        )}
                       </View>
                       <View
                         style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
@@ -1181,6 +1252,11 @@ export default function AddTorrentFullScreen() {
                           placeholder={t('screens.addTorrent.numberPlaceholder')}
                           placeholderTextColor={colors.textSecondary}
                         />
+                        {formatKibLimitHint(upLimit) && (
+                          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                            = {formatKibLimitHint(upLimit)}
+                          </Text>
+                        )}
                       </View>
                       <View
                         style={[styles.separatorFull, { backgroundColor: colors.surfaceOutline }]}
@@ -1369,7 +1445,10 @@ export default function AddTorrentFullScreen() {
           try {
             await categoriesApi.addCategory(pendingNewCategoryName, path || undefined);
             setCategory(pendingNewCategoryName);
-            if (path) setSavePath(path);
+            if (path) {
+              touchOption('savePath');
+              setSavePath(path);
+            }
             showToast(t('toast.categoryAdded', { name: pendingNewCategoryName }), 'success');
           } catch {
             showToast(t('errors.failedToAddCategory'), 'error');
