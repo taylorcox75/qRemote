@@ -1184,6 +1184,7 @@
   },
   "toast": {
     "pluginAddDefaultOptions": "Über das zugehörige Suchplugin mit den Standardoptionen von qBittorrent hinzugefügt – diese Version kann Speicherpfad, Kategorie oder Tags dafür nicht anwenden.",
+    "someAlreadyInQbittorrent": "Hinzugefügt – einige Torrents waren bereits in qBittorrent vorhanden.",
     "notConnected": "Nicht mit einem Server verbunden. Bitte zuerst verbinden.",
     "lostConnection": "Verbindung verloren. Bitte erneut verbinden.",
     "connectedTo": "Verbunden mit {{name}}",
@@ -1364,7 +1365,7 @@
     "rateLimitedRetry": "Anfragen vom Server begrenzt. Bitte in {{seconds}} Sekunden erneut versuchen.",
     "endpointNotFound": "Endpunkt nicht gefunden: {{url}}. Bitte qBittorrent-Version und API-Kompatibilität prüfen.",
     "queueingDisabled": "Die Torrent-Warteschlange muss in qBittorrent aktiviert sein, um Prioritäten zu ändern.",
-    "torrentExistsOrFailed": "Dieser Torrent existiert bereits oder konnte nicht hinzugefügt werden.",
+    "torrentExistsOrFailed": "Bereits in qBittorrent vorhanden oder konnte nicht hinzugefügt werden.",
     "unknown": "Ein unbekannter Fehler ist aufgetreten",
     "quiKeyRejected": "qui hat den Proxy-Schlüssel abgelehnt. Prüfe die Proxy-URL.",
     "quiKeyMissing": "Dieser qui-Server hat keinen Proxy-Schlüssel. Bearbeite ihn und füge die Proxy-URL erneut ein."

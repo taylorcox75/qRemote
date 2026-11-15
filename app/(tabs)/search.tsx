@@ -71,6 +71,7 @@ import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { buttonStyles, buttonText } from '@/constants/buttons';
 import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { haptics } from '@/utils/haptics';
 import { compareByQuality } from '@/utils/video-quality';
 import { compareByRelevance } from '@/utils/search-relevance';
@@ -783,7 +784,7 @@ export default function SearchScreen() {
         showToast(t('screens.search.addedToast'), 'success');
       } catch (err: unknown) {
         haptics.error();
-        showToast(getErrorMessage(err), 'error');
+        showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
       } finally {
         setPendingAddUrl(null);
       }

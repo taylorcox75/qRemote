@@ -39,6 +39,7 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { getErrorMessage } from '@/utils/error';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { haptics } from '@/utils/haptics';
 import { getRssFeedDisplayName, sortArticlesByDateDesc, toSearchQuery } from '@/utils/rss';
 
@@ -258,7 +259,7 @@ export default function RssFeedArticlesScreen() {
         showToast(t('screens.rss.articleAddedToast'), 'success');
       } catch (err: unknown) {
         haptics.error();
-        showToast(getErrorMessage(err), 'error');
+        showToast(localizeErrorMessage(getErrorMessage(err), t), 'error');
       }
     },
     [showToast, t],

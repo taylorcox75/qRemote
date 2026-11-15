@@ -27,7 +27,7 @@ import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useSearchCart } from '@/context/SearchCartContext';
-import { torrentsApi } from '@/services/api/torrents';
+import { TORRENT_ADD_FAILED_MESSAGE, torrentsApi } from '@/services/api/torrents';
 import { searchApi } from '@/services/api/search';
 import { apiClient } from '@/services/api/client';
 import { categoriesApi } from '@/services/api/categories';
@@ -52,6 +52,7 @@ import {
   type PrefillableAddField,
   type SavedDownloadPath,
 } from '@/utils/add-torrent-options';
+import { summarizeAddBatch } from '@/utils/add-torrent-batch';
 import { useApiFeatures } from '@/context/ApiVersionContext';
 import { tagNewlyDownloadedTorrent } from '@/services/search-tracker-topup';
 import {
@@ -433,19 +434,29 @@ export default function AddTorrentFullScreen() {
       const typedDownloader = getPrefilledDownloader(urls, sourcePlugin);
       const typedPlan = planPluginUrlAdd(typedDownloader, features);
       let usedDefaultOptions = typedPlan === 'searchDownloadTorrent';
-      // Background tag polls to start once the adds succeed (5.0–5.1 cart only).
-      const postAddTagging: (() => Promise<void>)[] = [];
-      const tasks: Promise<void>[] = [];
+      // One entry per request. `cartUrls` are the cart items that request carries;
+      // `tagging` are background tag polls to start once it succeeds (5.0–5.1 cart only).
+      const tasks: {
+        promise: Promise<void>;
+        cartUrls: string[];
+        tagging: (() => Promise<void>)[];
+      }[] = [];
       if (selectedFiles.length > 0) {
-        tasks.push(
-          torrentsApi.addTorrentFile(
+        tasks.push({
+          promise: torrentsApi.addTorrentFile(
             selectedFiles.map((file) => ({ uri: file.uri, name: file.name, type: file.mimeType })),
             opts,
           ),
-        );
+          cartUrls: [],
+          tagging: [],
+        });
       }
       if (urls.length > 0) {
-        tasks.push(addUrls(urls, opts, typedDownloader, typedPlan));
+        tasks.push({
+          promise: addUrls(urls, opts, typedDownloader, typedPlan),
+          cartUrls: [],
+          tagging: [],
+        });
       }
       if (cartItems.length > 0) {
         // Cart checkout goes through torrents/add (#217) — the whole point of the
@@ -457,6 +468,7 @@ export default function AddTorrentFullScreen() {
         const groups = groupCartItemsForAdd(cartItems, !!prefs?.autoCategorizeByTracker);
         for (const group of groups) {
           const groupPlan = planPluginUrlAdd(group.downloader, features);
+          const tagging: (() => Promise<void>)[] = [];
           if (groupPlan === 'searchDownloadTorrent') {
             usedDefaultOptions = true;
             // search/downloadTorrent takes no tags, so apply the indexer tag once
@@ -465,12 +477,12 @@ export default function AddTorrentFullScreen() {
               const tag = group.tag;
               for (const url of group.urls) {
                 const item = cartItems.find((cartItem) => cartItem.fileUrl === url);
-                if (item) postAddTagging.push(() => tagNewlyDownloadedTorrent(item.fileName, tag));
+                if (item) tagging.push(() => tagNewlyDownloadedTorrent(item.fileName, tag));
               }
             }
           }
-          tasks.push(
-            addUrls(
+          tasks.push({
+            promise: addUrls(
               group.urls,
               {
                 ...opts,
@@ -479,12 +491,27 @@ export default function AddTorrentFullScreen() {
               group.downloader,
               groupPlan,
             ),
-          );
+            cartUrls: group.urls,
+            tagging,
+          });
         }
       }
-      await Promise.all(tasks);
-      for (const startTagging of postAddTagging) void startTagging();
-      if (usedDefaultOptions) {
+      // allSettled, not all: a request answering `Fails.` (all duplicates) must not
+      // fail the submit when the others added torrents (see utils/add-torrent-batch.ts).
+      const results = await Promise.allSettled(tasks.map((task) => task.promise));
+      const summary = summarizeAddBatch(results, TORRENT_ADD_FAILED_MESSAGE);
+      if (summary.outcome === 'failed') {
+        showToast(t('errors.failedToAdd'), 'error');
+        return;
+      }
+      for (const index of summary.succeeded) {
+        for (const startTagging of tasks[index].tagging) void startTagging();
+      }
+      if (summary.outcome === 'partialFailed') {
+        showToast(t('errors.failedToAdd'), 'error');
+      } else if (summary.outcome === 'partialDuplicates') {
+        showToast(t('toast.someAlreadyInQbittorrent'), 'info');
+      } else if (usedDefaultOptions) {
         showToast(t('toast.pluginAddDefaultOptions'), 'info', 6000);
       } else {
         showToast(
@@ -494,7 +521,17 @@ export default function AddTorrentFullScreen() {
           'success',
         );
       }
-      if (cartItems.length > 0) cart.clear();
+      if (cartItems.length > 0) {
+        if (summary.outcome === 'success') {
+          cart.clear();
+        } else {
+          // Keep only the items whose request failed for a real reason, so they can
+          // be retried; succeeded and already-present ones leave the cart.
+          for (const index of [...summary.succeeded, ...summary.duplicateFailures]) {
+            for (const url of tasks[index].cartUrls) cart.remove(url);
+          }
+        }
+      }
       router.back();
     } catch {
       showToast(t('errors.failedToAdd'), 'error');

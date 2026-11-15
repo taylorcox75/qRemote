@@ -1223,6 +1223,7 @@
   },
   "toast": {
     "pluginAddDefaultOptions": "Dodano przez jego wtyczkę wyszukiwania z domyślnymi opcjami qBittorrent — ta wersja nie może zastosować do niego ścieżki zapisu, kategorii ani tagów.",
+    "someAlreadyInQbittorrent": "Dodano — niektóre torrenty były już w qBittorrent.",
     "notConnected": "Brak połączenia z serwerem. Najpierw połącz się z serwerem.",
     "lostConnection": "Utracono połączenie z serwerem. Połącz się ponownie.",
     "connectedTo": "Połączono z {{name}}",
@@ -1415,7 +1416,7 @@
     "rateLimitedRetry": "Serwer ograniczył liczbę żądań. Spróbuj ponownie za {{seconds}} s.",
     "endpointNotFound": "Nie znaleziono punktu końcowego: {{url}}. Sprawdź wersję qBittorrent i zgodność API.",
     "queueingDisabled": "Aby zmieniać priorytety, kolejkowanie torrentów musi być włączone w qBittorrent.",
-    "torrentExistsOrFailed": "Ten torrent już istnieje lub nie można go dodać.",
+    "torrentExistsOrFailed": "Już jest w qBittorrent lub nie można go dodać.",
     "unknown": "Wystąpił nieznany błąd",
     "quiKeyRejected": "qui odrzucił klucz proxy. Sprawdź adres URL proxy.",
     "quiKeyMissing": "Ten serwer qui nie ma klucza proxy. Edytuj go i ponownie wklej adres URL proxy."

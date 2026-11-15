@@ -45,7 +45,9 @@ import { EmptyState } from '@/components/EmptyState';
 import { FilterChip } from '@/components/FilterChip';
 import { SearchHistoryDropdown } from '@/components/SearchHistoryDropdown';
 import { SwipeActionsPanel } from '@/components/SwipeActionsPanel';
-import { torrentsApi } from '@/services/api/torrents';
+import { TORRENT_ADD_FAILED_MESSAGE, torrentsApi } from '@/services/api/torrents';
+import { summarizeAddBatch } from '@/utils/add-torrent-batch';
+import { localizeErrorMessage } from '@/utils/localize-error';
 import { searchApi } from '@/services/api/search';
 import { applicationApi } from '@/services/api/application';
 import { apiClient } from '@/services/api/client';
@@ -1042,7 +1044,13 @@ export default function TorrentsScreen() {
           );
         }
       }
-      await Promise.all(tasks);
+      // allSettled, not all: a request answering `Fails.` (all duplicates) must not
+      // fail the add when the other one added torrents (utils/add-torrent-batch.ts).
+      const summary = summarizeAddBatch(
+        await Promise.allSettled(tasks),
+        TORRENT_ADD_FAILED_MESSAGE,
+      );
+      if (summary.outcome === 'failed') throw summary.firstError;
 
       haptics.success();
       setTorrentUrl('');
@@ -1051,7 +1059,11 @@ export default function TorrentsScreen() {
       setShowAddModal(false);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       refresh();
-      if (plan === 'searchDownloadTorrent') {
+      if (summary.outcome === 'partialFailed') {
+        showToast(localizeErrorMessage(getErrorMessage(summary.firstOtherError), t), 'error');
+      } else if (summary.outcome === 'partialDuplicates') {
+        showToast(t('toast.someAlreadyInQbittorrent'), 'info');
+      } else if (plan === 'searchDownloadTorrent') {
         // search/downloadTorrent takes no options — say so rather than a plain "added".
         showToast(t('toast.pluginAddDefaultOptions'), 'info', 6000);
       } else {
@@ -1062,7 +1074,7 @@ export default function TorrentsScreen() {
       }
     } catch (error: unknown) {
       haptics.error();
-      showToast(getErrorMessage(error), 'error');
+      showToast(localizeErrorMessage(getErrorMessage(error), t), 'error');
     } finally {
       setAddingTorrent(false);
     }

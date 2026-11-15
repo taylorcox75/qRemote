@@ -1184,6 +1184,7 @@
   },
   "toast": {
     "pluginAddDefaultOptions": "Ajouté via son plugin de recherche avec les options par défaut de qBittorrent : cette version ne peut pas lui appliquer le chemin de sauvegarde, la catégorie ni les étiquettes.",
+    "someAlreadyInQbittorrent": "Ajoutés — certains torrents étaient déjà dans qBittorrent.",
     "notConnected": "Non connecté à un serveur. Connectez-vous d'abord.",
     "lostConnection": "Connexion perdue. Veuillez vous reconnecter.",
     "connectedTo": "Connecté à {{name}}",
@@ -1364,7 +1365,7 @@
     "rateLimitedRetry": "Requêtes limitées par le serveur. Réessayez dans {{seconds}} secondes.",
     "endpointNotFound": "Point de terminaison introuvable : {{url}}. Vérifiez votre version de qBittorrent et la compatibilité de l'API.",
     "queueingDisabled": "La file d'attente des torrents doit être activée dans qBittorrent pour modifier les priorités.",
-    "torrentExistsOrFailed": "Ce torrent existe déjà ou n'a pas pu être ajouté.",
+    "torrentExistsOrFailed": "Déjà présent dans qBittorrent, ou n'a pas pu être ajouté.",
     "unknown": "Une erreur inconnue s'est produite",
     "quiKeyRejected": "qui a rejeté la clé du proxy. Vérifiez l'URL du proxy.",
     "quiKeyMissing": "Ce serveur qui n'a pas de clé de proxy. Modifiez-le et collez à nouveau l'URL du proxy."

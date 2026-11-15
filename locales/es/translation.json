@@ -1184,6 +1184,7 @@
   },
   "toast": {
     "pluginAddDefaultOptions": "Añadido mediante su plugin de búsqueda con las opciones predeterminadas de qBittorrent: esta versión no puede aplicarle la ruta de guardado, la categoría ni las etiquetas.",
+    "someAlreadyInQbittorrent": "Añadidos: algunos torrents ya estaban en qBittorrent.",
     "notConnected": "No conectado a un servidor. Conecta primero.",
     "lostConnection": "Conexión perdida. Reconecta por favor.",
     "connectedTo": "Conectado a {{name}}",
@@ -1364,7 +1365,7 @@
     "rateLimitedRetry": "El servidor ha limitado las solicitudes. Vuelve a intentarlo en {{seconds}} segundos.",
     "endpointNotFound": "Endpoint no encontrado: {{url}}. Comprueba tu versión de qBittorrent y la compatibilidad de la API.",
     "queueingDisabled": "La cola de torrents debe estar activada en qBittorrent para cambiar prioridades.",
-    "torrentExistsOrFailed": "Este torrent ya existe o no se pudo añadir.",
+    "torrentExistsOrFailed": "Ya está en qBittorrent o no se pudo añadir.",
     "unknown": "Se produjo un error desconocido",
     "quiKeyRejected": "qui rechazó la clave del proxy. Comprueba la URL del proxy.",
     "quiKeyMissing": "Este servidor qui no tiene clave de proxy. Edítalo y vuelve a pegar la URL del proxy."

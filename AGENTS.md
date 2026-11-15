@@ -648,6 +648,10 @@ for `dlLimit`/`upLimit`; `supportsAddTorrentCookie` — `cookie` is read only
 below WebAPI 2.11.4; download-path prefill per server from the
 `addTorrentDownloadPathByServer` pref, falling back to the server's
 `temp_path_enabled`/`temp_path`) ·
+`add-torrent-batch.ts` (`summarizeAddBatch` — outcome of the add screens' parallel
+`torrents/add` requests via `Promise.allSettled`: one request answering `Fails.`
+(nothing in it added, usually duplicates) next to a success is a partial success,
+not a failed submit; used by `app/torrents/add.tsx` and the compact add) ·
 `rss-rule.ts` (`buildRssRuleDef` — applies the editor's fields on top of the
 fetched rule so `priority`, `torrentParams` and unknown keys survive, and mirrors
 save path / category / stopped / content layout into `torrentParams`, which qBit

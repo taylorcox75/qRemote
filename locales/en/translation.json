@@ -1205,6 +1205,7 @@
   },
   "toast": {
     "pluginAddDefaultOptions": "Added through its search plugin using qBittorrent's default options — this version can't apply the save path, category or tags to it.",
+    "someAlreadyInQbittorrent": "Added — some torrents were already in qBittorrent.",
     "notConnected": "Not connected to a server. Please connect to a server first.",
     "lostConnection": "Lost connection to server. Please reconnect.",
     "connectedTo": "Connected to {{name}}",
@@ -1385,7 +1386,7 @@
     "rateLimitedRetry": "Rate limited by server. Please retry after {{seconds}} seconds.",
     "endpointNotFound": "Endpoint not found: {{url}}. Please check your qBittorrent version and API compatibility.",
     "queueingDisabled": "Torrent queueing must be enabled in qBittorrent to change priorities.",
-    "torrentExistsOrFailed": "This torrent already exists or could not be added.",
+    "torrentExistsOrFailed": "Already in qBittorrent, or couldn't be added.",
     "unknown": "An unknown error occurred",
     "quiKeyRejected": "qui rejected the proxy key. Check the proxy URL.",
     "quiKeyMissing": "This qui server has no proxy key. Edit it and paste the proxy URL again."

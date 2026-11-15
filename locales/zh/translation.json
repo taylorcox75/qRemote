@@ -1184,6 +1184,7 @@
   },
   "toast": {
     "pluginAddDefaultOptions": "已通过其搜索插件添加，并使用 qBittorrent 的默认选项——此版本无法对其应用保存路径、分类或标签。",
+    "someAlreadyInQbittorrent": "已添加——部分种子已在 qBittorrent 中。",
     "notConnected": "未连接服务器，请先连接。",
     "lostConnection": "连接已断开，请重新连接。",
     "connectedTo": "已连接 {{name}}",
@@ -1364,7 +1365,7 @@
     "rateLimitedRetry": "服务器限制了请求频率。请在 {{seconds}} 秒后重试。",
     "endpointNotFound": "未找到端点：{{url}}。请检查您的 qBittorrent 版本和 API 兼容性。",
     "queueingDisabled": "必须在 qBittorrent 中启用 Torrent 队列才能更改优先级。",
-    "torrentExistsOrFailed": "此种子已存在或无法添加。",
+    "torrentExistsOrFailed": "已在 qBittorrent 中，或无法添加。",
     "unknown": "发生未知错误",
     "quiKeyRejected": "qui 拒绝了代理密钥。请检查代理 URL。",
     "quiKeyMissing": "此 qui 服务器没有代理密钥。请编辑它并重新粘贴代理 URL。"
