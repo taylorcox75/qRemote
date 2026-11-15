@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios';
-import { apiClient } from './client';
+import { apiClient, type ApiClient } from './client';
 import { LoginResponse } from '@/types/api';
 import { clogInfo, clogWarn, clogError, clogDebug } from '@/services/connectivity-log';
 import { isLoginBodyOk, isLoginSuccess } from '@/utils/login-response';
@@ -11,13 +11,19 @@ export const authApi = {
    * Login to qBittorrent WebUI
    * Compatible with qBittorrent 4.x and 5.x
    */
-  async login(username: string, password: string, signal?: AbortSignal): Promise<LoginResponse> {
+  async login(
+    username: string,
+    password: string,
+    signal?: AbortSignal,
+    /** Defaults to the app-wide client; Test Connection passes an isolated one. */
+    client: ApiClient = apiClient,
+  ): Promise<LoginResponse> {
     try {
       // Clear any existing cookies before login
-      apiClient.clearCookies();
+      client.clearCookies();
       clogInfo('AUTH', `Login attempt for user "${username}"`);
 
-      const response = await apiClient.postUrlEncoded(
+      const response = await client.postUrlEncoded(
         `/api/${API_VERSION}/auth/login`,
         {
           username,
@@ -27,7 +33,7 @@ export const authApi = {
       );
 
       // Check if cookies were set after login
-      const cookies = apiClient.getCookies();
+      const cookies = client.getCookies();
 
       const responsePreview =
         typeof response === 'string' ? response.substring(0, 50) : 'non-string response';
@@ -69,6 +75,13 @@ export const authApi = {
       }
 
       const message = error instanceof Error ? error.message : String(error);
+      // A request this app cancelled itself (session teardown, a newer
+      // connect, a disconnect) or one issued under a superseded session says
+      // nothing about the credentials — never report it as a login "Fails".
+      // Messages from services/api/client.ts.
+      if (message === 'Request canceled.' || message === 'Request superseded by a newer session.') {
+        throw error;
+      }
       const axiosErr = error instanceof AxiosError ? error : undefined;
       const statusHint = axiosErr?.response?.status ? ` (HTTP ${axiosErr.response.status})` : '';
       console.warn('[Auth] Login error:', message, statusHint);

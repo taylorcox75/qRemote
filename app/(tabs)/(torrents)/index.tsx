@@ -65,7 +65,7 @@ import { ServerSwitcherModal } from '@/components/ServerSwitcherModal';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { useTorrentActions } from '@/hooks/useTorrentActions';
 import { useGracefulError } from '@/hooks/useGracefulError';
-import { getErrorMessage } from '@/utils/error';
+import { getErrorMessage, isSupersededConnectError } from '@/utils/error';
 import { extractMagnetLink } from '@/utils/magnet';
 import { getAddTorrentDialogueVariant } from '@/utils/add-torrent-dialogue';
 import { isTorrentCompleted } from '@/utils/torrent-state';
@@ -952,6 +952,7 @@ export default function TorrentsScreen() {
           haptics.error();
         }
       } catch (err: unknown) {
+        if (isSupersededConnectError(err)) return; // a newer connect/disconnect took over
         setConnectErrors((prev) => ({ ...prev, [server.id]: getErrorMessage(err) }));
         haptics.error();
       } finally {

@@ -28,7 +28,7 @@ import { ServerConfig } from '@/types/api';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { getServerIconColor, serverAddress } from '@/utils/server';
 import { withAlpha } from '@/utils/color';
-import { getErrorMessage } from '@/utils/error';
+import { getErrorMessage, isSupersededConnectError } from '@/utils/error';
 import { localizeErrorMessage } from '@/utils/localize-error';
 import { haptics } from '@/utils/haptics';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -86,6 +86,7 @@ export function ServerSwitcherModal({
         haptics.error();
       }
     } catch (err: unknown) {
+      if (isSupersededConnectError(err)) return; // a newer connect/disconnect took over
       setSwitchErrors((prev) => ({
         ...prev,
         [server.id]: localizeErrorMessage(getErrorMessage(err), t),
