@@ -202,11 +202,10 @@ export default function TransferScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (isConnected) {
+      // Reloads when the connected server changes while this screen is focused.
+      if (isConnected && serverId) {
         loadSeedingLimits();
       }
-      // serverId: reload when the connected server changes while focused.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isConnected, serverId, loadSeedingLimits]),
   );
 

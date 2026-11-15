@@ -105,11 +105,13 @@ export function LiquidGlassProvider({ children }: { children: React.ReactNode })
       .then((on) => {
         if (!cancelled) setReduceTransparency(on);
       })
+      // If the setting can't be read, keep the default and rely on the live listener below.
       .catch(() => undefined);
     AccessibilityInfo.isDarkerSystemColorsEnabled()
       .then((on) => {
         if (!cancelled) setIncreaseContrast(on);
       })
+      // If the setting can't be read, keep the default and rely on the live listener below.
       .catch(() => undefined);
     const subs = [
       AccessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency),

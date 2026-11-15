@@ -65,6 +65,7 @@ import {
   PluginUrlAddPlan,
   PrefilledPlugin,
 } from '@/utils/search-download';
+import { clogDebug } from '@/services/connectivity-log';
 
 type AddTorrentOptions = Parameters<typeof torrentsApi.addTorrent>[1];
 type AddTorrentFileOptions = Parameters<typeof torrentsApi.addTorrentFile>[1];
@@ -230,13 +231,22 @@ export default function AddTorrentFullScreen() {
         // device-wide cache — that cache belonged to whichever server last wrote it.
         // The locally saved Default save path is only the last resort, when the
         // server answers neither request.
-        const serverPrefs = await applicationApi.getPreferences().catch(() => null);
+        const serverPrefs = await applicationApi.getPreferences().catch((error: unknown) => {
+          clogDebug(
+            'ADD',
+            `Preferences unavailable for save path prefill: ${getErrorMessage(error)}`,
+          );
+          return null;
+        });
         const defaultSavePath = resolveDefaultSavePath({
           serverSavePath: serverPrefs?.save_path,
           serverPrefsLoaded: !!serverPrefs,
           defaultSavePathResult: serverPrefs
             ? undefined
-            : await applicationApi.getDefaultSavePath().catch(() => null),
+            : await applicationApi.getDefaultSavePath().catch((error: unknown) => {
+                clogDebug('ADD', `Default save path unavailable: ${getErrorMessage(error)}`);
+                return null;
+              }),
           localDefaultSavePath,
         });
         if (cancelled) return;
