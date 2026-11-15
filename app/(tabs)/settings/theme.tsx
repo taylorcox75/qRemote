@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ColorPicker } from '@/components/ColorPicker';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
@@ -155,6 +157,7 @@ export default function ThemeSettingsScreen() {
             { backgroundColor: colors.background, borderBottomColor: colors.surfaceOutline },
           ]}
         >
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -177,7 +180,7 @@ export default function ThemeSettingsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.appearance').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() => setThemeModePickerVisible(true)}
@@ -208,7 +211,7 @@ export default function ThemeSettingsScreen() {
                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </View>
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </View>
 
           {/* Torrent state colors (badge & border by activity) */}
@@ -233,7 +236,7 @@ export default function ThemeSettingsScreen() {
                 <Ionicons name="refresh" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <ColorSettingRow
                 label="Downloading"
                 color={colors.stateDownloading}
@@ -310,7 +313,7 @@ export default function ThemeSettingsScreen() {
                 onPress={() => handleColorSelect('stateOther')}
                 colors={colors}
               />
-            </View>
+            </GlassSurface>
           </View>
 
           {/* Advanced Color Customization */}
@@ -335,7 +338,7 @@ export default function ThemeSettingsScreen() {
                 <Ionicons name="refresh" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <ColorSettingRow
                 label="Primary"
                 color={colors.primary}
@@ -398,7 +401,7 @@ export default function ThemeSettingsScreen() {
                 onPress={() => handleColorSelect('textSecondary')}
                 colors={colors}
               />
-            </View>
+            </GlassSurface>
           </View>
 
           {/* Category & tag sticker colors */}
@@ -429,7 +432,7 @@ export default function ThemeSettingsScreen() {
                 <Ionicons name="refresh" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() => router.push('/settings/category-tag-colors')}
@@ -448,7 +451,7 @@ export default function ThemeSettingsScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </View>
 
           <ColorPicker

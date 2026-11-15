@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FilterChip } from '@/components/FilterChip';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { buttonStyles } from '@/constants/buttons';
@@ -120,7 +121,8 @@ export function SearchFilterPanel({
   const canClear = isDraftDirty(draft) || searchIn === 'names';
 
   return (
-    <View
+    <GlassSurface
+      popover
       style={[
         styles.panel,
         {
@@ -282,7 +284,7 @@ export function SearchFilterPanel({
           <Text style={styles.applyButtonText}>{t('screens.search.applyFilters')}</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </GlassSurface>
   );
 }
 

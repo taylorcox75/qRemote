@@ -12,6 +12,8 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useServer } from '@/context/ServerContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { applicationApi } from '@/services/api/application';
@@ -84,6 +86,7 @@ export default function AboutScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -104,7 +107,7 @@ export default function AboutScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.appInfo').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <InfoRow
                 icon="information-circle-outline"
                 label={t('screens.settings.appVersion')}
@@ -129,7 +132,7 @@ export default function AboutScreen() {
                 value={Platform.OS.charAt(0).toUpperCase() + Platform.OS.slice(1)}
                 colors={colors}
               />
-            </View>
+            </GlassSurface>
           </View>
 
           {/* qBittorrent Server Info */}
@@ -138,7 +141,7 @@ export default function AboutScreen() {
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('screens.settings.qbittorrentServer').toUpperCase()}
               </Text>
-              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                 {loadingAppInfo ? (
                   <View style={styles.loadingState}>
                     <ActivityIndicator size="small" color={colors.primary} />
@@ -188,7 +191,7 @@ export default function AboutScreen() {
                     )}
                   </>
                 )}
-              </View>
+              </GlassSurface>
             </View>
           )}
 

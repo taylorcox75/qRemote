@@ -30,6 +30,8 @@ import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
 import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssFeeds } from '@/hooks/useRssFeeds';
@@ -410,6 +412,7 @@ export default function RssFeedArticlesScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => (selectMode ? toggleSelectMode() : router.back())}
             style={styles.headerButton}
@@ -519,7 +522,7 @@ export default function RssFeedArticlesScreen() {
         )}
 
         {selectMode && (
-          <View
+          <GlassSurface
             style={[
               styles.bulkActionsBar,
               { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
@@ -562,7 +565,7 @@ export default function RssFeedArticlesScreen() {
                 {t('screens.rss.markSelectedRead')}
               </Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         )}
       </SafeAreaView>
 

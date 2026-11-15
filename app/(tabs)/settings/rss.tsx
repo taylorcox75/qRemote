@@ -14,6 +14,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -34,10 +36,21 @@ export default function RssSettingsScreen() {
   const { isConnected } = useServer();
   const { showToast } = useToast();
 
-  const [prefs, setPrefs] = useState({
-    rss_processing_enabled: false,
-    rss_auto_downloading_enabled: false,
-    rss_download_repack_proper_episodes: false,
+  // Seeded from the tab layout's cached `app/preferences` (same query key) so
+  // the switches show the server's current values from the first render,
+  // including when this screen remounts while a toggle is being saved (with
+  // the native tab bar, showing or hiding the RSS tab remounts tab screens).
+  // Refreshed from the server on focus.
+  const [prefs, setPrefs] = useState(() => {
+    const cached = queryClient.getQueryData<Partial<Record<BoolPrefKey, unknown>>>([
+      'application',
+      'preferences',
+    ]);
+    return {
+      rss_processing_enabled: cached?.rss_processing_enabled === true,
+      rss_auto_downloading_enabled: cached?.rss_auto_downloading_enabled === true,
+      rss_download_repack_proper_episodes: cached?.rss_download_repack_proper_episodes === true,
+    };
   });
   const [saving, setSaving] = useState<BoolPrefKey | null>(null);
 
@@ -157,6 +170,7 @@ export default function RssSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -177,7 +191,7 @@ export default function RssSettingsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.qbittorrentServer').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <ToggleRow
                 icon="logo-rss"
                 label={t('screens.settings.rssProcessingEnabled')}
@@ -255,7 +269,7 @@ export default function RssSettingsScreen() {
                   )
                 }
               />
-            </View>
+            </GlassSurface>
           </View>
 
           {/* RSS Smart Episode Filter */}
@@ -263,7 +277,7 @@ export default function RssSettingsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.rssSmartFilter').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <ToggleRow
                 icon="film-outline"
                 label={t('screens.settings.rssDownloadRepackProper')}
@@ -316,7 +330,7 @@ export default function RssSettingsScreen() {
                   textAlignVertical="top"
                 />
               </View>
-            </View>
+            </GlassSurface>
           </View>
 
           <View style={{ height: 40 }} />

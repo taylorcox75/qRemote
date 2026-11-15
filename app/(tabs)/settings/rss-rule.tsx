@@ -32,6 +32,8 @@ import { SettingRow } from '@/components/SettingRow';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSelectPicker';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssRules } from '@/hooks/useRssRules';
@@ -236,6 +238,7 @@ export default function RssRuleEditorScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -289,7 +292,7 @@ export default function RssRuleEditorScreen() {
               />
             </View>
 
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <SettingRow icon="power-outline" label={t('screens.rss.enabled')}>
                 <Switch
                   value={enabled}
@@ -485,7 +488,7 @@ export default function RssRuleEditorScreen() {
                   <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
               </SettingRow>
-            </View>
+            </GlassSurface>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

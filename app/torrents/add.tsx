@@ -23,6 +23,8 @@ import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSele
 import { InputModal } from '@/components/InputModal';
 import { PathAutocompleteInput } from '@/components/PathAutocompleteInput';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
@@ -653,6 +655,7 @@ export default function AddTorrentFullScreen() {
         edges={['top']}
       >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -684,7 +687,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.source').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {cartItems.length > 0 && (
                     <>
                       <View style={styles.block}>
@@ -836,7 +839,7 @@ export default function AddTorrentFullScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </GlassSurface>
               </View>
             )}
 
@@ -864,7 +867,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.destination').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {showField('autoTMM') && (
                     <>
                       <View style={styles.settingRow}>
@@ -1008,7 +1011,7 @@ export default function AddTorrentFullScreen() {
                       )}
                     </>
                   )}
-                </View>
+                </GlassSurface>
               </View>
             )}
 
@@ -1017,7 +1020,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.categoryAndTags').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {showField('category') && (
                     <>
                       <View style={styles.settingRow}>
@@ -1076,7 +1079,7 @@ export default function AddTorrentFullScreen() {
                       </View>
                     </View>
                   )}
-                </View>
+                </GlassSurface>
               </View>
             )}
 
@@ -1090,7 +1093,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.options').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {showField('rename') && (
                     <>
                       <View style={styles.block}>
@@ -1232,7 +1235,7 @@ export default function AddTorrentFullScreen() {
                       />
                     </View>
                   )}
-                </View>
+                </GlassSurface>
               </View>
             )}
 
@@ -1245,7 +1248,7 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.limits').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   {showField('dlLimit') && (
                     <>
                       <View style={styles.block}>
@@ -1391,7 +1394,7 @@ export default function AddTorrentFullScreen() {
                       />
                     </View>
                   )}
-                </View>
+                </GlassSurface>
               </View>
             )}
           </ScrollView>
@@ -1429,7 +1432,7 @@ export default function AddTorrentFullScreen() {
           activeOpacity={1}
           onPress={() => setTmmTooltipVisible(false)}
         >
-          <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.tooltipHeader}>
               <Ionicons name="sync-outline" size={24} color={colors.primary} />
               <Text style={[styles.tooltipTitle, { color: colors.text }]}>
@@ -1445,7 +1448,7 @@ export default function AddTorrentFullScreen() {
             >
               <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         </TouchableOpacity>
       </Modal>
 

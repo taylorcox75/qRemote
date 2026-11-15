@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { ServerConfig } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
 import { getServerIconColor, serverAddress } from '@/utils/server';
 import { withAlpha } from '@/utils/color';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
@@ -102,7 +103,7 @@ export function QuickConnectPanel({
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
             {t('screens.torrents.yourServers', { defaultValue: 'YOUR SERVERS' })}
           </Text>
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
             {savedServers.map((server, index) => {
               const color = getServerIconColor(server);
               const addr = serverAddress(server);
@@ -175,7 +176,7 @@ export function QuickConnectPanel({
                 </View>
               );
             })}
-          </View>
+          </GlassSurface>
         </View>
 
         <TouchableOpacity

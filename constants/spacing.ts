@@ -21,5 +21,6 @@ export const borderRadius = {
   small: 8, // Chips, badges, small buttons
   medium: 12, // Cards, inputs, buttons (most common)
   large: 16, // Modals, sheets
+  xlarge: 24, // Liquid Glass header bottom corners
   full: 9999, // Pills, circular elements
 };

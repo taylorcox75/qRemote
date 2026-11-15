@@ -1,4 +1,4 @@
-import { contrastRatio, withAlpha } from '@/utils/color';
+import { contrastRatio, selectedRowBackground, withAlpha } from '@/utils/color';
 
 describe('withAlpha', () => {
   it('converts a 6-digit hex color to rgba', () => {
@@ -66,5 +66,19 @@ describe('contrastRatio', () => {
   it('returns 1 (no contrast) when a color cannot be parsed', () => {
     expect(contrastRatio('not-a-color', '#FFFFFF')).toBe(1);
     expect(contrastRatio('#000000', 'hsl(0, 100%, 50%)')).toBe(1);
+  });
+});
+
+describe('selectedRowBackground', () => {
+  it('uses surfaceOutline when it contrasts with the text', () => {
+    expect(
+      selectedRowBackground({ text: '#FFFFFF', surfaceOutline: '#2C2C2E', primary: '#0A84FF' }),
+    ).toBe('#2C2C2E');
+  });
+
+  it('falls back to translucent primary when surfaceOutline matches the text', () => {
+    expect(
+      selectedRowBackground({ text: '#FFFFFF', surfaceOutline: '#FFFFFF', primary: '#0A84FF' }),
+    ).toBe(withAlpha('#0A84FF', 0.25));
   });
 });

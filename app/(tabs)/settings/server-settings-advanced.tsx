@@ -12,6 +12,8 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -129,6 +131,7 @@ export default function ServerSettingsAdvancedScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -153,7 +156,7 @@ export default function ServerSettingsAdvancedScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.settings.emailNotifications').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   <View style={styles.settingRow}>
                     <View style={styles.settingLeft}>
                       <Ionicons name="mail-outline" size={22} color={colors.primary} />
@@ -409,7 +412,7 @@ export default function ServerSettingsAdvancedScreen() {
                       )}
                     </>
                   )}
-                </View>
+                </GlassSurface>
               </View>
 
               {/* Automation */}
@@ -417,7 +420,7 @@ export default function ServerSettingsAdvancedScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.settings.automationSection').toUpperCase()}
                 </Text>
-                <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
                   <View style={styles.settingRow}>
                     <View style={styles.settingLeft}>
                       <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
@@ -521,7 +524,7 @@ export default function ServerSettingsAdvancedScreen() {
                       </View>
                     </>
                   )}
-                </View>
+                </GlassSurface>
               </View>
 
               <View style={{ height: 40 }} />

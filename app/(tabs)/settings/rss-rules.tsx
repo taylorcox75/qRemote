@@ -29,6 +29,8 @@ import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { InputModal } from '@/components/InputModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssRules } from '@/hooks/useRssRules';
@@ -174,6 +176,7 @@ export default function RssRulesScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -222,7 +225,7 @@ export default function RssRulesScreen() {
               subtitle={t('screens.rss.noRulesSubtitle')}
             />
           ) : (
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               {ruleList.map(({ name, rule }, index) => (
                 <RuleRow
                   key={name}
@@ -236,7 +239,7 @@ export default function RssRulesScreen() {
                   colors={colors}
                 />
               ))}
-            </View>
+            </GlassSurface>
           )}
         </ScrollView>
       </SafeAreaView>

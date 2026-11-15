@@ -1,4 +1,6 @@
 import { Tabs } from 'expo-router';
+import { NativeTabs } from 'expo-router/native-tabs';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,12 +9,18 @@ import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/context/ThemeContext';
 import { useServer } from '@/context/ServerContext';
 import { applicationApi } from '@/services/api/application';
+import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { resolveRssTabVisible } from '@/utils/rss-tab';
+
+/** Height of the tab bar above the home-indicator inset (UITabBar's 49pt). */
+const GLASS_TAB_BAR_HEIGHT = 49;
 
 export default function TabsLayout() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { isConnected } = useServer();
+  const { isConnected, isConnecting, isReconnecting, connectedAt } = useServer();
+  const [nativeRssTab, setNativeRssTab] = useState(false);
   const preferencesQuery = useQuery({
     queryKey: ['application', 'preferences'],
     queryFn: () => applicationApi.getPreferences(),
@@ -20,6 +28,95 @@ export default function TabsLayout() {
     staleTime: 30_000,
   });
   const showRssTab = isConnected && preferencesQuery.data?.rss_processing_enabled === true;
+  // Glass tab bar only: the same gating, held steady through transient states
+  // (see utils/rss-tab.ts) — toggling a native tab remounts every tab. A
+  // preferences result fetched before this connection began belongs to the
+  // previous connection (maybe another server), so it counts as unknown.
+  const rssKnownForThisConnection =
+    preferencesQuery.data !== undefined &&
+    connectedAt !== null &&
+    preferencesQuery.dataUpdatedAt >= connectedAt.getTime();
+  const nextNativeRssTab = resolveRssTabVisible(nativeRssTab, {
+    isConnected,
+    isTransitioning: isConnecting || isReconnecting,
+    rssEnabled: rssKnownForThisConnection
+      ? preferencesQuery.data?.rss_processing_enabled === true
+      : undefined,
+  });
+  if (nextNativeRssTab !== nativeRssTab) {
+    // Render-time state adjustment (React's "storing information from previous
+    // renders" pattern), so the held value never lags a render behind.
+    setNativeRssTab(nextNativeRssTab);
+  }
+  // Liquid Glass: the system glass tab bar (expo-router NativeTabs). Latched at
+  // launch — see LiquidGlassContext — because swapping navigators remounts every
+  // tab. Where glass is unavailable or turned off, the JS tab bar below is used
+  // exactly as before.
+  const { tabBarGlass, loaded: glassPrefLoaded } = useLiquidGlass();
+
+  // Where glass is available, wait the few ms it takes to read the setting so
+  // launch never mounts the JS tab bar and then swaps navigators. (Always
+  // loaded where glass is unavailable — no wait there.)
+  if (!glassPrefLoaded) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  }
+
+  if (tabBarGlass) {
+    // Every tab scene paints the theme background from its first frame, so a
+    // tab switch never flashes the native container's default (white). The
+    // bottom padding reserves the band the JS tab bar occupied, so nothing
+    // (last list row, select-mode bar, keyboard-avoiding content, toasts) ever
+    // sits under the floating glass bar. The status-bar inset (the JS layout
+    // wrapper's paddingTop) goes inside the screen view so a glass header can
+    // run up under the status bar: here for the tabs without a Stack, and per
+    // stack screen for the others (useGlassStackTopInset — a native stack
+    // clips its screens, so padding the scene would cut the glass off).
+    const stackSceneStyle = {
+      backgroundColor: colors.background,
+      paddingBottom: insets.bottom + GLASS_TAB_BAR_HEIGHT,
+    };
+    const flatSceneStyle = { ...stackSceneStyle, paddingTop: insets.top };
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <NativeTabs tintColor={colors.primary} minimizeBehavior="never">
+          <NativeTabs.Trigger name="(torrents)" contentStyle={stackSceneStyle} disableScrollToTop>
+            <NativeTabs.Trigger.Icon sf={{ default: 'list.bullet', selected: 'list.bullet' }} />
+            <NativeTabs.Trigger.Label>{t('screens.torrents.tabTitle')}</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+          <NativeTabs.Trigger name="transfer" contentStyle={flatSceneStyle} disableScrollToTop>
+            <NativeTabs.Trigger.Icon sf="speedometer" />
+            <NativeTabs.Trigger.Label>{t('screens.transfer.title')}</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+          <NativeTabs.Trigger name="search" contentStyle={flatSceneStyle} disableScrollToTop>
+            <NativeTabs.Trigger.Icon sf="magnifyingglass" />
+            <NativeTabs.Trigger.Label>{t('screens.search.tabTitle')}</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+          {/* Same gating as the JS tab bar (connected AND rss_processing_enabled),
+              held through transient states (nativeRssTab above). Toggling
+              `hidden` changes expo-router's tabConfigurationKey, which is the
+              native tab view's key, so every tab's screens remount (navigation
+              state survives). Accepted because it only happens on a real change
+              — connect, server switch, manual disconnect, RSS toggled — which
+              already ends the session's search jobs and clears selection; the
+              installed NativeTabs / react-native-screens have no way to hide a
+              tab without re-keying. */}
+          <NativeTabs.Trigger
+            name="rss"
+            hidden={!nativeRssTab}
+            contentStyle={stackSceneStyle}
+            disableScrollToTop
+          >
+            <NativeTabs.Trigger.Icon sf="dot.radiowaves.up.forward" />
+            <NativeTabs.Trigger.Label>{t('screens.rss.feedsTitle')}</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+          <NativeTabs.Trigger name="settings" contentStyle={stackSceneStyle} disableScrollToTop>
+            <NativeTabs.Trigger.Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
+            <NativeTabs.Trigger.Label>{t('screens.settings.title')}</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+        </NativeTabs>
+      </View>
+    );
+  }
 
   // Use paddingTop from insets instead of wrapping Tabs in SafeAreaView.
   // SafeAreaView around the tab navigator can break after dismissing a root
@@ -107,12 +204,6 @@ export default function TabsLayout() {
                 color={color as string}
               />
             ),
-          }}
-        />
-        <Tabs.Screen
-          name="logs"
-          options={{
-            href: null,
           }}
         />
       </Tabs>

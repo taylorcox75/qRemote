@@ -25,6 +25,8 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         title: 'New Features',
         items: [
+          'New Liquid Glass design on iOS 26 and later, with a toggle in Settings → Appearance',
+          'Refreshed Torrents screen with slimmer cards and a cleaner header',
           'Added a Solid pinned header option to Settings → Appearance',
           'Use another download path is now remembered per server',
         ],

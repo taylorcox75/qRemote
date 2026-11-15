@@ -12,6 +12,9 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { storageService } from '@/services/storage';
@@ -39,6 +42,11 @@ export default function AppearanceSettingsScreen() {
   const [searchDefaultSort, setSearchDefaultSort] = useState<SearchSortKey>('seeders');
   const [searchSortPickerVisible, setSearchSortPickerVisible] = useState(false);
   const [solidPinnedHeader, setSolidPinnedHeader] = useState(false);
+  const {
+    available: liquidGlassAvailable,
+    preference: liquidGlassPreference,
+    setPreference: setLiquidGlassPreference,
+  } = useLiquidGlass();
 
   const languageOptions: OptionPickerItem[] = [
     { label: 'English', value: 'en', icon: 'language-outline' },
@@ -137,6 +145,14 @@ export default function AppearanceSettingsScreen() {
     }
   };
 
+  const saveLiquidGlass = async (value: boolean) => {
+    try {
+      await setLiquidGlassPreference(value);
+    } catch {
+      // Ignore save errors
+    }
+  };
+
   const saveSearchDefaultSort = async (sort: SearchSortKey) => {
     try {
       await storageService.updatePreferences({ searchDefaultSort: sort });
@@ -151,6 +167,7 @@ export default function AppearanceSettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -171,7 +188,7 @@ export default function AppearanceSettingsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.language').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="language-outline" size={22} color={colors.primary} />
@@ -194,7 +211,7 @@ export default function AppearanceSettingsScreen() {
                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
-            </View>
+            </GlassSurface>
           </View>
 
           {/* Theme & Colors */}
@@ -202,7 +219,7 @@ export default function AppearanceSettingsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.appearance').toUpperCase()}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() => router.push('/settings/theme')}
@@ -301,6 +318,30 @@ export default function AppearanceSettingsScreen() {
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
+                  <Ionicons name="sparkles-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingTextWrap}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.liquidGlass')}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {liquidGlassAvailable
+                        ? t('screens.settings.liquidGlassDescription')
+                        : t('screens.settings.liquidGlassUnavailable')}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  testID="liquid-glass-switch"
+                  value={liquidGlassAvailable && liquidGlassPreference}
+                  disabled={!liquidGlassAvailable}
+                  onValueChange={(value) => void saveLiquidGlass(value)}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                  ios_backgroundColor={colors.surfaceOutline}
+                />
+              </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
                   <Ionicons name="time-outline" size={22} color={colors.primary} />
                   <View style={styles.settingTextWrap}>
                     <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -375,7 +416,7 @@ export default function AppearanceSettingsScreen() {
                   placeholderTextColor={colors.textSecondary}
                 />
               </View>
-            </View>
+            </GlassSurface>
           </View>
         </ScrollView>
       </View>

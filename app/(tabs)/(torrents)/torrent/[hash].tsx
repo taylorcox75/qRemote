@@ -31,6 +31,8 @@ import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { isReconnectableError } from '@/hooks/useReactiveReconnect';
@@ -1525,6 +1527,7 @@ export default function TorrentDetail() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
         <View style={[styles.topBar, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
@@ -1565,7 +1568,7 @@ export default function TorrentDetail() {
           }
         >
           {/* ── Hero ────────────────────────────────────────────── */}
-          <View style={[styles.heroCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.heroCard, { backgroundColor: colors.surface }]}>
             <View style={styles.heroHeaderRow}>
               <Text style={[styles.heroName, { color: colors.text }]} numberOfLines={3}>
                 {torrent.name}
@@ -1787,7 +1790,7 @@ export default function TorrentDetail() {
                 })}
               </Text>
             )}
-          </View>
+          </GlassSurface>
 
           {/* ── Actions ─────────────────────────────────────────── */}
           <View style={styles.actionsRow}>
@@ -1817,7 +1820,7 @@ export default function TorrentDetail() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.general')}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               properties &&
                 editablePathRow(
@@ -1832,13 +1835,13 @@ export default function TorrentDetail() {
               ),
               tagsBadgeRow(t('torrentDetail.tags'), torrent.tags || '', handleAddTags),
             ])}
-          </View>
+          </GlassSurface>
 
           {/* ── TRANSFER ────────────────────────────────────────── */}
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.transfer')}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               staticRow(
                 t('torrentDetail.downloaded'),
@@ -1875,13 +1878,13 @@ export default function TorrentDetail() {
                 handleSetSeedingTimeLimit,
               ),
             ])}
-          </View>
+          </GlassSurface>
 
           {/* ── NETWORK ─────────────────────────────────────────── */}
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.network')}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               torrent.popularity != null &&
                 staticRow(t('torrentDetail.popularity'), torrent.popularity.toFixed(2)),
@@ -1903,13 +1906,13 @@ export default function TorrentDetail() {
               staticRow(t('torrentDetail.encryption'), encryptionLabel),
               statusRow(t('torrentDetail.private'), privateLabel, privateColor),
             ])}
-          </View>
+          </GlassSurface>
 
           {/* ── CONTENT ─────────────────────────────────────────── */}
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.content')}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               navRow(
                 t('torrentDetail.files'),
@@ -1924,13 +1927,13 @@ export default function TorrentDetail() {
                 () => router.push(`/torrent/manage-trackers?hash=${hash}`),
               ),
             ])}
-          </View>
+          </GlassSurface>
 
           {/* ── ADVANCED ────────────────────────────────────────── */}
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.advanced')}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               tappableRow(t('torrentDetail.priority'), priorityDisplay, () =>
                 setPriorityPickerVisible(true),
@@ -1962,19 +1965,19 @@ export default function TorrentDetail() {
               ),
               renameRow(t('torrentDetail.rename'), torrent.name, handleRenameTorrent),
             ])}
-          </View>
+          </GlassSurface>
 
           {/* ── DATES ───────────────────────────────────────────── */}
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.dates')}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
             {renderRows([
               staticRow(t('torrentDetail.added'), formatDate(torrent.added_on)),
               staticRow(t('torrentDetail.completed'), formatDate(torrent.completion_on)),
               staticRow(t('torrentDetail.lastActivity'), formatDate(torrent.last_activity)),
             ])}
-          </View>
+          </GlassSurface>
         </ScrollView>
 
         {/* ── Modals ──────────────────────────────────────────── */}
@@ -2106,7 +2109,7 @@ export default function TorrentDetail() {
             activeOpacity={1}
             onPress={() => setRenameTooltipVisible(false)}
           >
-            <View style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.tooltipContainer, { backgroundColor: colors.surface }]}>
               <View style={styles.tooltipHeader}>
                 <Ionicons name="create-outline" size={24} color={colors.primary} />
                 <Text style={[styles.tooltipTitle, { color: colors.text }]}>
@@ -2122,7 +2125,7 @@ export default function TorrentDetail() {
               >
                 <Text style={styles.tooltipButtonText}>{t('server.gotIt')}</Text>
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </TouchableOpacity>
         </Modal>
 
@@ -2134,7 +2137,7 @@ export default function TorrentDetail() {
           onRequestClose={() => setPeersModalVisible(false)}
         >
           <View style={styles.peersModalOverlay}>
-            <View style={[styles.peersModalContent, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.peersModalContent, { backgroundColor: colors.surface }]}>
               <View style={[styles.peersModalHeader, { borderBottomColor: colors.surfaceOutline }]}>
                 <Text style={[styles.peersModalTitle, { color: colors.text }]}>
                   {t('torrentDetail.connectedPeers')}
@@ -2191,7 +2194,7 @@ export default function TorrentDetail() {
                   ))}
                 </ScrollView>
               )}
-            </View>
+            </GlassSurface>
           </View>
         </Modal>
 
@@ -2227,7 +2230,7 @@ export default function TorrentDetail() {
                 );
 
                 return (
-                  <View
+                  <GlassSurface
                     onLayout={(e: LayoutChangeEvent) =>
                       setPathPopoverHeight(e.nativeEvent.layout.height)
                     }
@@ -2276,7 +2279,7 @@ export default function TorrentDetail() {
                       <Ionicons name="copy-outline" size={16} color="#FFFFFF" />
                       <Text style={styles.pathModalCopyButtonText}>{t('common.copy')}</Text>
                     </TouchableOpacity>
-                  </View>
+                  </GlassSurface>
                 );
               })()}
           </TouchableOpacity>

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { GlassSurface } from '@/components/GlassSurface';
+import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { storageService } from '@/services/storage';
@@ -160,6 +162,7 @@ export default function DetailedCardFieldsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+          <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.headerButton}
@@ -182,7 +185,7 @@ export default function DetailedCardFieldsScreen() {
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
               {t('screens.settings.detailedCardGridColumnsDescription')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() => setGridPickerVisible(true)}
@@ -201,7 +204,7 @@ export default function DetailedCardFieldsScreen() {
                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
                 </View>
               </TouchableOpacity>
-            </View>
+            </GlassSurface>
           </View>
 
           <View style={styles.section}>
@@ -211,7 +214,7 @@ export default function DetailedCardFieldsScreen() {
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
               {t('screens.settings.expandedCardFieldsHint')}
             </Text>
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
               {FIELD_ORDER.map((field, idx) => {
                 const meta = fieldMeta[field];
                 if (!meta) return null;
@@ -241,7 +244,7 @@ export default function DetailedCardFieldsScreen() {
                   </React.Fragment>
                 );
               })}
-            </View>
+            </GlassSurface>
           </View>
         </ScrollView>
       </View>
