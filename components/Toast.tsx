@@ -126,7 +126,7 @@ export function Toast({
         shadows.large,
       ]}
     >
-      {glass && <GlassSurface glass pointerEvents="none" style={styles.glass} />}
+      {glass && <GlassSurface glass popover pointerEvents="none" style={styles.glass} />}
       <TouchableOpacity style={styles.content} onPress={hide} activeOpacity={0.9}>
         <Ionicons name={getIcon()} size={24} color={getColor()} />
         <Text style={[styles.message, { color: colors.text }]}>{message}</Text>
