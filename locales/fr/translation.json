@@ -415,6 +415,8 @@
       "detailedCardView": "Vue détaillée",
       "detailedCardFields": "Champs de la carte détaillée",
       "detailedCardFieldsDescription": "Choisissez les champs affichés dans la vue détaillée",
+      "solidPinnedHeader": "En-tête opaque fixe",
+      "solidPinnedHeaderDescription": "Garder l'en-tête des torrents opaque et fixé en haut pendant le défilement",
       "detailedCardGridColumns": "Colonnes de la grille",
       "detailedCardGridColumnsDescription": "Nombre de colonnes de stats par ligne",
       "detailedCardGridColumns3": "3 colonnes",

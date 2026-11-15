@@ -436,6 +436,8 @@
       "detailedCardView": "Ayrıntılı Kart Görünümü",
       "detailedCardFields": "Ayrıntılı Kart Alanları",
       "detailedCardFieldsDescription": "Ayrıntılı kart görünümünde hangi alanların görüneceğini seçin",
+      "solidPinnedHeader": "Sabit, opak başlık",
+      "solidPinnedHeaderDescription": "Kaydırırken Torrentler başlığını opak ve üstte sabit tut",
       "detailedCardGridColumns": "Izgara Sütunları",
       "detailedCardGridColumnsDescription": "Her satırda kaç istatistik sütunu gösterileceği",
       "detailedCardGridColumns3": "3 sütun",

@@ -436,6 +436,8 @@
       "detailedCardView": "Szczegółowy widok kart",
       "detailedCardFields": "Pola szczegółowej karty",
       "detailedCardFieldsDescription": "Wybierz, które pola mają się pojawiać w szczegółowym widoku kart",
+      "solidPinnedHeader": "Stały, nieprzezroczysty nagłówek",
+      "solidPinnedHeaderDescription": "Nagłówek ekranu torrentów pozostaje nieprzezroczysty i przypięty u góry podczas przewijania",
       "detailedCardGridColumns": "Kolumny siatki",
       "detailedCardGridColumnsDescription": "Ile kolumn statystyk pokazywać w wierszu",
       "detailedCardGridColumns3": "3 kolumny",

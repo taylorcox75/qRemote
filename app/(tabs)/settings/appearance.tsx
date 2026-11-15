@@ -38,6 +38,7 @@ export default function AppearanceSettingsScreen() {
   const [searchHistoryPickerVisible, setSearchHistoryPickerVisible] = useState(false);
   const [searchDefaultSort, setSearchDefaultSort] = useState<SearchSortKey>('seeders');
   const [searchSortPickerVisible, setSearchSortPickerVisible] = useState(false);
+  const [solidPinnedHeader, setSolidPinnedHeader] = useState(false);
 
   const languageOptions: OptionPickerItem[] = [
     { label: 'English', value: 'en', icon: 'language-outline' },
@@ -68,6 +69,7 @@ export default function AppearanceSettingsScreen() {
       const interval = Number(prefs.autoRefreshInterval) || 1000;
       setAutoRefreshInterval(interval.toString());
       setCardViewMode(prefs.cardViewMode || 'compact');
+      setSolidPinnedHeader(prefs.solidPinnedHeader === true);
       setSearchHistoryLimit(
         typeof prefs.torrentSearchHistoryLimit === 'number'
           ? prefs.torrentSearchHistoryLimit
@@ -121,6 +123,15 @@ export default function AppearanceSettingsScreen() {
       }
       await storageService.savePreferences(prefs);
       setSearchHistoryLimit(limit);
+    } catch {
+      // Ignore save errors
+    }
+  };
+
+  const saveSolidPinnedHeader = async (value: boolean) => {
+    try {
+      await storageService.updatePreferences({ solidPinnedHeader: value });
+      setSolidPinnedHeader(value);
     } catch {
       // Ignore save errors
     }
@@ -267,6 +278,26 @@ export default function AppearanceSettingsScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="browsers-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingTextWrap}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.settings.solidPinnedHeader')}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {t('screens.settings.solidPinnedHeaderDescription')}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={solidPinnedHeader}
+                  onValueChange={saveSolidPinnedHeader}
+                  trackColor={{ false: colors.surfaceOutline, true: colors.success }}
+                  ios_backgroundColor={colors.surfaceOutline}
+                />
+              </View>
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>

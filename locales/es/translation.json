@@ -415,6 +415,8 @@
       "detailedCardView": "Vista detallada",
       "detailedCardFields": "Campos de tarjeta detallada",
       "detailedCardFieldsDescription": "Elige qué campos aparecen en la vista de tarjeta detallada",
+      "solidPinnedHeader": "Encabezado fijo y opaco",
+      "solidPinnedHeaderDescription": "Mantén el encabezado de Torrents opaco y fijo arriba al desplazarte",
       "detailedCardGridColumns": "Columnas de la cuadrícula",
       "detailedCardGridColumnsDescription": "Cuántas columnas de estadísticas mostrar por fila",
       "detailedCardGridColumns3": "3 columnas",

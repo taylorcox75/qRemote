@@ -436,6 +436,8 @@
       "detailedCardView": "Подробные карточки",
       "detailedCardFields": "Поля подробной карточки",
       "detailedCardFieldsDescription": "Выберите, какие поля отображаются в подробной карточке",
+      "solidPinnedHeader": "Непрозрачная закреплённая шапка",
+      "solidPinnedHeaderDescription": "Шапка экрана торрентов остаётся непрозрачной и закреплённой вверху при прокрутке",
       "detailedCardGridColumns": "Столбцы сетки",
       "detailedCardGridColumnsDescription": "Сколько столбцов статистики показывать в ряду",
       "detailedCardGridColumns3": "3 столбца",
