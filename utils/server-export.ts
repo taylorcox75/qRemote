@@ -67,6 +67,10 @@ export function toExportedServer(server: ServerConfig): ServerConfig {
     customHeaders: [],
     icon: optionalString(server.icon),
     iconColor: optionalString(server.iconColor),
+    // allowInsecureCert is deliberately left out: whether to trust a
+    // self-signed certificate is a per-device decision, and a file must not
+    // be able to switch it on (or, via an update, off). importServers keeps
+    // the existing record's value.
   };
 }
 

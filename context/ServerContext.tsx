@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ServerConfig, ServerEndpointKind } from '@/types/api';
-import { ServerManager } from '@/services/server-manager';
+import { ServerManager, isConnectSuperseded } from '@/services/server-manager';
 import { apiClient } from '@/services/api/client';
 import { storageService } from '@/services/storage';
 import { getActiveEndpoint } from '@/utils/server';
@@ -94,8 +94,18 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     setActiveEndpoint(getActiveEndpoint(server, apiClient.getServer()));
   }, []);
 
+  // Bumped by every user-driven change of connection (connect, disconnect,
+  // forgetting the server). Each background flow — startup auto-connect,
+  // reconnect(), checkAndReconnect()'s run — captures it when it starts and
+  // stops touching state (or retrying) once it moves: a newer action owns
+  // the connection now, and a stale run setting isConnected would flip the
+  // UI back to a server the user just left or disconnected from.
+  const connectionEpochRef = useRef(0);
+
   useEffect(() => {
     async function autoConnect() {
+      const epoch = connectionEpochRef.current;
+      const superseded = () => epoch !== connectionEpochRef.current;
       try {
         const prefs = await storageService.getPreferences();
         // Apply connection settings before the first connect attempt fires.
@@ -121,6 +131,12 @@ export function ServerProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        if (superseded()) {
+          // The user connected or disconnected while startup was still
+          // reading storage — their choice wins.
+          return;
+        }
+
         if (server && manualDisconnect) {
           // The user explicitly disconnected last session. Keep the server
           // remembered so Settings can offer one-tap Connect, but stay
@@ -133,6 +149,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
           setCurrentServer(server);
           try {
             const connected = await ServerManager.connectToServer(server);
+            if (superseded()) return;
             setIsConnected(connected);
             refreshActiveEndpoint(server, connected);
             // Keep currentServer even on failure so Settings can offer Connect.
@@ -140,6 +157,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
               setIsConnected(false);
             }
           } catch {
+            if (superseded()) return;
             setIsConnected(false);
             setActiveEndpoint(null);
             // Keep currentServer so the user can retry from Settings.
@@ -153,6 +171,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch {
+        if (superseded()) return;
         setIsConnected(false);
         setActiveEndpoint(null);
         if (apiClient.getServer()) {
@@ -166,9 +185,11 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     autoConnect();
   }, [refreshActiveEndpoint]);
 
-  // Set while a connect is in flight so reconnect()/checkAndReconnect() can
-  // no-op instead of racing it.
-  const connectInFlightRef = useRef(false);
+  // The epoch of the connect currently in flight (null when none), so
+  // reconnect()/checkAndReconnect() can no-op instead of racing it. An epoch
+  // rather than a boolean so a superseded connect settling late can't clear
+  // the flag out from under the newer one.
+  const connectInFlightEpochRef = useRef<number | null>(null);
 
   // Multiple independent consumers (TorrentContext, useSearchJob) each call
   // checkAndReconnect on their own AppState foreground listener, all firing
@@ -185,11 +206,14 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const checkAndReconnectPromiseRef = useRef<{ id: string; promise: Promise<boolean> } | null>(
     null,
   );
+  /** Identifies the latest checkAndReconnect run, which owns isReconnecting. */
+  const reconnectRunRef = useRef(0);
 
   const connectMutation = useMutation({
     mutationFn: (server: ServerConfig) => ServerManager.connectToServer(server),
     onMutate: () => {
-      connectInFlightRef.current = true;
+      const epoch = ++connectionEpochRef.current;
+      connectInFlightEpochRef.current = epoch;
       // Drop the current connection state (and with it, every consumer's
       // poll — e.g. TorrentContext's rid-sync) *before* the new server's
       // login runs. Otherwise the old server's poll keeps firing through the
@@ -203,8 +227,10 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       // connect started is now stale — let it finish harmlessly rather than
       // having it clobber the connect we're about to run.
       checkAndReconnectPromiseRef.current = null;
+      return { epoch };
     },
-    onSuccess: (success: boolean, server: ServerConfig) => {
+    onSuccess: (success: boolean, server: ServerConfig, context) => {
+      if (context?.epoch !== connectionEpochRef.current) return;
       if (success) {
         setCurrentServer(server);
         setIsConnected(true);
@@ -214,12 +240,15 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         setActiveEndpoint(null);
       }
     },
-    onError: () => {
+    onError: (_error, _server, context) => {
+      if (context?.epoch !== connectionEpochRef.current) return;
       setIsConnected(false);
       setActiveEndpoint(null);
     },
-    onSettled: () => {
-      connectInFlightRef.current = false;
+    onSettled: (_data, _error, _server, context) => {
+      if (connectInFlightEpochRef.current === context?.epoch) {
+        connectInFlightEpochRef.current = null;
+      }
     },
   });
 
@@ -229,6 +258,13 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   };
 
   const disconnectMutation = useMutation({
+    onMutate: () => {
+      // Supersede any connect or reconnect still in flight so it can't flip
+      // isConnected back on after the user disconnected.
+      connectionEpochRef.current++;
+      connectInFlightEpochRef.current = null;
+      checkAndReconnectPromiseRef.current = null;
+    },
     mutationFn: async () => {
       try {
         await ServerManager.disconnect();
@@ -249,6 +285,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   };
 
   const forgetCurrentServer = useCallback(() => {
+    connectionEpochRef.current++;
     setCurrentServer(null);
     setIsConnected(false);
     setActiveEndpoint(null);
@@ -263,16 +300,19 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     // A connect is already establishing a session — let it finish rather
     // than racing it with a second login against the same or a different
     // server (see connectMutation.onMutate for the failure this avoids).
-    if (connectInFlightRef.current) {
+    if (connectInFlightEpochRef.current !== null) {
       return false;
     }
+    const epoch = connectionEpochRef.current;
     try {
       setReconnecting(true);
       const success = await ServerManager.reconnect(currentServer ?? undefined);
+      if (epoch !== connectionEpochRef.current) return false;
       setIsConnected(success);
       refreshActiveEndpoint(currentServer, success);
       return success;
     } catch {
+      if (epoch !== connectionEpochRef.current) return false;
       setIsConnected(false);
       setActiveEndpoint(null);
       return false;
@@ -282,7 +322,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   }, [currentServer, refreshActiveEndpoint]);
 
   const checkAndReconnect = useCallback((): Promise<boolean> => {
-    if (connectInFlightRef.current) {
+    if (connectInFlightEpochRef.current !== null) {
       return Promise.resolve(false);
     }
 
@@ -290,6 +330,14 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     if (cached && cached.id === currentServer?.id) {
       return cached.promise;
     }
+
+    // Once a connect, disconnect or forget has happened since this run
+    // started, it must neither retry nor set state: a stale retry would
+    // re-login to the server the user just left (aborting the new connect's
+    // login) or reconnect after a manual disconnect.
+    const epoch = connectionEpochRef.current;
+    const superseded = () => epoch !== connectionEpochRef.current;
+    const runToken = ++reconnectRunRef.current;
 
     const run = async (): Promise<boolean> => {
       setIsReconnecting(true);
@@ -301,16 +349,20 @@ export function ServerProvider({ children }: { children: ReactNode }) {
 
       try {
         const success = await ServerManager.reconnect(currentServer);
+        if (superseded()) return false;
         setIsConnected(success);
         refreshActiveEndpoint(currentServer, success);
         return success;
-      } catch {
+      } catch (error: unknown) {
+        if (superseded() || isConnectSuperseded(error)) return false;
         try {
           const reconnected = await ServerManager.connectToServer(currentServer);
+          if (superseded()) return false;
           setIsConnected(reconnected);
           refreshActiveEndpoint(currentServer, reconnected);
           return reconnected;
-        } catch {
+        } catch (retryError: unknown) {
+          if (superseded() || isConnectSuperseded(retryError)) return false;
           setIsConnected(false);
           setActiveEndpoint(null);
           return false;
@@ -320,8 +372,11 @@ export function ServerProvider({ children }: { children: ReactNode }) {
 
     const id = currentServer?.id;
     const promise = run().finally(() => {
-      setIsReconnecting(false);
-      if (checkAndReconnectPromiseRef.current?.id === id) {
+      // A later run owns the flag if one started after this one.
+      if (reconnectRunRef.current === runToken) {
+        setIsReconnecting(false);
+      }
+      if (checkAndReconnectPromiseRef.current?.promise === promise) {
         checkAndReconnectPromiseRef.current = null;
       }
     });

@@ -16,6 +16,8 @@ jest.mock('@/services/server-manager', () => ({
     disconnect: jest.fn(),
     reconnect: jest.fn(),
   },
+  isConnectSuperseded: (error: unknown) =>
+    error instanceof Error && error.message === 'Connect attempt superseded by a newer one.',
 }));
 
 jest.mock('@/services/api/client', () => ({
@@ -477,5 +479,143 @@ describe('ServerContext', () => {
     });
     expect(result).toBe(false);
     expect(getLatest().isReconnecting).toBe(false);
+  });
+
+  describe('superseded reconnects (switch / disconnect mid-reconnect)', () => {
+    function deferredReconnect() {
+      const handle: {
+        resolve?: (v: boolean) => void;
+        reject?: (e: unknown) => void;
+      } = {};
+      (ServerManager.reconnect as jest.Mock).mockImplementation(
+        () =>
+          new Promise<boolean>((resolve, reject) => {
+            handle.resolve = resolve;
+            handle.reject = reject;
+          }),
+      );
+      return handle;
+    }
+
+    async function connectedToServer1() {
+      (ServerManager.getCurrentServer as jest.Mock).mockResolvedValue(server1);
+      (ServerManager.connectToServer as jest.Mock).mockResolvedValue(true);
+      (apiClient.getServer as jest.Mock).mockReturnValue(server1);
+      const getLatest = await renderProvider();
+      await waitFor(() => expect(getLatest().isLoading).toBe(false));
+      expect(getLatest().isConnected).toBe(true);
+      return getLatest;
+    }
+
+    const callsFor = (server: ServerConfig) =>
+      (ServerManager.connectToServer as jest.Mock).mock.calls.filter(([s]) => s.id === server.id)
+        .length;
+
+    it('a reconnect for the old server neither retries nor overrides a switch to a new server', async () => {
+      const getLatest = await connectedToServer1();
+      const reconnect = deferredReconnect();
+      const s1CallsBefore = callsFor(server1);
+
+      // Not wrapped in act() — see the act() trap in AGENTS.md §6.
+      const pending = getLatest().checkAndReconnect();
+      await waitFor(() => expect(getLatest().isReconnecting).toBe(true));
+
+      (apiClient.getServer as jest.Mock).mockReturnValue(server2);
+      await act(async () => {
+        await getLatest().connectToServer(server2);
+      });
+      expect(getLatest().currentServer).toEqual(server2);
+      expect(getLatest().isConnected).toBe(true);
+
+      // The switch aborted server1's request; it fails as "canceled".
+      let result: boolean | undefined;
+      await act(async () => {
+        reconnect.reject!(new Error('Request canceled.'));
+        result = await pending;
+      });
+
+      expect(result).toBe(false);
+      expect(callsFor(server1)).toBe(s1CallsBefore); // no retry against server1
+      expect(getLatest().currentServer).toEqual(server2);
+      expect(getLatest().isConnected).toBe(true);
+      expect(getLatest().isReconnecting).toBe(false);
+    });
+
+    it('a stale reconnect that succeeds late does not report the old server connected', async () => {
+      const getLatest = await connectedToServer1();
+      const reconnect = deferredReconnect();
+
+      const pending = getLatest().checkAndReconnect();
+      await waitFor(() => expect(getLatest().isReconnecting).toBe(true));
+
+      (ServerManager.connectToServer as jest.Mock).mockResolvedValue(false);
+      await act(async () => {
+        await getLatest().connectToServer(server2);
+      });
+      expect(getLatest().isConnected).toBe(false);
+
+      await act(async () => {
+        reconnect.resolve!(true);
+        await pending;
+      });
+      expect(getLatest().isConnected).toBe(false);
+    });
+
+    it('a reconnect in flight during a manual disconnect stays disconnected', async () => {
+      const getLatest = await connectedToServer1();
+      const reconnect = deferredReconnect();
+      (ServerManager.disconnect as jest.Mock).mockResolvedValue(undefined);
+      const s1CallsBefore = callsFor(server1);
+
+      const pending = getLatest().checkAndReconnect();
+      await waitFor(() => expect(getLatest().isReconnecting).toBe(true));
+
+      await act(async () => {
+        await getLatest().disconnect();
+      });
+      expect(getLatest().isConnected).toBe(false);
+
+      let result: boolean | undefined;
+      await act(async () => {
+        reconnect.reject!(new Error('Request canceled.'));
+        result = await pending;
+      });
+      expect(result).toBe(false);
+      expect(callsFor(server1)).toBe(s1CallsBefore);
+      expect(getLatest().isConnected).toBe(false);
+    });
+
+    it('a late successful reconnect after a manual disconnect does not flip isConnected back on', async () => {
+      const getLatest = await connectedToServer1();
+      const reconnect = deferredReconnect();
+      (ServerManager.disconnect as jest.Mock).mockResolvedValue(undefined);
+
+      const pending = getLatest().checkAndReconnect();
+      await waitFor(() => expect(getLatest().isReconnecting).toBe(true));
+
+      await act(async () => {
+        await getLatest().disconnect();
+      });
+      await act(async () => {
+        reconnect.resolve!(true);
+        await pending;
+      });
+      expect(getLatest().isConnected).toBe(false);
+    });
+
+    it('does not retry when ServerManager reports the attempt was superseded', async () => {
+      const getLatest = await connectedToServer1();
+      const s1CallsBefore = callsFor(server1);
+      (ServerManager.reconnect as jest.Mock).mockRejectedValue(
+        new Error('Connect attempt superseded by a newer one.'),
+      );
+
+      let result: boolean | undefined;
+      await act(async () => {
+        result = await getLatest().checkAndReconnect();
+      });
+      expect(result).toBe(false);
+      expect(callsFor(server1)).toBe(s1CallsBefore);
+    });
   });
 });
