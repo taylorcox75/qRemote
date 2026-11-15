@@ -103,6 +103,8 @@
       "numberPlaceholder": "0",
       "dlLimit": "下载速度限制",
       "upLimit": "上传速度限制",
+      "dlLimitKib": "下载速度限制 (KiB/s)",
+      "upLimitKib": "上传速度限制 (KiB/s)",
       "ratioLimit": "分享率限制",
       "seedingTimeLimit": "做种时间限制",
       "cookie": "Cookie",

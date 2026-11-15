@@ -124,6 +124,8 @@
       "numberPlaceholder": "0",
       "dlLimit": "Download limit",
       "upLimit": "Upload limit",
+      "dlLimitKib": "Download limit (KiB/s)",
+      "upLimitKib": "Upload limit (KiB/s)",
       "ratioLimit": "Share ratio limit",
       "seedingTimeLimit": "Seeding time limit",
       "cookie": "Cookie",

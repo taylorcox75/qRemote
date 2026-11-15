@@ -124,6 +124,8 @@
       "numberPlaceholder": "0",
       "dlLimit": "Limit pobierania",
       "upLimit": "Limit wysyłania",
+      "dlLimitKib": "Limit pobierania (KiB/s)",
+      "upLimitKib": "Limit wysyłania (KiB/s)",
       "ratioLimit": "Limit współczynnika udostępniania",
       "seedingTimeLimit": "Limit czasu seedowania",
       "cookie": "Ciasteczko",
