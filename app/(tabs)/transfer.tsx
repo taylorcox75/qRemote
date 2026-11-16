@@ -28,6 +28,7 @@ import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { torrentsApi } from '@/services/api/torrents';
@@ -92,6 +93,8 @@ export default function TransferScreen() {
   const isRecoveringFromBackground = transferRecovering || torrentRecovering;
   const { graceError, isPendingError } = useGracefulError(error);
   const { colors, isDark } = useTheme();
+  // No header here: only the floating glass tab bar's inset applies.
+  const glassLayout = useGlassTabScreenLayout({ floatingHeader: false });
   const { showToast } = useToast();
   const router = useRouter();
 
@@ -806,14 +809,16 @@ export default function TransferScreen() {
 
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={glassLayout.contentStyle(styles.scrollContent)}
           refreshControl={
             <RefreshControl
+              progressViewOffset={glassLayout.topInset}
               refreshing={refreshing}
               onRefresh={handleRefresh}
               tintColor={colors.primary}
             />
           }
+          scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
         >
           {/* ========== HERO SECTION ========== */}
           <View style={styles.heroSection}>
@@ -841,7 +846,10 @@ export default function TransferScreen() {
                 </Text>
               </View>
             </View>
-            <GlassSurface style={[styles.heroGraphCard, { backgroundColor: colors.surface }]}>
+            <GlassSurface
+              glass={false}
+              style={[styles.heroGraphCard, { backgroundColor: colors.surface }]}
+            >
               <View style={styles.heroGraphContainer}>
                 <View style={styles.heroGraphOverlay}>
                   <SpeedGraph
@@ -873,7 +881,7 @@ export default function TransferScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.transfer.speedLimits')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.row}
                 onPress={() => openLimitModal('download')}
@@ -988,7 +996,10 @@ export default function TransferScreen() {
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('screens.transfer.seedingLimits')}
               </Text>
-              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface
+                glass={false}
+                style={[styles.card, { backgroundColor: colors.surface }]}
+              >
                 <View style={styles.row}>
                   <Text style={[styles.rowLabel, { color: colors.text }]}>
                     {t('screens.transfer.ratioLimitEnabled')}
@@ -1086,7 +1097,7 @@ export default function TransferScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.transfer.actions')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.row}
                 onPress={handleResumeAll}
@@ -1187,7 +1198,7 @@ export default function TransferScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.transfer.thisSession')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.row}>
                 <Text style={[styles.rowLabel, { color: colors.text }]}>
                   {t('screens.transfer.downloaded')}
@@ -1243,7 +1254,10 @@ export default function TransferScreen() {
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('screens.transfer.allTime')}
               </Text>
-              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface
+                glass={false}
+                style={[styles.card, { backgroundColor: colors.surface }]}
+              >
                 <View style={styles.row}>
                   <Text style={[styles.rowLabel, { color: colors.text }]}>
                     {t('screens.transfer.downloaded')}
@@ -1283,7 +1297,7 @@ export default function TransferScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.transfer.connection')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.row}>
                 <View style={styles.rowLeading}>
                   <View

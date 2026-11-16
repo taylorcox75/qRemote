@@ -60,6 +60,7 @@ import { ServerManager } from '@/services/server-manager';
 import { getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
 import { getPrefilledDownloader, planPluginUrlAdd, PrefilledPlugin } from '@/utils/search-download';
 import { formatSpeed, kbToBytes } from '@/utils/format';
+import { withAlpha } from '@/utils/color';
 import { haptics } from '@/utils/haptics';
 import { shadows } from '@/constants/shadows';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -161,7 +162,10 @@ export default function TorrentsScreen() {
   // Settings → Appearance "Solid pinned header": an opaque, in-flow header
   // that never collapses on scroll. Off = the floating overlay header.
   const [solidPinnedHeader, setSolidPinnedHeader] = useState(DEFAULT_PREFERENCES.solidPinnedHeader);
-  const { enabled: liquidGlass } = useLiquidGlass();
+  // tabBarInset: the floating glass tab bar's height (0 with the JS tab bar).
+  // This screen runs under the glass bar, so the list, the empty state and the
+  // select-mode bulk bar are inset by it here.
+  const { enabled: liquidGlass, tabBarInset } = useLiquidGlass();
   // Drives only the pull-to-refresh spinner. `isLoading` also flips on every
   // background poll/foreground re-sync, and wiring it to RefreshControl would
   // pop the iOS spinner on top of the search box on every load (#275).
@@ -1570,6 +1574,8 @@ export default function TorrentsScreen() {
                       },
                     ]}
                     onPress={() => {
+                      // Interactive glass control: a light tap, like the system's.
+                      if (glassPopovers) haptics.light();
                       setShowSortMenu(!showSortMenu);
                       setShowSearchHistory(false);
                     }}
@@ -1651,26 +1657,30 @@ export default function TorrentsScreen() {
 
               {/* RIGHT: Add torrent button — fixed 42×42 */}
               {!selectMode && (
-                <GlassWrap
-                  enabled={glassPopovers}
-                  interactive
-                  tintColor={colors.primary}
-                  style={styles.roundButton}
-                >
+                <GlassWrap enabled={glassPopovers} interactive style={styles.roundButton}>
                   <TouchableOpacity
                     style={
                       glassPopovers
-                        ? styles.glassButtonFill
+                        ? [
+                            styles.glassButtonFill,
+                            styles.glassAccentOutline,
+                            { borderColor: withAlpha(colors.primary, 0.6) },
+                          ]
                         : [styles.headerAddButton, { backgroundColor: colors.primary }]
                     }
                     onPress={() => {
+                      if (glassPopovers) haptics.light();
                       void handleOpenAddTorrent();
                     }}
                     hitSlop={HEADER_BUTTON_HIT_SLOP}
                     activeOpacity={0.7}
                     accessibilityLabel={t('screens.torrents.addTorrent')}
                   >
-                    <Ionicons name="add" size={20} color={colors.onAccent} />
+                    <Ionicons
+                      name="add"
+                      size={20}
+                      color={glassPopovers ? colors.primary : colors.onAccent}
+                    />
                   </TouchableOpacity>
                 </GlassWrap>
               )}
@@ -1962,7 +1972,13 @@ export default function TorrentsScreen() {
         />
 
         {filteredTorrents.length === 0 ? (
-          <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <View
+            style={[
+              styles.center,
+              { backgroundColor: colors.background },
+              tabBarInset > 0 && { paddingBottom: tabBarInset },
+            ]}
+          >
             <Ionicons
               name={
                 filter === 'all' && !hasSecondaryFilter
@@ -2133,7 +2149,6 @@ export default function TorrentsScreen() {
                     <View style={{ flex: 1 }}>
                       <TorrentCard
                         torrent={item}
-                        glass={liquidGlass}
                         onPress={() => {
                           if (selectMode) {
                             toggleSelection(item.hash);
@@ -2202,8 +2217,14 @@ export default function TorrentsScreen() {
               // normal in-flow sibling (see headerContainerPinned) and
               // already occupies that space in the layout itself.
               headerPinned ? { paddingTop: spacing.sm } : { paddingTop: headerHeight },
-              selectMode && selectedHashes.size > 0 && { paddingBottom: bulkActionsBarHeight },
+              (tabBarInset > 0 || (selectMode && selectedHashes.size > 0)) && {
+                paddingBottom:
+                  (selectMode && selectedHashes.size > 0
+                    ? bulkActionsBarHeight + (tabBarInset > 0 ? spacing.sm : 0)
+                    : 0) + tabBarInset,
+              },
             ]}
+            scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
             onScroll={handleScroll}
             onScrollBeginDrag={handleScrollBeginDrag}
             scrollEventThrottle={50}
@@ -2215,16 +2236,27 @@ export default function TorrentsScreen() {
         )}
 
         {selectMode && selectedHashes.size > 0 && (
-          <View
+          // Floating control (functional layer): interactive glass where enabled.
+          <GlassSurface
+            interactive
             onLayout={(e) => setBulkActionsBarHeight(e.nativeEvent.layout.height)}
             style={[
               styles.bulkActionsBar,
               { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
+              // Above the floating glass tab bar the bar floats too: an inset capsule
+              // with no edge line or shadow, so the list stays visible around it.
+              tabBarInset > 0 && [
+                styles.bulkActionsBarFloating,
+                { bottom: tabBarInset + spacing.sm },
+              ],
             ]}
           >
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: colors.success }]}
-              onPress={handleBulkResume}
+              onPress={() => {
+                if (glassPopovers) haptics.light();
+                void handleBulkResume();
+              }}
               disabled={bulkLoading}
             >
               <Ionicons name="play" size={20} color="#FFFFFF" />
@@ -2232,7 +2264,10 @@ export default function TorrentsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: colors.warning }]}
-              onPress={handleBulkPause}
+              onPress={() => {
+                if (glassPopovers) haptics.light();
+                void handleBulkPause();
+              }}
               disabled={bulkLoading}
             >
               <Ionicons name="pause" size={20} color="#FFFFFF" />
@@ -2240,13 +2275,16 @@ export default function TorrentsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: colors.error }]}
-              onPress={handleBulkDelete}
+              onPress={() => {
+                if (glassPopovers) haptics.light();
+                handleBulkDelete();
+              }}
               disabled={bulkLoading}
             >
               <Ionicons name="trash" size={20} color="#FFFFFF" />
               <Text style={styles.bulkActionText}>{t('common.delete')}</Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         )}
 
         <Modal
@@ -2840,6 +2878,18 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     ...shadows.medium,
   },
+  bulkActionsBarFloating: {
+    left: spacing.sm,
+    right: spacing.sm,
+    borderTopWidth: 0,
+    borderRadius: borderRadius.xlarge,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   bulkActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2964,6 +3014,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // Round like its GlassWrap, so an active-state fill stays a circle.
     borderRadius: HEADER_CONTROL_SIZE / 2,
+  },
+  // Accent-coloured hairline for the primary glass button, in place of a solid fill.
+  glassAccentOutline: {
+    borderWidth: StyleSheet.hairlineWidth * 2,
   },
   // Size/shape of the round header buttons (a GlassWrap uses it too).
   roundButton: {

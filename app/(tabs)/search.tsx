@@ -121,7 +121,10 @@ export default function SearchScreen() {
   const { features } = useApiFeatures();
   const { supportsFetchMetadataDownloader, supportsSearchDownloadTorrent } = features;
   const { isDark, colors } = useTheme();
-  const { enabled: glass } = useLiquidGlass();
+  // tabBarInset: the floating glass tab bar's height (0 with the JS tab bar).
+  // This screen runs under the glass bar, so the list, empty states and the
+  // cart button are inset by it.
+  const { enabled: glass, tabBarInset } = useLiquidGlass();
   const { showToast } = useToast();
   const cart = useSearchCart();
   const [cartModalVisible, setCartModalVisible] = useState(false);
@@ -1676,7 +1679,11 @@ export default function SearchScreen() {
 
         {/* Results list / empty state */}
         {listItems.length === 0 ? (
-          renderEmptyState()
+          tabBarInset > 0 ? (
+            <View style={{ flex: 1, paddingBottom: tabBarInset }}>{renderEmptyState()}</View>
+          ) : (
+            renderEmptyState()
+          )
         ) : (
           <FlatList
             data={listItems}
@@ -1696,9 +1703,10 @@ export default function SearchScreen() {
               />
             )}
             contentContainerStyle={{
-              paddingBottom: spacing.xxxl,
+              paddingBottom: spacing.xxxl + tabBarInset,
               paddingTop: headerHeight + spacing.xs,
             }}
+            scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
             onScroll={handleScroll}
             scrollEventThrottle={50}
             keyboardShouldPersistTaps="handled"
@@ -1717,7 +1725,11 @@ export default function SearchScreen() {
             user can prune the batch first. */}
         {cart.count > 0 && (
           <TouchableOpacity
-            style={[styles.cartFab, { backgroundColor: colors.primary }]}
+            style={[
+              styles.cartFab,
+              { backgroundColor: colors.primary },
+              tabBarInset > 0 && { bottom: styles.cartFab.bottom + tabBarInset },
+            ]}
             onPress={() => {
               haptics.medium();
               setCartModalVisible(true);

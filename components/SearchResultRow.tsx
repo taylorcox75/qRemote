@@ -23,8 +23,6 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
-import { useLiquidGlass } from '@/context/LiquidGlassContext';
-import { GlassSurface } from '@/components/GlassSurface';
 import { SearchResult } from '@/types/api';
 import { formatSize, formatDate } from '@/utils/format';
 import { resultTrackerLabel } from '@/utils/searchResult';
@@ -73,7 +71,6 @@ export function SearchResultRow({
   footer,
 }: SearchResultRowProps) {
   const { colors } = useTheme();
-  const { enabled: glass } = useLiquidGlass();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
@@ -90,16 +87,8 @@ export function SearchResultRow({
       }}
       onLongPress={onLongPress ? () => onLongPress(result) : undefined}
       activeOpacity={0.7}
-      style={[styles.card, { backgroundColor: glass ? 'transparent' : colors.surface }]}
+      style={[styles.card, { backgroundColor: colors.surface }]}
     >
-      {glass && (
-        <GlassSurface
-          glass
-          pointerEvents="none"
-          tintColor={colors.surface}
-          style={styles.glassFill}
-        />
-      )}
       <View style={styles.topRow}>
         <View style={styles.body}>
           {/* Line 1: filename — truncate when collapsed, full when expanded */}
@@ -264,15 +253,6 @@ function ActionPill({ icon, label, colors, onPress }: ActionPillProps) {
 // ────────────────────────────────────────────────────── styles ────────────
 
 const styles = StyleSheet.create({
-  // Liquid Glass material behind the row content (matches the card radius).
-  glassFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: borderRadius.medium,
-  },
   card: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,

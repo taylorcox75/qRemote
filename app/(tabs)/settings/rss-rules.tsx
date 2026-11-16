@@ -31,6 +31,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssRules } from '@/hooks/useRssRules';
@@ -45,6 +46,7 @@ export default function RssRulesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
   const { showToast } = useToast();
   const { isConnected } = useServer();
   const { ruleList, isLoading, refresh, setRule, renameRule, removeRule } = useRssRules();
@@ -175,7 +177,14 @@ export default function RssRulesScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+        <View
+          style={[
+            styles.header,
+            { borderBottomColor: colors.surfaceOutline },
+            glassLayout.headerStyle,
+          ]}
+          onLayout={glassLayout.onHeaderLayout}
+        >
           <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
@@ -192,14 +201,16 @@ export default function RssRulesScreen() {
         </View>
 
         <ScrollView
-          contentContainerStyle={{ paddingBottom: spacing.xxxl }}
+          contentContainerStyle={glassLayout.contentStyle({ paddingBottom: spacing.xxxl })}
           refreshControl={
             <RefreshControl
+              progressViewOffset={glassLayout.topInset}
               refreshing={refreshing}
               onRefresh={handleRefresh}
               tintColor={colors.primary}
             />
           }
+          scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
         >
           <View style={styles.actionRow}>
             <TouchableOpacity
@@ -225,7 +236,7 @@ export default function RssRulesScreen() {
               subtitle={t('screens.rss.noRulesSubtitle')}
             />
           ) : (
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               {ruleList.map(({ name, rule }, index) => (
                 <RuleRow
                   key={name}

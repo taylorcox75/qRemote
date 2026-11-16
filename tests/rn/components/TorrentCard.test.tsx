@@ -258,32 +258,16 @@ describe('TorrentCard container (left accent border + compact density)', () => {
   });
 });
 
-describe('TorrentCard glass prop', () => {
-  // The name Text's grandparent is the card container in both modes.
+describe('TorrentCard surface', () => {
+  // The name Text's grandparent is the card container.
   const card = () => screen.getByText('Sample Torrent').parent?.parent;
 
-  it('is a solid surface card by default', async () => {
+  it('is a solid surface card (content layer, never glass)', async () => {
     await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} />);
-    expect(StyleSheet.flatten(card()?.props.style).backgroundColor).toBe(mockColors.surface);
-  });
-
-  it('clears the card background and drops its shadow when glass is on', async () => {
-    await render(<TorrentCard torrent={baseTorrent} onPress={jest.fn()} glass />);
     expect(StyleSheet.flatten(card()?.props.style)).toMatchObject({
-      backgroundColor: 'transparent',
-      shadowOpacity: 0,
+      backgroundColor: mockColors.surface,
       borderLeftColor: downloadingColor,
     });
-  });
-
-  it('re-renders when only the glass prop changes (memo comparator includes it)', async () => {
-    const onPress = jest.fn();
-    const { rerender } = await render(<TorrentCard torrent={baseTorrent} onPress={onPress} />);
-    expect(StyleSheet.flatten(card()?.props.style).backgroundColor).toBe(mockColors.surface);
-    await rerender(<TorrentCard torrent={baseTorrent} onPress={onPress} glass />);
-    expect(StyleSheet.flatten(card()?.props.style).backgroundColor).toBe('transparent');
-    await rerender(<TorrentCard torrent={baseTorrent} onPress={onPress} glass={false} />);
-    expect(StyleSheet.flatten(card()?.props.style).backgroundColor).toBe(mockColors.surface);
   });
 });
 

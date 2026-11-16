@@ -23,7 +23,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
-import { withAlpha } from '@/utils/color';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useToast } from '@/context/ToastContext';
 import { useApiFeatures } from '@/context/ApiVersionContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
@@ -56,6 +56,7 @@ export default function TorrentFilesScreen() {
   const { isConnected } = useServer();
   const { features } = useApiFeatures();
   const { colors, isDark } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
   const { enabled: glass } = useLiquidGlass();
   const { showToast } = useToast();
 
@@ -473,32 +474,31 @@ export default function TorrentFilesScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View
-          style={[
-            styles.topBar,
-            {
-              backgroundColor: glass ? 'transparent' : colors.surface,
-              borderBottomColor: colors.surfaceOutline,
-            },
-          ]}
-        >
-          <GlassHeaderBackdrop borderOverlap={1} />
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            accessibilityLabel={t('common.back')}
+        {/* Top chrome (title bar + bulk actions): floats over the list while
+            the glass tab bar is in use; an unstyled wrapper otherwise. */}
+        <View style={glassLayout.headerStyle} onLayout={glassLayout.onHeaderLayout}>
+          <View
+            style={[
+              styles.topBar,
+              {
+                backgroundColor: glass ? 'transparent' : colors.surface,
+                borderBottomColor: colors.surfaceOutline,
+              },
+            ]}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.text }]}>{t('screens.files.title')}</Text>
-          <View style={styles.placeholder} />
-        </View>
-
-        {files.length === 0 ? (
-          <EmptyState icon="folder-open-outline" title={t('screens.files.noFilesFound')} />
-        ) : (
-          <>
-            {/* Bulk Actions Header */}
+            <GlassHeaderBackdrop borderOverlap={1} />
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              accessibilityLabel={t('common.back')}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.text }]}>{t('screens.files.title')}</Text>
+            <View style={styles.placeholder} />
+          </View>
+          {/* Bulk Actions Header */}
+          {files.length > 0 && (
             <GlassSurface
               style={[
                 styles.bulkActionsHeader,
@@ -550,14 +550,24 @@ export default function TorrentFilesScreen() {
                 </Text>
               </View>
             </GlassSurface>
+          )}
+        </View>
 
-            {/* One glass card around the list; rows stay plain (a GlassView per
-                folder row is too heavy for big torrents). */}
-            <GlassSurface style={glass ? styles.glassListCard : styles.listWrap}>
+        {files.length === 0 ? (
+          <EmptyState
+            icon="folder-open-outline"
+            title={t('screens.files.noFilesFound')}
+            style={glassLayout.bodyStyle}
+          />
+        ) : (
+          <>
+            {/* Content layer: the list stays solid; rows keep their own cards. */}
+            <GlassSurface glass={false} style={styles.listWrap}>
               <FlatList
                 data={displayItems}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={glassLayout.contentStyle(styles.listContent)}
+                scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
                 removeClippedSubviews={false}
                 initialNumToRender={10}
                 maxToRenderPerBatch={5}
@@ -573,9 +583,8 @@ export default function TorrentFilesScreen() {
                           styles.folderRow,
                           {
                             marginLeft: indent,
-                            backgroundColor: glass ? withAlpha(colors.text, 0.06) : colors.surface,
+                            backgroundColor: colors.surface,
                           },
-                          glass && styles.folderRowGlass,
                         ]}
                       >
                         <TouchableOpacity
@@ -997,17 +1006,6 @@ const styles = StyleSheet.create({
   },
   listWrap: {
     flex: 1,
-  },
-  // Glass on: the whole list sits in one glass card.
-  glassListCard: {
-    flex: 1,
-    margin: spacing.md,
-    marginBottom: 0,
-    borderRadius: borderRadius.medium,
-    overflow: 'hidden',
-  },
-  folderRowGlass: {
-    shadowOpacity: 0,
   },
   folderRow: {
     flexDirection: 'row',

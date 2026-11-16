@@ -697,7 +697,10 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.source').toUpperCase()}
                 </Text>
-                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
                   {cartItems.length > 0 && (
                     <>
                       <View style={styles.block}>
@@ -877,7 +880,10 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.destination').toUpperCase()}
                 </Text>
-                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
                   {showField('autoTMM') && (
                     <>
                       <View style={styles.settingRow}>
@@ -1030,7 +1036,10 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.categoryAndTags').toUpperCase()}
                 </Text>
-                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
                   {showField('category') && (
                     <>
                       <View style={styles.settingRow}>
@@ -1103,7 +1112,10 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.options').toUpperCase()}
                 </Text>
-                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
                   {showField('rename') && (
                     <>
                       <View style={styles.block}>
@@ -1258,7 +1270,10 @@ export default function AddTorrentFullScreen() {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                   {t('screens.addTorrent.limits').toUpperCase()}
                 </Text>
-                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
                   {showField('dlLimit') && (
                     <>
                       <View style={styles.block}>

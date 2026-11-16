@@ -49,7 +49,7 @@ export function ServerAppearanceSection({
       <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
         {t('server.appearance')}
       </Text>
-      <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+      <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
         <TouchableOpacity
           style={styles.row}
           onPress={() => setIconPickerVisible(true)}
