@@ -60,6 +60,7 @@ import { ServerManager } from '@/services/server-manager';
 import { getPauseOnAddPreferenceKey } from '@/utils/apiVersion';
 import { getPrefilledDownloader, planPluginUrlAdd, PrefilledPlugin } from '@/utils/search-download';
 import { formatSpeed, kbToBytes } from '@/utils/format';
+import { withAlpha } from '@/utils/color';
 import { haptics } from '@/utils/haptics';
 import { shadows } from '@/constants/shadows';
 import { spacing, borderRadius } from '@/constants/spacing';
@@ -1656,16 +1657,15 @@ export default function TorrentsScreen() {
 
               {/* RIGHT: Add torrent button — fixed 42×42 */}
               {!selectMode && (
-                <GlassWrap
-                  enabled={glassPopovers}
-                  interactive
-                  tintColor={colors.primary}
-                  style={styles.roundButton}
-                >
+                <GlassWrap enabled={glassPopovers} interactive style={styles.roundButton}>
                   <TouchableOpacity
                     style={
                       glassPopovers
-                        ? styles.glassButtonFill
+                        ? [
+                            styles.glassButtonFill,
+                            styles.glassAccentOutline,
+                            { borderColor: withAlpha(colors.primary, 0.6) },
+                          ]
                         : [styles.headerAddButton, { backgroundColor: colors.primary }]
                     }
                     onPress={() => {
@@ -1676,7 +1676,11 @@ export default function TorrentsScreen() {
                     activeOpacity={0.7}
                     accessibilityLabel={t('screens.torrents.addTorrent')}
                   >
-                    <Ionicons name="add" size={20} color={colors.onAccent} />
+                    <Ionicons
+                      name="add"
+                      size={20}
+                      color={glassPopovers ? colors.primary : colors.onAccent}
+                    />
                   </TouchableOpacity>
                 </GlassWrap>
               )}
@@ -3008,6 +3012,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // Round like its GlassWrap, so an active-state fill stays a circle.
     borderRadius: HEADER_CONTROL_SIZE / 2,
+  },
+  // Accent-coloured hairline for the primary glass button, in place of a solid fill.
+  glassAccentOutline: {
+    borderWidth: StyleSheet.hairlineWidth * 2,
   },
   // Size/shape of the round header buttons (a GlassWrap uses it too).
   roundButton: {
