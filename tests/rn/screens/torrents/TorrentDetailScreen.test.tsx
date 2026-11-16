@@ -223,6 +223,11 @@ const switchFor = (label: string) =>
 
 const httpError = (status: number) => Object.assign(new Error(`HTTP ${status}`), { status });
 
+// This suite renders the full detail screen many times; under coverage
+// instrumentation on a CI runner single tests (the fake-timer polling ones)
+// can pass 5s, so give it room instead of failing on runner speed.
+jest.setTimeout(20000);
+
 describe('TorrentDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
