@@ -2883,6 +2883,8 @@ const styles = StyleSheet.create({
     right: spacing.sm,
     borderTopWidth: 0,
     borderRadius: borderRadius.xlarge,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
     shadowOpacity: 0,
