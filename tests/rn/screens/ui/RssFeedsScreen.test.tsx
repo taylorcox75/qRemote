@@ -52,7 +52,7 @@ const tree = {
 
 let api: Record<string, jest.Mock> & { tree: object; folders: string[]; feeds: object[] };
 
-function setup(overrides: Partial<typeof api> = {}) {
+function setup(overrides: Record<string, unknown> = {}) {
   api = {
     tree,
     folders: ['Linux', 'Linux\\Sub'],
@@ -70,7 +70,7 @@ function setup(overrides: Partial<typeof api> = {}) {
     refreshItem: jest.fn().mockResolvedValue(undefined),
     markAsRead: jest.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as typeof api;
+  } as unknown as typeof api;
   mockFeeds.mockImplementation(() => api);
   return render(<RssFeedsScreen />);
 }
