@@ -753,7 +753,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.serverInfo')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.inputRow}>
                 <Ionicons
                   name="server-outline"
@@ -849,7 +849,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.fallbackUrl')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <SettingRow
                 icon="swap-horizontal-outline"
                 label={t('server.useFallback')}
@@ -926,7 +926,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.authentication')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity onPress={() => setShowAuthMethodPicker(true)} activeOpacity={0.7}>
                 <SettingRow icon="key-outline" label={t('server.authMethod')}>
                   <View style={styles.authMethodValue}>
@@ -1039,7 +1039,10 @@ App Version: ${APP_VERSION}`;
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('server.security')}
               </Text>
-              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface
+                glass={false}
+                style={[styles.card, { backgroundColor: colors.surface }]}
+              >
                 {!isQui && (
                   <SettingRow icon="shield-checkmark-outline" label={t('server.useHttps')}>
                     <Switch
@@ -1088,7 +1091,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.proxyAuthentication')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               {authMode === 'apiKey' ? (
                 <View style={styles.inputRow}>
                   <Ionicons
@@ -1185,7 +1188,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('server.connectionTest')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               {testing ? (
                 <View style={styles.testingContainer}>
                   <View style={styles.testingContent}>
@@ -1246,7 +1249,10 @@ App Version: ${APP_VERSION}`;
                   <Ionicons name="copy-outline" size={18} color={colors.primary} />
                 </TouchableOpacity>
               </View>
-              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface
+                glass={false}
+                style={[styles.card, { backgroundColor: colors.surface }]}
+              >
                 {/* Full URL */}
                 <DebugRow label={t('server.debugFullUrl')} value={debugInfo.baseUrl} selectable />
 
@@ -1374,7 +1380,7 @@ App Version: ${APP_VERSION}`;
             <Text style={[styles.sectionHeader, { color: colors.error }]}>
               {t('server.dangerZone')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity style={styles.dangerRow} onPress={handleDelete}>
                 <View style={styles.dangerLeft}>
                   <Ionicons

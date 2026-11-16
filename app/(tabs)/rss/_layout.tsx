@@ -6,7 +6,7 @@ import { useGlassStackContentStyle } from '@/context/LiquidGlassContext';
  * keeps the bottom tab bar visible (same pattern as (torrents)/).
  */
 export default function RssLayout() {
-  const contentStyle = useGlassStackContentStyle(true);
+  const contentStyle = useGlassStackContentStyle();
 
   return (
     <Stack

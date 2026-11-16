@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
 import { storageService } from '@/services/storage';
@@ -38,6 +39,7 @@ export default function DetailedCardFieldsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
 
   const [fields, setFields] = useState<Record<ExpandedCardField, boolean>>(
     DEFAULT_PREFERENCES.expandedCardFields,
@@ -161,7 +163,14 @@ export default function DetailedCardFieldsScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+        <View
+          style={[
+            styles.header,
+            { borderBottomColor: colors.surfaceOutline },
+            glassLayout.headerStyle,
+          ]}
+          onLayout={glassLayout.onHeaderLayout}
+        >
           <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
@@ -177,7 +186,11 @@ export default function DetailedCardFieldsScreen() {
           <View style={styles.headerButton} />
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={glassLayout.contentStyle(styles.scrollContent)}
+          scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
+        >
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.detailedCardGridColumns').toUpperCase()}
@@ -185,7 +198,7 @@ export default function DetailedCardFieldsScreen() {
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
               {t('screens.settings.detailedCardGridColumnsDescription')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() => setGridPickerVisible(true)}
@@ -214,7 +227,7 @@ export default function DetailedCardFieldsScreen() {
             <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
               {t('screens.settings.expandedCardFieldsHint')}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               {FIELD_ORDER.map((field, idx) => {
                 const meta = fieldMeta[field];
                 if (!meta) return null;

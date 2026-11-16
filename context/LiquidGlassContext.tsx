@@ -31,10 +31,9 @@
  *
  * - `tabBarInset` — how far the floating glass tab bar reaches up from the bottom
  *   of a tab screen (home-indicator inset + the bar), or 0 with the JS tab bar.
- *   Tab scenes are not padded for the glass bar, so content can scroll under
- *   it. A screen that lets its content run under the bar pads its own scroll
- *   content and bottom-anchored overlays by this; every other tab screen keeps
- *   the reserved band (useGlassStackContentStyle, `reserveTabBar`).
+ *   Tab scenes are not padded for the glass bar, so content scrolls under it;
+ *   each screen pads its scroll content and bottom-anchored overlays by this
+ *   (hooks/useGlassTabScreenLayout.ts).
  *
  * Key exports: LiquidGlassProvider, useLiquidGlass, useGlassStackTopInset,
  *   useGlassStackContentStyle, GLASS_TAB_BAR_HEIGHT
@@ -185,19 +184,17 @@ export function useGlassStackTopInset(): number | undefined {
 }
 
 /**
- * `contentStyle` for the Stack inside a tab: the theme background, the
- * status-bar inset (useGlassStackTopInset) and, with `reserveTabBar`, a bottom
- * band under the floating glass tab bar so a screen that doesn't handle the
- * bar itself never has content hidden behind it. With the JS tab bar it is
- * just the background, as before.
+ * `contentStyle` for the Stack inside a tab: the theme background and the
+ * status-bar inset (useGlassStackTopInset). No bottom band: every tab screen
+ * runs under the floating glass tab bar and insets its own content
+ * (hooks/useGlassTabScreenLayout.ts). With the JS tab bar it is just the
+ * background, as before.
  */
-export function useGlassStackContentStyle(reserveTabBar: boolean): ViewStyle {
+export function useGlassStackContentStyle(): ViewStyle {
   const { colors } = useTheme();
-  const { tabBarInset } = useLiquidGlass();
   const topInset = useGlassStackTopInset();
   return {
     backgroundColor: colors.background,
     ...(topInset !== undefined && { paddingTop: topInset }),
-    ...(reserveTabBar && tabBarInset > 0 && { paddingBottom: tabBarInset }),
   };
 }

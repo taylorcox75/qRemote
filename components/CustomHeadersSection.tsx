@@ -62,7 +62,7 @@ export function CustomHeadersSection({
       <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
         {t('server.customHeaders')}
       </Text>
-      <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+      <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
         <SettingRow
           icon="code-slash-outline"
           label={t('server.useCustomHeaders')}

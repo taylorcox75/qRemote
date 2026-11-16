@@ -32,6 +32,7 @@ import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssFeeds } from '@/hooks/useRssFeeds';
@@ -52,6 +53,8 @@ export default function RssFeedArticlesScreen() {
   const itemPath = params.path ? decodeURIComponent(params.path) : '';
 
   const { isDark, colors } = useTheme();
+
+  const glassLayout = useGlassTabScreenLayout();
   const { showToast } = useToast();
   const { isConnected } = useServer();
   const { feeds, isLoading, refresh, refreshItem, markAsRead } = useRssFeeds();
@@ -411,90 +414,94 @@ export default function RssFeedArticlesScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <GlassHeaderBackdrop borderOverlap={1} />
-          <TouchableOpacity
-            onPress={() => (selectMode ? toggleSelectMode() : router.back())}
-            style={styles.headerButton}
-            activeOpacity={0.7}
-            accessibilityLabel={selectMode ? t('common.cancel') : t('common.back')}
-          >
-            <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-            {selectMode
-              ? t('screens.rss.articlesSelectedCount', { count: selectedIds.size })
-              : headerTitle}
-          </Text>
-          {selectMode ? (
-            <View style={styles.headerRight} />
-          ) : (
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                onPress={() => void handleMarkAllRead()}
-                disabled={isMarkingAllRead || !itemPath}
-                style={[
-                  styles.headerButton,
-                  (isMarkingAllRead || !itemPath) && styles.headerButtonDisabled,
-                ]}
-                activeOpacity={0.7}
-                accessibilityLabel={t('screens.rss.markAllRead')}
-              >
-                {isMarkingAllRead ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Ionicons name="checkmark-done-outline" size={22} color={colors.text} />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => void handleRefreshFeed()}
-                disabled={isRefreshingFeed || !itemPath}
-                style={[
-                  styles.headerButton,
-                  (isRefreshingFeed || !itemPath) && styles.headerButtonDisabled,
-                ]}
-                activeOpacity={0.7}
-                accessibilityLabel={t('screens.rss.refresh')}
-              >
-                {isRefreshingFeed ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Ionicons name="refresh" size={22} color={colors.text} />
-                )}
-              </TouchableOpacity>
-            </View>
+        {/* Top chrome (header + action row): floats over the list while the
+            glass tab bar is in use; an unstyled wrapper otherwise. */}
+        <View style={glassLayout.headerStyle} onLayout={glassLayout.onHeaderLayout}>
+          <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+            <GlassHeaderBackdrop borderOverlap={1} />
+            <TouchableOpacity
+              onPress={() => (selectMode ? toggleSelectMode() : router.back())}
+              style={styles.headerButton}
+              activeOpacity={0.7}
+              accessibilityLabel={selectMode ? t('common.cancel') : t('common.back')}
+            >
+              <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+              {selectMode
+                ? t('screens.rss.articlesSelectedCount', { count: selectedIds.size })
+                : headerTitle}
+            </Text>
+            {selectMode ? (
+              <View style={styles.headerRight} />
+            ) : (
+              <View style={styles.headerRight}>
+                <TouchableOpacity
+                  onPress={() => void handleMarkAllRead()}
+                  disabled={isMarkingAllRead || !itemPath}
+                  style={[
+                    styles.headerButton,
+                    (isMarkingAllRead || !itemPath) && styles.headerButtonDisabled,
+                  ]}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.rss.markAllRead')}
+                >
+                  {isMarkingAllRead ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Ionicons name="checkmark-done-outline" size={22} color={colors.text} />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void handleRefreshFeed()}
+                  disabled={isRefreshingFeed || !itemPath}
+                  style={[
+                    styles.headerButton,
+                    (isRefreshingFeed || !itemPath) && styles.headerButtonDisabled,
+                  ]}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.rss.refresh')}
+                >
+                  {isRefreshingFeed ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Ionicons name="refresh" size={22} color={colors.text} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {isConnected && !isLoading && articles.length > 0 && (
+            <TouchableOpacity
+              style={[styles.selectionRow, { borderBottomColor: colors.surfaceOutline }]}
+              onPress={handleSelectAllPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={
+                  selectMode && selectedIds.size === articles.length ? 'checkbox' : 'square-outline'
+                }
+                size={20}
+                color={
+                  selectMode && selectedIds.size === articles.length
+                    ? colors.primary
+                    : colors.textSecondary
+                }
+              />
+              <Text style={[styles.selectionLabel, { color: colors.textSecondary }]}>
+                {selectMode
+                  ? selectedIds.size === articles.length
+                    ? t('screens.torrents.deselectAll')
+                    : t('screens.torrents.selectAll')
+                  : t('screens.rss.selectArticles')}
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
 
-        {isConnected && !isLoading && articles.length > 0 && (
-          <TouchableOpacity
-            style={[styles.selectionRow, { borderBottomColor: colors.surfaceOutline }]}
-            onPress={handleSelectAllPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={
-                selectMode && selectedIds.size === articles.length ? 'checkbox' : 'square-outline'
-              }
-              size={20}
-              color={
-                selectMode && selectedIds.size === articles.length
-                  ? colors.primary
-                  : colors.textSecondary
-              }
-            />
-            <Text style={[styles.selectionLabel, { color: colors.textSecondary }]}>
-              {selectMode
-                ? selectedIds.size === articles.length
-                  ? t('screens.torrents.deselectAll')
-                  : t('screens.torrents.selectAll')
-                : t('screens.rss.selectArticles')}
-            </Text>
-          </TouchableOpacity>
-        )}
-
         {!isConnected ? (
-          <EmptyState subtitle={t('toast.notConnected')} />
+          <EmptyState subtitle={t('toast.notConnected')} style={glassLayout.bodyStyle} />
         ) : isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator color={colors.primary} />
@@ -510,14 +517,16 @@ export default function RssFeedArticlesScreen() {
             data={articles}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            contentContainerStyle={{ paddingBottom: spacing.xxxl }}
+            contentContainerStyle={glassLayout.contentStyle({ paddingBottom: spacing.xxxl })}
             refreshControl={
               <RefreshControl
+                progressViewOffset={glassLayout.topInset}
                 refreshing={refreshing}
                 onRefresh={() => void handlePullToRefresh()}
                 tintColor={colors.primary}
               />
             }
+            scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
           />
         )}
 
@@ -526,6 +535,7 @@ export default function RssFeedArticlesScreen() {
             style={[
               styles.bulkActionsBar,
               { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
+              glassLayout.bottomInset > 0 && { bottom: glassLayout.bottomInset },
             ]}
           >
             <TouchableOpacity

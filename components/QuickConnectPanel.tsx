@@ -103,7 +103,7 @@ export function QuickConnectPanel({
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
             {t('screens.torrents.yourServers', { defaultValue: 'YOUR SERVERS' })}
           </Text>
-          <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+          <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
             {savedServers.map((server, index) => {
               const color = getServerIconColor(server);
               const addr = serverAddress(server);

@@ -2142,7 +2142,6 @@ export default function TorrentsScreen() {
                     <View style={{ flex: 1 }}>
                       <TorrentCard
                         torrent={item}
-                        glass={liquidGlass}
                         onPress={() => {
                           if (selectMode) {
                             toggleSelection(item.hash);
@@ -2228,7 +2227,8 @@ export default function TorrentsScreen() {
         )}
 
         {selectMode && selectedHashes.size > 0 && (
-          <View
+          // Floating control (functional layer): glass where enabled.
+          <GlassSurface
             onLayout={(e) => setBulkActionsBarHeight(e.nativeEvent.layout.height)}
             style={[
               styles.bulkActionsBar,
@@ -2260,7 +2260,7 @@ export default function TorrentsScreen() {
               <Ionicons name="trash" size={20} color="#FFFFFF" />
               <Text style={styles.bulkActionText}>{t('common.delete')}</Text>
             </TouchableOpacity>
-          </View>
+          </GlassSurface>
         )}
 
         <Modal

@@ -49,7 +49,7 @@ export default function TabsLayout() {
   // launch — see LiquidGlassContext — because swapping navigators remounts every
   // tab. Where glass is unavailable or turned off, the JS tab bar below is used
   // exactly as before.
-  const { tabBarGlass, tabBarInset, loaded: glassPrefLoaded } = useLiquidGlass();
+  const { tabBarGlass, loaded: glassPrefLoaded } = useLiquidGlass();
 
   // Where glass is available, wait the few ms it takes to read the setting so
   // launch never mounts the JS tab bar and then swaps navigators. (Always
@@ -61,26 +61,21 @@ export default function TabsLayout() {
   if (tabBarGlass) {
     // Every tab scene paints the theme background from its first frame, so a
     // tab switch never flashes the native container's default (white). Scenes
-    // run to the bottom of the screen, under the floating glass bar. Screens
-    // whose content scrolls under it (Torrents and Settings lists) pad their
-    // own content; every other screen keeps a band above the bar so nothing
-    // sits beneath it: the stacks via useGlassStackContentStyle, the flat tabs
-    // (Transfer, Search) via the scene padding below. The status-bar inset (the
-    // JS layout wrapper's paddingTop) goes inside the screen view so a glass
-    // header can run up under the status bar: here for the tabs without a
-    // Stack, and per stack screen for the others (a native stack clips its
-    // screens, so padding the scene would cut the glass off).
+    // run to the bottom of the screen, under the floating glass bar, and each
+    // screen insets its own content and bottom-anchored overlays by the bar
+    // (useGlassTabScreenLayout / `tabBarInset`), so content scrolls beneath
+    // it. The status-bar inset (the JS layout wrapper's paddingTop) goes inside
+    // the screen view so a glass header can run up under the status bar: here
+    // for the tabs without a Stack, and per stack screen for the others (a
+    // native stack clips its screens, so padding the scene would cut the glass
+    // off).
     //
     // `disableAutomaticContentInsets`: react-native-screens would otherwise
     // switch whichever scroll view happens to be first in a tab's view tree to
     // automatic inset adjustment, adding the tab bar inset a second time on
     // some screens and not others.
     const stackSceneStyle = { backgroundColor: colors.background };
-    const flatSceneStyle = {
-      ...stackSceneStyle,
-      paddingTop: insets.top,
-      paddingBottom: tabBarInset,
-    };
+    const flatSceneStyle = { ...stackSceneStyle, paddingTop: insets.top };
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <NativeTabs tintColor={colors.primary} minimizeBehavior="never">

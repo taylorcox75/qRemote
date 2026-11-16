@@ -23,6 +23,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { EmptyState } from '@/components/EmptyState';
@@ -39,6 +40,7 @@ export default function ManageTrackersScreen() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
   const { enabled: glass } = useLiquidGlass();
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -188,7 +190,9 @@ export default function ManageTrackersScreen() {
             backgroundColor: glass ? 'transparent' : colors.surface,
             borderBottomColor: colors.surfaceOutline,
           },
+          glassLayout.headerStyle,
         ]}
+        onLayout={glassLayout.onHeaderLayout}
       >
         <GlassHeaderBackdrop borderOverlap={1} />
         <TouchableOpacity
@@ -232,10 +236,17 @@ export default function ManageTrackersScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
-        <ScrollView style={styles.content}>
+        <ScrollView
+          contentContainerStyle={glassLayout.contentStyle()}
+          style={styles.content}
+          scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
+        >
           {/* Add New Tracker - At Top */}
           {showAddInput ? (
-            <GlassSurface style={[styles.addTrackerCard, { backgroundColor: colors.surface }]}>
+            <GlassSurface
+              glass={false}
+              style={[styles.addTrackerCard, { backgroundColor: colors.surface }]}
+            >
               <Text style={[styles.addTrackerLabel, { color: colors.text }]}>New Tracker URL</Text>
               <TextInput
                 style={[
@@ -304,6 +315,7 @@ export default function ManageTrackersScreen() {
           {/* Edit Tracker */}
           {editingTracker && (
             <GlassSurface
+              glass={false}
               style={[styles.addTrackerCard, { backgroundColor: colors.surface, marginTop: 12 }]}
             >
               <Text style={[styles.addTrackerLabel, { color: colors.text }]}>Edit Tracker URL</Text>
@@ -379,24 +391,12 @@ export default function ManageTrackersScreen() {
               >
                 {t('screens.trackers.existingTrackers', { count: trackers.length })}
               </Text>
-              {/* One glass container for the list (rows plain, divided) rather
-                  than a GlassView per tracker in this non-virtualized
-                  ScrollView. With glass off the rows keep their own cards. */}
-              <GlassSurface style={glass ? styles.glassTrackerList : undefined}>
+              {/* Content layer: each tracker keeps its own solid card. */}
+              <View>
                 {trackers.map((tracker, index) => (
                   <View
                     key={index}
-                    style={
-                      glass
-                        ? [
-                            styles.glassTrackerRow,
-                            index < trackers.length - 1 && {
-                              borderBottomWidth: StyleSheet.hairlineWidth,
-                              borderBottomColor: colors.surfaceOutline,
-                            },
-                          ]
-                        : [styles.trackerRow, { backgroundColor: colors.surface }]
-                    }
+                    style={[styles.trackerRow, { backgroundColor: colors.surface }]}
                   >
                     <View style={styles.trackerInfo}>
                       <Text style={[styles.trackerUrl, { color: colors.text }]} numberOfLines={2}>
@@ -463,7 +463,7 @@ export default function ManageTrackersScreen() {
                     </View>
                   </View>
                 ))}
-              </GlassSurface>
+              </View>
             </View>
           )}
         </ScrollView>
@@ -515,17 +515,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.medium,
     marginBottom: spacing.md,
     ...shadows.card,
-  },
-  // Glass on: one card for the whole list; rows are plain dividers inside it.
-  glassTrackerList: {
-    borderRadius: borderRadius.medium,
-    marginBottom: spacing.md,
-    overflow: 'hidden',
-  },
-  glassTrackerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
   },
   trackerInfo: {
     flex: 1,

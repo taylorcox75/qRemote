@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ColorPicker } from '@/components/ColorPicker';
 import { OptionPicker, OptionPickerItem } from '@/components/OptionPicker';
@@ -53,6 +54,7 @@ function ColorSettingRow({ label, color, onPress, colors }: ColorSettingRowProps
 export default function ThemeSettingsScreen() {
   const router = useRouter();
   const { isDark, themeMode, setThemeMode, colors, reloadCustomColors } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
@@ -154,8 +156,10 @@ export default function ThemeSettingsScreen() {
         <View
           style={[
             styles.header,
-            { backgroundColor: colors.background, borderBottomColor: colors.surfaceOutline },
+            { borderBottomColor: colors.surfaceOutline },
+            glassLayout.headerStyle,
           ]}
+          onLayout={glassLayout.onHeaderLayout}
         >
           <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
@@ -171,7 +175,11 @@ export default function ThemeSettingsScreen() {
           </Text>
           <View style={styles.headerButton} />
         </View>
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={glassLayout.contentStyle(styles.scrollContent)}
+          scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
+        >
           {/* Theme presets */}
           <ThemePresetsSection selection={presetSelection} onSelect={handlePresetSelect} />
 
@@ -180,7 +188,7 @@ export default function ThemeSettingsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.appearance').toUpperCase()}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() => setThemeModePickerVisible(true)}
@@ -236,7 +244,7 @@ export default function ThemeSettingsScreen() {
                 <Ionicons name="refresh" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <ColorSettingRow
                 label="Downloading"
                 color={colors.stateDownloading}
@@ -338,7 +346,7 @@ export default function ThemeSettingsScreen() {
                 <Ionicons name="refresh" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <ColorSettingRow
                 label="Primary"
                 color={colors.primary}
@@ -432,7 +440,7 @@ export default function ThemeSettingsScreen() {
                 <Ionicons name="refresh" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <TouchableOpacity
                 style={styles.settingRow}
                 onPress={() => router.push('/settings/category-tag-colors')}

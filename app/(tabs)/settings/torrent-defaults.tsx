@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useToast } from '@/context/ToastContext';
@@ -45,6 +46,7 @@ export default function TorrentDefaultsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
   const { isConnected } = useServer();
   const { tags } = useTorrents();
   const [categories, setCategories] = useState<Record<string, Category>>({});
@@ -474,7 +476,14 @@ export default function TorrentDefaultsScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+        <View
+          style={[
+            styles.header,
+            { borderBottomColor: colors.surfaceOutline },
+            glassLayout.headerStyle,
+          ]}
+          onLayout={glassLayout.onHeaderLayout}
+        >
           <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
@@ -490,13 +499,17 @@ export default function TorrentDefaultsScreen() {
           <View style={styles.headerButton} />
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={glassLayout.contentStyle(styles.scrollContent)}
+          scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
+        >
           {/* Sorting & Filtering */}
           <View style={styles.section}>
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.sortingFiltering').toUpperCase()}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="swap-vertical-outline" size={22} color={colors.primary} />
@@ -605,6 +618,7 @@ export default function TorrentDefaultsScreen() {
                 {t('screens.settings.categoriesEditHint')}
               </Text>
               <GlassSurface
+                glass={false}
                 style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}
               >
                 {showAddCategory && (
@@ -752,6 +766,7 @@ export default function TorrentDefaultsScreen() {
                 </TouchableOpacity>
               </View>
               <GlassSurface
+                glass={false}
                 style={[styles.card, { backgroundColor: colors.surface, marginTop: spacing.sm }]}
               >
                 {showAddTag && (
@@ -860,7 +875,7 @@ export default function TorrentDefaultsScreen() {
             <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
               {t('screens.settings.torrentBehavior').toUpperCase()}
             </Text>
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <Ionicons name="pause-circle-outline" size={22} color={colors.primary} />
@@ -941,7 +956,10 @@ export default function TorrentDefaultsScreen() {
               {(contentLayoutKey ||
                 hasServerPref('add_to_top_of_queue') ||
                 hasServerPref('torrent_stop_condition')) && (
-                <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
                   {contentLayoutKey && (
                     <View style={styles.settingRow}>
                       <View style={styles.settingLeft}>
@@ -1038,7 +1056,10 @@ export default function TorrentDefaultsScreen() {
               >
                 {t('screens.settings.duplicateTorrents').toUpperCase()}
               </Text>
-              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface
+                glass={false}
+                style={[styles.card, { backgroundColor: colors.surface }]}
+              >
                 {hasServerPref('merge_trackers') && (
                   <>
                     <View style={styles.settingRow}>
@@ -1102,7 +1123,10 @@ export default function TorrentDefaultsScreen() {
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('screens.settings.filesSection').toUpperCase()}
               </Text>
-              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface
+                glass={false}
+                style={[styles.card, { backgroundColor: colors.surface }]}
+              >
                 <View style={styles.settingRow}>
                   <View style={styles.settingLeft}>
                     <Ionicons name="server-outline" size={22} color={colors.primary} />
@@ -1195,7 +1219,10 @@ export default function TorrentDefaultsScreen() {
               <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
                 {t('screens.settings.saveLocations').toUpperCase()}
               </Text>
-              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface
+                glass={false}
+                style={[styles.card, { backgroundColor: colors.surface }]}
+              >
                 <View style={styles.settingRow}>
                   <View style={styles.settingLeft}>
                     <Ionicons name="settings-outline" size={22} color={colors.primary} />
@@ -1482,7 +1509,10 @@ export default function TorrentDefaultsScreen() {
                 {/* scan_dirs is written as a whole map: only offer edits once the
                   server's real map has loaded, never from the empty default. */}
                 {hasServerPref('scan_dirs') && (
-                  <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+                  <GlassSurface
+                    glass={false}
+                    style={[styles.card, { backgroundColor: colors.surface }]}
+                  >
                     {Object.keys(scanDirs).length === 0 ? (
                       <View style={styles.emptyStateSmall}>
                         <Ionicons
@@ -1625,6 +1655,7 @@ export default function TorrentDefaultsScreen() {
 
                 {hasServerPref('excluded_file_names_enabled') && (
                   <GlassSurface
+                    glass={false}
                     style={[
                       styles.card,
                       {
@@ -1698,7 +1729,10 @@ export default function TorrentDefaultsScreen() {
           {/* Advanced (Email Notifications + Automation) — kept off the main screen */}
           {isConnected && (
             <View style={styles.section}>
-              <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+              <GlassSurface
+                glass={false}
+                style={[styles.card, { backgroundColor: colors.surface }]}
+              >
                 <TouchableOpacity
                   style={styles.settingRow}
                   onPress={() => router.push('/settings/server-settings-advanced')}
