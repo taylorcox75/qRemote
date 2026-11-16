@@ -161,7 +161,10 @@ export default function TorrentsScreen() {
   // Settings → Appearance "Solid pinned header": an opaque, in-flow header
   // that never collapses on scroll. Off = the floating overlay header.
   const [solidPinnedHeader, setSolidPinnedHeader] = useState(DEFAULT_PREFERENCES.solidPinnedHeader);
-  const { enabled: liquidGlass } = useLiquidGlass();
+  // tabBarInset: the floating glass tab bar's height (0 with the JS tab bar).
+  // This screen runs under the glass bar, so the list, the empty state and the
+  // select-mode bulk bar are inset by it here.
+  const { enabled: liquidGlass, tabBarInset } = useLiquidGlass();
   // Drives only the pull-to-refresh spinner. `isLoading` also flips on every
   // background poll/foreground re-sync, and wiring it to RefreshControl would
   // pop the iOS spinner on top of the search box on every load (#275).
@@ -1962,7 +1965,13 @@ export default function TorrentsScreen() {
         />
 
         {filteredTorrents.length === 0 ? (
-          <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <View
+            style={[
+              styles.center,
+              { backgroundColor: colors.background },
+              tabBarInset > 0 && { paddingBottom: tabBarInset },
+            ]}
+          >
             <Ionicons
               name={
                 filter === 'all' && !hasSecondaryFilter
@@ -2202,8 +2211,12 @@ export default function TorrentsScreen() {
               // normal in-flow sibling (see headerContainerPinned) and
               // already occupies that space in the layout itself.
               headerPinned ? { paddingTop: spacing.sm } : { paddingTop: headerHeight },
-              selectMode && selectedHashes.size > 0 && { paddingBottom: bulkActionsBarHeight },
+              (tabBarInset > 0 || (selectMode && selectedHashes.size > 0)) && {
+                paddingBottom:
+                  (selectMode && selectedHashes.size > 0 ? bulkActionsBarHeight : 0) + tabBarInset,
+              },
             ]}
+            scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
             onScroll={handleScroll}
             onScrollBeginDrag={handleScrollBeginDrag}
             scrollEventThrottle={50}
@@ -2220,6 +2233,7 @@ export default function TorrentsScreen() {
             style={[
               styles.bulkActionsBar,
               { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
+              tabBarInset > 0 && { bottom: tabBarInset },
             ]}
           >
             <TouchableOpacity

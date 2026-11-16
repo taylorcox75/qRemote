@@ -119,7 +119,9 @@ export default function SettingsScreen() {
     useServer();
   const { showToast } = useToast();
   const { isDark, colors } = useTheme();
-  const { enabled: glass } = useLiquidGlass();
+  // tabBarInset: this screen runs under the floating glass tab bar (0 with the
+  // JS tab bar), so its content is inset to let the last row scroll clear.
+  const { enabled: glass, tabBarInset } = useLiquidGlass();
   const [hasServers, setHasServers] = useState(false);
   const disconnectBadgeBackground = colorThemeManager.hexToRgba(
     colorThemeManager.rgbaToHex(colors.error),
@@ -191,7 +193,11 @@ export default function SettingsScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={tabBarInset > 0 ? { paddingBottom: tabBarInset } : undefined}
+        scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
+      >
         {/* Connection Status Card */}
         {hasServers && currentServer ? (
           <View style={styles.section}>

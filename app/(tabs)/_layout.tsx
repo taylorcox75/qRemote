@@ -12,9 +12,6 @@ import { applicationApi } from '@/services/api/application';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { resolveRssTabVisible } from '@/utils/rss-tab';
 
-/** Height of the tab bar above the home-indicator inset (UITabBar's 49pt). */
-const GLASS_TAB_BAR_HEIGHT = 49;
-
 export default function TabsLayout() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -52,7 +49,7 @@ export default function TabsLayout() {
   // launch — see LiquidGlassContext — because swapping navigators remounts every
   // tab. Where glass is unavailable or turned off, the JS tab bar below is used
   // exactly as before.
-  const { tabBarGlass, loaded: glassPrefLoaded } = useLiquidGlass();
+  const { tabBarGlass, tabBarInset, loaded: glassPrefLoaded } = useLiquidGlass();
 
   // Where glass is available, wait the few ms it takes to read the setting so
   // launch never mounts the JS tab bar and then swaps navigators. (Always
@@ -63,31 +60,54 @@ export default function TabsLayout() {
 
   if (tabBarGlass) {
     // Every tab scene paints the theme background from its first frame, so a
-    // tab switch never flashes the native container's default (white). The
-    // bottom padding reserves the band the JS tab bar occupied, so nothing
-    // (last list row, select-mode bar, keyboard-avoiding content, toasts) ever
-    // sits under the floating glass bar. The status-bar inset (the JS layout
-    // wrapper's paddingTop) goes inside the screen view so a glass header can
-    // run up under the status bar: here for the tabs without a Stack, and per
-    // stack screen for the others (useGlassStackTopInset — a native stack
-    // clips its screens, so padding the scene would cut the glass off).
-    const stackSceneStyle = {
-      backgroundColor: colors.background,
-      paddingBottom: insets.bottom + GLASS_TAB_BAR_HEIGHT,
+    // tab switch never flashes the native container's default (white). Scenes
+    // run to the bottom of the screen, under the floating glass bar. Screens
+    // whose content scrolls under it (Torrents and Settings lists) pad their
+    // own content; every other screen keeps a band above the bar so nothing
+    // sits beneath it: the stacks via useGlassStackContentStyle, the flat tabs
+    // (Transfer, Search) via the scene padding below. The status-bar inset (the
+    // JS layout wrapper's paddingTop) goes inside the screen view so a glass
+    // header can run up under the status bar: here for the tabs without a
+    // Stack, and per stack screen for the others (a native stack clips its
+    // screens, so padding the scene would cut the glass off).
+    //
+    // `disableAutomaticContentInsets`: react-native-screens would otherwise
+    // switch whichever scroll view happens to be first in a tab's view tree to
+    // automatic inset adjustment, adding the tab bar inset a second time on
+    // some screens and not others.
+    const stackSceneStyle = { backgroundColor: colors.background };
+    const flatSceneStyle = {
+      ...stackSceneStyle,
+      paddingTop: insets.top,
+      paddingBottom: tabBarInset,
     };
-    const flatSceneStyle = { ...stackSceneStyle, paddingTop: insets.top };
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <NativeTabs tintColor={colors.primary} minimizeBehavior="never">
-          <NativeTabs.Trigger name="(torrents)" contentStyle={stackSceneStyle} disableScrollToTop>
+          <NativeTabs.Trigger
+            name="(torrents)"
+            contentStyle={stackSceneStyle}
+            disableScrollToTop
+            disableAutomaticContentInsets
+          >
             <NativeTabs.Trigger.Icon sf={{ default: 'list.bullet', selected: 'list.bullet' }} />
             <NativeTabs.Trigger.Label>{t('screens.torrents.tabTitle')}</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
-          <NativeTabs.Trigger name="transfer" contentStyle={flatSceneStyle} disableScrollToTop>
+          <NativeTabs.Trigger
+            name="transfer"
+            contentStyle={flatSceneStyle}
+            disableScrollToTop
+            disableAutomaticContentInsets
+          >
             <NativeTabs.Trigger.Icon sf="speedometer" />
             <NativeTabs.Trigger.Label>{t('screens.transfer.title')}</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
-          <NativeTabs.Trigger name="search" contentStyle={flatSceneStyle} disableScrollToTop>
+          <NativeTabs.Trigger
+            name="search"
+            contentStyle={flatSceneStyle}
+            disableScrollToTop
+            disableAutomaticContentInsets
+          >
             <NativeTabs.Trigger.Icon sf="magnifyingglass" />
             <NativeTabs.Trigger.Label>{t('screens.search.tabTitle')}</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
@@ -105,11 +125,17 @@ export default function TabsLayout() {
             hidden={!nativeRssTab}
             contentStyle={stackSceneStyle}
             disableScrollToTop
+            disableAutomaticContentInsets
           >
             <NativeTabs.Trigger.Icon sf="dot.radiowaves.up.forward" />
             <NativeTabs.Trigger.Label>{t('screens.rss.feedsTitle')}</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
-          <NativeTabs.Trigger name="settings" contentStyle={stackSceneStyle} disableScrollToTop>
+          <NativeTabs.Trigger
+            name="settings"
+            contentStyle={stackSceneStyle}
+            disableScrollToTop
+            disableAutomaticContentInsets
+          >
             <NativeTabs.Trigger.Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
             <NativeTabs.Trigger.Label>{t('screens.settings.title')}</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
