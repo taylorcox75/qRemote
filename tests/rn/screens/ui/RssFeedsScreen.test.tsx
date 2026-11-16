@@ -30,7 +30,10 @@ jest.mock('@/hooks/useRssFeeds', () => ({ useRssFeeds: () => mockFeeds() }));
 const mockGlassInset = jest.fn<number | undefined, []>(() => undefined);
 jest.mock('@/context/LiquidGlassContext', () => ({
   ...jest.requireActual('@/context/LiquidGlassContext'),
-  useGlassStackTopInset: () => mockGlassInset(),
+  useGlassStackContentStyle: () => {
+    const inset = mockGlassInset();
+    return { backgroundColor: '#000000', ...(inset !== undefined && { paddingTop: inset }) };
+  },
 }));
 
 const ubuntu = {
