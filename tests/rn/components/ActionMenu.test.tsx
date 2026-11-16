@@ -58,6 +58,8 @@ describe('ActionMenu', () => {
   });
 
   it('calls onClose when an item is pressed', async () => {
+    // Fake timers keep the delayed item action from firing during a later test.
+    jest.useFakeTimers();
     const onClose = jest.fn();
     await render(<ActionMenu visible onClose={onClose} items={items} />);
     fireEvent.press(screen.getByText('Pause'));
