@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
-import { GlassFill, GlassSurface } from '@/components/GlassSurface';
+import { GlassSurface } from '@/components/GlassSurface';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
@@ -119,7 +119,9 @@ export default function SettingsScreen() {
     useServer();
   const { showToast } = useToast();
   const { isDark, colors } = useTheme();
-  const { enabled: glass } = useLiquidGlass();
+  // tabBarInset: this screen runs under the floating glass tab bar (0 with the
+  // JS tab bar), so its content is inset to let the last row scroll clear.
+  const { tabBarInset } = useLiquidGlass();
   const [hasServers, setHasServers] = useState(false);
   const disconnectBadgeBackground = colorThemeManager.hexToRgba(
     colorThemeManager.rgbaToHex(colors.error),
@@ -191,7 +193,11 @@ export default function SettingsScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={tabBarInset > 0 ? { paddingBottom: tabBarInset } : undefined}
+        scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
+      >
         {/* Connection Status Card */}
         {hasServers && currentServer ? (
           <View style={styles.section}>
@@ -199,16 +205,11 @@ export default function SettingsScreen() {
               {t('screens.settings.connection').toUpperCase()}
             </Text>
             <TouchableOpacity
-              style={[
-                styles.card,
-                { backgroundColor: glass ? 'transparent' : colors.surface },
-                glass && styles.cardGlass,
-              ]}
+              style={[styles.card, { backgroundColor: colors.surface }]}
               onPress={isConnected ? handleDisconnect : handleConnect}
               activeOpacity={0.7}
               disabled={isLoading}
             >
-              <GlassFill />
               <View style={styles.connectionRow}>
                 <View style={styles.connectionTitleRow}>
                   <View style={styles.badgeWrap}>
@@ -290,15 +291,10 @@ export default function SettingsScreen() {
               {t('screens.settings.connection').toUpperCase()}
             </Text>
             <TouchableOpacity
-              style={[
-                styles.card,
-                { backgroundColor: glass ? 'transparent' : colors.surface },
-                glass && styles.cardGlass,
-              ]}
+              style={[styles.card, { backgroundColor: colors.surface }]}
               onPress={() => router.push('/server/add')}
               activeOpacity={0.7}
             >
-              <GlassFill />
               <View style={styles.connectionRow}>
                 <View style={styles.connectionTitleRow}>
                   <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
@@ -319,7 +315,7 @@ export default function SettingsScreen() {
 
         {/* Navigation Rows */}
         <View style={styles.section}>
-          <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+          <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
             <NavRow
               icon="server-outline"
               label={t('screens.settings.servers')}
@@ -367,7 +363,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+          <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
             <NavRow
               icon="sparkles-outline"
               label={t('screens.settings.whatsNew')}
@@ -388,7 +384,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
             {t('screens.settings.community').toUpperCase()}
           </Text>
-          <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+          <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
             <ExternalRow
               icon="logo-github"
               label={t('screens.settings.sourceCode')}
@@ -450,10 +446,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.medium,
     overflow: 'hidden',
     ...shadows.card,
-  },
-  // Liquid Glass card: no opaque fill, so no shadow (see GlassSurface).
-  cardGlass: {
-    shadowOpacity: 0,
   },
   connectionRow: {
     flexDirection: 'row',

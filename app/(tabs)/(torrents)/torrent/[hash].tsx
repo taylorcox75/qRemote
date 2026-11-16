@@ -33,6 +33,7 @@ import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useToast } from '@/context/ToastContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { isReconnectableError } from '@/hooks/useReactiveReconnect';
@@ -120,6 +121,7 @@ export default function TorrentDetail() {
   const { isConnected, isLoading, isReconnecting } = useServer();
   const { features } = useApiFeatures();
   const { colors, isDark } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
   const { showToast } = useToast();
   const { categories, tags } = useTorrents();
   const { t } = useTranslation();
@@ -1526,7 +1528,14 @@ export default function TorrentDetail() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View style={[styles.topBar, { borderBottomColor: colors.surfaceOutline }]}>
+        <View
+          style={[
+            styles.topBar,
+            { borderBottomColor: colors.surfaceOutline },
+            glassLayout.headerStyle,
+          ]}
+          onLayout={glassLayout.onHeaderLayout}
+        >
           <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             style={styles.backButton}
@@ -1558,17 +1567,22 @@ export default function TorrentDetail() {
 
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={glassLayout.contentStyle(styles.scrollContent)}
           refreshControl={
             <RefreshControl
+              progressViewOffset={glassLayout.topInset}
               refreshing={refreshing}
               onRefresh={handleRefresh}
               tintColor={colors.primary}
             />
           }
+          scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
         >
           {/* ── Hero ────────────────────────────────────────────── */}
-          <GlassSurface style={[styles.heroCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface
+            glass={false}
+            style={[styles.heroCard, { backgroundColor: colors.surface }]}
+          >
             <View style={styles.heroHeaderRow}>
               <Text style={[styles.heroName, { color: colors.text }]} numberOfLines={3}>
                 {torrent.name}
@@ -1820,7 +1834,10 @@ export default function TorrentDetail() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.general')}
           </Text>
-          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface
+            glass={false}
+            style={[styles.sectionCard, { backgroundColor: colors.surface }]}
+          >
             {renderRows([
               properties &&
                 editablePathRow(
@@ -1841,7 +1858,10 @@ export default function TorrentDetail() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.transfer')}
           </Text>
-          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface
+            glass={false}
+            style={[styles.sectionCard, { backgroundColor: colors.surface }]}
+          >
             {renderRows([
               staticRow(
                 t('torrentDetail.downloaded'),
@@ -1884,7 +1904,10 @@ export default function TorrentDetail() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.network')}
           </Text>
-          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface
+            glass={false}
+            style={[styles.sectionCard, { backgroundColor: colors.surface }]}
+          >
             {renderRows([
               torrent.popularity != null &&
                 staticRow(t('torrentDetail.popularity'), torrent.popularity.toFixed(2)),
@@ -1912,7 +1935,10 @@ export default function TorrentDetail() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.content')}
           </Text>
-          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface
+            glass={false}
+            style={[styles.sectionCard, { backgroundColor: colors.surface }]}
+          >
             {renderRows([
               navRow(
                 t('torrentDetail.files'),
@@ -1933,7 +1959,10 @@ export default function TorrentDetail() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.advanced')}
           </Text>
-          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface
+            glass={false}
+            style={[styles.sectionCard, { backgroundColor: colors.surface }]}
+          >
             {renderRows([
               tappableRow(t('torrentDetail.priority'), priorityDisplay, () =>
                 setPriorityPickerVisible(true),
@@ -1971,7 +2000,10 @@ export default function TorrentDetail() {
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             {t('torrentDetail.dates')}
           </Text>
-          <GlassSurface style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+          <GlassSurface
+            glass={false}
+            style={[styles.sectionCard, { backgroundColor: colors.surface }]}
+          >
             {renderRows([
               staticRow(t('torrentDetail.added'), formatDate(torrent.added_on)),
               staticRow(t('torrentDetail.completed'), formatDate(torrent.completion_on)),

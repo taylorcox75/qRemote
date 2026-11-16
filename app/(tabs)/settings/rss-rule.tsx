@@ -34,6 +34,7 @@ import { MultiSelectPicker, MultiSelectPickerItem } from '@/components/MultiSele
 import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssRules } from '@/hooks/useRssRules';
@@ -83,6 +84,7 @@ export default function RssRuleEditorScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
   const { showToast } = useToast();
   const { isConnected } = useServer();
   const { rules, setRule, renameRule } = useRssRules();
@@ -237,7 +239,14 @@ export default function RssRuleEditorScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+        <View
+          style={[
+            styles.header,
+            { borderBottomColor: colors.surfaceOutline },
+            glassLayout.headerStyle,
+          ]}
+          onLayout={glassLayout.onHeaderLayout}
+        >
           <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             onPress={() => router.back()}
@@ -270,8 +279,9 @@ export default function RssRuleEditorScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView
-            contentContainerStyle={{ paddingBottom: spacing.xxxl }}
+            contentContainerStyle={glassLayout.contentStyle({ paddingBottom: spacing.xxxl })}
             keyboardShouldPersistTaps="handled"
+            scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
           >
             <View style={styles.section}>
               <TextInput
@@ -292,7 +302,7 @@ export default function RssRuleEditorScreen() {
               />
             </View>
 
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               <SettingRow icon="power-outline" label={t('screens.rss.enabled')}>
                 <Switch
                   value={enabled}

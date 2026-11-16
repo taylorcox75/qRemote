@@ -29,15 +29,25 @@
  *
  * Outside the provider (e.g. component tests) everything reads as off.
  *
- * Key exports: LiquidGlassProvider, useLiquidGlass, useGlassStackTopInset
+ * - `tabBarInset` — how far the floating glass tab bar reaches up from the bottom
+ *   of a tab screen (home-indicator inset + the bar), or 0 with the JS tab bar.
+ *   Tab scenes are not padded for the glass bar, so content scrolls under it;
+ *   each screen pads its scroll content and bottom-anchored overlays by this
+ *   (hooks/useGlassTabScreenLayout.ts).
+ *
+ * Key exports: LiquidGlassProvider, useLiquidGlass, useGlassStackTopInset,
+ *   useGlassStackContentStyle, GLASS_TAB_BAR_HEIGHT
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, Appearance } from 'react-native';
+import { AccessibilityInfo, Appearance, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { storageService } from '@/services/storage';
 import { DEFAULT_PREFERENCES } from '@/types/preferences';
 import { getLiquidGlassSupport, isGlassAllowedByAccessibility } from '@/utils/liquidGlass';
+
+/** Height of the tab bar above the home-indicator inset (UITabBar's 49pt). */
+export const GLASS_TAB_BAR_HEIGHT = 49;
 
 interface LiquidGlassContextValue {
   /** Liquid Glass can be drawn in this binary on this OS. */
@@ -50,6 +60,8 @@ interface LiquidGlassContextValue {
   tabBarGlass: boolean;
   /** The stored preference has been read. */
   loaded: boolean;
+  /** Bottom space the glass tab bar covers on a tab screen (0 without it). */
+  tabBarInset: number;
   setPreference: (value: boolean) => Promise<void>;
 }
 
@@ -59,6 +71,7 @@ const OFF: LiquidGlassContextValue = {
   enabled: false,
   tabBarGlass: false,
   loaded: true,
+  tabBarInset: 0,
   setPreference: async () => undefined,
 };
 
@@ -134,14 +147,19 @@ export function LiquidGlassProvider({ children }: { children: React.ReactNode })
     setPreferenceState(value);
   }, []);
 
+  // Read here, above the tab navigator: each native tab screen has its own
+  // SafeAreaProvider, so the window's home-indicator inset is only known here.
+  const windowBottomInset = useSafeAreaInsets().bottom;
+  const tabBarInset = tabBarGlass ? windowBottomInset + GLASS_TAB_BAR_HEIGHT : 0;
+
   const enabled =
     available &&
     preference &&
     isGlassAllowedByAccessibility({ reduceTransparency, increaseContrast });
 
   const value = useMemo<LiquidGlassContextValue>(
-    () => ({ available, preference, enabled, tabBarGlass, loaded, setPreference }),
-    [available, preference, enabled, tabBarGlass, loaded, setPreference],
+    () => ({ available, preference, enabled, tabBarGlass, loaded, tabBarInset, setPreference }),
+    [available, preference, enabled, tabBarGlass, loaded, tabBarInset, setPreference],
   );
 
   return <LiquidGlassContext.Provider value={value}>{children}</LiquidGlassContext.Provider>;
@@ -163,4 +181,20 @@ export function useGlassStackTopInset(): number | undefined {
   const { tabBarGlass } = useLiquidGlass();
   const insets = useSafeAreaInsets();
   return tabBarGlass ? insets.top : undefined;
+}
+
+/**
+ * `contentStyle` for the Stack inside a tab: the theme background and the
+ * status-bar inset (useGlassStackTopInset). No bottom band: every tab screen
+ * runs under the floating glass tab bar and insets its own content
+ * (hooks/useGlassTabScreenLayout.ts). With the JS tab bar it is just the
+ * background, as before.
+ */
+export function useGlassStackContentStyle(): ViewStyle {
+  const { colors } = useTheme();
+  const topInset = useGlassStackTopInset();
+  return {
+    backgroundColor: colors.background,
+    ...(topInset !== undefined && { paddingTop: topInset }),
+  };
 }

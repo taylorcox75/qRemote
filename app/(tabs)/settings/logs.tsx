@@ -23,10 +23,10 @@ import { useRouter } from 'expo-router';
 import { useServer } from '@/context/ServerContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { useTheme } from '@/context/ThemeContext';
-import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { spacing } from '@/constants/spacing';
 import { logsApi } from '@/services/api/logs';
 import { LogEntry, PeerLogEntry } from '@/types/api';
@@ -37,7 +37,7 @@ export default function LogsScreen() {
   const { isConnected, isLoading: serverIsLoading } = useServer();
   const { initialLoadComplete } = useTorrents();
   const { colors, isDark } = useTheme();
-  const { enabled: glassEnabled } = useLiquidGlass();
+  const glassLayout = useGlassTabScreenLayout();
   const [activeTab, setActiveTab] = useState<'app' | 'peer'>('app');
   const [appLogs, setAppLogs] = useState<LogEntry[]>([]);
   const [peerLogs, setPeerLogs] = useState<PeerLogEntry[]>([]);
@@ -224,160 +224,170 @@ export default function LogsScreen() {
   }
 
   const refreshControl = (
-    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      progressViewOffset={glassLayout.topInset}
+      tintColor={colors.primary}
+    />
   );
   const loadingView = (
     <View style={styles.center}>
       <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
-  const rowStyle = glassEnabled
-    ? [styles.glassLogItem, { borderBottomColor: colors.surfaceOutline }]
-    : [styles.logItem, { backgroundColor: colors.surface }];
+  const rowStyle = [styles.logItem, { backgroundColor: colors.surface }];
 
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {header}
-        <GlassSurface
-          style={[
-            styles.tabs,
-            { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
-          ]}
-        >
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'app' && { borderBottomColor: colors.primary }]}
-            onPress={() => setActiveTab('app')}
+        {/* Top chrome (header, tabs, search, filters): floats over the list
+            while the glass tab bar is in use; an unstyled wrapper otherwise. */}
+        <View style={glassLayout.headerStyle} onLayout={glassLayout.onHeaderLayout}>
+          {header}
+          <GlassSurface
+            style={[
+              styles.tabs,
+              { backgroundColor: colors.surface, borderBottomColor: colors.surfaceOutline },
+            ]}
           >
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === 'app' ? colors.primary : colors.textSecondary },
-                activeTab === 'app' && { fontWeight: '600' },
-              ]}
-            >
-              {t('screens.logs.applicationLogs')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'peer' && { borderBottomColor: colors.primary }]}
-            onPress={() => setActiveTab('peer')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === 'peer' ? colors.primary : colors.textSecondary },
-                activeTab === 'peer' && { fontWeight: '600' },
-              ]}
-            >
-              {t('screens.logs.peerLogs')}
-            </Text>
-          </TouchableOpacity>
-        </GlassSurface>
-
-        {/* Search Bar */}
-        <GlassSurface style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
-          <View style={[styles.searchInputContainer, { backgroundColor: colors.background }]}>
-            <Ionicons name="search" size={18} color={colors.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder={t('screens.logs.searchLogs')}
-              placeholderTextColor={colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearchQuery('')}
-                accessibilityLabel={t('common.clearSearch')}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </GlassSurface>
-
-        {activeTab === 'app' && (
-          <GlassSurface style={[styles.filters, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
-              {t('screens.logs.filter')}
-            </Text>
             <TouchableOpacity
-              style={[
-                styles.filterButton,
-                { backgroundColor: filters.normal ? colors.primary : colors.background },
-              ]}
-              onPress={() => setFilters({ ...filters, normal: !filters.normal })}
+              style={[styles.tab, activeTab === 'app' && { borderBottomColor: colors.primary }]}
+              onPress={() => setActiveTab('app')}
             >
               <Text
                 style={[
-                  styles.filterButtonText,
-                  { color: filters.normal ? '#FFFFFF' : colors.text },
+                  styles.tabText,
+                  { color: activeTab === 'app' ? colors.primary : colors.textSecondary },
+                  activeTab === 'app' && { fontWeight: '600' },
                 ]}
               >
-                {t('screens.logs.normal')}
+                {t('screens.logs.applicationLogs')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.filterButton,
-                { backgroundColor: filters.info ? colors.primary : colors.background },
-              ]}
-              onPress={() => setFilters({ ...filters, info: !filters.info })}
-            >
-              <Text
-                style={[styles.filterButtonText, { color: filters.info ? '#FFFFFF' : colors.text }]}
-              >
-                {t('screens.logs.info')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                { backgroundColor: filters.warning ? colors.warning : colors.background },
-              ]}
-              onPress={() => setFilters({ ...filters, warning: !filters.warning })}
+              style={[styles.tab, activeTab === 'peer' && { borderBottomColor: colors.primary }]}
+              onPress={() => setActiveTab('peer')}
             >
               <Text
                 style={[
-                  styles.filterButtonText,
-                  { color: filters.warning ? '#FFFFFF' : colors.text },
+                  styles.tabText,
+                  { color: activeTab === 'peer' ? colors.primary : colors.textSecondary },
+                  activeTab === 'peer' && { fontWeight: '600' },
                 ]}
               >
-                {t('screens.logs.warning')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                { backgroundColor: filters.critical ? colors.error : colors.background },
-              ]}
-              onPress={() => setFilters({ ...filters, critical: !filters.critical })}
-            >
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  { color: filters.critical ? '#FFFFFF' : colors.text },
-                ]}
-              >
-                {t('screens.logs.critical')}
+                {t('screens.logs.peerLogs')}
               </Text>
             </TouchableOpacity>
           </GlassSurface>
-        )}
 
-        {/* One glass container for the whole list (rows are plain) — a
-            GlassView per entry is far too heavy for thousands of log lines.
-            With glass off the rows keep today's individual cards. */}
-        <GlassSurface style={glassEnabled ? styles.glassList : styles.scrollView}>
+          {/* Search Bar */}
+          <GlassSurface style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+            <View style={[styles.searchInputContainer, { backgroundColor: colors.background }]}>
+              <Ionicons name="search" size={18} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder={t('screens.logs.searchLogs')}
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  accessibilityLabel={t('common.clearSearch')}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </GlassSurface>
+
+          {activeTab === 'app' && (
+            <GlassSurface style={[styles.filters, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
+                {t('screens.logs.filter')}
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.filterButton,
+                  { backgroundColor: filters.normal ? colors.primary : colors.background },
+                ]}
+                onPress={() => setFilters({ ...filters, normal: !filters.normal })}
+              >
+                <Text
+                  style={[
+                    styles.filterButtonText,
+                    { color: filters.normal ? '#FFFFFF' : colors.text },
+                  ]}
+                >
+                  {t('screens.logs.normal')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.filterButton,
+                  { backgroundColor: filters.info ? colors.primary : colors.background },
+                ]}
+                onPress={() => setFilters({ ...filters, info: !filters.info })}
+              >
+                <Text
+                  style={[
+                    styles.filterButtonText,
+                    { color: filters.info ? '#FFFFFF' : colors.text },
+                  ]}
+                >
+                  {t('screens.logs.info')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.filterButton,
+                  { backgroundColor: filters.warning ? colors.warning : colors.background },
+                ]}
+                onPress={() => setFilters({ ...filters, warning: !filters.warning })}
+              >
+                <Text
+                  style={[
+                    styles.filterButtonText,
+                    { color: filters.warning ? '#FFFFFF' : colors.text },
+                  ]}
+                >
+                  {t('screens.logs.warning')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.filterButton,
+                  { backgroundColor: filters.critical ? colors.error : colors.background },
+                ]}
+                onPress={() => setFilters({ ...filters, critical: !filters.critical })}
+              >
+                <Text
+                  style={[
+                    styles.filterButtonText,
+                    { color: filters.critical ? '#FFFFFF' : colors.text },
+                  ]}
+                >
+                  {t('screens.logs.critical')}
+                </Text>
+              </TouchableOpacity>
+            </GlassSurface>
+          )}
+        </View>
+
+        {/* Content layer: the list stays solid; rows keep their own cards. */}
+        <View style={styles.scrollView}>
           {activeTab === 'app' ? (
             <FlatList
               style={styles.scrollView}
               data={filteredAppLogs}
               keyExtractor={(log) => String(log.id)}
               refreshControl={refreshControl}
+              contentContainerStyle={glassLayout.contentStyle()}
+              scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
               ListEmptyComponent={
                 loading && appLogs.length === 0 && peerLogs.length === 0 ? (
                   loadingView
@@ -413,6 +423,8 @@ export default function LogsScreen() {
               data={filteredPeerLogs}
               keyExtractor={(log) => String(log.id)}
               refreshControl={refreshControl}
+              contentContainerStyle={glassLayout.contentStyle()}
+              scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
               ListEmptyComponent={
                 loading && appLogs.length === 0 && peerLogs.length === 0 ? (
                   loadingView
@@ -449,7 +461,7 @@ export default function LogsScreen() {
               )}
             />
           )}
-        </GlassSurface>
+        </View>
       </View>
     </>
   );
@@ -552,18 +564,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginHorizontal: 8,
     borderRadius: 16,
-  },
-  // Glass on: the list sits in one glass card and rows are plain dividers.
-  glassList: {
-    flex: 1,
-    marginHorizontal: 8,
-    marginBottom: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  glassLogItem: {
-    padding: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   logHeader: {
     flexDirection: 'row',

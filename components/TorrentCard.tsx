@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { TorrentInfo } from '@/types/api';
 import { useTheme } from '@/context/ThemeContext';
-import { GlassSurface } from '@/components/GlassSurface';
 import { typography } from '@/constants/typography';
 import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
 import { haptics } from '@/utils/haptics';
@@ -40,12 +39,6 @@ interface TorrentCardProps {
   categoryColors?: Record<string, string>;
   /** Per-tag sticker color overrides, keyed by tag name. */
   tagColors?: Record<string, string>;
-  /**
-   * Liquid Glass material (see context/LiquidGlassContext.tsx): the card
-   * becomes a glass surface tinted with `colors.surface`, keeping its shape,
-   * accent bar and layout. Off/undefined = the solid card. Material only.
-   */
-  glass?: boolean;
 }
 
 // Detailed-card cell: small secondary label stacked above the value.
@@ -150,7 +143,6 @@ function TorrentCardInner({
   defaultTagColor,
   categoryColors,
   tagColors,
-  glass = false,
 }: TorrentCardProps) {
   // Compact cards use the slim layout (tighter padding and row gaps, one step
   // smaller name) so more torrents fit; detailed cards keep their spacing.
@@ -333,22 +325,13 @@ function TorrentCardInner({
         styles.card,
         !compact && styles.cardDetailed,
         {
-          backgroundColor: glass ? 'transparent' : colors.surface,
+          backgroundColor: colors.surface,
           borderLeftColor: stateColor,
         },
         isPaused && styles.cardPaused,
-        glass && styles.cardGlass,
         slim && styles.cardSlim,
       ]}
     >
-      {glass && (
-        <GlassSurface
-          glass
-          pointerEvents="none"
-          tintColor={colors.surface}
-          style={[styles.glassFill, !compact && styles.glassFillDetailed]}
-        />
-      )}
       {/* Line 1: Torrent name + tinted state badge + three-dot menu */}
       <View style={[styles.headerRow, slim && styles.headerRowSlim]}>
         <Text
@@ -541,8 +524,7 @@ export const TorrentCard = React.memo(TorrentCardInner, (prev, next) => {
     prev.defaultCategoryColor === next.defaultCategoryColor &&
     prev.defaultTagColor === next.defaultTagColor &&
     prev.categoryColors === next.categoryColors &&
-    prev.tagColors === next.tagColors &&
-    prev.glass === next.glass
+    prev.tagColors === next.tagColors
   );
 });
 
@@ -561,18 +543,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
-  // Liquid Glass material behind the card content (radius matches the card).
-  glassFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: borderRadius.medium,
-  },
-  glassFillDetailed: {
-    borderRadius: borderRadius.large,
-  },
   cardSlim: {
     marginVertical: spacing.xs / 2,
     paddingVertical: spacing.xs + spacing.xs / 2,
@@ -584,11 +554,6 @@ const styles = StyleSheet.create({
   nameSlim: {
     ...typography.smallSemibold,
     paddingBottom: 0,
-  },
-  // A glass card has no opaque background to cast a shadow from (and
-  // RN can't rasterize one efficiently), so its shadow is dropped.
-  cardGlass: {
-    shadowOpacity: 0,
   },
   // Lets the 24pt circle overlap the row's vertical space instead of setting
   // the row's height, so the progress line is only as tall as the bar.

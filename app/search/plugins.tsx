@@ -242,7 +242,7 @@ export default function PluginsScreen() {
           </View>
 
           {/* Search add-dialogue behavior (#217) */}
-          <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+          <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="albums-outline" size={22} color={colors.primary} />
@@ -279,7 +279,7 @@ export default function PluginsScreen() {
               subtitle={t('screens.search.noPluginsSubtitle')}
             />
           ) : (
-            <GlassSurface style={[styles.card, { backgroundColor: colors.surface }]}>
+            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
               {plugins.map((plugin, index) => (
                 <PluginRow
                   key={plugin.name}

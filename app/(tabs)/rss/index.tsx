@@ -31,6 +31,7 @@ import { ActionMenu, ActionMenuItemDef } from '@/components/ActionMenu';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/context/ThemeContext';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
+import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
 import { useToast } from '@/context/ToastContext';
 import { useServer } from '@/context/ServerContext';
 import { useRssFeeds } from '@/hooks/useRssFeeds';
@@ -95,6 +96,7 @@ export default function RssFeedsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isDark, colors } = useTheme();
+  const glassLayout = useGlassTabScreenLayout();
   const { showToast } = useToast();
   const { isConnected } = useServer();
   const {
@@ -453,59 +455,63 @@ export default function RssFeedsScreen() {
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={[]}>
-        <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
-          <GlassHeaderBackdrop borderOverlap={1} />
-          <View style={styles.headerButton} />
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {t('screens.rss.feedsTitle')}
-          </Text>
-          <View style={styles.headerButton} />
-        </View>
+        {/* Top chrome (header + action row): floats over the list while the
+            glass tab bar is in use; an unstyled wrapper otherwise. */}
+        <View style={glassLayout.headerStyle} onLayout={glassLayout.onHeaderLayout}>
+          <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
+            <GlassHeaderBackdrop borderOverlap={1} />
+            <View style={styles.headerButton} />
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              {t('screens.rss.feedsTitle')}
+            </Text>
+            <View style={styles.headerButton} />
+          </View>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-            onPress={() => setPendingInput({ kind: 'addRootFeed' })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={18} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>{t('screens.rss.addFeed')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              { backgroundColor: colors.surface, borderColor: colors.surfaceOutline },
-            ]}
-            onPress={() => setPendingInput({ kind: 'addRootFolder' })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="folder-outline" size={18} color={colors.primary} />
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              {t('screens.rss.addFolder')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.surfaceOutline,
-                opacity: refreshingAll ? 0.5 : 1,
-              },
-            ]}
-            onPress={() => void handleRefreshAll()}
-            disabled={refreshingAll}
-            activeOpacity={0.7}
-          >
-            {refreshingAll ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Ionicons name="refresh" size={18} color={colors.primary} />
-            )}
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              {t('screens.rss.refreshAll')}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+              onPress={() => setPendingInput({ kind: 'addRootFeed' })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>{t('screens.rss.addFeed')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                { backgroundColor: colors.surface, borderColor: colors.surfaceOutline },
+              ]}
+              onPress={() => setPendingInput({ kind: 'addRootFolder' })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="folder-outline" size={18} color={colors.primary} />
+              <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+                {t('screens.rss.addFolder')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.surfaceOutline,
+                  opacity: refreshingAll ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => void handleRefreshAll()}
+              disabled={refreshingAll}
+              activeOpacity={0.7}
+            >
+              {refreshingAll ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="refresh" size={18} color={colors.primary} />
+              )}
+              <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+                {t('screens.rss.refreshAll')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {isLoading ? (
@@ -513,7 +519,7 @@ export default function RssFeedsScreen() {
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : !isConnected ? (
-          <EmptyState subtitle={t('toast.notConnected')} />
+          <EmptyState subtitle={t('toast.notConnected')} style={glassLayout.bodyStyle} />
         ) : showEmpty ? (
           <EmptyState
             icon="logo-rss"
@@ -526,7 +532,7 @@ export default function RssFeedsScreen() {
             data={rows}
             keyExtractor={(row) => `${row.kind}:${row.path}`}
             style={{ backgroundColor: colors.background }}
-            contentContainerStyle={{ paddingBottom: spacing.xxxl }}
+            contentContainerStyle={glassLayout.contentStyle({ paddingBottom: spacing.xxxl })}
             renderItem={({ item }) =>
               item.kind === 'folder' ? (
                 <FolderRow
@@ -554,11 +560,13 @@ export default function RssFeedsScreen() {
             }
             refreshControl={
               <RefreshControl
+                progressViewOffset={glassLayout.topInset}
                 refreshing={refreshing}
                 onRefresh={() => void handlePullToRefresh()}
                 tintColor={colors.primary}
               />
             }
+            scrollIndicatorInsets={glassLayout.scrollIndicatorInsets}
           />
         )}
       </SafeAreaView>
