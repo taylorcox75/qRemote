@@ -100,10 +100,10 @@ beforeEach(() => {
 
 describe('RssLayout', () => {
   it('pads the stack under the glass tab bar only when an inset is provided', async () => {
-    await render(<RssLayout />);
+    const view = await render(<RssLayout />);
     expect(screen.getByTestId('stack').props.style).not.toHaveProperty('paddingTop');
     mockGlassInset.mockReturnValue(44);
-    await render(<RssLayout />);
+    await view.rerender(<RssLayout />);
     expect(screen.getByTestId('stack').props.style).toMatchObject({ paddingTop: 44 });
   });
 });
