@@ -2215,7 +2215,9 @@ export default function TorrentsScreen() {
               headerPinned ? { paddingTop: spacing.sm } : { paddingTop: headerHeight },
               (tabBarInset > 0 || (selectMode && selectedHashes.size > 0)) && {
                 paddingBottom:
-                  (selectMode && selectedHashes.size > 0 ? bulkActionsBarHeight : 0) + tabBarInset,
+                  (selectMode && selectedHashes.size > 0
+                    ? bulkActionsBarHeight + (tabBarInset > 0 ? spacing.sm : 0)
+                    : 0) + tabBarInset,
               },
             ]}
             scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
@@ -2237,7 +2239,12 @@ export default function TorrentsScreen() {
             style={[
               styles.bulkActionsBar,
               { backgroundColor: colors.surface, borderTopColor: colors.surfaceOutline },
-              tabBarInset > 0 && { bottom: tabBarInset },
+              // Above the floating glass tab bar the bar floats too: an inset capsule
+              // with no edge line or shadow, so the list stays visible around it.
+              tabBarInset > 0 && [
+                styles.bulkActionsBarFloating,
+                { bottom: tabBarInset + spacing.sm },
+              ],
             ]}
           >
             <TouchableOpacity
@@ -2866,6 +2873,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderTopWidth: 1,
     ...shadows.medium,
+  },
+  bulkActionsBarFloating: {
+    left: spacing.sm,
+    right: spacing.sm,
+    borderTopWidth: 0,
+    borderRadius: borderRadius.xlarge,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   bulkActionButton: {
     flexDirection: 'row',
