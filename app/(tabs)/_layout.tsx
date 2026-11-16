@@ -78,6 +78,10 @@ export default function TabsLayout() {
     const flatSceneStyle = { ...stackSceneStyle, paddingTop: insets.top };
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {/* minimizeBehavior stays "never": UIKit only tracks the first scroll
+            view in a tab's view tree, which is the list on the Settings hub but
+            not on Torrents, Search or the pushed screens (headers come first),
+            so "onScrollDown" would minimize the bar on some tabs only. */}
         <NativeTabs tintColor={colors.primary} minimizeBehavior="never">
           <NativeTabs.Trigger
             name="(torrents)"

@@ -1573,6 +1573,8 @@ export default function TorrentsScreen() {
                       },
                     ]}
                     onPress={() => {
+                      // Interactive glass control: a light tap, like the system's.
+                      if (glassPopovers) haptics.light();
                       setShowSortMenu(!showSortMenu);
                       setShowSearchHistory(false);
                     }}
@@ -1667,6 +1669,7 @@ export default function TorrentsScreen() {
                         : [styles.headerAddButton, { backgroundColor: colors.primary }]
                     }
                     onPress={() => {
+                      if (glassPopovers) haptics.light();
                       void handleOpenAddTorrent();
                     }}
                     hitSlop={HEADER_BUTTON_HIT_SLOP}
@@ -2227,8 +2230,9 @@ export default function TorrentsScreen() {
         )}
 
         {selectMode && selectedHashes.size > 0 && (
-          // Floating control (functional layer): glass where enabled.
+          // Floating control (functional layer): interactive glass where enabled.
           <GlassSurface
+            interactive
             onLayout={(e) => setBulkActionsBarHeight(e.nativeEvent.layout.height)}
             style={[
               styles.bulkActionsBar,
@@ -2238,7 +2242,10 @@ export default function TorrentsScreen() {
           >
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: colors.success }]}
-              onPress={handleBulkResume}
+              onPress={() => {
+                if (glassPopovers) haptics.light();
+                void handleBulkResume();
+              }}
               disabled={bulkLoading}
             >
               <Ionicons name="play" size={20} color="#FFFFFF" />
@@ -2246,7 +2253,10 @@ export default function TorrentsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: colors.warning }]}
-              onPress={handleBulkPause}
+              onPress={() => {
+                if (glassPopovers) haptics.light();
+                void handleBulkPause();
+              }}
               disabled={bulkLoading}
             >
               <Ionicons name="pause" size={20} color="#FFFFFF" />
@@ -2254,7 +2264,10 @@ export default function TorrentsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bulkActionButton, { backgroundColor: colors.error }]}
-              onPress={handleBulkDelete}
+              onPress={() => {
+                if (glassPopovers) haptics.light();
+                handleBulkDelete();
+              }}
               disabled={bulkLoading}
             >
               <Ionicons name="trash" size={20} color="#FFFFFF" />
