@@ -101,9 +101,7 @@ interface MultiSelectStubProps {
   title: string;
   options: { label: string; value: string }[];
   selectedValues: string[];
-  onToggle?: (value: string) => void;
   onChange?: (values: string[]) => void;
-  onClear?: () => void;
   onClose: () => void;
 }
 
@@ -115,12 +113,17 @@ export function MultiSelectPicker(props: MultiSelectStubProps) {
         <TouchableOpacity
           key={o.value}
           testID={`multi-option-${o.value}`}
-          onPress={() => (props.onToggle ? props.onToggle(o.value) : props.onChange?.([o.value]))}
+          onPress={() =>
+            props.onChange?.(
+              props.selectedValues.includes(o.value)
+                ? props.selectedValues.filter((v) => v !== o.value)
+                : [...props.selectedValues, o.value],
+            )
+          }
         >
           <Text>{o.label}</Text>
         </TouchableOpacity>
       ))}
-      <TouchableOpacity testID="multi-clear" onPress={() => props.onClear?.()} />
       <TouchableOpacity testID="multi-close" onPress={props.onClose} />
     </View>
   );
