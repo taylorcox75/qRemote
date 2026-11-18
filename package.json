@@ -1,7 +1,7 @@
 {
   "name": "qRemote",
-  "version": "3.9.11",
-  "easBuild": false,
+  "version": "3.9.12",
+  "easBuild": true,
   "main": "index.ts",
   "scripts": {
     "start": "expo start --dev-client",
@@ -80,4 +80,3 @@
     "expo-dev-client": true
   }
 }
-
