@@ -89,6 +89,7 @@ const mockClogWarn = jest.fn();
 jest.mock('@/services/connectivity-log', () => ({
   setDebugMode: (...a: unknown[]) => mockSetDebugMode(...a),
   clogInfo: jest.fn(),
+  clogError: jest.fn(),
   clogWarn: (...a: unknown[]) => mockClogWarn(...a),
 }));
 const mockPersist = jest.fn();
