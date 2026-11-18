@@ -99,10 +99,18 @@ describe('getLiquidGlassSupport', () => {
 
 describe('isGlassAllowedByAccessibility', () => {
   it('allows glass only when neither Reduce Transparency nor Increase Contrast is on', () => {
-    expect(isGlassAllowedByAccessibility({ reduceTransparency: false, increaseContrast: false })).toBe(true);
-    expect(isGlassAllowedByAccessibility({ reduceTransparency: true, increaseContrast: false })).toBe(false);
-    expect(isGlassAllowedByAccessibility({ reduceTransparency: false, increaseContrast: true })).toBe(false);
-    expect(isGlassAllowedByAccessibility({ reduceTransparency: true, increaseContrast: true })).toBe(false);
+    expect(
+      isGlassAllowedByAccessibility({ reduceTransparency: false, increaseContrast: false }),
+    ).toBe(true);
+    expect(
+      isGlassAllowedByAccessibility({ reduceTransparency: true, increaseContrast: false }),
+    ).toBe(false);
+    expect(
+      isGlassAllowedByAccessibility({ reduceTransparency: false, increaseContrast: true }),
+    ).toBe(false);
+    expect(
+      isGlassAllowedByAccessibility({ reduceTransparency: true, increaseContrast: true }),
+    ).toBe(false);
   });
 });
 

@@ -188,7 +188,7 @@ export default function PluginsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.background }]}
-        edges={['top']}
+        edges={['top', 'left', 'right']}
       >
         <View style={[styles.header, { borderBottomColor: colors.surfaceOutline }]}>
           <GlassHeaderBackdrop borderOverlap={1} />

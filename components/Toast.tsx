@@ -120,6 +120,10 @@ export function Toast({
         {
           backgroundColor: glass ? 'transparent' : colors.surface,
           top: topOffset,
+          // Clear side safe-area insets (iPhone Duo's top-right status island);
+          // only set when non-zero, so a regular iPhone keeps the stylesheet's.
+          ...(insets.left > 0 && { left: spacing.xxl + insets.left }),
+          ...(insets.right > 0 && { right: spacing.xxl + insets.right }),
           transform: [{ translateY }],
           opacity,
         },

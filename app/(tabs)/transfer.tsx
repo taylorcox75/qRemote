@@ -14,7 +14,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   Switch,
-  Dimensions,
   Modal,
   TextInput,
 } from 'react-native';
@@ -29,6 +28,7 @@ import { useTorrents } from '@/context/TorrentContext';
 import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
+import { useReadableLayout } from '@/hooks/useReadableLayout';
 import { useToast } from '@/context/ToastContext';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { torrentsApi } from '@/services/api/torrents';
@@ -53,13 +53,10 @@ import { localizeErrorMessage } from '@/utils/localize-error';
 import { haptics } from '@/utils/haptics';
 import { useGracefulError } from '@/hooks/useGracefulError';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRAPH_HORIZONTAL_PADDING = spacing.lg * 2;
-const GRAPH_WIDTH = SCREEN_WIDTH - GRAPH_HORIZONTAL_PADDING;
 // The graph card adds its own horizontal padding, so the SVGs inside it are
 // narrower than the card's outer width.
 const GRAPH_CARD_PADDING = spacing.sm;
-const INNER_GRAPH_WIDTH = GRAPH_WIDTH - GRAPH_CARD_PADDING * 2;
 
 export default function TransferScreen() {
   const { t } = useTranslation();
@@ -95,6 +92,13 @@ export default function TransferScreen() {
   const { colors, isDark } = useTheme();
   // No header here: only the floating glass tab bar's inset applies.
   const glassLayout = useGlassTabScreenLayout({ floatingHeader: false });
+  // Side safe-area insets (iPhone Duo status island / side tab bar) and the
+  // readable column on wide windows. The graph is sized from the live content
+  // width, so it follows a fold / unfold; on a regular iPhone in portrait this
+  // is the window width, as before.
+  const readable = useReadableLayout();
+  const graphWidth = readable.contentWidth - GRAPH_HORIZONTAL_PADDING;
+  const innerGraphWidth = graphWidth - GRAPH_CARD_PADDING * 2;
   const { showToast } = useToast();
   const router = useRouter();
 
@@ -630,7 +634,9 @@ export default function TransferScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
+        style={[styles.container, { backgroundColor: colors.background }, readable.safeAreaStyle]}
+      >
         {/* Custom limit modal */}
         <Modal
           visible={limitModalVisible}
@@ -848,14 +854,14 @@ export default function TransferScreen() {
             </View>
             <GlassSurface
               glass={false}
-              style={[styles.heroGraphCard, { backgroundColor: colors.surface }]}
+              style={[styles.heroGraphCard, { backgroundColor: colors.surface, width: graphWidth }]}
             >
-              <View style={styles.heroGraphContainer}>
+              <View style={[styles.heroGraphContainer, { width: innerGraphWidth }]}>
                 <View style={styles.heroGraphOverlay}>
                   <SpeedGraph
                     data={downloadGraphData}
                     color={colors.primary}
-                    width={INNER_GRAPH_WIDTH}
+                    width={innerGraphWidth}
                     height={80}
                     maxValue={graphMax}
                   />
@@ -864,7 +870,7 @@ export default function TransferScreen() {
                   <SpeedGraph
                     data={uploadGraphData}
                     color={colors.success}
-                    width={INNER_GRAPH_WIDTH}
+                    width={innerGraphWidth}
                     height={80}
                     maxValue={graphMax}
                   />
@@ -1458,7 +1464,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   heroGraphCard: {
-    width: GRAPH_WIDTH,
     marginTop: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
@@ -1466,7 +1471,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   heroGraphContainer: {
-    width: INNER_GRAPH_WIDTH,
     height: 80,
     position: 'relative',
   },

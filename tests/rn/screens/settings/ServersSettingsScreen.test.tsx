@@ -129,7 +129,9 @@ function touchAt(x: number, ts: number) {
 
 /** Drags the named row horizontally by dx and releases it. */
 async function swipeRow(name: string, dx: number) {
-  const pannable = rowFor(name).queryAll((n) => typeof n.props.onMoveShouldSetResponder === 'function')[0];
+  const pannable = rowFor(name).queryAll(
+    (n) => typeof n.props.onMoveShouldSetResponder === 'function',
+  )[0];
   await act(async () => {
     pannable.props.onStartShouldSetResponderCapture(touchAt(0, 0));
     pannable.props.onMoveShouldSetResponderCapture(touchAt(Math.sign(dx) * 15, 1));

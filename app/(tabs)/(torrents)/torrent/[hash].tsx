@@ -34,6 +34,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useGlassTabScreenLayout } from '@/hooks/useGlassTabScreenLayout';
+import { useReadableLayout } from '@/hooks/useReadableLayout';
 import { useToast } from '@/context/ToastContext';
 import { useTorrents } from '@/context/TorrentContext';
 import { isReconnectableError } from '@/hooks/useReactiveReconnect';
@@ -126,7 +127,10 @@ export default function TorrentDetail() {
   const { categories, tags } = useTorrents();
   const { t } = useTranslation();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const graphWidth = Math.max(120, windowWidth - 64);
+  // Content column width: the window minus side safe-area insets and, on wide
+  // windows, the readable-width gutters (equals windowWidth on a regular iPhone).
+  const { contentWidth } = useReadableLayout();
+  const graphWidth = Math.max(120, contentWidth - 64);
   const insets = useSafeAreaInsets();
 
   useLayoutEffect(() => {

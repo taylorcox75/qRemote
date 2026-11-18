@@ -23,7 +23,7 @@ import { useServer } from '@/context/ServerContext';
 import { useToast } from '@/context/ToastContext';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { GlassSurface } from '@/components/GlassSurface';
-import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { useReadableLayout, useTabBarInset } from '@/hooks/useReadableLayout';
 import { FocusAwareStatusBar } from '@/components/FocusAwareStatusBar';
 import { ServerIconBadge } from '@/components/ServerIconBadge';
 import { ServerManager } from '@/services/server-manager';
@@ -121,7 +121,9 @@ export default function SettingsScreen() {
   const { isDark, colors } = useTheme();
   // tabBarInset: this screen runs under the floating glass tab bar (0 with the
   // JS tab bar), so its content is inset to let the last row scroll clear.
-  const { tabBarInset } = useLiquidGlass();
+  const tabBarInset = useTabBarInset();
+  // Wide windows (iPhone Duo, iPad): center the rows in a readable column.
+  const readable = useReadableLayout();
   const [hasServers, setHasServers] = useState(false);
   const disconnectBadgeBackground = colorThemeManager.hexToRgba(
     colorThemeManager.rgbaToHex(colors.error),
@@ -195,7 +197,9 @@ export default function SettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={tabBarInset > 0 ? { paddingBottom: tabBarInset } : undefined}
+        contentContainerStyle={readable.contentStyle(
+          tabBarInset > 0 ? { paddingBottom: tabBarInset } : undefined,
+        )}
         scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
       >
         {/* Connection Status Card */}

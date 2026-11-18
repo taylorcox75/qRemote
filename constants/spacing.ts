@@ -24,3 +24,11 @@ export const borderRadius = {
   xlarge: 24, // Liquid Glass header bottom corners
   full: 9999, // Pills, circular elements
 };
+
+/**
+ * Widest a screen's list / settings content column grows on a wide window
+ * (iPhone Duo inner screen, iPad). Narrower windows — every regular iPhone —
+ * never reach it, so their layout is unchanged. See utils/glass-layout.ts
+ * `getReadableGutter` and hooks/useReadableLayout.ts.
+ */
+export const READABLE_MAX_WIDTH = 800;
