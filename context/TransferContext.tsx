@@ -14,6 +14,7 @@ import { transferApi } from '@/services/api/transfer';
 import { applicationApi } from '@/services/api/application';
 import { useServer } from './ServerContext';
 import { getErrorMessage } from '@/utils/error';
+import { clogWarn } from '@/services/connectivity-log';
 import { LONG_BACKGROUND_THRESHOLD_MS } from '@/constants/timing';
 import { runAfterInteractions } from '@/utils/afterInteractions';
 
@@ -40,13 +41,15 @@ async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
   ]);
   // #334: a non-object body (empty, or text axios couldn't parse) used to be
   // spread into a truthy object with no fields, crashing the Transfer screen.
-  // Fail the query instead so the screen shows its normal error state.
-  if (!info || typeof info !== 'object' || Array.isArray(info)) {
-    throw new Error('Unexpected transfer/info response');
+  // Keep the screen usable (missing fields render as "—") and log it.
+  const isObject = !!info && typeof info === 'object' && !Array.isArray(info);
+  if (!isObject) {
+    clogWarn('TRANSFER', `Unexpected transfer/info response (${typeof info})`);
   }
+  const safeInfo = (isObject ? info : {}) as GlobalTransferInfo;
   const serverPrefs = prefs as Record<string, unknown> | null;
   return {
-    ...info,
+    ...safeInfo,
     use_alt_speed_limits: altSpeedLimitsState,
     // qBittorrent's app/preferences endpoint stores alt_*_limit in bytes/s
     // (despite the WebUI API wiki claiming KiB/s). Verified empirically: setting
