@@ -101,7 +101,7 @@ describe('THEME_PRESETS data', () => {
   });
 
   it('every preset name key resolves in every locale', () => {
-    for (const locale of ['en', 'es', 'zh', 'fr', 'de', 'ru', 'pl', 'tr']) {
+    for (const locale of ['en', 'es', 'zh', 'fr', 'de', 'ru', 'pl', 'tr', 'it']) {
       const json = JSON.parse(
         fs.readFileSync(path.join(__dirname, '../../locales', locale, 'translation.json'), 'utf8'),
       );

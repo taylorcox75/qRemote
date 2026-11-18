@@ -331,7 +331,7 @@
         "dracula": "Dracula",
         "solarized": "Solarized",
         "highContrast": "Contrasto elevato",
-        "qbittorrentClassic": "qBittorrent Classic"
+        "qbittorrentClassic": "qBittorrent classico"
       },
       "themeDescription": "Personalizza le impostazioni del tema e dei colori",
       "addTorrentDialogue": "Schermata di aggiunta torrent",
@@ -1031,7 +1031,7 @@
     "failedToReannounce": "Impossibile riannunciare ai tracker",
     "forceStartToggled": "Avvio forzato {{state}}",
     "failedToToggleForceStart": "Impossibile modificare l'avvio forzato",
-    "superSeedingToggled": "Super seeding {{state}}",
+    "superSeedingToggled": "Modalità super seeding {{state}}",
     "failedToToggleSuperSeeding": "Impossibile modificare il super seeding",
     "sequentialDownloadToggled": "Download sequenziale modificato",
     "failedToToggleSequential": "Impossibile modificare il download sequenziale",
@@ -1231,7 +1231,7 @@
     "uploadLimitSet": "Limite di caricamento impostato a {{value}}",
     "speedLimitToggled": "Limite di velocità globale {{status}}",
     "forceStartToggled": "Avvio forzato {{status}}",
-    "superSeedingToggled": "Super seeding {{status}}",
+    "superSeedingToggled": "Modalità super seeding {{status}}",
     "sequentialToggled": "Download sequenziale modificato",
     "firstLastPieceSet": "Priorità al primo e all'ultimo pezzo impostata",
     "autoManagementToggled": "Gestione automatica: {{status}}",
