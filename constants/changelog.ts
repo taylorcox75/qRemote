@@ -34,6 +34,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         title: 'Bugs Fixed',
         items: [
+          'Fixed a crash right after connecting on iPhone Duo',
           'The sort menu and recent searches now close when you scroll the Torrents list',
           'Improved how global seeding limits are saved to qBittorrent',
           'Improved share limit compatibility with qBittorrent 4.6',
