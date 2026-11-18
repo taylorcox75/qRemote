@@ -59,6 +59,7 @@ export default function AppearanceSettingsScreen() {
     { label: 'Русский', value: 'ru', icon: 'language-outline' },
     { label: 'Polski', value: 'pl', icon: 'language-outline' },
     { label: 'Türkçe', value: 'tr', icon: 'language-outline' },
+    { label: 'Italiano', value: 'it', icon: 'language-outline' },
   ];
 
   const searchHistoryOptions: OptionPickerItem[] = SEARCH_HISTORY_LIMIT_OPTIONS.map((limit) => ({

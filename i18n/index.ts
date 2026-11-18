@@ -11,6 +11,7 @@ import de from '@/locales/de/translation.json';
 import ru from '@/locales/ru/translation.json';
 import pl from '@/locales/pl/translation.json';
 import tr from '@/locales/tr/translation.json';
+import it from '@/locales/it/translation.json';
 
 const LANGUAGE_KEY = '@qremote/language';
 
@@ -41,6 +42,7 @@ i18n.use(initReactI18next).init({
     ru: { translation: ru },
     pl: { translation: pl },
     tr: { translation: tr },
+    it: { translation: it },
   },
   lng: 'en',
   fallbackLng: 'en',
