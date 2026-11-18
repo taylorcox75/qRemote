@@ -59,7 +59,10 @@ export const rssApi = {
    */
   async getAllItems(withData = true): Promise<RssItemsResponse> {
     const response = await apiClient.get(`/api/${API_VERSION}/rss/items`, { withData });
-    return (response as RssItemsResponse) || {};
+    // A text/HTML body (proxy page, malformed reply) must not reach the tree walk.
+    return response && typeof response === 'object' && !Array.isArray(response)
+      ? (response as RssItemsResponse)
+      : {};
   },
 
   /**

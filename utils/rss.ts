@@ -8,8 +8,13 @@
  */
 import { RssArticle, RssFeed, RssItemsResponse, RssTreeNode } from '@/types/api';
 
+/** A plain (non-array) object — the only shape a tree, folder or feed node can be. */
+export function isRssObject(node: unknown): node is Record<string, unknown> {
+  return !!node && typeof node === 'object' && !Array.isArray(node);
+}
+
 export function isRssFeed(node: RssTreeNode): node is RssFeed {
-  return typeof (node as RssFeed).url === 'string';
+  return isRssObject(node) && typeof node.url === 'string';
 }
 
 export function joinRssPath(parent: string, name: string): string {
@@ -53,11 +58,14 @@ export function flattenRssTree(tree: RssItemsResponse): FlattenedRssTree {
   const feeds: { path: string; feed: RssFeed }[] = [];
 
   const walk = (node: RssItemsResponse, parentPath: string) => {
+    // A non-object here (a text body, null, an array) would make Object.entries
+    // yield characters and recurse forever (#334-class crash at connect).
+    if (!isRssObject(node)) return;
     for (const [name, child] of Object.entries(node)) {
       const path = joinRssPath(parentPath, name);
       if (isRssFeed(child)) {
         feeds.push({ path, feed: child });
-      } else {
+      } else if (isRssObject(child)) {
         folders.push(path);
         walk(child as RssItemsResponse, path);
       }
