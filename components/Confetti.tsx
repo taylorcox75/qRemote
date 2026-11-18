@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, StyleSheet, Animated, useWindowDimensions } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
 const CONFETTI_COUNT = 30;
 
 interface ConfettiProps {
@@ -14,10 +13,13 @@ interface ConfettiProps {
  * Triggered when a download completes
  */
 export function Confetti({ active, duration = 2000 }: ConfettiProps) {
+  // Live window size: the window can resize while the app runs (iPhone Duo
+  // fold / unfold), so pieces are placed by a fraction of the current width.
+  const { width, height } = useWindowDimensions();
   const confettiPieces = useMemo(
     () =>
       Array.from({ length: CONFETTI_COUNT }, () => ({
-        x: new Animated.Value(Math.random() * width),
+        xFraction: Math.random(),
         y: new Animated.Value(-20),
         rotation: new Animated.Value(0),
         color: getRandomColor(),
@@ -45,7 +47,7 @@ export function Confetti({ active, duration = 2000 }: ConfettiProps) {
 
       Animated.stagger(30, animations).start();
     }
-  }, [active, confettiPieces, duration]);
+  }, [active, confettiPieces, duration, height]);
 
   if (!active) return null;
 
@@ -58,7 +60,7 @@ export function Confetti({ active, duration = 2000 }: ConfettiProps) {
             styles.confettiPiece,
             {
               backgroundColor: piece.color,
-              left: piece.x,
+              left: piece.xFraction * width,
               transform: [
                 { translateY: piece.y },
                 {

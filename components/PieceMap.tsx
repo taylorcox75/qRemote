@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { useReadableLayout } from '@/hooks/useReadableLayout';
 import { useTheme } from '@/context/ThemeContext';
 import { borderRadius } from '@/constants/spacing';
 
@@ -44,9 +45,11 @@ function downsample(states: number[], maxBars: number): number[] {
  */
 export function PieceMap({ states, maxBars = 120, height = 28 }: PieceMapProps) {
   const { colors } = useTheme();
-  const { width: windowWidth } = useWindowDimensions();
-  // Hero sits in 16px page padding + 16px card padding each side.
-  const mapWidth = Math.max(120, windowWidth - 64);
+  // The screen's content column (window minus side safe-area insets and the
+  // readable-width gutters; the window width on a regular iPhone). Hero sits
+  // in 16px page padding + 16px card padding each side.
+  const { contentWidth } = useReadableLayout();
+  const mapWidth = Math.max(120, contentWidth - 64);
 
   const bars = useMemo(() => downsample(normalizeStates(states), maxBars), [states, maxBars]);
 

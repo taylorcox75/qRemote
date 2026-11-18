@@ -90,7 +90,11 @@ export const optionPickerMock = {
         <Text>{`picker-title:${title}`}</Text>
         {selectedValue !== undefined && <Text>{`picker-selected:${selectedValue}`}</Text>}
         {options.map((o) => (
-          <TouchableOpacity key={o.value} testID={`option-${o.value}`} onPress={() => onSelect(o.value)}>
+          <TouchableOpacity
+            key={o.value}
+            testID={`option-${o.value}`}
+            onPress={() => onSelect(o.value)}
+          >
             <Text>{`option:${o.label}`}</Text>
           </TouchableOpacity>
         ))}
@@ -178,7 +182,11 @@ function MockInputModal({
       <Text>{`input-title:${title}`}</Text>
       <TextInput testID="input-modal-field" value={value} onChangeText={setValue} />
       {presets?.map((p) => (
-        <TouchableOpacity key={p.label} testID={`input-preset-${p.label}`} onPress={() => setValue(p.value)}>
+        <TouchableOpacity
+          key={p.label}
+          testID={`input-preset-${p.label}`}
+          onPress={() => setValue(p.value)}
+        >
           <Text>{p.label}</Text>
         </TouchableOpacity>
       ))}
@@ -263,7 +271,9 @@ export const colorPickerMock = {
 
 /** PathAutocompleteInput stand-in: a plain TextInput (no directory lookups). */
 export const pathAutocompleteMock = {
-  PathAutocompleteInput: (props: React.ComponentProps<typeof TextInput>) => <TextInput {...props} />,
+  PathAutocompleteInput: (props: React.ComponentProps<typeof TextInput>) => (
+    <TextInput {...props} />
+  ),
   isWindowsStylePath: (p: string) => /^[A-Za-z]:[\\/]/.test(p) || p.includes('\\'),
 };
 

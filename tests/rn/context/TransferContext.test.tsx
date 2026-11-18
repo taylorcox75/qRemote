@@ -97,3 +97,27 @@ describe('TransferContext mutations', () => {
     expect(applicationApi.setPreferences).toHaveBeenCalledWith({ alt_up_limit: 4096 });
   });
 });
+
+describe('TransferContext malformed transfer/info (#334)', () => {
+  it.each([
+    ['a text body', 'not json'],
+    ['an empty body', ''],
+    ['undefined', undefined],
+  ])('keeps transferInfo usable for %s', async (_label, body) => {
+    jest.mocked(transferApi.getGlobalTransferInfo).mockResolvedValue(body as never);
+    let latest: ReturnType<typeof useTransfer> | undefined;
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await render(
+      <QueryClientProvider client={queryClient}>
+        <TransferProvider>
+          <Consumer onRender={(ctx) => (latest = ctx)} />
+        </TransferProvider>
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(latest!.transferInfo).not.toBeNull());
+    expect(latest!.error).toBeNull();
+    // No server fields leak in from a string body (spreading 'not json' gives index keys).
+    expect(latest!.transferInfo!.connection_status).toBeUndefined();
+    expect(Object.keys(latest!.transferInfo!)).not.toContain('0');
+  });
+});

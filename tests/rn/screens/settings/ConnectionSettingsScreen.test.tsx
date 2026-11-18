@@ -128,7 +128,9 @@ describe('ConnectionSettingsScreen', () => {
       const input = await screen.findByDisplayValue('51413');
       await fireEvent.changeText(input, '6000');
       await fireEvent(input, 'blur');
-      await waitFor(() => expect(mockApp.setPreferences).toHaveBeenCalledWith({ listen_port: 6000 }));
+      await waitFor(() =>
+        expect(mockApp.setPreferences).toHaveBeenCalledWith({ listen_port: 6000 }),
+      );
       expect(toastMock.showToast).toHaveBeenCalledWith('toast.serverSettingUpdated', 'success');
     });
 
@@ -169,12 +171,18 @@ describe('ConnectionSettingsScreen', () => {
     it('turns random port on, hiding the port field', async () => {
       await renderScreen();
       await fireEvent(switchFor(S('randomPort')), 'valueChange', true);
-      await waitFor(() => expect(mockApp.setPreferences).toHaveBeenCalledWith({ random_port: true }));
+      await waitFor(() =>
+        expect(mockApp.setPreferences).toHaveBeenCalledWith({ random_port: true }),
+      );
       expect(screen.queryByPlaceholderText('6881')).toBeNull();
     });
 
     it('turns random port off together with the last real port', async () => {
-      mockApp.getPreferences.mockResolvedValue({ ...MODERN_PREFS, random_port: true, listen_port: 0 });
+      mockApp.getPreferences.mockResolvedValue({
+        ...MODERN_PREFS,
+        random_port: true,
+        listen_port: 0,
+      });
       await renderScreen();
       expect(screen.queryByPlaceholderText('6881')).toBeNull();
       await fireEvent(switchFor(S('randomPort')), 'valueChange', false);
@@ -188,7 +196,11 @@ describe('ConnectionSettingsScreen', () => {
     });
 
     it('restores random port when turning it off fails', async () => {
-      mockApp.getPreferences.mockResolvedValue({ ...MODERN_PREFS, random_port: true, listen_port: 0 });
+      mockApp.getPreferences.mockResolvedValue({
+        ...MODERN_PREFS,
+        random_port: true,
+        listen_port: 0,
+      });
       mockApp.setPreferences.mockRejectedValue(new Error('x'));
       await renderScreen();
       await fireEvent(switchFor(S('randomPort')), 'valueChange', false);
@@ -227,9 +239,7 @@ describe('ConnectionSettingsScreen', () => {
       expect(screen.getByTestId('input-modal-field').props.value).toBe('500');
       await fireEvent.changeText(screen.getByTestId('input-modal-field'), '50');
       await fireEvent.press(screen.getByTestId('input-modal-confirm'));
-      await waitFor(() =>
-        expect(mockApp.setPreferences).toHaveBeenCalledWith({ max_connec: 50 }),
-      );
+      await waitFor(() => expect(mockApp.setPreferences).toHaveBeenCalledWith({ max_connec: 50 }));
       expect(await screen.findByText('500')).toBeTruthy();
     });
 
@@ -296,16 +306,16 @@ describe('ConnectionSettingsScreen', () => {
     });
 
     // The blur handlers capture the already-edited text as the rollback value.
-  it.skip('restores the proxy host when the server rejects it', async () => {
-    mockApp.setPreferences.mockRejectedValue(new Error('x'));
-    await renderScreen();
-    const input = screen.getByDisplayValue('proxy.local');
-    await fireEvent.changeText(input, 'proxy.other');
-    await fireEvent(input, 'blur');
-    expect(await screen.findByDisplayValue('proxy.local')).toBeTruthy();
-  });
+    it.skip('restores the proxy host when the server rejects it', async () => {
+      mockApp.setPreferences.mockRejectedValue(new Error('x'));
+      await renderScreen();
+      const input = screen.getByDisplayValue('proxy.local');
+      await fireEvent.changeText(input, 'proxy.other');
+      await fireEvent(input, 'blur');
+      expect(await screen.findByDisplayValue('proxy.local')).toBeTruthy();
+    });
 
-  it('reports an error for each text field the server rejects', async () => {
+    it('reports an error for each text field the server rejects', async () => {
       mockApp.setPreferences.mockRejectedValue(new Error('x'));
       await renderScreen();
       for (const [from, to] of [
@@ -320,7 +330,10 @@ describe('ConnectionSettingsScreen', () => {
         await fireEvent(input, 'blur');
       }
       await waitFor(() => expect(mockApp.setPreferences).toHaveBeenCalledTimes(5));
-      expect(toastMock.showToast).toHaveBeenCalledWith('errors.failedToUpdateServerSetting', 'error');
+      expect(toastMock.showToast).toHaveBeenCalledWith(
+        'errors.failedToUpdateServerSetting',
+        'error',
+      );
     });
 
     it('validates the proxy port and I2P port before saving', async () => {
@@ -331,7 +344,9 @@ describe('ConnectionSettingsScreen', () => {
       expect(toastMock.showToast).toHaveBeenCalledWith('errors.invalidPort', 'error');
       await fireEvent.changeText(proxyPort, '3128');
       await fireEvent(proxyPort, 'blur');
-      await waitFor(() => expect(mockApp.setPreferences).toHaveBeenCalledWith({ proxy_port: 3128 }));
+      await waitFor(() =>
+        expect(mockApp.setPreferences).toHaveBeenCalledWith({ proxy_port: 3128 }),
+      );
 
       const i2pPort = screen.getByDisplayValue('7656');
       await fireEvent.changeText(i2pPort, '');
@@ -368,7 +383,9 @@ describe('ConnectionSettingsScreen', () => {
       await fireEvent.press(screen.getByText(S('proxySocks5')));
       expect(screen.queryByTestId('option-3')).toBeNull();
       await fireEvent.press(screen.getByTestId('option-None'));
-      await waitFor(() => expect(mockApp.setPreferences).toHaveBeenCalledWith({ proxy_type: 'None' }));
+      await waitFor(() =>
+        expect(mockApp.setPreferences).toHaveBeenCalledWith({ proxy_type: 'None' }),
+      );
       expect(screen.queryByDisplayValue('proxy.local')).toBeNull();
 
       await fireEvent.press(screen.getByText(S('proxyDisabled')));

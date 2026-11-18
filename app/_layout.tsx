@@ -2,7 +2,7 @@ import '@/i18n';
 import * as ExpoLinking from 'expo-linking';
 import { ErrorBoundaryProps, Stack, useRootNavigationState, useRouter } from 'expo-router';
 import {
-  Dimensions,
+  useWindowDimensions,
   Linking,
   ScrollView,
   Text,
@@ -37,8 +37,6 @@ import { extractMagnetLink } from '@/utils/magnet';
 import { extractTorrentFile, IncomingTorrentFile } from '@/utils/torrent-file';
 import { persistIncomingTorrentFile } from '@/services/incoming-file';
 import { runAfterInteractions } from '@/utils/afterInteractions';
-
-const { width } = Dimensions.get('window');
 
 // Keep (tabs) as the stack anchor so pushing server/add routes (and
 // deep-linking to them) never wipes the tab navigator out of history —
@@ -123,6 +121,9 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 
 function StackNavigator() {
   const { colors } = useTheme();
+  // Live window width (it changes on iPhone Duo fold / unfold): the back-swipe
+  // region is the left half of the current window.
+  const { width } = useWindowDimensions();
   const { t } = useTranslation();
   const { showToast } = useToast();
   const router = useRouter();

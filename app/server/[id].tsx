@@ -702,7 +702,7 @@ App Version: ${APP_VERSION}`;
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
+      edges={['top', 'left', 'right']}
     >
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <KeyboardAvoidingView

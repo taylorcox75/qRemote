@@ -289,7 +289,7 @@ re-add one without being asked.
   (`apiClient`).
 - **Styling** — every color comes from `useTheme()`. Users can override any
   color via the in-app picker.
-- **i18n** — react-i18next, eight locales.
+- **i18n** — react-i18next, nine locales.
 - **Deep links** — magnet URLs and `.torrent` files arrive via a `Linking`
   listener in `app/_layout.tsx`. `app/+native-intent.ts` returns `null` for those
   URLs so Expo Router doesn't try to treat a `file://…torrent` path as a route
@@ -624,11 +624,22 @@ Thin objects over `apiClient`.
   top chrome) floats (`headerStyle` + `onHeaderLayout`) and scroll content is
   padded by it and the tab bar (`contentStyle(base)`, `scrollIndicatorInsets`,
   `topInset` for `progressViewOffset`, `bodyStyle` for empty states). Inert
-  with the JS tab bar. Every tab and pushed tab screen uses it (Torrents list
-  and Search have their own floating headers and use `tabBarInset` directly).
+  with the JS tab bar. Every tab and pushed tab screen uses it (Torrents list,
+  Search and the Settings hub have their own layouts and use `useTabBarInset()`
+  directly). `contentStyle` also adds the readable-width gutter (below).
   **Glass is functional-layer only** (HIG): bars, headers, floating controls,
   menus, pickers, toasts. Content cards stay solid (`GlassSurface glass={false}`
   or a plain View).
+- `useReadableLayout.ts` — wide / resizable windows (iPhone Duo inner screen,
+  iPad), all from live insets + `useWindowDimensions`, so a regular iPhone in
+  portrait is unchanged. `useReadableLayout()` → `safeLeft`/`safeRight`,
+  `gutter` (centers content in `READABLE_MAX_WIDTH`), `contentWidth` (size
+  graphs from this, not the window), `safeAreaStyle` (root padding for the
+  flat tabs Search/Transfer — stack screens get the side insets from
+  `useGlassStackContentStyle`), `contentStyle(base)`. `useTabBarSide()` /
+  `useTabBarInset()` — the glass tab bar's edge and the bottom space it covers
+  (only the home-indicator inset when it is a side rail); use these, not the
+  context's raw `tabBarInset`, in tab screens.
 
 ### Utils (`utils/`)
 
@@ -722,7 +733,7 @@ last in _both_ directions, ties by seeders desc with `-1` as 0 — #268) ·
 `search-history.ts` (#282 — pure Torrents-tab recent-search lists: `recordQuery` (trim, ignore <2 chars, case-insensitive dedupe keeping latest casing, front, trim to limit, limit 0 = off, never duplicates a pinned entry), `togglePin` (recent ⇄ pinned, max `MAX_PINNED_SEARCHES` = 10, pinned entries don't count toward the limit), `removeQuery`, `clearUnpinned`, `applyHistoryLimit`, `getHistoryEntries` (pinned first); `SEARCH_HISTORY_LIMIT_OPTIONS` backs the Appearance picker) ·
 `search-plugins.ts` (#283 — Search plugin pinning: `orderPluginsWithPins(sortedPlugins, pinned)` moves pinned plugins to the front of the already-sorted list, keeping the incoming enabled-then-name order within each group and ignoring pinned names that aren't installed; `prunePinnedPlugins(pinned, installed)` drops uninstalled and duplicate names; `togglePinnedPlugin(pinned, name, installed)` is the chip-icon tap — unpins a pinned plugin, otherwise pins an installed one — and the result is what the `searchPinnedPlugins` pref saves) ·
 `search-download.ts` (#284 — how a Search result's URL is added through the plugin that produced it. `isAggregatorResult(result)` is true for Jackett/Prowlarr results, detected per result by `engineName` matching `/jackett|prowlarr/i` or an `apikey=` / `jackett_apikey=` query param in the `fileUrl`; it deliberately does not infer this from "all results share one site". `getResultDownloader(result)` returns the result's `engineName` for non-magnet, non-aggregator results with an engine name, and is the single rule shared by `search.tsx`'s instant add, the `sourcePlugin` handoff to both add dialogs, cart items' `downloader`, and `useSearchHashResolver`. `planPluginUrlAdd(downloader, features)` returns `addWithDownloader` (`torrents/add` + `downloader`, WebAPI ≥ 2.13.1, all options kept), `searchDownloadTorrent` (5.0–5.1, default options only) or `plainAdd` (4.x). `getPrefilledDownloader(urls, {url, plugin})` lets the dialogs apply a Search-supplied plugin only while the submitted URLs are still exactly the pre-filled one) ·
-`glass-layout.ts` (`addContentPadding` — adds the glass insets to a scroll content style's own padding) · `liquidGlass.ts` (`getLiquidGlassSupport()` — true only on iOS 26+ with the `ExpoGlassEffect` native module linked and `isGlassEffectAPIAvailable`; checks `requireOptionalNativeModule` _before_ requiring `expo-glass-effect`, whose iOS entry calls `requireNativeView` at import time and would throw on a binary without the module; `shouldUseLiquidGlass(enabled)`; `isGlassAllowedByAccessibility`) · `rss-tab.ts` (`resolveRssTabVisible` — the native RSS tab's visibility, held steady through reconnects and background recovery and changed only on a different server, a manual disconnect or `rss_processing_enabled` changing, because changing it rebuilds the native tab view) ·
+`glass-layout.ts` (`addContentPadding` — adds the glass insets to a scroll content style's own padding; `addHorizontalPadding` — the same for left/right; `getReadableGutter`; `horizontalInsetStyle`; `getTabBarSide` — a tab screen's left/right insets vs the window's, ≥ `SIDE_TAB_BAR_MIN_INSET` more = the glass bar is a side rail) · `liquidGlass.ts` (`getLiquidGlassSupport()` — true only on iOS 26+ with the `ExpoGlassEffect` native module linked and `isGlassEffectAPIAvailable`; checks `requireOptionalNativeModule` _before_ requiring `expo-glass-effect`, whose iOS entry calls `requireNativeView` at import time and would throw on a binary without the module; `shouldUseLiquidGlass(enabled)`; `isGlassAllowedByAccessibility`) · `rss-tab.ts` (`resolveRssTabVisible` — the native RSS tab's visibility, held steady through reconnects and background recovery and changed only on a different server, a manual disconnect or `rss_processing_enabled` changing, because changing it rebuilds the native tab view) ·
 `themePresets.ts` (#286 — `getThemePresetSelection(customColors, themePresetId)` → `default` | `preset` | `custom` (+ `basedOn`), derived by deep-comparing stored overrides with the preset and never from the id alone, so existing hand-picked colors are always `custom`; `findThemePreset`; `presetApplyNeedsConfirm` — true only for `custom`) ·
 `login-response.ts` (qBittorrent login body/cookie interpretation) ·
 `haptics.ts` (global toggle + wrappers) · `tags.ts` (CSV tag parsing) ·
@@ -748,7 +759,7 @@ base; `contrastRatio(a, b)` — WCAG 2 contrast ratio for hex/rgb/rgba strings, 
 - `types/preferences.ts` — typed preferences + defaults.
 - `constants/` — `changelog.ts` (don't edit unless asked; see
   [docs/RELEASING.md](docs/RELEASING.md)),
-  `spacing.ts`, `typography.ts`, `shadows.ts`, `buttons.ts`, `serverIcons.ts`
+  `spacing.ts` (also `READABLE_MAX_WIDTH`, the content-column cap on wide windows), `typography.ts`, `shadows.ts`, `buttons.ts`, `serverIcons.ts`
   (`SERVER_ICON_OPTIONS`, `DEFAULT_SERVER_ICON` — the curated Ionicons set for
   a server's badge, #224), `timing.ts` (`LONG_BACKGROUND_THRESHOLD_MS` — shared
   by `TorrentContext` and `TransferContext` for their quick-app-switch gate),
@@ -758,7 +769,7 @@ base; `contrastRatio(a, b)` — WCAG 2 contrast ratio for hex/rgb/rgba strings, 
   `themePresets.ts` (`THEME_PRESETS`, `ThemePreset`, `DEFAULT_THEME_PRESET_ID` — #286: `default` plus oled/nord/dracula/solarized/highContrast/qbittorrentClassic, each defining EVERY `ColorTheme` key (incl. preset-only `primaryOpac`/`onAccent`) for both `dark` and `light`, 6-digit hex except `primaryOpac`. Applied through `colorThemeManager.applyThemePreset`. **Never rename a preset `id`** — it is persisted as `themePresetId`. Contrast is enforced by `tests/utils/themePresets.test.ts`).
   **Use these tokens; don't invent ad-hoc spacing.**
 - `i18n/index.ts` initializes react-i18next. Each locale is ONE file,
-  `locales/{en,es,zh,fr,de,ru,pl,tr}/translation.json`, holding every namespace:
+  `locales/{en,es,zh,fr,de,ru,pl,tr,it}/translation.json`, holding every namespace:
   `common`, `states`, `screens`, `placeholders`, `actions`, `alerts`, `server`,
   `torrentDetail`, `filters`, `sort`, `toast`, `errors`. Keys read like
   `t('actions.pause')`.
@@ -775,7 +786,7 @@ base; `contrastRatio(a, b)` — WCAG 2 contrast ratio for hex/rgb/rgba strings, 
 Exact touch-lists for recurring work. Follow them; don't rediscover.
 
 **Add or change a user-facing string**
-Add the key to **all eight** `locales/*/translation.json` and use it via `t('ns.key')`.
+Add the key to **all nine** `locales/*/translation.json` and use it via `t('ns.key')`.
 Actually translate — the parity test rejects English copied verbatim into another
 locale (for strings ≥16 chars). `npm test` names any file you missed.
 
@@ -1092,6 +1103,15 @@ ASCII-8BIT`** when the shell has no UTF-8 locale (non-interactive shells,
   mock in `tests/rn/setup.ts`. Missing any one fails a suite _after_ its tests
   pass ("`getUIRuntimeHolder` is not supported on web", "installUIRuntimeBindings
   is not a function"), which reads like a leak, not a config gap.
+- **iPhone Duo puts things on the right edge.** Its inner screen reports a
+  large _right_ safe-area inset (the status-bar island floats top-right), and
+  the native glass tab bar can become a vertical rail on that side; the window
+  also resizes on fold / unfold. Code that only reads `insets.top/bottom` or
+  `Dimensions.get('window')` at module scope lets content slide under both.
+  Read `useSafeAreaInsets()` left/right and `useWindowDimensions()` (or
+  `useReadableLayout`), never a device-model check. Each native tab has its
+  own SafeAreaProvider, so inside a tab the insets include the rail;
+  `LiquidGlassContext.windowInsets` holds the window's own for comparison.
 - **A Worklets "Mismatch between C++ code version and JavaScript code version"
   red screen** means the installed dev client predates a dependency bump. It is
   not a JS bug: re-run `npm run xcode` (clean prebuild) and reinstall.

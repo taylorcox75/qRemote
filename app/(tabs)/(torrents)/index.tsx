@@ -47,6 +47,7 @@ import { SearchHistoryDropdown } from '@/components/SearchHistoryDropdown';
 import { SwipeActionsPanel } from '@/components/SwipeActionsPanel';
 import { GlassSurface, GlassWrap } from '@/components/GlassSurface';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { useReadableLayout, useTabBarInset } from '@/hooks/useReadableLayout';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { TORRENT_ADD_FAILED_MESSAGE, torrentsApi } from '@/services/api/torrents';
 import { summarizeAddBatch } from '@/utils/add-torrent-batch';
@@ -165,7 +166,10 @@ export default function TorrentsScreen() {
   // tabBarInset: the floating glass tab bar's height (0 with the JS tab bar).
   // This screen runs under the glass bar, so the list, the empty state and the
   // select-mode bulk bar are inset by it here.
-  const { enabled: liquidGlass, tabBarInset } = useLiquidGlass();
+  const { enabled: liquidGlass } = useLiquidGlass();
+  const tabBarInset = useTabBarInset();
+  // Wide windows (iPhone Duo, iPad): the list is centered in a readable column.
+  const readable = useReadableLayout();
   // Drives only the pull-to-refresh spinner. `isLoading` also flips on every
   // background poll/foreground re-sync, and wiring it to RefreshControl would
   // pop the iOS spinner on top of the search box on every load (#275).
@@ -2210,7 +2214,7 @@ export default function TorrentsScreen() {
                 tintColor={colors.primary}
               />
             }
-            contentContainerStyle={[
+            contentContainerStyle={readable.contentStyle([
               styles.listContent,
               // Only the absolute-overlay (unpinned) header needs the list
               // content pushed down by its height — a pinned header is a
@@ -2223,7 +2227,7 @@ export default function TorrentsScreen() {
                     ? bulkActionsBarHeight + (tabBarInset > 0 ? spacing.sm : 0)
                     : 0) + tabBarInset,
               },
-            ]}
+            ])}
             scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
             onScroll={handleScroll}
             onScrollBeginDrag={handleScrollBeginDrag}

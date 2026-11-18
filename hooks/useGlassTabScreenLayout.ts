@@ -18,13 +18,18 @@
  * glass tab bar) a floating header gets the theme background, so it still
  * reads as today's solid header.
  *
+ * `contentStyle` also centers the content in the readable column on wide
+ * windows (hooks/useReadableLayout.ts) — a no-op below READABLE_MAX_WIDTH —
+ * and the bottom inset follows the tab bar to a side rail (useTabBarInset).
+ *
  * Key exports: useGlassTabScreenLayout, GlassTabScreenLayout
  */
 import { useCallback, useState } from 'react';
 import { StyleSheet, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { useTheme } from '@/context/ThemeContext';
-import { addContentPadding } from '@/utils/glass-layout';
+import { addContentPadding, addHorizontalPadding } from '@/utils/glass-layout';
+import { useReadableLayout, useTabBarInset } from '@/hooks/useReadableLayout';
 
 /**
  * First-frame guess at a floating header's height, before it is measured: the
@@ -44,7 +49,10 @@ export interface GlassTabScreenLayout {
   topInset: number;
   /** Space the glass tab bar covers at the bottom (0 without it). */
   bottomInset: number;
-  /** A scroll view's content style with the glass insets added to its padding. */
+  /**
+   * A scroll view's content style with the glass insets added to its padding,
+   * and the readable-width gutter on wide windows.
+   */
   contentStyle: (base?: StyleProp<ViewStyle>) => StyleProp<ViewStyle>;
   /** For a scroll view's `scrollIndicatorInsets` (undefined when inert). */
   scrollIndicatorInsets: { top: number; bottom: number } | undefined;
@@ -56,7 +64,9 @@ export function useGlassTabScreenLayout(
   options: { floatingHeader?: boolean } = {},
 ): GlassTabScreenLayout {
   const { floatingHeader = true } = options;
-  const { tabBarGlass, enabled, tabBarInset } = useLiquidGlass();
+  const { tabBarGlass, enabled } = useLiquidGlass();
+  const tabBarInset = useTabBarInset();
+  const { gutter } = useReadableLayout();
   const { colors } = useTheme();
   const [headerHeight, setHeaderHeight] = useState(lastHeaderHeight);
   const floating = tabBarGlass && floatingHeader;
@@ -72,8 +82,9 @@ export function useGlassTabScreenLayout(
   const bottomInset = tabBarInset;
 
   const contentStyle = useCallback(
-    (base?: StyleProp<ViewStyle>) => addContentPadding(base, topInset, bottomInset),
-    [topInset, bottomInset],
+    (base?: StyleProp<ViewStyle>) =>
+      addHorizontalPadding(addContentPadding(base, topInset, bottomInset), gutter, gutter),
+    [topInset, bottomInset, gutter],
   );
 
   const inert = topInset === 0 && bottomInset === 0;

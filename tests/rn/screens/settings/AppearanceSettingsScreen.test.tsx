@@ -212,7 +212,10 @@ describe('AppearanceSettingsScreen', () => {
     await fireEvent.press(screen.getByTestId('option-3'));
     await waitFor(() =>
       expect(mockSavePreferences).toHaveBeenCalledWith(
-        expect.objectContaining({ torrentSearchHistoryLimit: 3, torrentSearchHistory: ['a', 'b', 'c'] }),
+        expect.objectContaining({
+          torrentSearchHistoryLimit: 3,
+          torrentSearchHistory: ['a', 'b', 'c'],
+        }),
       ),
     );
     expect(await screen.findByText('3')).toBeTruthy();

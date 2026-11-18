@@ -43,6 +43,7 @@ import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { useReadableLayout, useTabBarInset } from '@/hooks/useReadableLayout';
 import { GlassSurface, GlassWrap } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
@@ -124,7 +125,12 @@ export default function SearchScreen() {
   // tabBarInset: the floating glass tab bar's height (0 with the JS tab bar).
   // This screen runs under the glass bar, so the list, empty states and the
   // cart button are inset by it.
-  const { enabled: glass, tabBarInset } = useLiquidGlass();
+  const { enabled: glass } = useLiquidGlass();
+  const tabBarInset = useTabBarInset();
+  // Wide windows (iPhone Duo, iPad): the root view clears the side safe-area
+  // insets (status island, side tab bar rail) and results sit in a readable
+  // column. Both are no-ops on a regular iPhone in portrait.
+  const readable = useReadableLayout();
   const { showToast } = useToast();
   const cart = useSearchCart();
   const [cartModalVisible, setCartModalVisible] = useState(false);
@@ -1155,7 +1161,9 @@ export default function SearchScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
+        style={[styles.container, { backgroundColor: colors.background }, readable.safeAreaStyle]}
+      >
         {/* Header: search row + filter chip rows + status + sort dropdown.
             Floats absolutely above the list and slides away on scroll (see
             handleScroll). Wrapping in TouchableWithoutFeedback lets the user
@@ -1163,7 +1171,13 @@ export default function SearchScreen() {
             banner, etc.) to dismiss the keyboard without stealing taps from
             the controls. */}
         <Animated.View
-          style={[styles.headerContainer, { transform: [{ translateY: headerTranslateY }] }]}
+          style={[
+            styles.headerContainer,
+            // Absolute children ignore the root's side padding, so pin the
+            // header inside the safe area (iPhone Duo's status island / side rail).
+            { left: readable.safeLeft, right: readable.safeRight },
+            { transform: [{ translateY: headerTranslateY }] },
+          ]}
           onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
         >
           <GlassHeaderBackdrop />
@@ -1702,10 +1716,10 @@ export default function SearchScreen() {
                 onToggleCart={handleToggleCart}
               />
             )}
-            contentContainerStyle={{
+            contentContainerStyle={readable.contentStyle({
               paddingBottom: spacing.xxxl + tabBarInset,
               paddingTop: headerHeight + spacing.xs,
-            }}
+            })}
             scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
             onScroll={handleScroll}
             scrollEventThrottle={50}

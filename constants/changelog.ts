@@ -19,6 +19,19 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.9.12',
+    date: '2026-11-17',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'iPhone Duo support: screens now fit the large inner display, stay clear of the side tab bar and status bar, and adapt when you fold or unfold, with more to come so stay tuned',
+          'Italian translation',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.9.11',
     date: '2026-11-15',
     sections: [
@@ -34,6 +47,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         title: 'Bugs Fixed',
         items: [
+          'Fixed a crash right after connecting on iPhone Duo',
           'The sort menu and recent searches now close when you scroll the Torrents list',
           'Improved how global seeding limits are saved to qBittorrent',
           'Improved share limit compatibility with qBittorrent 4.6',

@@ -45,6 +45,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { storageService } from '@/services/storage';
 import { DEFAULT_PREFERENCES } from '@/types/preferences';
 import { getLiquidGlassSupport, isGlassAllowedByAccessibility } from '@/utils/liquidGlass';
+import { horizontalInsetStyle } from '@/utils/glass-layout';
 
 /** Height of the tab bar above the home-indicator inset (UITabBar's 49pt). */
 export const GLASS_TAB_BAR_HEIGHT = 49;
@@ -60,10 +61,28 @@ interface LiquidGlassContextValue {
   tabBarGlass: boolean;
   /** The stored preference has been read. */
   loaded: boolean;
-  /** Bottom space the glass tab bar covers on a tab screen (0 without it). */
+  /**
+   * Bottom space the glass tab bar covers on a tab screen when the bar is at
+   * the bottom (0 without it). Tab screens read it through useTabBarInset
+   * (hooks/useReadableLayout.ts), which drops it when the bar is a side rail.
+   */
   tabBarInset: number;
+  /**
+   * The window's own safe-area insets, read above the tab navigator. Inside a
+   * native tab the screen's insets also include the glass tab bar, so comparing
+   * the two tells which edge that bar is on (utils/glass-layout.ts getTabBarSide).
+   */
+  windowInsets: WindowInsets;
   setPreference: (value: boolean) => Promise<void>;
 }
+
+export interface WindowInsets {
+  left: number;
+  right: number;
+  bottom: number;
+}
+
+const NO_WINDOW_INSETS: WindowInsets = { left: 0, right: 0, bottom: 0 };
 
 const OFF: LiquidGlassContextValue = {
   available: false,
@@ -72,6 +91,7 @@ const OFF: LiquidGlassContextValue = {
   tabBarGlass: false,
   loaded: true,
   tabBarInset: 0,
+  windowInsets: NO_WINDOW_INSETS,
   setPreference: async () => undefined,
 };
 
@@ -149,8 +169,15 @@ export function LiquidGlassProvider({ children }: { children: React.ReactNode })
 
   // Read here, above the tab navigator: each native tab screen has its own
   // SafeAreaProvider, so the window's home-indicator inset is only known here.
-  const windowBottomInset = useSafeAreaInsets().bottom;
+  const windowSafeArea = useSafeAreaInsets();
+  const windowBottomInset = windowSafeArea.bottom;
   const tabBarInset = tabBarGlass ? windowBottomInset + GLASS_TAB_BAR_HEIGHT : 0;
+  const windowLeft = windowSafeArea.left;
+  const windowRight = windowSafeArea.right;
+  const windowInsets = useMemo<WindowInsets>(
+    () => ({ left: windowLeft, right: windowRight, bottom: windowBottomInset }),
+    [windowLeft, windowRight, windowBottomInset],
+  );
 
   const enabled =
     available &&
@@ -158,8 +185,17 @@ export function LiquidGlassProvider({ children }: { children: React.ReactNode })
     isGlassAllowedByAccessibility({ reduceTransparency, increaseContrast });
 
   const value = useMemo<LiquidGlassContextValue>(
-    () => ({ available, preference, enabled, tabBarGlass, loaded, tabBarInset, setPreference }),
-    [available, preference, enabled, tabBarGlass, loaded, tabBarInset, setPreference],
+    () => ({
+      available,
+      preference,
+      enabled,
+      tabBarGlass,
+      loaded,
+      tabBarInset,
+      windowInsets,
+      setPreference,
+    }),
+    [available, preference, enabled, tabBarGlass, loaded, tabBarInset, windowInsets, setPreference],
   );
 
   return <LiquidGlassContext.Provider value={value}>{children}</LiquidGlassContext.Provider>;
@@ -189,12 +225,20 @@ export function useGlassStackTopInset(): number | undefined {
  * runs under the floating glass tab bar and insets its own content
  * (hooks/useGlassTabScreenLayout.ts). With the JS tab bar it is just the
  * background, as before.
+ *
+ * Plus the screen's left/right safe-area insets, in both tab bar modes, so
+ * every stack screen (header buttons included) clears the iPhone Duo's
+ * top-right status island and a side glass tab bar rail (UIKit adds the rail
+ * to the tab screen's safe area, which this reads from inside the tab). Both
+ * are 0 on a regular iPhone in portrait, which then gets no padding keys at all.
  */
 export function useGlassStackContentStyle(): ViewStyle {
   const { colors } = useTheme();
   const topInset = useGlassStackTopInset();
+  const { left, right } = useSafeAreaInsets();
   return {
     backgroundColor: colors.background,
     ...(topInset !== undefined && { paddingTop: topInset }),
+    ...horizontalInsetStyle(left, right),
   };
 }

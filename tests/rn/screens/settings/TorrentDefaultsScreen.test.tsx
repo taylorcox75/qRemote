@@ -150,7 +150,11 @@ async function pressAlertButton(text: string) {
 describe('TorrentDefaultsScreen — local list defaults', () => {
   it('loads saved sort/filter defaults and hides server sections while offline', async () => {
     mockServer.isConnected = false;
-    mockLocalPrefs = { defaultSortBy: 'size', defaultSortDirection: 'asc', defaultFilter: 'paused' };
+    mockLocalPrefs = {
+      defaultSortBy: 'size',
+      defaultSortDirection: 'asc',
+      defaultFilter: 'paused',
+    };
     await renderScreen();
 
     expect(await screen.findByText('sort.size')).toBeTruthy();
@@ -457,7 +461,9 @@ describe('TorrentDefaultsScreen — paths', () => {
     await fireEvent.press(editButtons()[1]);
     await fireEvent.changeText(screen.getByTestId('input-modal-field'), '/tmp2');
     await fireEvent.press(screen.getByTestId('input-modal-confirm'));
-    await waitFor(() => expect(mockApp.setPreferences).toHaveBeenCalledWith({ temp_path: '/tmp2' }));
+    await waitFor(() =>
+      expect(mockApp.setPreferences).toHaveBeenCalledWith({ temp_path: '/tmp2' }),
+    );
 
     await fireEvent.press(editButtons()[2]);
     await fireEvent.changeText(screen.getByTestId('input-modal-field'), '/export');
@@ -502,7 +508,9 @@ describe('TorrentDefaultsScreen — paths', () => {
     await fireEvent.press(screen.getByTestId('input-modal-cancel'));
 
     await fireEvent(switchFor(S('copyTorrentFilesForFinishedTo')), 'valueChange', false);
-    await waitFor(() => expect(mockApp.setPreferences).toHaveBeenCalledWith({ export_dir_fin: '' }));
+    await waitFor(() =>
+      expect(mockApp.setPreferences).toHaveBeenCalledWith({ export_dir_fin: '' }),
+    );
 
     mockApp.getPreferences.mockResolvedValue({ ...FULL_SERVER_PREFS, export_dir: '/e' });
   });
@@ -596,7 +604,10 @@ describe('TorrentDefaultsScreen — automatic import', () => {
     await fireEvent.press(screen.getByText(S('addMonitoredFolder')));
     expect(mockApp.setPreferences).not.toHaveBeenCalled();
 
-    await fireEvent.changeText(screen.getByPlaceholderText(S('monitoredFolderPlaceholder')), ' /new ');
+    await fireEvent.changeText(
+      screen.getByPlaceholderText(S('monitoredFolderPlaceholder')),
+      ' /new ',
+    );
     await fireEvent.press(screen.getByText(S('addMonitoredFolder')));
     await waitFor(() =>
       expect(mockApp.setPreferences).toHaveBeenCalledWith({
@@ -733,9 +744,7 @@ describe('TorrentDefaultsScreen — categories', () => {
     await fireEvent.changeText(screen.getByDisplayValue('Movies'), 'Films');
     await fireEvent.press(screen.getByText('common.confirm'));
 
-    await waitFor(() =>
-      expect(mockCategories.removeCategories).toHaveBeenCalledWith(['Movies']),
-    );
+    await waitFor(() => expect(mockCategories.removeCategories).toHaveBeenCalledWith(['Movies']));
     expect(mockTorrentsApi.getTorrentList).toHaveBeenCalledWith(undefined, 'Movies');
     expect(mockCategories.addCategory).toHaveBeenCalledWith('Films', '/m');
     expect(mockTorrentsApi.setTorrentCategory).toHaveBeenCalledWith(['h1', 'h2'], 'Films');
