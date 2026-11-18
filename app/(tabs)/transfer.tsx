@@ -1313,8 +1313,10 @@ export default function TransferScreen() {
                   </Text>
                 </View>
                 <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                  {transferInfo.connection_status.charAt(0).toUpperCase() +
-                    transferInfo.connection_status.slice(1)}
+                  {transferInfo.connection_status
+                    ? transferInfo.connection_status.charAt(0).toUpperCase() +
+                      transferInfo.connection_status.slice(1)
+                    : '—'}
                 </Text>
               </View>
 
@@ -1325,7 +1327,7 @@ export default function TransferScreen() {
                   {t('screens.transfer.dhtNodes')}
                 </Text>
                 <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                  {transferInfo.dht_nodes.toLocaleString()}
+                  {transferInfo.dht_nodes?.toLocaleString() ?? '—'}
                 </Text>
               </View>
 

@@ -38,6 +38,12 @@ async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
     transferApi.getAlternativeSpeedLimitsState().catch(() => false),
     applicationApi.getPreferences().catch(() => null),
   ]);
+  // #334: a non-object body (empty, or text axios couldn't parse) used to be
+  // spread into a truthy object with no fields, crashing the Transfer screen.
+  // Fail the query instead so the screen shows its normal error state.
+  if (!info || typeof info !== 'object' || Array.isArray(info)) {
+    throw new Error('Unexpected transfer/info response');
+  }
   const serverPrefs = prefs as Record<string, unknown> | null;
   return {
     ...info,
