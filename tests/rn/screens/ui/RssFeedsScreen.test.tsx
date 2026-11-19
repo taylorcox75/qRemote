@@ -10,6 +10,8 @@ jest.mock('expo-router', () => {
   const React = jest.requireActual('react');
   return {
     useRouter: () => ({ push: mockPush }),
+    // Runs like a screen that has just been focused.
+    useFocusEffect: (cb: () => void) => React.useEffect(cb, [cb]),
     Stack: (props: { screenOptions: { contentStyle: object } }) =>
       React.createElement(View, { testID: 'stack', style: props.screenOptions.contentStyle }),
   };
@@ -26,7 +28,9 @@ jest.mock('@/context/ToastContext', () => ({ useToast: () => ({ showToast: mockS
 const mockServer = jest.fn(() => ({ isConnected: true }));
 jest.mock('@/context/ServerContext', () => ({ useServer: () => mockServer() }));
 const mockFeeds = jest.fn();
-jest.mock('@/hooks/useRssFeeds', () => ({ useRssFeeds: () => mockFeeds() }));
+jest.mock('@/hooks/useRssFeeds', () => ({
+  useRssFeeds: (opts?: { enabled?: boolean }) => mockFeeds(opts),
+}));
 const mockGlassInset = jest.fn<number | undefined, []>(() => undefined);
 jest.mock('@/context/LiquidGlassContext', () => ({
   ...jest.requireActual('@/context/LiquidGlassContext'),
@@ -112,6 +116,13 @@ describe('RssLayout', () => {
 });
 
 describe('RssFeedsScreen — states', () => {
+  it('fetches feeds only once the screen has been focused (native tabs mount it at connect)', async () => {
+    await setup();
+    // First render (before focus) holds the fetch; the focus effect enables it.
+    expect(mockFeeds.mock.calls[0][0]).toEqual({ enabled: false });
+    expect(mockFeeds.mock.calls.at(-1)?.[0]).toEqual({ enabled: true });
+  });
+
   it('shows a spinner while loading', async () => {
     await setup({ isLoading: true as never });
     expect(screen.queryByText('Linux')).toBeNull();

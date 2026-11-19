@@ -258,6 +258,12 @@ export interface AppPreferences {
    * Optional so stored preferences without it read as the default.
    */
   liquidGlassEnabled?: boolean;
+  /**
+   * Whether the RSS tab was shown on the last connection. Seeds the native
+   * tab bar at launch: showing/hiding a native tab rebuilds every tab, so
+   * starting from the last known value avoids a remount once preferences load.
+   */
+  lastRssTabVisible?: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {

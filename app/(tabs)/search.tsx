@@ -28,7 +28,7 @@ import {
   type TextInputInstance,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -319,16 +319,26 @@ export default function SearchScreen() {
     return unsubscribe;
   }, [navigation]);
 
+  // Native tabs mount this screen at connect. The first search-API call makes
+  // qBittorrent start its search engine (python), which can stall the WebUI
+  // briefly, so wait until the user actually opens Search.
+  const [hasBeenFocused, setHasBeenFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setHasBeenFocused(true);
+    }, []),
+  );
   const pluginsQuery = useQuery<SearchPlugin[]>({
     queryKey: ['search', 'plugins'],
     queryFn: () => searchApi.getPlugins(),
-    enabled: isConnected,
+    enabled: isConnected && hasBeenFocused,
     staleTime: 30_000,
     retry: 1,
   });
 
   const plugins = useMemo(() => pluginsQuery.data ?? [], [pluginsQuery.data]);
-  const noPlugins = !pluginsQuery.isLoading && plugins.length === 0;
+  // isPending (not isLoading): a query held back until focus is pending, not empty.
+  const noPlugins = !pluginsQuery.isPending && plugins.length === 0;
 
   // Sorted plugin list with enabled ones first, used to build the chip row.
   const sortedPlugins = useMemo(() => {

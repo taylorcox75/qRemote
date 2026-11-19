@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { GlobalTransferInfo } from '@/types/api';
 import { transferApi } from '@/services/api/transfer';
 import { applicationApi } from '@/services/api/application';
@@ -33,11 +33,24 @@ interface TransferContextType {
 
 const TransferContext = createContext<TransferContextType | undefined>(undefined);
 
-async function fetchTransferInfo(): Promise<GlobalTransferInfo> {
+// app/preferences is the largest WebUI response and this poll only reads the
+// two alt limits from it, so it's shared with the tab layout's preferences
+// query and refetched at most every 30s instead of on every 3s tick. Writes
+// below invalidate it.
+const PREFERENCES_KEY = ['application', 'preferences'];
+const PREFERENCES_STALE_MS = 30_000;
+
+async function fetchTransferInfo(queryClient: QueryClient): Promise<GlobalTransferInfo> {
   const [info, altSpeedLimitsState, prefs] = await Promise.all([
     transferApi.getGlobalTransferInfo(),
     transferApi.getAlternativeSpeedLimitsState().catch(() => false),
-    applicationApi.getPreferences().catch(() => null),
+    queryClient
+      .fetchQuery({
+        queryKey: PREFERENCES_KEY,
+        queryFn: () => applicationApi.getPreferences(),
+        staleTime: PREFERENCES_STALE_MS,
+      })
+      .catch(() => null),
   ]);
   // #334: a non-object body (empty, or text axios couldn't parse) used to be
   // spread into a truthy object with no fields, crashing the Transfer screen.
@@ -77,7 +90,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     dataUpdatedAt,
   } = useQuery<GlobalTransferInfo>({
     queryKey: ['transfer'],
-    queryFn: fetchTransferInfo,
+    queryFn: () => fetchTransferInfo(queryClient),
     refetchInterval: isAppActive ? 3000 : false,
     enabled: isConnected,
     // This poll already refetches every 3s — a query-level retry on top of
@@ -196,6 +209,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     async (bytesLimit: number) => {
       if (!isConnected) return;
       await applicationApi.setPreferences({ alt_dl_limit: bytesLimit });
+      await queryClient.invalidateQueries({ queryKey: PREFERENCES_KEY });
       await queryClient.invalidateQueries({ queryKey: ['transfer'] });
     },
     [isConnected, queryClient],
@@ -205,6 +219,7 @@ export function TransferProvider({ children }: { children: ReactNode }) {
     async (bytesLimit: number) => {
       if (!isConnected) return;
       await applicationApi.setPreferences({ alt_up_limit: bytesLimit });
+      await queryClient.invalidateQueries({ queryKey: PREFERENCES_KEY });
       await queryClient.invalidateQueries({ queryKey: ['transfer'] });
     },
     [isConnected, queryClient],

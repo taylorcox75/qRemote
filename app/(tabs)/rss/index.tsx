@@ -19,7 +19,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -102,6 +102,14 @@ export default function RssFeedsScreen() {
   const glassLayout = useGlassTabScreenLayout();
   const { showToast } = useToast();
   const { isConnected } = useServer();
+  // Native tabs mount this screen at connect; don't pull every feed's
+  // articles until the user actually opens RSS.
+  const [hasBeenFocused, setHasBeenFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setHasBeenFocused(true);
+    }, []),
+  );
   const {
     tree,
     folders,
@@ -114,7 +122,7 @@ export default function RssFeedsScreen() {
     moveItem,
     refreshItem,
     markAsRead,
-  } = useRssFeeds();
+  } = useRssFeeds({ enabled: hasBeenFocused });
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => new Set());
   const [refreshing, setRefreshing] = useState(false);

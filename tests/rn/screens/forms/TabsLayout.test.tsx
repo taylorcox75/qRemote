@@ -87,6 +87,18 @@ jest.mock('@/services/api/application', () => ({
   applicationApi: { getPreferences: (...a: unknown[]) => mockGetPreferences(...a) },
 }));
 
+let mockStoredPrefs: Record<string, unknown> = {};
+const mockUpdatePreferences = jest.fn();
+jest.mock('@/services/storage', () => ({
+  storageService: {
+    getPreferences: () => Promise.resolve(mockStoredPrefs),
+    updatePreferences: (patch: unknown) => {
+      mockUpdatePreferences(patch);
+      return Promise.resolve();
+    },
+  },
+}));
+
 let client: QueryClient;
 const ui = () => (
   <QueryClientProvider client={client}>
@@ -104,6 +116,7 @@ beforeEach(() => {
     connectedAt: new Date(Date.now() - 1000),
   };
   mockGlass = { tabBarGlass: false, loaded: true };
+  mockStoredPrefs = {};
   mockGetPreferences.mockResolvedValue({ rss_processing_enabled: true });
 });
 
@@ -180,7 +193,26 @@ describe('TabsLayout — Liquid Glass native tabs', () => {
     mockServer.connectedAt = new Date(Date.now() + 60_000);
     mockGetPreferences.mockReturnValue(new Promise(() => {}));
     await render(ui());
-    expect(screen.getByTestId('native-tab-rss').props.accessibilityHint).toBe('hidden');
+    expect((await screen.findByTestId('native-tab-rss')).props.accessibilityHint).toBe('hidden');
+  });
+
+  it("starts from the last connection's RSS tab so the native tabs are built once", async () => {
+    // Launch: still connecting, no preferences yet — the stored value holds.
+    mockStoredPrefs = { lastRssTabVisible: true };
+    mockServer = { ...mockServer, isConnected: false, isConnecting: true, connectedAt: null };
+    mockGetPreferences.mockReturnValue(new Promise(() => {}));
+    await render(ui());
+    await waitFor(() =>
+      expect(screen.getByTestId('native-tab-rss').props.accessibilityHint).toBe('shown'),
+    );
+  });
+
+  it("remembers the RSS tab state once this connection's preferences arrive", async () => {
+    await render(ui());
+    await waitFor(() => expect(mockUpdatePreferences).toHaveBeenCalled());
+    const patch = mockUpdatePreferences.mock.calls.at(-1)[0];
+    expect(patch({})).toEqual({ lastRssTabVisible: true });
+    expect(patch({ lastRssTabVisible: true })).toEqual({});
   });
 
   it('keeps the RSS tab through a reconnect and drops it on a settled disconnect', async () => {
