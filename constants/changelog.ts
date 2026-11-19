@@ -29,6 +29,10 @@ export const CHANGELOG: ChangelogRelease[] = [
           'Italian translation',
         ],
       },
+      {
+        title: 'Bugs Fixed',
+        items: ['Test Connection now catches a wrong address or port instead of reporting success'],
+      },
     ],
   },
   {
