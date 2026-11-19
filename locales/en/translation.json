@@ -692,7 +692,12 @@
       "cartClearAll": "Clear all",
       "cartCheckout": "Continue ({{count}})",
       "cartAccessibility_one": "Add queue, {{count}} torrent",
-      "cartAccessibility_other": "Add queue, {{count}} torrents"
+      "cartAccessibility_other": "Add queue, {{count}} torrents",
+      "videoCodec": "Video codec",
+      "releaseSource": "Source",
+      "defaultMinSeeders": "Default minimum seeders",
+      "defaultMinSeedersHint": "Every new search starts with this minimum",
+      "noMinimum": "No minimum"
     },
     "rss": {
       "feedsTitle": "RSS Feeds",

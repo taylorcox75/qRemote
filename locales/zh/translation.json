@@ -671,7 +671,12 @@
       "cartClearAll": "清空全部",
       "cartCheckout": "继续（{{count}}）",
       "cartAccessibility_one": "添加队列，共 {{count}} 个种子",
-      "cartAccessibility_other": "添加队列，共 {{count}} 个种子"
+      "cartAccessibility_other": "添加队列，共 {{count}} 个种子",
+      "videoCodec": "视频编码",
+      "releaseSource": "来源",
+      "defaultMinSeeders": "默认最少做种数",
+      "defaultMinSeedersHint": "每次新搜索都从这个最小值开始",
+      "noMinimum": "不限"
     },
     "rss": {
       "feedsTitle": "RSS 订阅",

@@ -671,7 +671,12 @@
       "cartClearAll": "Alle entfernen",
       "cartCheckout": "Weiter ({{count}})",
       "cartAccessibility_one": "Warteschlange, {{count}} Torrent",
-      "cartAccessibility_other": "Warteschlange, {{count}} Torrents"
+      "cartAccessibility_other": "Warteschlange, {{count}} Torrents",
+      "videoCodec": "Video-Codec",
+      "releaseSource": "Quelle",
+      "defaultMinSeeders": "Standard-Mindestanzahl Seeder",
+      "defaultMinSeedersHint": "Jede neue Suche startet mit diesem Minimum",
+      "noMinimum": "Kein Minimum"
     },
     "rss": {
       "feedsTitle": "RSS-Feeds",

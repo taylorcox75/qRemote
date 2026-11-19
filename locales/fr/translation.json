@@ -671,7 +671,12 @@
       "cartClearAll": "Tout effacer",
       "cartCheckout": "Continuer ({{count}})",
       "cartAccessibility_one": "File d'ajout, {{count}} torrent",
-      "cartAccessibility_other": "File d'ajout, {{count}} torrents"
+      "cartAccessibility_other": "File d'ajout, {{count}} torrents",
+      "videoCodec": "Codec vidéo",
+      "releaseSource": "Source",
+      "defaultMinSeeders": "Seeders minimum par défaut",
+      "defaultMinSeedersHint": "Chaque nouvelle recherche commence avec ce minimum",
+      "noMinimum": "Aucun minimum"
     },
     "rss": {
       "feedsTitle": "Flux RSS",

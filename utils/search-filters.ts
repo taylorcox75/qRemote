@@ -9,6 +9,12 @@
  * as it does on the desktop/WebUI client. Deliberate differences are called
  * out where they occur.
  */
+import {
+  getReleaseCodecs,
+  getReleaseSources,
+  type SearchCodecOption,
+  type SearchSourceOption,
+} from '@/utils/release-tags';
 import { SearchResult } from '@/types/api';
 import { getVideoQualityLabel, getVideoQualityRank } from '@/utils/video-quality';
 
@@ -57,6 +63,10 @@ export interface SearchFilterOptions {
   maxSize?: number;
   /** Keep only results of these qualities. Empty / unset means "any". */
   qualities?: readonly SearchQualityOption[];
+  /** Keep only results tagged with one of these codecs (#304). Empty = any. */
+  codecs?: readonly SearchCodecOption[];
+  /** Keep only results tagged with one of these sources (#302). Empty = any. */
+  sources?: readonly SearchSourceOption[];
 }
 
 /**
@@ -157,7 +167,9 @@ export function hasActiveFilters(opts: SearchFilterOptions = {}): boolean {
     seeders.max !== undefined ||
     size.min !== undefined ||
     size.max !== undefined ||
-    (opts.qualities?.length ?? 0) > 0
+    (opts.qualities?.length ?? 0) > 0 ||
+    (opts.codecs?.length ?? 0) > 0 ||
+    (opts.sources?.length ?? 0) > 0
   );
 }
 
@@ -182,10 +194,14 @@ export function filterSearchResults(
   const seeders = normalizeRange(opts.minSeeders, opts.maxSeeders);
   const size = normalizeRange(opts.minSize, opts.maxSize);
   const qualities = opts.qualities ?? [];
+  const codecs = opts.codecs ?? [];
+  const sources = opts.sources ?? [];
 
   if (
     !opts.hideZeroSeeders &&
     qualities.length === 0 &&
+    codecs.length === 0 &&
+    sources.length === 0 &&
     nameTerms.length === 0 &&
     filterTerms.length === 0 &&
     seeders.min === undefined &&
@@ -203,6 +219,15 @@ export function filterSearchResults(
     if (qualities.length > 0) {
       const label = getVideoQualityLabel(getVideoQualityRank(r.fileName));
       if (!label || !(qualities as readonly string[]).includes(label)) return false;
+    }
+    // Within a group any selected tag matches; groups combine with AND, so
+    // 1080p + x265 means "1080p releases encoded in x265". A name with no tag
+    // in a group is hidden while that group has a selection, like qualities.
+    if (codecs.length > 0 && !getReleaseCodecs(r.fileName).some((c) => codecs.includes(c))) {
+      return false;
+    }
+    if (sources.length > 0 && !getReleaseSources(r.fileName).some((x) => sources.includes(x))) {
+      return false;
     }
 
     const seedCount = r.nbSeeders;
@@ -234,6 +259,8 @@ export interface SearchFilterDraft {
   maxSize: string;
   maxSizeUnit: SearchSizeUnit;
   qualities: SearchQualityOption[];
+  codecs: SearchCodecOption[];
+  sources: SearchSourceOption[];
 }
 
 export const EMPTY_SEARCH_FILTER_DRAFT: SearchFilterDraft = {
@@ -245,7 +272,21 @@ export const EMPTY_SEARCH_FILTER_DRAFT: SearchFilterDraft = {
   maxSize: '',
   maxSizeUnit: DEFAULT_MAX_SIZE_UNIT,
   qualities: [],
+  codecs: [],
+  sources: [],
 };
+
+/**
+ * The draft a new search (and "Clear filters") starts from: empty, except the
+ * minimum seeders the user set as their default in Settings (#305).
+ */
+export function getDefaultSearchFilterDraft(defaultMinSeeders?: number): SearchFilterDraft {
+  const min =
+    typeof defaultMinSeeders === 'number' && Number.isFinite(defaultMinSeeders)
+      ? Math.floor(defaultMinSeeders)
+      : 0;
+  return { ...EMPTY_SEARCH_FILTER_DRAFT, minSeeders: min > 0 ? String(min) : '' };
+}
 
 /** Parses a draft into filter options (everything but `nameTerms`/`hideZeroSeeders`). */
 export function draftToFilterOptions(draft: SearchFilterDraft): SearchFilterOptions {
@@ -256,6 +297,8 @@ export function draftToFilterOptions(draft: SearchFilterDraft): SearchFilterOpti
     minSize: parseSizeInput(draft.minSize, draft.minSizeUnit),
     maxSize: parseSizeInput(draft.maxSize, draft.maxSizeUnit),
     qualities: draft.qualities,
+    codecs: draft.codecs,
+    sources: draft.sources,
   };
 }
 
@@ -267,6 +310,8 @@ export function isDraftDirty(draft: SearchFilterDraft): boolean {
     draft.maxSeeders !== '' ||
     draft.minSize !== '' ||
     draft.maxSize !== '' ||
-    draft.qualities.length > 0
+    draft.qualities.length > 0 ||
+    draft.codecs.length > 0 ||
+    draft.sources.length > 0
   );
 }

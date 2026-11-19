@@ -1,5 +1,6 @@
 import {
   EMPTY_SEARCH_FILTER_DRAFT,
+  getDefaultSearchFilterDraft,
   draftToFilterOptions,
   filterSearchResults,
   hasActiveFilters,
@@ -438,6 +439,58 @@ describe('filterSearchResults', () => {
     });
   });
 
+  describe('codec and source filters (#304, #302)', () => {
+    const named = (fileName: string) => ({ fileName, nbSeeders: 5, fileSize: 1e9 }) as never;
+    const results = [
+      named('Show.S01E01.1080p.WEB-DL.H.265-GRP'),
+      named('Movie.2024.1080p.BluRay.x264-GRP'),
+      named('Movie.2024.2160p.BluRay.REMUX.HEVC-GRP'),
+      named('Show.S01E02.720p.WEBRip.x264-GRP'),
+      named('Show.S01E03.1080p.WEB.AV1-GRP'),
+      named('Untagged release name'),
+    ];
+    const names = (opts: object) =>
+      filterSearchResults(results, opts).map((r) => (r as { fileName: string }).fileName);
+
+    it('matches codec spellings (H.265 / HEVC / x265) and hides untagged names', () => {
+      expect(names({ codecs: ['x265'] })).toEqual([
+        'Show.S01E01.1080p.WEB-DL.H.265-GRP',
+        'Movie.2024.2160p.BluRay.REMUX.HEVC-GRP',
+      ]);
+      expect(names({ codecs: ['av1'] })).toEqual(['Show.S01E03.1080p.WEB.AV1-GRP']);
+    });
+
+    it('tells WEB-DL (incl. bare WEB) from WEBRip, and a REMUX is also BluRay', () => {
+      expect(names({ sources: ['web-dl'] })).toEqual([
+        'Show.S01E01.1080p.WEB-DL.H.265-GRP',
+        'Show.S01E03.1080p.WEB.AV1-GRP',
+      ]);
+      expect(names({ sources: ['webrip'] })).toEqual(['Show.S01E02.720p.WEBRip.x264-GRP']);
+      expect(names({ sources: ['remux'] })).toEqual(['Movie.2024.2160p.BluRay.REMUX.HEVC-GRP']);
+      expect(names({ sources: ['bluray'] })).toHaveLength(2);
+    });
+
+    it('combines groups with AND (1080p + x265)', () => {
+      expect(names({ qualities: ['1080p'], codecs: ['x265'] })).toEqual([
+        'Show.S01E01.1080p.WEB-DL.H.265-GRP',
+      ]);
+    });
+
+    it('counts as an active filter and a dirty draft', () => {
+      expect(hasActiveFilters({ codecs: ['av1'] })).toBe(true);
+      expect(isDraftDirty({ ...EMPTY_SEARCH_FILTER_DRAFT, sources: ['remux'] })).toBe(true);
+    });
+  });
+
+  describe('default minimum seeders draft (#305)', () => {
+    it('pre-fills the min seeders from the setting, and stays empty at 0', () => {
+      expect(getDefaultSearchFilterDraft(2).minSeeders).toBe('2');
+      expect(getDefaultSearchFilterDraft(0)).toEqual(EMPTY_SEARCH_FILTER_DRAFT);
+      expect(getDefaultSearchFilterDraft(undefined)).toEqual(EMPTY_SEARCH_FILTER_DRAFT);
+      expect(getDefaultSearchFilterDraft(Number.NaN)).toEqual(EMPTY_SEARCH_FILTER_DRAFT);
+    });
+  });
+
   describe('filter draft helpers', () => {
     it('an empty draft yields no active filters and is not dirty', () => {
       expect(hasActiveFilters(draftToFilterOptions(EMPTY_SEARCH_FILTER_DRAFT))).toBe(false);
@@ -459,6 +512,8 @@ describe('filterSearchResults', () => {
         maxSize: '2',
         maxSizeUnit: 'TiB',
         qualities: [],
+        codecs: ['x265'],
+        sources: [],
       });
       expect(opts).toEqual({
         filterText: 'x265',
@@ -467,6 +522,8 @@ describe('filterSearchResults', () => {
         minSize: 500 * 1024 ** 2,
         maxSize: 2 * 1024 ** 4,
         qualities: [],
+        codecs: ['x265'],
+        sources: [],
       });
     });
 

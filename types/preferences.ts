@@ -230,6 +230,13 @@ export interface AppPreferences {
   searchDefaultSort?: SearchSortKey;
 
   /**
+   * Minimum seeders every new Search starts with (#305), also what "Clear
+   * filters" returns to. Absent / 0 means no minimum, so existing users see no
+   * change. Set from Settings → Appearance.
+   */
+  searchDefaultMinSeeders?: number;
+
+  /**
    * Search tab: `name` ids of the plugins the user pinned (#283). Pinned
    * plugins' chips are listed first in the plugin chip row. Names that are no
    * longer installed are ignored (and pruned the next time the pins change).

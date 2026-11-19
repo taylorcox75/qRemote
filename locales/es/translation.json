@@ -671,7 +671,12 @@
       "cartClearAll": "Borrar todo",
       "cartCheckout": "Continuar ({{count}})",
       "cartAccessibility_one": "Cola de adición, {{count}} torrent",
-      "cartAccessibility_other": "Cola de adición, {{count}} torrents"
+      "cartAccessibility_other": "Cola de adición, {{count}} torrents",
+      "videoCodec": "Códec de vídeo",
+      "releaseSource": "Origen",
+      "defaultMinSeeders": "Mínimo de semillas predeterminado",
+      "defaultMinSeedersHint": "Cada búsqueda nueva empieza con este mínimo",
+      "noMinimum": "Sin mínimo"
     },
     "rss": {
       "feedsTitle": "Feeds RSS",

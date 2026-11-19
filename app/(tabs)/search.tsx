@@ -60,6 +60,8 @@ import { SearchInMode, SearchSortKey } from '@/types/preferences';
 import { siteHost, resultTrackerLabel } from '@/utils/searchResult';
 import {
   EMPTY_SEARCH_FILTER_DRAFT,
+  getDefaultSearchFilterDraft,
+  isDraftDirty,
   SearchFilterDraft,
   SearchFilterOptions,
   draftToFilterOptions,
@@ -235,6 +237,12 @@ export default function SearchScreen() {
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [searchInMode, setSearchInMode] = useState<SearchInMode>('everywhere');
   const [filterDraft, setFilterDraft] = useState<SearchFilterDraft>(EMPTY_SEARCH_FILTER_DRAFT);
+  const [defaultMinSeeders, setDefaultMinSeeders] = useState(0);
+  const seededMinSeedersRef = useRef(false);
+  const defaultDraft = useMemo(
+    () => getDefaultSearchFilterDraft(defaultMinSeeders),
+    [defaultMinSeeders],
+  );
   // What the open panel is editing. Nothing here touches the results until the
   // user taps Apply, which copies it into `filterDraft` / `searchInMode`.
   const [stagedDraft, setStagedDraft] = useState<SearchFilterDraft>(EMPTY_SEARCH_FILTER_DRAFT);
@@ -284,6 +292,18 @@ export default function SearchScreen() {
         // Absent means on (the default); only an explicit opt-out turns it off.
         if (prefs.searchGroupDuplicates === false) setGroupDuplicates(false);
         if (prefs.searchInMode === 'names') setSearchInMode('names');
+        // #305: new searches (and "Clear filters") start from this minimum.
+        // Read again on each load so a change in Settings applies to the next
+        // search; the current draft is only seeded before the first search.
+        const dms = prefs.searchDefaultMinSeeders;
+        const minSeeders = typeof dms === 'number' && Number.isFinite(dms) && dms > 0 ? dms : 0;
+        setDefaultMinSeeders(minSeeders);
+        if (!seededMinSeedersRef.current) {
+          seededMinSeedersRef.current = true;
+          const seeded = getDefaultSearchFilterDraft(minSeeders);
+          setFilterDraft((d) => (isDraftDirty(d) ? d : seeded));
+          setStagedDraft((d) => (isDraftDirty(d) ? d : seeded));
+        }
         const defaultSort = prefs.searchDefaultSort;
         if (defaultSort && SEARCH_DEFAULT_SORT_OPTIONS.some((opt) => opt.key === defaultSort)) {
           setSortBy(defaultSort);
@@ -597,18 +617,18 @@ export default function SearchScreen() {
   // and the funnel's active dot never disagree with an empty-looking panel.
   const handleClearPanel = useCallback(() => {
     haptics.light();
-    setStagedDraft(EMPTY_SEARCH_FILTER_DRAFT);
+    setStagedDraft(defaultDraft);
     setStagedSearchIn('everywhere');
-    setFilterDraft(EMPTY_SEARCH_FILTER_DRAFT);
+    setFilterDraft(defaultDraft);
     // Deliberately emptied for this search — don't re-seed the box on next open.
     prefilledPatternRef.current = submittedPattern;
     if (searchInMode !== 'everywhere') void handleSearchInChange('everywhere');
-  }, [submittedPattern, searchInMode, handleSearchInChange]);
+  }, [submittedPattern, searchInMode, handleSearchInChange, defaultDraft]);
 
   const handleClearFilters = useCallback(() => {
     haptics.light();
-    setFilterDraft(EMPTY_SEARCH_FILTER_DRAFT);
-  }, []);
+    setFilterDraft(defaultDraft);
+  }, [defaultDraft]);
 
   // Closing without Apply discards whatever was staged.
   const closeFilterPanel = useCallback(() => {
@@ -665,7 +685,7 @@ export default function SearchScreen() {
       try {
         setSelectedTrackers(new Set());
         // Filters belong to one result set; the persisted "Search in" scope stays.
-        setFilterDraft(EMPTY_SEARCH_FILTER_DRAFT);
+        setFilterDraft(defaultDraft);
         prefilledPatternRef.current = '';
         setIsAggregatedSource(false);
         // Adopted once the new job's id lands (see the jobId effect below), so
@@ -682,7 +702,7 @@ export default function SearchScreen() {
         showToast(getErrorMessage(err), 'error');
       }
     },
-    [category, isConnected, plugin, showToast, start, t],
+    [category, defaultDraft, isConnected, plugin, showToast, start, t],
   );
 
   const handleSubmit = useCallback(() => runSearch(query.trim()), [query, runSearch]);

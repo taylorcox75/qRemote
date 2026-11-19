@@ -692,7 +692,12 @@
       "cartClearAll": "Cancella tutto",
       "cartCheckout": "Continua ({{count}})",
       "cartAccessibility_one": "Torrent da aggiungere: {{count}} torrent",
-      "cartAccessibility_other": "Torrent da aggiungere: {{count}} torrent"
+      "cartAccessibility_other": "Torrent da aggiungere: {{count}} torrent",
+      "videoCodec": "Codec video",
+      "releaseSource": "Sorgente",
+      "defaultMinSeeders": "Seeder minimi predefiniti",
+      "defaultMinSeedersHint": "Ogni nuova ricerca parte da questo minimo",
+      "noMinimum": "Nessun minimo"
     },
     "rss": {
       "feedsTitle": "Feed RSS",

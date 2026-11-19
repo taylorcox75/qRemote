@@ -692,7 +692,12 @@
       "cartClearAll": "Tümünü temizle",
       "cartCheckout": "Devam ({{count}})",
       "cartAccessibility_one": "Ekleme sırası, {{count}} torrent",
-      "cartAccessibility_other": "Ekleme sırası, {{count}} torrent"
+      "cartAccessibility_other": "Ekleme sırası, {{count}} torrent",
+      "videoCodec": "Video kodeği",
+      "releaseSource": "Kaynak",
+      "defaultMinSeeders": "Varsayılan en az paylaşan",
+      "defaultMinSeedersHint": "Her yeni arama bu en düşük değerle başlar",
+      "noMinimum": "En az yok"
     },
     "rss": {
       "feedsTitle": "RSS Akışları",
