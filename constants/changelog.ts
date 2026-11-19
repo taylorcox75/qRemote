@@ -31,7 +31,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         title: 'Bugs Fixed',
-        items: ['Test Connection now catches a wrong address or port instead of reporting success'],
+        items: ['Test Connection now catches a wrong address or port instead of reporting success from other webserver'],
       },
     ],
   },
