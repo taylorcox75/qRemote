@@ -5,7 +5,7 @@
 // queue priority, category / tags, move, rename, peers and polling.
 import React from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { render, waitFor, screen, act, fireEvent } from '@testing-library/react-native';
+import { render, waitFor, screen, act, fireEvent, cleanup } from '@testing-library/react-native';
 import * as Clipboard from 'expo-clipboard';
 import TorrentDetail from '@/app/(tabs)/(torrents)/torrent/[hash]';
 import { torrentsApi } from '@/services/api/torrents';
@@ -1105,7 +1105,16 @@ describe('TorrentDetail', () => {
           return { remove: jest.fn() } as never;
         });
       });
-      afterEach(() => {
+      afterEach(async () => {
+        // Unmount and flush while the fake clock is still in charge. Switching
+        // to real timers first left React work queued on the fake clock, so
+        // Testing Library's own cleanup (which runs after this hook) waited on
+        // it forever — only on slower CI coverage runners, where some work was
+        // still pending (20s test + hook timeouts on every push to main).
+        await cleanup();
+        await act(async () => {
+          jest.runOnlyPendingTimers();
+        });
         jest.useRealTimers();
         jest.restoreAllMocks();
       });
