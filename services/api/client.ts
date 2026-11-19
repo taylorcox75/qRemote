@@ -304,9 +304,12 @@ class ApiClient {
             clogWarn('HTTP', `403 from superseded session — ignoring: ${reqUrl}`);
             throw apiError('Request superseded by a newer session.', status);
           }
+          // Cookie *names* only (describeCookieJar redacts values): shows whether a
+          // session cookie was sent at all, and under which name.
+          const sentCookies = this.cookies ? describeCookieJar(this.cookies) : 'none';
           this.cookies = '';
           this.sessionEpoch++;
-          clogError('HTTP', `403 Forbidden — ${reqUrl}`);
+          clogError('HTTP', `403 Forbidden — ${reqUrl} (cookies sent: ${sentCookies})`);
           throw apiError('Authentication failed. Please check your credentials.', status);
         }
 
