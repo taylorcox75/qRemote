@@ -1371,7 +1371,8 @@
     "torrentExistsOrFailed": "Bereits in qBittorrent vorhanden oder konnte nicht hinzugefügt werden.",
     "unknown": "Ein unbekannter Fehler ist aufgetreten",
     "quiKeyRejected": "qui hat den Proxy-Schlüssel abgelehnt. Prüfe die Proxy-URL.",
-    "quiKeyMissing": "Dieser qui-Server hat keinen Proxy-Schlüssel. Bearbeite ihn und füge die Proxy-URL erneut ein."
+    "quiKeyMissing": "Dieser qui-Server hat keinen Proxy-Schlüssel. Bearbeite ihn und füge die Proxy-URL erneut ein.",
+    "notQbittorrent": "Der Server hat geantwortet, aber nicht wie qBittorrent. Prüfe Adresse, Port und Pfad."
   },
   "states": {
     "dlAndUl": "DL + UL",

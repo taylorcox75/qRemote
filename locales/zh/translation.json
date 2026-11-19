@@ -1371,7 +1371,8 @@
     "torrentExistsOrFailed": "已在 qBittorrent 中，或无法添加。",
     "unknown": "发生未知错误",
     "quiKeyRejected": "qui 拒绝了代理密钥。请检查代理 URL。",
-    "quiKeyMissing": "此 qui 服务器没有代理密钥。请编辑它并重新粘贴代理 URL。"
+    "quiKeyMissing": "此 qui 服务器没有代理密钥。请编辑它并重新粘贴代理 URL。",
+    "notQbittorrent": "服务器有响应，但不是 qBittorrent 的响应。请检查地址、端口和路径。"
   },
   "states": {
     "dlAndUl": "DL + UL",
