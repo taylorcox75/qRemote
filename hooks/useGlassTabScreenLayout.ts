@@ -99,6 +99,9 @@ export function useGlassTabScreenLayout(
     headerStyle: [
       floating && styles.floatingHeader,
       floating && !enabled && { backgroundColor: colors.background },
+      // The glass backdrop has its own edge; a header's hairline border would
+      // run past it (full width, under the Duo's status island).
+      enabled && { borderBottomWidth: 0 },
       sidePaddingStyle,
     ],
     onHeaderLayout: floating ? onLayout : undefined,
