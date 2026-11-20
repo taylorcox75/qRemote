@@ -43,8 +43,14 @@ export interface ReadableLayout {
   contentWidth: number;
   /** Root-view padding for the side insets (flat tab screens only; undefined when 0). */
   safeAreaStyle: ViewStyle | undefined;
-  /** A scroll view's content style with the readable gutter added to its padding. */
+  /**
+   * A scroll view's content style padded by the side insets plus the readable
+   * gutter. Containers stay full width (backgrounds run edge to edge, under
+   * the Duo's status island and side tab bar); only content is inset.
+   */
   contentStyle: (base?: StyleProp<ViewStyle>) => StyleProp<ViewStyle>;
+  /** Padding that keeps a full-width header's controls inside the safe area. */
+  sidePaddingStyle: ViewStyle | undefined;
 }
 
 export function useReadableLayout(): ReadableLayout {
@@ -56,8 +62,8 @@ export function useReadableLayout(): ReadableLayout {
   const available = Math.max(0, width - left - right);
   const gutter = getReadableGutter(available, READABLE_MAX_WIDTH);
   const contentStyle = useCallback(
-    (base?: StyleProp<ViewStyle>) => addHorizontalPadding(base, gutter, gutter),
-    [gutter],
+    (base?: StyleProp<ViewStyle>) => addHorizontalPadding(base, left + gutter, right + gutter),
+    [left, right, gutter],
   );
   return {
     safeLeft: left,
@@ -65,6 +71,7 @@ export function useReadableLayout(): ReadableLayout {
     gutter,
     contentWidth: available - gutter * 2,
     safeAreaStyle: horizontalInsetStyle(left, right),
+    sidePaddingStyle: horizontalInsetStyle(left, right),
     contentStyle,
   };
 }

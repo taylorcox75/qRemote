@@ -66,7 +66,7 @@ export function useGlassTabScreenLayout(
   const { floatingHeader = true } = options;
   const { tabBarGlass, enabled } = useLiquidGlass();
   const tabBarInset = useTabBarInset();
-  const { gutter } = useReadableLayout();
+  const { gutter, safeLeft, safeRight, sidePaddingStyle } = useReadableLayout();
   const { colors } = useTheme();
   const [headerHeight, setHeaderHeight] = useState(lastHeaderHeight);
   const floating = tabBarGlass && floatingHeader;
@@ -83,23 +83,30 @@ export function useGlassTabScreenLayout(
 
   const contentStyle = useCallback(
     (base?: StyleProp<ViewStyle>) =>
-      addHorizontalPadding(addContentPadding(base, topInset, bottomInset), gutter, gutter),
-    [topInset, bottomInset, gutter],
+      addHorizontalPadding(
+        addContentPadding(base, topInset, bottomInset),
+        safeLeft + gutter,
+        safeRight + gutter,
+      ),
+    [topInset, bottomInset, safeLeft, safeRight, gutter],
   );
 
   const inert = topInset === 0 && bottomInset === 0;
 
   return {
     floating,
-    headerStyle: floating
-      ? [styles.floatingHeader, !enabled && { backgroundColor: colors.background }]
-      : undefined,
+    // Headers run edge to edge; their controls are kept inside the safe area.
+    headerStyle: [
+      floating && styles.floatingHeader,
+      floating && !enabled && { backgroundColor: colors.background },
+      sidePaddingStyle,
+    ],
     onHeaderLayout: floating ? onLayout : undefined,
     topInset,
     bottomInset,
     contentStyle,
     scrollIndicatorInsets: inert ? undefined : { top: topInset, bottom: bottomInset },
-    bodyStyle: inert ? undefined : { paddingTop: topInset, paddingBottom: bottomInset },
+    bodyStyle: [!inert && { paddingTop: topInset, paddingBottom: bottomInset }, sidePaddingStyle],
   };
 }
 

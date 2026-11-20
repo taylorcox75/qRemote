@@ -1191,9 +1191,7 @@ export default function SearchScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View
-        style={[styles.container, { backgroundColor: colors.background }, readable.safeAreaStyle]}
-      >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header: search row + filter chip rows + status + sort dropdown.
             Floats absolutely above the list and slides away on scroll (see
             handleScroll). Wrapping in TouchableWithoutFeedback lets the user
@@ -1203,9 +1201,8 @@ export default function SearchScreen() {
         <Animated.View
           style={[
             styles.headerContainer,
-            // Absolute children ignore the root's side padding, so pin the
-            // header inside the safe area (iPhone Duo's status island / side rail).
-            { left: readable.safeLeft, right: readable.safeRight },
+            // Full width (glass under the Duo's status island); controls inset.
+            readable.sidePaddingStyle,
             { transform: [{ translateY: headerTranslateY }] },
           ]}
           onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}

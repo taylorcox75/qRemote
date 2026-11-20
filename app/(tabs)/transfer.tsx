@@ -634,9 +634,7 @@ export default function TransferScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View
-        style={[styles.container, { backgroundColor: colors.background }, readable.safeAreaStyle]}
-      >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Custom limit modal */}
         <Modal
           visible={limitModalVisible}

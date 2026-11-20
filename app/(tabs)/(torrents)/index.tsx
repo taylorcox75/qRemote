@@ -1529,6 +1529,8 @@ export default function TorrentsScreen() {
             // in normal browsing, by design) when it's an overlay; pinned +
             // overlay together is exactly the overlap this avoids.
             headerPinned && styles.headerContainerPinned,
+            // Full width (glass under the Duo's status island); controls inset.
+            readable.sidePaddingStyle,
             {
               backgroundColor: solidPinnedHeader ? colors.background : 'transparent',
               transform: [{ translateY: headerTranslateY }],

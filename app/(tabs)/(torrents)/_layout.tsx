@@ -80,9 +80,7 @@ export default function TorrentsLayout() {
           <View
             style={[styles.fill, styles.detailPane, { borderLeftColor: colors.surfaceOutline }]}
           >
-            {/* A margin, not padding: the detail's floating glass header is
-                absolutely positioned, and absolute children ignore padding. */}
-            <View style={[styles.fill, { marginRight: insets.right }]}>
+            <View style={styles.fill}>
               <PaneLayout pane={detailPane}>
                 {selectedHash ? (
                   <TorrentDetailView
