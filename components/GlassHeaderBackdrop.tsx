@@ -52,6 +52,12 @@ export function GlassHeaderBackdrop({
       style={[
         styles.backdrop,
         { top: underStatusBar ? -insets.top - EDGE_BLEED : 0, bottom: -borderOverlap },
+        // A side inset (iPhone Duo's status island column / side tab bar) ends
+        // the glass there with its rounded corner, as a panel beside the
+        // island: iOS draws its own plate behind the island, and glass running
+        // under it collides with that plate.
+        insets.left > 0 && { left: insets.left },
+        insets.right > 0 && { right: insets.right },
       ]}
     />
   );
