@@ -23,6 +23,11 @@ describe('getSplitLayout', () => {
     expect(getSplitLayout(1194, none, '/torrent/files').split).toBe(false);
   });
 
+  it('stays split while another tab is showing (no narrow flash on return)', () => {
+    expect(getSplitLayout(951, none, '/settings/appearance').split).toBe(true);
+    expect(getSplitLayout(951, none, '/transfer').split).toBe(true);
+  });
+
   it('includes a left inset in the list column', () => {
     expect(getSplitLayout(1194, { left: 20, right: 0 }, '/').listWidth).toBe(SPLIT_LIST_WIDTH + 20);
   });

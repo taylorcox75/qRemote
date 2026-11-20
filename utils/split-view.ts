@@ -21,7 +21,10 @@ export function getSplitLayout(
   pathname: string,
 ): SplitLayout {
   const available = windowWidth - insets.left - insets.right;
-  const onList = pathname === '/' || pathname === '';
+  // Only a screen pushed inside the Torrents stack takes the full width. Other
+  // tabs' routes (this layout stays mounted under them) must not count, or
+  // switching back to Torrents renders one narrow frame before the route updates.
+  const onList = !pathname.startsWith('/torrent/');
   if (!onList || available < SPLIT_VIEW_MIN_WIDTH) return { split: false, listWidth: 0 };
   return { split: true, listWidth: SPLIT_LIST_WIDTH + insets.left };
 }
