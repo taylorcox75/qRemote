@@ -89,7 +89,8 @@
       "deselectTorrent": "Torrentin seçimini kaldır",
       "switchServer": "Sunucu Değiştir",
       "manageServers": "Sunucuları Yönet",
-      "currentServer": "Geçerli"
+      "currentServer": "Geçerli",
+      "splitPlaceholder": "Ayrıntılarını burada görmek için bir torrent seçin"
     },
     "addTorrent": {
       "none": "Yok",

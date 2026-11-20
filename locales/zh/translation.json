@@ -68,7 +68,8 @@
       "deselectTorrent": "取消选择种子",
       "switchServer": "切换服务器",
       "manageServers": "管理服务器",
-      "currentServer": "当前"
+      "currentServer": "当前",
+      "splitPlaceholder": "选择一个种子，在此查看详情"
     },
     "addTorrent": {
       "none": "无",

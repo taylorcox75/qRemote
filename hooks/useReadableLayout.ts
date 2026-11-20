@@ -23,6 +23,7 @@ import { useCallback } from 'react';
 import { useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { usePaneLayout } from '@/context/PaneLayoutContext';
 import { READABLE_MAX_WIDTH } from '@/constants/spacing';
 import {
   addHorizontalPadding,
@@ -47,7 +48,10 @@ export interface ReadableLayout {
 }
 
 export function useReadableLayout(): ReadableLayout {
-  const { width } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  // Inside a split-view pane, measure against the pane, not the window.
+  const pane = usePaneLayout();
+  const width = pane?.width ?? windowWidth;
   const { left, right } = useSafeAreaInsets();
   const available = Math.max(0, width - left - right);
   const gutter = getReadableGutter(available, READABLE_MAX_WIDTH);
@@ -69,6 +73,8 @@ export function useReadableLayout(): ReadableLayout {
 export function useTabBarSide(): TabBarSide {
   const { tabBarGlass, windowInsets } = useLiquidGlass();
   const { left, right } = useSafeAreaInsets();
+  const pane = usePaneLayout();
+  if (pane) return pane.tabBarSide;
   return tabBarGlass ? getTabBarSide({ left, right }, windowInsets) : 'bottom';
 }
 

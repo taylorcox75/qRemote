@@ -89,7 +89,8 @@
       "deselectTorrent": "Снять выбор торрента",
       "switchServer": "Сменить сервер",
       "manageServers": "Управление серверами",
-      "currentServer": "Текущий"
+      "currentServer": "Текущий",
+      "splitPlaceholder": "Выберите торрент, чтобы увидеть здесь подробности"
     },
     "addTorrent": {
       "none": "Нет",

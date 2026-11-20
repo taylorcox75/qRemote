@@ -68,7 +68,8 @@
       "deselectTorrent": "Désélectionner le torrent",
       "switchServer": "Changer de Serveur",
       "manageServers": "Gérer les Serveurs",
-      "currentServer": "Actuel"
+      "currentServer": "Actuel",
+      "splitPlaceholder": "Sélectionnez un torrent pour voir ses détails ici"
     },
     "addTorrent": {
       "none": "Aucun",

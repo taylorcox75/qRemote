@@ -441,6 +441,7 @@ proxy server incl. auth, IP filtering/banned IPs, I2P (qBit 4.6.1+, WebAPI ≥ 2
   iOS Reduce Transparency / Increase Contrast off), the tab-bar choice fixed at
   launch, and the app's light/dark scheme applied to native system chrome.
   `useGlassStackTopInset()` for headers drawn under the status bar.
+- **`PaneLayoutContext.tsx`** — split view support: `PaneLayout` makes a subtree measure one pane as if it were the window (safe-area insets, `useReadableLayout` width, glass tab bar side); `TorrentSplitContext`/`useTorrentSplit` hold the Torrents split view's selected hash. `app/(tabs)/(torrents)/_layout.tsx` puts the list and `TorrentDetailView` (exported from `torrent/[hash].tsx`, `embedded` + `onClose`) side by side when `utils/split-view.ts` `getSplitLayout` says so (≥ `SPLIT_VIEW_MIN_WIDTH` after insets, list route only); the Stack keeps its place in the tree so fold/unfold never loses history. A pane's right inset is a _margin_ on its container — the detail's glass header is absolutely positioned and ignores padding.
 - **`ApiVersionContext.tsx`** — detected qBittorrent API version → feature gating
   through `utils/apiVersion.ts`.
 - **`SearchCartContext.tsx`** — session-scoped queue of Search results the user
