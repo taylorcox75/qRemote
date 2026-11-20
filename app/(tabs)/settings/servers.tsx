@@ -170,9 +170,7 @@ function SwipeableServerItem({
                       onDisconnect();
                     }}
                   >
-                    <Text style={styles.smallButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                      {t('screens.settings.disconnect')}
-                    </Text>
+                    <ConnectButtonLabel showing="disconnect" />
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
@@ -182,7 +180,7 @@ function SwipeableServerItem({
                       onConnect();
                     }}
                   >
-                    <Text style={styles.smallButtonText}>{t('screens.settings.connect')}</Text>
+                    <ConnectButtonLabel showing="connect" />
                   </TouchableOpacity>
                 )}
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -192,6 +190,31 @@ function SwipeableServerItem({
         </Animated.View>
       </View>
       {!isLast && <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />}
+    </View>
+  );
+}
+
+/**
+ * Connect / Disconnect share one width in every row and language: both labels
+ * are laid out in the same cell (the hidden one invisible), so the button is
+ * always as wide as the longer word, with no font scaling.
+ */
+function ConnectButtonLabel({ showing }: { showing: 'connect' | 'disconnect' }) {
+  const { t } = useTranslation();
+  const label = (key: 'connect' | 'disconnect') => (
+    <Text
+      style={[styles.smallButtonText, key !== showing && styles.hiddenLabel]}
+      numberOfLines={1}
+      accessibilityElementsHidden={key !== showing}
+      importantForAccessibility={key !== showing ? 'no-hide-descendants' : 'auto'}
+    >
+      {t(`screens.settings.${key}`)}
+    </Text>
+  );
+  return (
+    <View style={styles.labelStack}>
+      {label('connect')}
+      {label('disconnect')}
     </View>
   );
 }
@@ -554,6 +577,9 @@ export default function ServersSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Both labels share one grid cell: the wider one sets the width.
+  labelStack: { alignItems: 'center' },
+  hiddenLabel: { opacity: 0, height: 0 },
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
