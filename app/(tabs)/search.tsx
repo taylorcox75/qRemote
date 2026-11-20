@@ -5,6 +5,8 @@
  * same sort dropdown, and the same surface card rows for results. Wraps
  * qBittorrent's /api/v2/search/* endpoints behind a clean, consistent UI.
  */
+import { PaneLayout } from '@/context/PaneLayoutContext';
+import { SPLIT_LIST_WIDTH, SPLIT_VIEW_MIN_WIDTH } from '@/constants/spacing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -27,6 +29,7 @@ import {
   NativeScrollEvent,
   type ScrollViewInstance,
   type TextInputInstance,
+  useWindowDimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
@@ -44,7 +47,7 @@ import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
-import { useReadableLayout, useTabBarInset } from '@/hooks/useReadableLayout';
+import { useReadableLayout, useTabBarInset, useTabBarSide } from '@/hooks/useReadableLayout';
 import { GlassSurface, GlassWrap } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
@@ -116,7 +119,53 @@ const HEADER_CONTROL_SIZE = 40;
 /** Keeps the 40pt round buttons at a ≥44pt tap target. */
 const HEADER_BUTTON_HIT_SLOP = { top: 2, bottom: 2, left: 2, right: 2 };
 
+/**
+ * Search tab. On wide windows (iPhone Duo unfolded, iPad) the search and its
+ * results sit in a phone-width column on the left and the right side holds a
+ * prompt, like the Torrents split view, instead of stretching one column
+ * across the screen. The content keeps its place in the tree either way, so
+ * folding / unfolding never resets a search.
+ */
 export default function SearchScreen() {
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const tabBarSide = useTabBarSide();
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const split = width - insets.left - insets.right >= SPLIT_VIEW_MIN_WIDTH;
+  const listWidth = SPLIT_LIST_WIDTH + insets.left;
+  const leftPane = useMemo(
+    () => (split ? { width: listWidth, insets: { ...insets, right: 0 }, tabBarSide } : null),
+    [split, listWidth, insets, tabBarSide],
+  );
+  return (
+    <View style={[styles.splitRow, { backgroundColor: colors.background }]}>
+      <View style={split ? { width: listWidth } : styles.splitFill}>
+        <PaneLayout pane={leftPane}>
+          <SearchContent split={split} />
+        </PaneLayout>
+      </View>
+      {split && (
+        <View
+          style={[
+            styles.splitFill,
+            styles.splitDetail,
+            { borderLeftColor: colors.surfaceOutline, paddingRight: insets.right },
+          ]}
+        >
+          <EmptyState
+            style={{ backgroundColor: colors.background }}
+            icon="search-outline"
+            title={t('screens.search.tipsTitle')}
+            subtitle={t('screens.search.tipsBody')}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+function SearchContent({ split }: { split: boolean }) {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
@@ -1111,6 +1160,8 @@ export default function SearchScreen() {
       );
     }
     if (jobId === null) {
+      // Split view: the right side already shows this prompt.
+      if (split) return null;
       return (
         <EmptyState
           style={{ backgroundColor: colors.background }}
@@ -1858,6 +1909,9 @@ const SCREEN_CORNER_CLEARANCE = 20;
 const SEARCH_TWO_COLUMN_MIN_WIDTH = 700;
 
 const styles = StyleSheet.create({
+  splitRow: { flex: 1, flexDirection: 'row' },
+  splitFill: { flex: 1 },
+  splitDetail: { borderLeftWidth: StyleSheet.hairlineWidth },
   resultColumns: { gap: spacing.md },
   resultColumn: { flex: 1, minWidth: 0 },
   container: {
