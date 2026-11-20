@@ -25,7 +25,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         title: 'New Features',
         items: [
-          'Split view on iPhone Duo and iPad: unfold to see your torrents and their details side by side',
+          'iPhone Duo and iPad: unfold for side-by-side torrents and details, a two-pane Settings, a Transfer dashboard, and two-column search results',
           'Search filters for video codec (x265, x264, AV1) and source (BluRay, REMUX, WEB-DL, WEBRip)',
           'Default minimum seeders for new searches, in Settings → Appearance',
         ],
@@ -36,6 +36,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           'Faster connecting: RSS and search plugins load only when you open them',
           'Less load on your server while the app is open',
           'iPhone Duo layout refinements around the side tab bar and status bar',
+          'Server list: Connect and Disconnect buttons line up, and the full address is shown',
         ],
       },
     ],
