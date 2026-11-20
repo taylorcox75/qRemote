@@ -136,6 +136,12 @@ export default function SearchScreen() {
   const readable = useReadableLayout();
   const { top: topInset } = useSafeAreaInsets();
   const cornerClearance = topInset < SCREEN_CORNER_CLEARANCE ? SCREEN_CORNER_CLEARANCE : 0;
+  // Header controls sit in a centered column (like Safari's address bar in a
+  // wide toolbar) so the search field doesn't stretch across a wide window.
+  const headerGutter = Math.max(
+    0,
+    (readable.contentWidth + readable.gutter * 2 - SEARCH_HEADER_MAX_WIDTH) / 2,
+  );
   const resultColumns = readable.contentWidth >= SEARCH_TWO_COLUMN_MIN_WIDTH ? 2 : 1;
   const { showToast } = useToast();
   const cart = useSearchCart();
@@ -1219,10 +1225,13 @@ export default function SearchScreen() {
                 // iPhone Duo unfolded: almost no top inset (the clock sits in
                 // the side column), so the first row would run into the
                 // screen's rounded corner. Pad clear of the curve.
-                cornerClearance > 0 && {
-                  paddingTop: cornerClearance,
-                  paddingLeft: cornerClearance,
+                cornerClearance > 0 && { paddingTop: cornerClearance },
+                (cornerClearance > 0 || headerGutter > 0) && {
+                  paddingLeft: Math.max(cornerClearance, headerGutter),
+                  paddingRight: Math.max(spacing.xs + spacing.xs / 2, headerGutter),
                 },
+                // Wide windows: keep the controls in the same centered column as
+                // the results instead of stretching across the whole screen.
                 { backgroundColor: glass ? 'transparent' : colors.background },
               ]}
             >
@@ -1838,6 +1847,9 @@ export default function SearchScreen() {
 }
 
 // ────────────────────────────────────────────────────── styles ────────────
+
+/** Widest the Search header's controls get on wide windows. */
+const SEARCH_HEADER_MAX_WIDTH = 640;
 
 /** Padding that clears a rounded screen corner when there's no top inset. */
 const SCREEN_CORNER_CLEARANCE = 20;
