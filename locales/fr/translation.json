@@ -1371,7 +1371,8 @@
     "torrentExistsOrFailed": "Déjà présent dans qBittorrent, ou n'a pas pu être ajouté.",
     "unknown": "Une erreur inconnue s'est produite",
     "quiKeyRejected": "qui a rejeté la clé du proxy. Vérifiez l'URL du proxy.",
-    "quiKeyMissing": "Ce serveur qui n'a pas de clé de proxy. Modifiez-le et collez à nouveau l'URL du proxy."
+    "quiKeyMissing": "Ce serveur qui n'a pas de clé de proxy. Modifiez-le et collez à nouveau l'URL du proxy.",
+    "notQbittorrent": "Le serveur a répondu, mais pas comme qBittorrent. Vérifiez l'adresse, le port et le chemin."
   },
   "states": {
     "dlAndUl": "DL + UL",

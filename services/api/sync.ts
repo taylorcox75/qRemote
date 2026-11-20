@@ -14,7 +14,13 @@ export const syncApi = {
       params.rid = rid;
     }
 
-    const response = (await apiClient.get(`/api/${API_VERSION}/sync/maindata`, params)) as MainData;
+    const raw: unknown = await apiClient.get(`/api/${API_VERSION}/sync/maindata`, params);
+    // An empty/text body used to surface as "Cannot create property 'torrents'
+    // on string" — fail with a readable message instead.
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new Error('Unexpected sync/maindata response from server');
+    }
+    const response = raw as MainData;
 
     if (response.torrents) {
       const torrents: { [hash: string]: TorrentInfo } = {};

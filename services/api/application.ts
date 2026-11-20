@@ -1,3 +1,8 @@
+import {
+  NOT_QBITTORRENT_MESSAGE,
+  isQbitAppVersion,
+  isQbitWebApiVersion,
+} from '@/utils/qbit-response';
 import { AxiosError } from 'axios';
 import { apiClient } from './client';
 import { ApplicationVersion, BuildInfo, ApplicationPreferences } from '@/types/api';
@@ -20,10 +25,15 @@ export const applicationApi = {
       apiClient.get(`/api/${API_VERSION}/app/version`, undefined, signal, text),
       apiClient.get(`/api/${API_VERSION}/app/webapiVersion`, undefined, signal, text),
     ]);
-    return {
-      version: String(version ?? '').trim(),
-      apiVersion: String(apiVersion ?? '').trim(),
-    };
+    // A 200 is not proof this is qBittorrent: a proxy catch-all or another
+    // web app answers with HTML (see utils/qbit-response.ts).
+    // Strings even if a body arrives parsed as a number (#308).
+    const versionText = String(version ?? '').trim();
+    const apiVersionText = String(apiVersion ?? '').trim();
+    if (!isQbitAppVersion(versionText) || !isQbitWebApiVersion(apiVersionText)) {
+      throw new Error(NOT_QBITTORRENT_MESSAGE);
+    }
+    return { version: versionText, apiVersion: apiVersionText };
   },
 
   /**

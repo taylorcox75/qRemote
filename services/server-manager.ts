@@ -4,6 +4,7 @@
  * Key exports: ServerManager, isNetworkError
  * Known issues: isNetworkError was duplicated inline 3× (deduplicated in Task 1.6).
  */
+import { NOT_QBITTORRENT_MESSAGE, isQbitAppVersion } from '@/utils/qbit-response';
 import { AxiosError } from 'axios';
 import { ServerConfig, ServerEndpointKind } from '@/types/api';
 import { hasFallback, insecureCertHostnames, resolveServerEndpoint } from '@/utils/server';
@@ -541,7 +542,13 @@ export class ServerManager {
       }
 
       // Plain text — see the get() note in services/api/client.ts.
-      await client.get('/api/v2/app/version', undefined, signal, { responseType: 'text' });
+      const versionBody = await client.get('/api/v2/app/version', undefined, signal, {
+        responseType: 'text',
+      });
+      if (!isQbitAppVersion(versionBody)) {
+        clogWarn('CONN', 'testEndpoint: app/version did not look like qBittorrent');
+        return { success: false, error: NOT_QBITTORRENT_MESSAGE };
+      }
 
       clogInfo('CONN', 'testEndpoint succeeded');
       return { success: true };

@@ -20,6 +20,7 @@ const SERVICE_SOURCES = [
   'services/api/auth.ts',
   'services/server-manager.ts',
   'utils/quiProxy.ts',
+  'utils/qbit-response.ts',
 ]
   .map((file) => fs.readFileSync(path.join(ROOT, file), 'utf8'))
   .join('\n');

@@ -87,7 +87,22 @@ describe('searchApi', () => {
   it('getPlugins returns array response', async () => {
     mockGet.mockResolvedValueOnce([{ name: 'plugin1' }]);
     const result = await searchApi.getPlugins();
-    expect(result).toEqual([{ name: 'plugin1' }]);
+    expect(result).toEqual([{ name: 'plugin1', fullName: 'plugin1', supportedCategories: [] }]);
+  });
+
+  it('getPlugins drops malformed entries and defaults fields (render-safe at connect)', async () => {
+    mockGet.mockResolvedValueOnce([
+      null,
+      'x',
+      { fullName: 'no name' },
+      { name: 'ok', fullName: 'OK', supportedCategories: [{ id: 'all', name: 'All' }] },
+      { name: 'bare', supportedCategories: 'nope' },
+    ]);
+    const result = await searchApi.getPlugins();
+    expect(result).toEqual([
+      { name: 'ok', fullName: 'OK', supportedCategories: [{ id: 'all', name: 'All' }] },
+      { name: 'bare', fullName: 'bare', supportedCategories: [] },
+    ]);
   });
 
   it('getPlugins returns [] for non-array response', async () => {

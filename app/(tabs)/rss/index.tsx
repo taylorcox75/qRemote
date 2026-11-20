@@ -39,6 +39,7 @@ import { RssFeed, RssItemsResponse } from '@/types/api';
 import {
   getRssFeedDisplayName,
   isRssFeed,
+  isRssObject,
   joinRssPath,
   parentRssPath,
   rssPathBaseName,
@@ -78,8 +79,10 @@ function buildRows(
   depth = 0,
 ): Row[] {
   const rows: Row[] = [];
+  if (!isRssObject(tree)) return rows;
   for (const [name, node] of Object.entries(tree)) {
     const path = joinRssPath(parentPath, name);
+    if (!isRssObject(node)) continue;
     if (isRssFeed(node)) {
       rows.push({ kind: 'feed', path, feed: node, depth });
     } else {

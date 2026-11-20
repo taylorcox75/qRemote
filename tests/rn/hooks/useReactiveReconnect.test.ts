@@ -1,10 +1,32 @@
 import { renderHook } from '@testing-library/react-native';
-import { useReactiveReconnect, isReconnectableError } from '@/hooks/useReactiveReconnect';
+import {
+  useReactiveReconnect,
+  isReconnectableError,
+  reconnectBudgetAllows,
+  resetReconnectBudget,
+  RECONNECT_LOOP_MAX,
+  RECONNECT_LOOP_WINDOW_MS,
+} from '@/hooks/useReactiveReconnect';
 import { useServer } from '@/context/ServerContext';
 
 jest.mock('@/context/ServerContext', () => ({
   useServer: jest.fn(),
 }));
+jest.mock('@/services/connectivity-log', () => ({ clogError: jest.fn() }));
+
+describe('reconnectBudgetAllows (shared re-login loop breaker)', () => {
+  const now = 1_000_000;
+  it('allows reconnects until the budget is spent inside the window', () => {
+    expect(reconnectBudgetAllows([], now)).toBe(true);
+    const spent = Array.from({ length: RECONNECT_LOOP_MAX }, (_, i) => now - i * 1000);
+    expect(reconnectBudgetAllows(spent, now)).toBe(false);
+  });
+
+  it('forgets reconnects older than the window', () => {
+    const old = Array.from({ length: RECONNECT_LOOP_MAX }, () => now - RECONNECT_LOOP_WINDOW_MS);
+    expect(reconnectBudgetAllows(old, now)).toBe(true);
+  });
+});
 
 describe('isReconnectableError', () => {
   it('matches known reconnectable fragments', () => {
@@ -24,6 +46,7 @@ describe('useReactiveReconnect', () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
+    resetReconnectBudget();
     checkAndReconnect = jest.fn().mockResolvedValue(true);
     jest.mocked(useServer).mockReturnValue({
       isConnected: true,

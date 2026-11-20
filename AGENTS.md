@@ -510,6 +510,7 @@ All PascalCase function components taking a `…Props` interface.
   a plain View where it isn't supported. `glass` defaults to the app-wide setting.
   Also exports `GlassWrap` and `GlassFill`), `GlassHeaderBackdrop` (the glass
   layer behind screen headers, extended under the status bar).
+- **Error boundary** — `AppErrorBoundary` (the "Something went wrong / Try again" screen; exported as `ErrorBoundary` by `app/_layout.tsx` and by every tab entry so a render error stays inside its tab — tabs mount eagerly under native tabs, #334; logs the error + stack to the connectivity log; never uses `useTheme()`. `tests/utils/tab-error-boundaries.test.ts` fails if a tab lacks it).
 - **Chrome / diagnostics** — `FocusAwareStatusBar`, `SettingRow`,
   `QuickConnectPanel`, `LogViewer` (modal viewer for the app's own in-memory
   connectivity log, `services/connectivity-log.ts` — copy-to-clipboard via
@@ -656,6 +657,7 @@ Does not affect filtering.
 and availability **FLOOR**, never round up) · `torrent-state.ts` (state → color/
 label, completion and ETA rules) · `limit-input.ts` (share-limit sentinels:
 `-2` = follow global, `-1` = unlimited; own-vs-effective limit resolution) ·
+`qbit-response.ts` (`isQbitAppVersion`/`isQbitWebApiVersion` + `NOT_QBITTORRENT_MESSAGE` — rejects a 200 that isn't qBittorrent at connect / Test Connection) ·
 `localize-error.ts` (`localizeErrorMessage(message, t)` — display-time translation of the fixed English errors thrown by `services/api/client.ts` / `auth.ts` / `server-manager.ts`, which callers substring-match and so can't be translated at the source; unknown text passes through. Its test fails if a mapped message is reworded in the services) · `error.ts` (`getErrorMessage`, `isTlsRejection` — recognizes iOS rejecting a
 server's TLS certificate from the free-text error description RN's XHR
 bridge exposes, matched across every locale since that text is localized
@@ -1103,6 +1105,13 @@ ASCII-8BIT`** when the shell has no UTF-8 locale (non-interactive shells,
   mock in `tests/rn/setup.ts`. Missing any one fails a suite _after_ its tests
   pass ("`getUIRuntimeHolder` is not supported on web", "installUIRuntimeBindings
   is not a function"), which reads like a leak, not a config gap.
+- **Auth mode None/API key/qui never logs in, so a 200 from the wrong service
+  used to "connect".** A blank Port means port 80; on a box running qBittorrent
+  on 8080 that reaches some other web app, which answers every `/api/v2/...`
+  path with HTML. Test Connection passed, then every poll returned a string:
+  an empty list, a flickering error, and the #334 Transfer crash. Connect and
+  Test Connection now validate the version bodies (`utils/qbit-response.ts`).
+  The connectivity log's `Unexpected … response (string)` lines mean this.
 - **iPhone Duo puts things on the right edge.** Its inner screen reports a
   large _right_ safe-area inset (the status-bar island floats top-right), and
   the native glass tab bar can become a vertical rail on that side; the window

@@ -1392,6 +1392,7 @@
     "torrentExistsOrFailed": "Already in qBittorrent, or couldn't be added.",
     "unknown": "An unknown error occurred",
     "quiKeyRejected": "qui rejected the proxy key. Check the proxy URL.",
-    "quiKeyMissing": "This qui server has no proxy key. Edit it and paste the proxy URL again."
+    "quiKeyMissing": "This qui server has no proxy key. Edit it and paste the proxy URL again.",
+    "notQbittorrent": "The server answered, but not like qBittorrent. Check the address, port and path."
   }
 }

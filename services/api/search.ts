@@ -77,7 +77,16 @@ export const searchApi = {
    */
   async getPlugins(): Promise<SearchPlugin[]> {
     const response = await apiClient.get(`/api/${API_VERSION}/search/plugins`);
-    return Array.isArray(response) ? (response as SearchPlugin[]) : [];
+    if (!Array.isArray(response)) return [];
+    // The Search tab sorts by fullName and reads supportedCategories during
+    // render at connect; drop malformed entries and default the array.
+    return (response as SearchPlugin[])
+      .filter((p) => !!p && typeof p === 'object' && typeof p.name === 'string')
+      .map((p) => ({
+        ...p,
+        fullName: typeof p.fullName === 'string' ? p.fullName : p.name,
+        supportedCategories: Array.isArray(p.supportedCategories) ? p.supportedCategories : [],
+      }));
   },
 
   /**

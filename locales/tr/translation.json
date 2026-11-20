@@ -1392,6 +1392,7 @@
     "torrentExistsOrFailed": "Zaten qBittorrent'te mevcut veya eklenemedi.",
     "unknown": "Bilinmeyen bir hata oluştu",
     "quiKeyRejected": "qui proxy anahtarını reddetti. Proxy URL'sini kontrol edin.",
-    "quiKeyMissing": "Bu qui sunucusunun proxy anahtarı yok. Sunucuyu düzenleyip proxy URL'sini yeniden yapıştırın."
+    "quiKeyMissing": "Bu qui sunucusunun proxy anahtarı yok. Sunucuyu düzenleyip proxy URL'sini yeniden yapıştırın.",
+    "notQbittorrent": "Sunucu yanıt verdi ama qBittorrent gibi değil. Adresi, bağlantı noktasını ve yolu kontrol edin."
   }
 }

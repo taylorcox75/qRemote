@@ -1392,6 +1392,7 @@
     "torrentExistsOrFailed": "Già presente in qBittorrent oppure impossibile da aggiungere.",
     "unknown": "Si è verificato un errore sconosciuto",
     "quiKeyRejected": "qui ha rifiutato la chiave del proxy. Controlla l'URL del proxy.",
-    "quiKeyMissing": "Questo server qui non ha una chiave proxy. Modificalo e incolla nuovamente l'URL del proxy."
+    "quiKeyMissing": "Questo server qui non ha una chiave proxy. Modificalo e incolla nuovamente l'URL del proxy.",
+    "notQbittorrent": "Il server ha risposto, ma non come qBittorrent. Controlla indirizzo, porta e percorso."
   }
 }

@@ -13,6 +13,7 @@
  * still appears verbatim in the service sources, so a reworded message shows
  * up as a failing test instead of silently falling back to English.
  */
+import { NOT_QBITTORRENT_MESSAGE } from '@/utils/qbit-response';
 import { QUI_KEY_MISSING_MESSAGE, QUI_KEY_REJECTED_MESSAGE } from '@/utils/quiProxy';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -35,6 +36,7 @@ export const EXACT_ERROR_KEYS: Record<string, string> = {
   'This torrent already exists or could not be added.': 'errors.torrentExistsOrFailed',
   'An unknown error occurred': 'errors.unknown',
   [QUI_KEY_REJECTED_MESSAGE]: 'errors.quiKeyRejected',
+  [NOT_QBITTORRENT_MESSAGE]: 'errors.notQbittorrent',
   [QUI_KEY_MISSING_MESSAGE]: 'errors.quiKeyMissing',
 };
 

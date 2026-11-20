@@ -15,6 +15,14 @@ describe('syncApi', () => {
   });
 
   describe('getMainData', () => {
+    it.each([[''], ['not json'], [null], [[1]]])(
+      'throws a readable error for a malformed body (%p)',
+      async (body) => {
+        mockGet.mockResolvedValueOnce(body);
+        await expect(syncApi.getMainData()).rejects.toThrow('Unexpected sync/maindata response');
+      },
+    );
+
     it('omits rid param when 0 (default)', async () => {
       mockGet.mockResolvedValueOnce({ rid: 1, torrents: {} });
       await syncApi.getMainData();

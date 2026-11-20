@@ -57,6 +57,17 @@ describe('flattenRssTree', () => {
     expect(flattenRssTree({})).toEqual({ folders: [], feeds: [] });
   });
 
+  it('never recurses into strings, nulls or arrays (malformed rss/items body)', () => {
+    // A text body used to recurse forever: Object.entries('n') yields 'n' again.
+    expect(flattenRssTree('not json' as never)).toEqual({ folders: [], feeds: [] });
+    expect(flattenRssTree(['a'] as never)).toEqual({ folders: [], feeds: [] });
+    const tree = { bad: null, str: 'x', ok: { url: 'http://f', title: 'F' } } as never;
+    expect(flattenRssTree(tree)).toEqual({
+      folders: [],
+      feeds: [{ path: 'ok', feed: { url: 'http://f', title: 'F' } }],
+    });
+  });
+
   it('collects root-level feeds with their own name as the path', () => {
     const tree: RssItemsResponse = {
       FeedA: feed('https://a.example.com/rss'),
