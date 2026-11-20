@@ -19,6 +19,28 @@ export interface ChangelogRelease {
 }
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '3.9.13',
+    date: '2026-11-19',
+    sections: [
+      {
+        title: 'New Features',
+        items: [
+          'Split view on iPhone Duo and iPad: unfold to see your torrents and their details side by side',
+          'Search filters for video codec (x265, x264, AV1) and source (BluRay, REMUX, WEB-DL, WEBRip)',
+          'Default minimum seeders for new searches, in Settings → Appearance',
+        ],
+      },
+      {
+        title: 'Maintenance',
+        items: [
+          'Faster connecting: RSS and search plugins load only when you open them',
+          'Less load on your server while the app is open',
+          'iPhone Duo layout refinements around the side tab bar and status bar',
+        ],
+      },
+    ],
+  },
+  {
     version: '3.9.12',
     date: '2026-11-17',
     sections: [
@@ -31,7 +53,9 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         title: 'Bugs Fixed',
-        items: ['Test Connection now catches a wrong address or port instead of reporting success from other webserver'],
+        items: [
+          'Test Connection now catches a wrong address or port instead of reporting success from other webserver',
+        ],
       },
     ],
   },

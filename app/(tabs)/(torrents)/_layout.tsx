@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import Animated, { FadeInRight } from 'react-native-reanimated';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -77,7 +78,10 @@ export default function TorrentsLayout() {
           </PaneLayout>
         </View>
         {split && detailPane && (
-          <View
+          // Unfolding slides the detail pane in from the hinge side; Reanimated's
+          // layout animations follow iOS Reduce Motion (ReduceMotion.System).
+          <Animated.View
+            entering={FadeInRight.springify().damping(18).stiffness(140)}
             style={[styles.fill, styles.detailPane, { borderLeftColor: colors.surfaceOutline }]}
           >
             <View style={styles.fill}>
@@ -99,7 +103,7 @@ export default function TorrentsLayout() {
                 )}
               </PaneLayout>
             </View>
-          </View>
+          </Animated.View>
         )}
       </View>
     </TorrentSplitContext.Provider>
