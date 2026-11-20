@@ -197,9 +197,11 @@ export default function SettingsScreen() {
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={readable.contentStyle(
-          tabBarInset > 0 ? { paddingBottom: tabBarInset } : undefined,
-        )}
+        contentContainerStyle={readable.contentStyle([
+          tabBarInset > 0 && { paddingBottom: tabBarInset },
+          // No header here: start below the Duo's status island.
+          readable.islandTop > 0 && { paddingTop: readable.islandTop },
+        ])}
         scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
       >
         {/* Connection Status Card */}

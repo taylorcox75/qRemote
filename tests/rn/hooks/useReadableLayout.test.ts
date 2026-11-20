@@ -2,7 +2,12 @@
 // readable column (a no-op on a regular iPhone) and the glass tab bar's bottom
 // inset, which drops to the home-indicator inset when the bar is a side rail.
 import { renderHook } from '@testing-library/react-native';
-import { useReadableLayout, useTabBarInset, useTabBarSide } from '@/hooks/useReadableLayout';
+import {
+  SIDE_RAIL_CLEARANCE,
+  useReadableLayout,
+  useTabBarInset,
+  useTabBarSide,
+} from '@/hooks/useReadableLayout';
 import { READABLE_MAX_WIDTH } from '@/constants/spacing';
 
 let mockWidth = 393;
@@ -56,10 +61,10 @@ describe('useReadableLayout', () => {
     expect(result.current.gutter).toBe(gutter);
     expect(result.current.contentWidth).toBe(1100 - 60 - gutter * 2);
     expect(result.current.sidePaddingStyle).toEqual({ paddingRight: 60 });
-    // Content clears the side inset plus the gutter; the container stays full width.
+    // Content scrolls under the side inset (like under a bottom tab bar).
     expect(result.current.contentStyle(undefined)).toEqual({
       paddingLeft: gutter,
-      paddingRight: 60 + gutter,
+      paddingRight: gutter,
     });
   });
 });
@@ -76,7 +81,7 @@ describe('useTabBarInset', () => {
     expect(result.current).toEqual({ inset: 83, side: 'bottom' });
   });
 
-  it('drops to the home-indicator inset when the bar is a side rail', async () => {
+  it('pads past a side rail instead of a bottom bar', async () => {
     mockGlass = {
       tabBarGlass: true,
       tabBarInset: 69,
@@ -84,6 +89,7 @@ describe('useTabBarInset', () => {
     };
     mockInsets = { top: 24, bottom: 20, left: 0, right: 54 + 76 };
     const { result } = await renderHook(() => ({ inset: useTabBarInset(), side: useTabBarSide() }));
-    expect(result.current).toEqual({ inset: 20, side: 'right' });
+    // Home indicator + room for the last row to scroll up past the rail.
+    expect(result.current).toEqual({ inset: 20 + SIDE_RAIL_CLEARANCE, side: 'right' });
   });
 });

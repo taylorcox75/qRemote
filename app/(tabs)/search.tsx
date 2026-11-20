@@ -1745,7 +1745,7 @@ export default function SearchScreen() {
             )}
             contentContainerStyle={readable.contentStyle({
               paddingBottom: spacing.xxxl + tabBarInset,
-              paddingTop: headerHeight + spacing.xs,
+              paddingTop: Math.max(headerHeight + spacing.xs, readable.islandTop),
             })}
             scrollIndicatorInsets={tabBarInset > 0 ? { bottom: tabBarInset } : undefined}
             onScroll={handleScroll}

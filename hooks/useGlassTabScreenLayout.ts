@@ -29,7 +29,7 @@ import { StyleSheet, type LayoutChangeEvent, type StyleProp, type ViewStyle } fr
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { useTheme } from '@/context/ThemeContext';
 import { addContentPadding, addHorizontalPadding } from '@/utils/glass-layout';
-import { useReadableLayout, useTabBarInset } from '@/hooks/useReadableLayout';
+import { useReadableLayout, useTabBarInset, withMinTopPadding } from '@/hooks/useReadableLayout';
 
 /**
  * First-frame guess at a floating header's height, before it is measured: the
@@ -66,7 +66,7 @@ export function useGlassTabScreenLayout(
   const { floatingHeader = true } = options;
   const { tabBarGlass, enabled } = useLiquidGlass();
   const tabBarInset = useTabBarInset();
-  const { gutter, safeLeft, safeRight, sidePaddingStyle } = useReadableLayout();
+  const { gutter, sidePaddingStyle, islandTop } = useReadableLayout();
   const { colors } = useTheme();
   const [headerHeight, setHeaderHeight] = useState(lastHeaderHeight);
   const floating = tabBarGlass && floatingHeader;
@@ -83,12 +83,13 @@ export function useGlassTabScreenLayout(
 
   const contentStyle = useCallback(
     (base?: StyleProp<ViewStyle>) =>
-      addHorizontalPadding(
-        addContentPadding(base, topInset, bottomInset),
-        safeLeft + gutter,
-        safeRight + gutter,
+      withMinTopPadding(
+        addHorizontalPadding(addContentPadding(base, topInset, bottomInset), gutter, gutter),
+        // Floating header: padding is measured from the screen top. In-flow
+        // header: content already starts below it.
+        floating ? islandTop : Math.max(0, islandTop - headerHeight),
       ),
-    [topInset, bottomInset, safeLeft, safeRight, gutter],
+    [topInset, bottomInset, gutter, islandTop, floating, headerHeight],
   );
 
   const inert = topInset === 0 && bottomInset === 0;
@@ -101,7 +102,7 @@ export function useGlassTabScreenLayout(
       floating && !enabled && { backgroundColor: colors.background },
       sidePaddingStyle,
     ],
-    onHeaderLayout: floating ? onLayout : undefined,
+    onHeaderLayout: floating || islandTop > 0 ? onLayout : undefined,
     topInset,
     bottomInset,
     contentStyle,
