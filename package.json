@@ -1,7 +1,7 @@
 {
   "name": "qRemote",
   "version": "3.9.13",
-  "easBuild": true,
+  "easBuild": false,
   "main": "index.ts",
   "scripts": {
     "start": "expo start --dev-client",
