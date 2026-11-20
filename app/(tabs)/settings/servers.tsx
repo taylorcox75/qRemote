@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingHint: { fontSize: 12, marginTop: 1 },
   settingTextGroup: { flexShrink: 1 },
-  separator: { height: 1, marginLeft: 50 },
+  separator: { height: 1, marginLeft: spacing.lg + 36 + spacing.md },
   listItem: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   listItemContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   listItemLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
