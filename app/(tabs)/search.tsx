@@ -5,6 +5,7 @@
  * same sort dropdown, and the same surface card rows for results. Wraps
  * qBittorrent's /api/v2/search/* endpoints behind a clean, consistent UI.
  */
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -133,6 +134,8 @@ export default function SearchScreen() {
   // insets (status island, side tab bar rail) and results sit in a readable
   // column. Both are no-ops on a regular iPhone in portrait.
   const readable = useReadableLayout();
+  const { top: topInset } = useSafeAreaInsets();
+  const cornerClearance = topInset < SCREEN_CORNER_CLEARANCE ? SCREEN_CORNER_CLEARANCE : 0;
   const resultColumns = readable.contentWidth >= SEARCH_TWO_COLUMN_MIN_WIDTH ? 2 : 1;
   const { showToast } = useToast();
   const cart = useSearchCart();
@@ -1213,6 +1216,13 @@ export default function SearchScreen() {
             <View
               style={[
                 styles.searchCard,
+                // iPhone Duo unfolded: almost no top inset (the clock sits in
+                // the side column), so the first row would run into the
+                // screen's rounded corner. Pad clear of the curve.
+                cornerClearance > 0 && {
+                  paddingTop: cornerClearance,
+                  paddingLeft: cornerClearance,
+                },
                 { backgroundColor: glass ? 'transparent' : colors.background },
               ]}
             >
@@ -1828,6 +1838,9 @@ export default function SearchScreen() {
 }
 
 // ────────────────────────────────────────────────────── styles ────────────
+
+/** Padding that clears a rounded screen corner when there's no top inset. */
+const SCREEN_CORNER_CLEARANCE = 20;
 
 /** Content width at which Search shows results in two columns. */
 const SEARCH_TWO_COLUMN_MIN_WIDTH = 700;
