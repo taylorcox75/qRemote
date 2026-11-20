@@ -49,9 +49,21 @@ export interface ReadableLayout {
    * the Duo's status island and side tab bar); only content is inset.
    */
   contentStyle: (base?: StyleProp<ViewStyle>) => StyleProp<ViewStyle>;
-  /** Padding that keeps a full-width header's controls inside the safe area. */
+  /**
+   * For a full-width header: keeps its controls inside the safe area and,
+   * on the iPhone Duo, makes it reach below the status island so iOS's plate
+   * behind the island sits wholly on the header glass instead of half on it.
+   */
   sidePaddingStyle: ViewStyle | undefined;
 }
+
+/**
+ * How far down the iPhone Duo's status island reaches (camera, clock, Wi-Fi in
+ * the top-right column; a single row when unfolded). iOS doesn't report it,
+ * so these are measured on the iOS 27 simulator.
+ */
+export const STATUS_ISLAND_CLEARANCE = 170;
+export const STATUS_ISLAND_CLEARANCE_WIDE = 110;
 
 export function useReadableLayout(): ReadableLayout {
   const { width: windowWidth } = useWindowDimensions();
@@ -71,7 +83,13 @@ export function useReadableLayout(): ReadableLayout {
     gutter,
     contentWidth: available - gutter * 2,
     safeAreaStyle: horizontalInsetStyle(left, right),
-    sidePaddingStyle: horizontalInsetStyle(left, right),
+    sidePaddingStyle:
+      left > 0 || right > 0
+        ? {
+            ...horizontalInsetStyle(left, right),
+            minHeight: windowWidth >= 600 ? STATUS_ISLAND_CLEARANCE_WIDE : STATUS_ISLAND_CLEARANCE,
+          }
+        : undefined,
     contentStyle,
   };
 }
