@@ -146,44 +146,49 @@ function SwipeableServerItem({
           {...panResponder.panHandlers}
         >
           <TouchableOpacity style={styles.listItem} onPress={handlePress} activeOpacity={0.7}>
-            <View style={styles.listItemContent}>
-              <View style={styles.listItemLeft}>
-                <ServerIconBadge server={server} size={36} />
-                <View style={styles.listItemText}>
-                  <Text style={[styles.listItemTitle, { color: colors.text }]} numberOfLines={1}>
-                    {server.name}
-                  </Text>
+            <View style={styles.listItemLeft}>
+              <ServerIconBadge server={server} size={36} />
+              <View style={styles.listItemText}>
+                {/* Name and button share the first line; the address gets the
+                    whole second line, under both, so it isn't squeezed. */}
+                <View style={styles.listItemContent}>
                   <Text
-                    style={[styles.listItemSubtitle, { color: colors.textSecondary }]}
+                    style={[styles.listItemTitle, styles.listItemName, { color: colors.text }]}
                     numberOfLines={1}
                   >
-                    {serverAddress}
+                    {server.name}
                   </Text>
+                  <View style={styles.listItemRight}>
+                    {isConnectedToThis ? (
+                      <TouchableOpacity
+                        style={[styles.smallButton, { backgroundColor: colors.error }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          onDisconnect();
+                        }}
+                      >
+                        <ConnectButtonLabel showing="disconnect" />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.smallButton, { backgroundColor: colors.success }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          onConnect();
+                        }}
+                      >
+                        <ConnectButtonLabel showing="connect" />
+                      </TouchableOpacity>
+                    )}
+                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                  </View>
                 </View>
-              </View>
-              <View style={styles.listItemRight}>
-                {isConnectedToThis ? (
-                  <TouchableOpacity
-                    style={[styles.smallButton, { backgroundColor: colors.error }]}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      onDisconnect();
-                    }}
-                  >
-                    <ConnectButtonLabel showing="disconnect" />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.smallButton, { backgroundColor: colors.success }]}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      onConnect();
-                    }}
-                  >
-                    <ConnectButtonLabel showing="connect" />
-                  </TouchableOpacity>
-                )}
-                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                <Text
+                  style={[styles.listItemSubtitle, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {serverAddress}
+                </Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -627,9 +632,10 @@ const styles = StyleSheet.create({
   listItemLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
   listItemText: { flex: 1 },
   listItemTitle: { ...typography.bodyMedium },
-  listItemSubtitle: { ...typography.small, marginTop: 1 },
+  listItemName: { flex: 1, marginRight: spacing.sm },
+  listItemSubtitle: { ...typography.small, marginTop: 2 },
   listItemRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  smallButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  smallButton: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6 },
   smallButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   swipeableContainer: { position: 'relative', overflow: 'hidden' },
   swipeableAction: {
@@ -649,5 +655,5 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   swipeableActionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-  swipeableContent: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  swipeableContent: {},
 });
