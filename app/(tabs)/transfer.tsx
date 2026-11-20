@@ -100,6 +100,8 @@ export default function TransferScreen() {
   const graphWidth = readable.contentWidth - GRAPH_HORIZONTAL_PADDING;
   // Two-column dashboard once the content column is wide enough for two cards.
   const dashboard = readable.contentWidth >= DASHBOARD_MIN_WIDTH;
+  // Explicit widths: flex could let a wide child in one column squeeze the other.
+  const dashboardColumnWidth = (readable.contentWidth - spacing.lg) / 2;
   const innerGraphWidth = graphWidth - GRAPH_CARD_PADDING * 2;
   const { showToast } = useToast();
   const router = useRouter();
@@ -886,7 +888,7 @@ export default function TransferScreen() {
               left, session and connection stats on the right. The same Views
               wrap them when narrow, so nothing remounts on fold / unfold. */}
           <View style={dashboard && styles.dashboardColumns}>
-            <View style={dashboard && styles.dashboardColumn}>
+            <View style={dashboard && { width: dashboardColumnWidth }}>
               {/* ========== SPEED LIMITS ========== */}
               <View style={styles.section}>
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
@@ -1216,7 +1218,7 @@ export default function TransferScreen() {
                 </GlassSurface>
               </View>
             </View>
-            <View style={dashboard && styles.dashboardColumn}>
+            <View style={dashboard && { width: dashboardColumnWidth }}>
               {/* ========== THIS SESSION ========== */}
               <View style={styles.section}>
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
@@ -1446,7 +1448,6 @@ const DASHBOARD_MIN_WIDTH = 700;
 
 const styles = StyleSheet.create({
   dashboardColumns: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
-  dashboardColumn: { flex: 1, minWidth: 0 },
   container: {
     flex: 1,
   },

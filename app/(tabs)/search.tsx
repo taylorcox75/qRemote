@@ -133,6 +133,7 @@ export default function SearchScreen() {
   // insets (status island, side tab bar rail) and results sit in a readable
   // column. Both are no-ops on a regular iPhone in portrait.
   const readable = useReadableLayout();
+  const resultColumns = readable.contentWidth >= SEARCH_TWO_COLUMN_MIN_WIDTH ? 2 : 1;
   const { showToast } = useToast();
   const cart = useSearchCart();
   const [cartModalVisible, setCartModalVisible] = useState(false);
@@ -1727,21 +1728,29 @@ export default function SearchScreen() {
           )
         ) : (
           <FlatList
+            // Wide windows (iPhone Duo unfolded, iPad): two result columns. The
+            // key remounts the list when the column count changes (FlatList
+            // can't change numColumns in place).
+            key={resultColumns}
+            numColumns={resultColumns}
+            columnWrapperStyle={resultColumns > 1 ? styles.resultColumns : undefined}
             data={listItems}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <SearchResultGroupRow
-                group={item}
-                isAggregatedSource={isAggregatedSource}
-                onAddGroup={handleAddGroup}
-                onAddResult={handleAddResult}
-                onLongPress={handleLongPressResult}
-                onOpenLink={handleOpenLink}
-                onCopyUrl={handleCopyUrl}
-                addingUrl={pendingAddUrl}
-                isInCart={cart.has}
-                onToggleCart={handleToggleCart}
-              />
+              <View style={resultColumns > 1 ? styles.resultColumn : undefined}>
+                <SearchResultGroupRow
+                  group={item}
+                  isAggregatedSource={isAggregatedSource}
+                  onAddGroup={handleAddGroup}
+                  onAddResult={handleAddResult}
+                  onLongPress={handleLongPressResult}
+                  onOpenLink={handleOpenLink}
+                  onCopyUrl={handleCopyUrl}
+                  addingUrl={pendingAddUrl}
+                  isInCart={cart.has}
+                  onToggleCart={handleToggleCart}
+                />
+              </View>
             )}
             contentContainerStyle={readable.contentStyle({
               paddingBottom: spacing.xxxl + tabBarInset,
@@ -1820,7 +1829,12 @@ export default function SearchScreen() {
 
 // ────────────────────────────────────────────────────── styles ────────────
 
+/** Content width at which Search shows results in two columns. */
+const SEARCH_TWO_COLUMN_MIN_WIDTH = 700;
+
 const styles = StyleSheet.create({
+  resultColumns: { gap: spacing.md },
+  resultColumn: { flex: 1, minWidth: 0 },
   container: {
     flex: 1,
   },
