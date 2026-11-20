@@ -132,7 +132,10 @@ export default function SearchScreen() {
   const tabBarSide = useTabBarSide();
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const split = width - insets.left - insets.right >= SPLIT_VIEW_MIN_WIDTH;
+  // Idle: search on the left, a prompt on the right. Once a search runs, its
+  // results take the full width (two columns).
+  const [searchActive, setSearchActive] = useState(false);
+  const split = !searchActive && width - insets.left - insets.right >= SPLIT_VIEW_MIN_WIDTH;
   const listWidth = SPLIT_LIST_WIDTH + insets.left;
   const leftPane = useMemo(
     () => (split ? { width: listWidth, insets: { ...insets, right: 0 }, tabBarSide } : null),
@@ -142,7 +145,7 @@ export default function SearchScreen() {
     <View style={[styles.splitRow, { backgroundColor: colors.background }]}>
       <View style={split ? { width: listWidth } : styles.splitFill}>
         <PaneLayout pane={leftPane}>
-          <SearchContent split={split} />
+          <SearchContent split={split} onSearchActiveChange={setSearchActive} />
         </PaneLayout>
       </View>
       {split && (
@@ -165,7 +168,13 @@ export default function SearchScreen() {
   );
 }
 
-function SearchContent({ split }: { split: boolean }) {
+function SearchContent({
+  split,
+  onSearchActiveChange,
+}: {
+  split: boolean;
+  onSearchActiveChange: (active: boolean) => void;
+}) {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
@@ -279,6 +288,9 @@ function SearchContent({ split }: { split: boolean }) {
   );
 
   const { jobId, status, results, total, isLoading, error, start, stop, reset } = useSearchJob();
+  useEffect(() => {
+    onSearchActiveChange(jobId !== null);
+  }, [jobId, onSearchActiveChange]);
 
   const [query, setQuery] = useState('');
   const [plugin, setPlugin] = useState<string>(ALL);
