@@ -2238,9 +2238,7 @@ export default function TorrentsScreen() {
               // content pushed down by its height — a pinned header is a
               // normal in-flow sibling (see headerContainerPinned) and
               // already occupies that space in the layout itself.
-              headerPinned
-                ? { paddingTop: spacing.sm + Math.max(0, readable.islandTop - headerHeight) }
-                : { paddingTop: Math.max(headerHeight, readable.islandTop) },
+              headerPinned ? { paddingTop: spacing.sm } : { paddingTop: headerHeight },
               (tabBarInset > 0 || (selectMode && selectedHashes.size > 0)) && {
                 paddingBottom:
                   (selectMode && selectedHashes.size > 0

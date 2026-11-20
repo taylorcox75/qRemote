@@ -20,7 +20,7 @@
  * Key exports: useReadableLayout, useTabBarInset, ReadableLayout
  */
 import { useCallback } from 'react';
-import { StyleSheet, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { usePaneLayout } from '@/context/PaneLayoutContext';
@@ -44,14 +44,11 @@ export interface ReadableLayout {
   /** Root-view padding for the side insets (flat tab screens only; undefined when 0). */
   safeAreaStyle: ViewStyle | undefined;
   /**
-   * A scroll view's content style with the readable gutter added. Content is
-   * not inset by the side safe area: like a list under the bottom glass tab
-   * bar on iPhone, it scrolls beneath the Duo's side tab bar and the status
-   * island's plate (see useTabBarInset for the end-of-list clearance).
+   * A scroll view's content style padded by the side insets plus the readable
+   * gutter. Containers stay full width (backgrounds run edge to edge, under
+   * the Duo's status island and side tab bar); only content is inset.
    */
   contentStyle: (base?: StyleProp<ViewStyle>) => StyleProp<ViewStyle>;
-  /** Minimum top padding for scroll content to clear the status island (0 if none). */
-  islandTop: number;
   /** Padding that keeps a full-width header's controls inside the safe area. */
   sidePaddingStyle: ViewStyle | undefined;
 }
@@ -64,24 +61,15 @@ export function useReadableLayout(): ReadableLayout {
   const { left, right } = useSafeAreaInsets();
   const available = Math.max(0, width - left - right);
   const gutter = getReadableGutter(available, READABLE_MAX_WIDTH);
-  // Measured from the screen top; callers whose content starts below an
-  // in-flow header subtract that header's height.
-  const islandTop =
-    left > 0 || right > 0
-      ? windowWidth >= 600
-        ? STATUS_ISLAND_CLEARANCE_WIDE
-        : STATUS_ISLAND_CLEARANCE
-      : 0;
   const contentStyle = useCallback(
-    (base?: StyleProp<ViewStyle>) => addHorizontalPadding(base, gutter, gutter),
-    [gutter],
+    (base?: StyleProp<ViewStyle>) => addHorizontalPadding(base, left + gutter, right + gutter),
+    [left, right, gutter],
   );
   return {
     safeLeft: left,
     safeRight: right,
     gutter,
     contentWidth: available - gutter * 2,
-    islandTop,
     safeAreaStyle: horizontalInsetStyle(left, right),
     sidePaddingStyle: horizontalInsetStyle(left, right),
     contentStyle,
@@ -98,32 +86,9 @@ export function useTabBarSide(): TabBarSide {
 }
 
 /** Bottom space the glass tab bar covers on this tab screen (0 with the JS tab bar). */
-/**
- * How far down the iPhone Duo's status island reaches (camera, clock, Wi-Fi
- * stacked in the top-right column). With a side inset present, scroll content
- * starts at least this far down so nothing sits under the island at rest; it
- * only passes beneath it while scrolling.
- */
-export const STATUS_ISLAND_CLEARANCE = 170;
-/** Unfolded, the island is a single row (no camera above the clock). */
-export const STATUS_ISLAND_CLEARANCE_WIDE = 110;
-
-/** Raise a content style's top padding to at least `min` (no-op for 0). */
-export function withMinTopPadding(style: StyleProp<ViewStyle>, min: number): StyleProp<ViewStyle> {
-  if (min <= 0) return style;
-  const flat = StyleSheet.flatten(style) ?? {};
-  const top = Number(flat.paddingTop ?? flat.paddingVertical ?? flat.padding ?? 0);
-  return top >= min ? style : [style, { paddingTop: min }];
-}
-
-/** Height a side glass tab bar rail covers at the bottom of the screen (5 tabs + margin). */
-export const SIDE_RAIL_CLEARANCE = 290;
-
 export function useTabBarInset(): number {
   const { tabBarInset, windowInsets } = useLiquidGlass();
   const side = useTabBarSide();
   if (tabBarInset <= 0) return 0;
-  // A side rail sits over the bottom of the content column, so a list needs
-  // enough end padding to scroll its last row up past it.
-  return side === 'bottom' ? tabBarInset : windowInsets.bottom + SIDE_RAIL_CLEARANCE;
+  return side === 'bottom' ? tabBarInset : windowInsets.bottom;
 }
