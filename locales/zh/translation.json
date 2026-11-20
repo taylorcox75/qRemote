@@ -68,7 +68,8 @@
       "deselectTorrent": "取消选择种子",
       "switchServer": "切换服务器",
       "manageServers": "管理服务器",
-      "currentServer": "当前"
+      "currentServer": "当前",
+      "splitPlaceholder": "选择一个种子，在此查看详情"
     },
     "addTorrent": {
       "none": "无",
@@ -456,7 +457,8 @@
       "searchAddOpensDialogueHint": "点击搜索结果上的 + 将打开添加种子对话框，而不是直接添加。",
       "defaultColors": "默认颜色",
       "defaultCategoryColor": "默认分类颜色",
-      "defaultTagColor": "默认标签颜色"
+      "defaultTagColor": "默认标签颜色",
+      "splitPlaceholder": "选择一项设置，在此查看"
     },
     "transfer": {
       "title": "传输",
@@ -671,7 +673,12 @@
       "cartClearAll": "清空全部",
       "cartCheckout": "继续（{{count}}）",
       "cartAccessibility_one": "添加队列，共 {{count}} 个种子",
-      "cartAccessibility_other": "添加队列，共 {{count}} 个种子"
+      "cartAccessibility_other": "添加队列，共 {{count}} 个种子",
+      "videoCodec": "视频编码",
+      "releaseSource": "来源",
+      "defaultMinSeeders": "默认最少做种数",
+      "defaultMinSeedersHint": "每次新搜索都从这个最小值开始",
+      "noMinimum": "不限"
     },
     "rss": {
       "feedsTitle": "RSS 订阅",

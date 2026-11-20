@@ -35,6 +35,8 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 import { colorThemeManager } from '@/services/color-theme-manager';
+import { useSettingsSplit } from '@/context/PaneLayoutContext';
+import { withAlpha } from '@/utils/color';
 
 const APP_STORE_URL = 'https://apps.apple.com/us/app/qremote-for-qbittorrent/id6756276747';
 
@@ -44,15 +46,33 @@ interface NavRowProps {
   icon: IconName;
   label: string;
   onPress: () => void;
+  /** Settings route this row opens; highlights the row while it's open in the two-pane layout. */
+  route?: string;
   colors: ThemeColors;
   isLast?: boolean;
   iconColor?: string;
 }
 
-function NavRow({ icon, label, onPress, colors, isLast, iconColor }: NavRowProps) {
+function NavRow({ icon, label, onPress, route, colors, isLast, iconColor }: NavRowProps) {
+  const split = useSettingsSplit();
+  const router = useRouter();
+  const selected = split.active && !!route && split.pathname.startsWith(route);
+  const press = () => {
+    // Two-pane: swap the right pane's screen instead of stacking them.
+    if (split.active && route && split.pathname !== '/settings') {
+      router.replace(route as never);
+    } else {
+      onPress();
+    }
+  };
   return (
     <>
-      <TouchableOpacity style={styles.navRow} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={[styles.navRow, selected && { backgroundColor: withAlpha(colors.primary, 0.18) }]}
+        onPress={press}
+        activeOpacity={0.7}
+        accessibilityState={{ selected }}
+      >
         <View style={styles.navLeft}>
           <Ionicons name={icon} size={22} color={iconColor || colors.primary} />
           <Text style={[styles.navLabel, { color: colors.text }]}>{label}</Text>
@@ -112,7 +132,29 @@ function ExternalRow({
   );
 }
 
+/**
+ * The Settings route. On wide windows the menu lives in the layout's left
+ * column, so the route itself (shown in the right pane) is a placeholder.
+ */
 export default function SettingsScreen() {
+  const split = useSettingsSplit();
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  if (split.active) {
+    return (
+      <View style={styles.splitPlaceholder}>
+        <Ionicons name="settings-outline" size={48} color={colors.textSecondary} />
+        <Text style={[styles.splitPlaceholderText, { color: colors.textSecondary }]}>
+          {t('screens.settings.splitPlaceholder')}
+        </Text>
+      </View>
+    );
+  }
+  return <SettingsHub />;
+}
+
+/** The Settings menu itself. */
+export function SettingsHub() {
   const { t } = useTranslation();
   const router = useRouter();
   const { currentServer, isConnected, activeEndpoint, disconnect, connectToServer, isLoading } =
@@ -324,30 +366,35 @@ export default function SettingsScreen() {
               icon="server-outline"
               label={t('screens.settings.servers')}
               onPress={() => router.push('/settings/servers')}
+              route="/settings/servers"
               colors={colors}
             />
             <NavRow
               icon="color-palette-outline"
               label={t('screens.settings.appearance')}
               onPress={() => router.push('/settings/appearance')}
+              route="/settings/appearance"
               colors={colors}
             />
             <NavRow
               icon="options-outline"
               label={t('screens.settings.serverSettings')}
               onPress={() => router.push('/settings/torrent-defaults')}
+              route="/settings/torrent-defaults"
               colors={colors}
             />
             <NavRow
               icon="git-network-outline"
               label={t('screens.settings.connectionSettings')}
               onPress={() => router.push('/settings/connection')}
+              route="/settings/connection"
               colors={colors}
             />
             <NavRow
               icon="logo-rss"
               label={t('screens.settings.rss')}
               onPress={() => router.push('/settings/rss')}
+              route="/settings/rss"
               colors={colors}
             />
             <NavRow
@@ -360,6 +407,7 @@ export default function SettingsScreen() {
               icon="construct-outline"
               label={t('screens.settings.advanced')}
               onPress={() => router.push('/settings/advanced')}
+              route="/settings/advanced"
               colors={colors}
               isLast
             />
@@ -372,12 +420,14 @@ export default function SettingsScreen() {
               icon="sparkles-outline"
               label={t('screens.settings.whatsNew')}
               onPress={() => router.push('/settings/whats-new')}
+              route="/settings/whats-new"
               colors={colors}
             />
             <NavRow
               icon="information-circle-outline"
               label={t('screens.settings.about')}
               onPress={() => router.push('/settings/about')}
+              route="/settings/about"
               colors={colors}
               isLast
             />
@@ -434,6 +484,8 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  splitPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
+  splitPlaceholderText: { ...typography.body, textAlign: 'center', paddingHorizontal: spacing.xl },
   container: {
     flex: 1,
   },

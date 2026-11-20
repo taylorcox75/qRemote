@@ -89,7 +89,8 @@
       "deselectTorrent": "Torrentin seçimini kaldır",
       "switchServer": "Sunucu Değiştir",
       "manageServers": "Sunucuları Yönet",
-      "currentServer": "Geçerli"
+      "currentServer": "Geçerli",
+      "splitPlaceholder": "Ayrıntılarını burada görmek için bir torrent seçin"
     },
     "addTorrent": {
       "none": "Yok",
@@ -477,7 +478,8 @@
       "searchAddOpensDialogueHint": "Bir arama sonucundaki + düğmesine dokunmak, torrenti hemen eklemek yerine torrent ekleme penceresini açar.",
       "defaultColors": "Varsayılan Renkler",
       "defaultCategoryColor": "Varsayılan Kategori Rengi",
-      "defaultTagColor": "Varsayılan Etiket Rengi"
+      "defaultTagColor": "Varsayılan Etiket Rengi",
+      "splitPlaceholder": "Burada görmek için bir ayar seçin"
     },
     "transfer": {
       "title": "Aktarım",
@@ -692,7 +694,12 @@
       "cartClearAll": "Tümünü temizle",
       "cartCheckout": "Devam ({{count}})",
       "cartAccessibility_one": "Ekleme sırası, {{count}} torrent",
-      "cartAccessibility_other": "Ekleme sırası, {{count}} torrent"
+      "cartAccessibility_other": "Ekleme sırası, {{count}} torrent",
+      "videoCodec": "Video kodeği",
+      "releaseSource": "Kaynak",
+      "defaultMinSeeders": "Varsayılan en az paylaşan",
+      "defaultMinSeedersHint": "Her yeni arama bu en düşük değerle başlar",
+      "noMinimum": "En az yok"
     },
     "rss": {
       "feedsTitle": "RSS Akışları",

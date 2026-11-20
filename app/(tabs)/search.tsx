@@ -5,6 +5,9 @@
  * same sort dropdown, and the same surface card rows for results. Wraps
  * qBittorrent's /api/v2/search/* endpoints behind a clean, consistent UI.
  */
+import { PaneLayout } from '@/context/PaneLayoutContext';
+import { SPLIT_LIST_WIDTH, SPLIT_VIEW_MIN_WIDTH } from '@/constants/spacing';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -26,9 +29,10 @@ import {
   NativeScrollEvent,
   type ScrollViewInstance,
   type TextInputInstance,
+  useWindowDimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -43,7 +47,7 @@ import { useApiFeatures } from '@/context/ApiVersionContext';
 import { useServer } from '@/context/ServerContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
-import { useReadableLayout, useTabBarInset } from '@/hooks/useReadableLayout';
+import { useReadableLayout, useTabBarInset, useTabBarSide } from '@/hooks/useReadableLayout';
 import { GlassSurface, GlassWrap } from '@/components/GlassSurface';
 import { GlassHeaderBackdrop } from '@/components/GlassHeaderBackdrop';
 import { useToast } from '@/context/ToastContext';
@@ -60,6 +64,8 @@ import { SearchInMode, SearchSortKey } from '@/types/preferences';
 import { siteHost, resultTrackerLabel } from '@/utils/searchResult';
 import {
   EMPTY_SEARCH_FILTER_DRAFT,
+  getDefaultSearchFilterDraft,
+  isDraftDirty,
   SearchFilterDraft,
   SearchFilterOptions,
   draftToFilterOptions,
@@ -113,7 +119,62 @@ const HEADER_CONTROL_SIZE = 40;
 /** Keeps the 40pt round buttons at a ≥44pt tap target. */
 const HEADER_BUTTON_HIT_SLOP = { top: 2, bottom: 2, left: 2, right: 2 };
 
+/**
+ * Search tab. On wide windows (iPhone Duo unfolded, iPad) the search and its
+ * results sit in a phone-width column on the left and the right side holds a
+ * prompt, like the Torrents split view, instead of stretching one column
+ * across the screen. The content keeps its place in the tree either way, so
+ * folding / unfolding never resets a search.
+ */
 export default function SearchScreen() {
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const tabBarSide = useTabBarSide();
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  // Idle: search on the left, a prompt on the right. Once a search runs, its
+  // results take the full width (two columns).
+  const [searchActive, setSearchActive] = useState(false);
+  const split = !searchActive && width - insets.left - insets.right >= SPLIT_VIEW_MIN_WIDTH;
+  const listWidth = SPLIT_LIST_WIDTH + insets.left;
+  const leftPane = useMemo(
+    () => (split ? { width: listWidth, insets: { ...insets, right: 0 }, tabBarSide } : null),
+    [split, listWidth, insets, tabBarSide],
+  );
+  return (
+    <View style={[styles.splitRow, { backgroundColor: colors.background }]}>
+      <View style={split ? { width: listWidth } : styles.splitFill}>
+        <PaneLayout pane={leftPane}>
+          <SearchContent split={split} onSearchActiveChange={setSearchActive} />
+        </PaneLayout>
+      </View>
+      {split && (
+        <View
+          style={[
+            styles.splitFill,
+            styles.splitDetail,
+            { borderLeftColor: colors.surfaceOutline, paddingRight: insets.right },
+          ]}
+        >
+          <EmptyState
+            style={{ backgroundColor: colors.background }}
+            icon="search-outline"
+            title={t('screens.search.tipsTitle')}
+            subtitle={t('screens.search.tipsBody')}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+function SearchContent({
+  split,
+  onSearchActiveChange,
+}: {
+  split: boolean;
+  onSearchActiveChange: (active: boolean) => void;
+}) {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
@@ -131,6 +192,15 @@ export default function SearchScreen() {
   // insets (status island, side tab bar rail) and results sit in a readable
   // column. Both are no-ops on a regular iPhone in portrait.
   const readable = useReadableLayout();
+  const { top: topInset } = useSafeAreaInsets();
+  const cornerClearance = topInset < SCREEN_CORNER_CLEARANCE ? SCREEN_CORNER_CLEARANCE : 0;
+  // Header controls sit in a centered column (like Safari's address bar in a
+  // wide toolbar) so the search field doesn't stretch across a wide window.
+  const headerGutter = Math.max(
+    0,
+    (readable.contentWidth + readable.gutter * 2 - SEARCH_HEADER_MAX_WIDTH) / 2,
+  );
+  const resultColumns = readable.contentWidth >= SEARCH_TWO_COLUMN_MIN_WIDTH ? 2 : 1;
   const { showToast } = useToast();
   const cart = useSearchCart();
   const [cartModalVisible, setCartModalVisible] = useState(false);
@@ -218,6 +288,9 @@ export default function SearchScreen() {
   );
 
   const { jobId, status, results, total, isLoading, error, start, stop, reset } = useSearchJob();
+  useEffect(() => {
+    onSearchActiveChange(jobId !== null);
+  }, [jobId, onSearchActiveChange]);
 
   const [query, setQuery] = useState('');
   const [plugin, setPlugin] = useState<string>(ALL);
@@ -235,6 +308,12 @@ export default function SearchScreen() {
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [searchInMode, setSearchInMode] = useState<SearchInMode>('everywhere');
   const [filterDraft, setFilterDraft] = useState<SearchFilterDraft>(EMPTY_SEARCH_FILTER_DRAFT);
+  const [defaultMinSeeders, setDefaultMinSeeders] = useState(0);
+  const seededMinSeedersRef = useRef(false);
+  const defaultDraft = useMemo(
+    () => getDefaultSearchFilterDraft(defaultMinSeeders),
+    [defaultMinSeeders],
+  );
   // What the open panel is editing. Nothing here touches the results until the
   // user taps Apply, which copies it into `filterDraft` / `searchInMode`.
   const [stagedDraft, setStagedDraft] = useState<SearchFilterDraft>(EMPTY_SEARCH_FILTER_DRAFT);
@@ -284,6 +363,18 @@ export default function SearchScreen() {
         // Absent means on (the default); only an explicit opt-out turns it off.
         if (prefs.searchGroupDuplicates === false) setGroupDuplicates(false);
         if (prefs.searchInMode === 'names') setSearchInMode('names');
+        // #305: new searches (and "Clear filters") start from this minimum.
+        // Read again on each load so a change in Settings applies to the next
+        // search; the current draft is only seeded before the first search.
+        const dms = prefs.searchDefaultMinSeeders;
+        const minSeeders = typeof dms === 'number' && Number.isFinite(dms) && dms > 0 ? dms : 0;
+        setDefaultMinSeeders(minSeeders);
+        if (!seededMinSeedersRef.current) {
+          seededMinSeedersRef.current = true;
+          const seeded = getDefaultSearchFilterDraft(minSeeders);
+          setFilterDraft((d) => (isDraftDirty(d) ? d : seeded));
+          setStagedDraft((d) => (isDraftDirty(d) ? d : seeded));
+        }
         const defaultSort = prefs.searchDefaultSort;
         if (defaultSort && SEARCH_DEFAULT_SORT_OPTIONS.some((opt) => opt.key === defaultSort)) {
           setSortBy(defaultSort);
@@ -319,16 +410,26 @@ export default function SearchScreen() {
     return unsubscribe;
   }, [navigation]);
 
+  // Native tabs mount this screen at connect. The first search-API call makes
+  // qBittorrent start its search engine (python), which can stall the WebUI
+  // briefly, so wait until the user actually opens Search.
+  const [hasBeenFocused, setHasBeenFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setHasBeenFocused(true);
+    }, []),
+  );
   const pluginsQuery = useQuery<SearchPlugin[]>({
     queryKey: ['search', 'plugins'],
     queryFn: () => searchApi.getPlugins(),
-    enabled: isConnected,
+    enabled: isConnected && hasBeenFocused,
     staleTime: 30_000,
     retry: 1,
   });
 
   const plugins = useMemo(() => pluginsQuery.data ?? [], [pluginsQuery.data]);
-  const noPlugins = !pluginsQuery.isLoading && plugins.length === 0;
+  // isPending (not isLoading): a query held back until focus is pending, not empty.
+  const noPlugins = !pluginsQuery.isPending && plugins.length === 0;
 
   // Sorted plugin list with enabled ones first, used to build the chip row.
   const sortedPlugins = useMemo(() => {
@@ -587,18 +688,18 @@ export default function SearchScreen() {
   // and the funnel's active dot never disagree with an empty-looking panel.
   const handleClearPanel = useCallback(() => {
     haptics.light();
-    setStagedDraft(EMPTY_SEARCH_FILTER_DRAFT);
+    setStagedDraft(defaultDraft);
     setStagedSearchIn('everywhere');
-    setFilterDraft(EMPTY_SEARCH_FILTER_DRAFT);
+    setFilterDraft(defaultDraft);
     // Deliberately emptied for this search — don't re-seed the box on next open.
     prefilledPatternRef.current = submittedPattern;
     if (searchInMode !== 'everywhere') void handleSearchInChange('everywhere');
-  }, [submittedPattern, searchInMode, handleSearchInChange]);
+  }, [submittedPattern, searchInMode, handleSearchInChange, defaultDraft]);
 
   const handleClearFilters = useCallback(() => {
     haptics.light();
-    setFilterDraft(EMPTY_SEARCH_FILTER_DRAFT);
-  }, []);
+    setFilterDraft(defaultDraft);
+  }, [defaultDraft]);
 
   // Closing without Apply discards whatever was staged.
   const closeFilterPanel = useCallback(() => {
@@ -655,7 +756,7 @@ export default function SearchScreen() {
       try {
         setSelectedTrackers(new Set());
         // Filters belong to one result set; the persisted "Search in" scope stays.
-        setFilterDraft(EMPTY_SEARCH_FILTER_DRAFT);
+        setFilterDraft(defaultDraft);
         prefilledPatternRef.current = '';
         setIsAggregatedSource(false);
         // Adopted once the new job's id lands (see the jobId effect below), so
@@ -672,7 +773,7 @@ export default function SearchScreen() {
         showToast(getErrorMessage(err), 'error');
       }
     },
-    [category, isConnected, plugin, showToast, start, t],
+    [category, defaultDraft, isConnected, plugin, showToast, start, t],
   );
 
   const handleSubmit = useCallback(() => runSearch(query.trim()), [query, runSearch]);
@@ -1071,6 +1172,8 @@ export default function SearchScreen() {
       );
     }
     if (jobId === null) {
+      // Split view: the right side already shows this prompt.
+      if (split) return null;
       return (
         <EmptyState
           style={{ backgroundColor: colors.background }}
@@ -1161,9 +1264,7 @@ export default function SearchScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View
-        style={[styles.container, { backgroundColor: colors.background }, readable.safeAreaStyle]}
-      >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header: search row + filter chip rows + status + sort dropdown.
             Floats absolutely above the list and slides away on scroll (see
             handleScroll). Wrapping in TouchableWithoutFeedback lets the user
@@ -1173,9 +1274,8 @@ export default function SearchScreen() {
         <Animated.View
           style={[
             styles.headerContainer,
-            // Absolute children ignore the root's side padding, so pin the
-            // header inside the safe area (iPhone Duo's status island / side rail).
-            { left: readable.safeLeft, right: readable.safeRight },
+            // Full width (glass under the Duo's status island); controls inset.
+            readable.sidePaddingStyle,
             { transform: [{ translateY: headerTranslateY }] },
           ]}
           onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
@@ -1185,6 +1285,16 @@ export default function SearchScreen() {
             <View
               style={[
                 styles.searchCard,
+                // iPhone Duo unfolded: almost no top inset (the clock sits in
+                // the side column), so the first row would run into the
+                // screen's rounded corner. Pad clear of the curve.
+                cornerClearance > 0 && { paddingTop: cornerClearance },
+                (cornerClearance > 0 || headerGutter > 0) && {
+                  paddingLeft: Math.max(cornerClearance, headerGutter),
+                  paddingRight: Math.max(spacing.xs + spacing.xs / 2, headerGutter),
+                },
+                // Wide windows: keep the controls in the same centered column as
+                // the results instead of stretching across the whole screen.
                 { backgroundColor: glass ? 'transparent' : colors.background },
               ]}
             >
@@ -1700,21 +1810,29 @@ export default function SearchScreen() {
           )
         ) : (
           <FlatList
+            // Wide windows (iPhone Duo unfolded, iPad): two result columns. The
+            // key remounts the list when the column count changes (FlatList
+            // can't change numColumns in place).
+            key={resultColumns}
+            numColumns={resultColumns}
+            columnWrapperStyle={resultColumns > 1 ? styles.resultColumns : undefined}
             data={listItems}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <SearchResultGroupRow
-                group={item}
-                isAggregatedSource={isAggregatedSource}
-                onAddGroup={handleAddGroup}
-                onAddResult={handleAddResult}
-                onLongPress={handleLongPressResult}
-                onOpenLink={handleOpenLink}
-                onCopyUrl={handleCopyUrl}
-                addingUrl={pendingAddUrl}
-                isInCart={cart.has}
-                onToggleCart={handleToggleCart}
-              />
+              <View style={resultColumns > 1 ? styles.resultColumn : undefined}>
+                <SearchResultGroupRow
+                  group={item}
+                  isAggregatedSource={isAggregatedSource}
+                  onAddGroup={handleAddGroup}
+                  onAddResult={handleAddResult}
+                  onLongPress={handleLongPressResult}
+                  onOpenLink={handleOpenLink}
+                  onCopyUrl={handleCopyUrl}
+                  addingUrl={pendingAddUrl}
+                  isInCart={cart.has}
+                  onToggleCart={handleToggleCart}
+                />
+              </View>
             )}
             contentContainerStyle={readable.contentStyle({
               paddingBottom: spacing.xxxl + tabBarInset,
@@ -1793,7 +1911,21 @@ export default function SearchScreen() {
 
 // ────────────────────────────────────────────────────── styles ────────────
 
+/** Widest the Search header's controls get on wide windows. */
+const SEARCH_HEADER_MAX_WIDTH = 640;
+
+/** Padding that clears a rounded screen corner when there's no top inset. */
+const SCREEN_CORNER_CLEARANCE = 20;
+
+/** Content width at which Search shows results in two columns. */
+const SEARCH_TWO_COLUMN_MIN_WIDTH = 700;
+
 const styles = StyleSheet.create({
+  splitRow: { flex: 1, flexDirection: 'row' },
+  splitFill: { flex: 1 },
+  splitDetail: { borderLeftWidth: StyleSheet.hairlineWidth },
+  resultColumns: { gap: spacing.md },
+  resultColumn: { flex: 1, minWidth: 0 },
   container: {
     flex: 1,
   },

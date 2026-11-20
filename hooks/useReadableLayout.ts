@@ -23,6 +23,7 @@ import { useCallback } from 'react';
 import { useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
+import { usePaneLayout } from '@/context/PaneLayoutContext';
 import { READABLE_MAX_WIDTH } from '@/constants/spacing';
 import {
   addHorizontalPadding,
@@ -42,18 +43,27 @@ export interface ReadableLayout {
   contentWidth: number;
   /** Root-view padding for the side insets (flat tab screens only; undefined when 0). */
   safeAreaStyle: ViewStyle | undefined;
-  /** A scroll view's content style with the readable gutter added to its padding. */
+  /**
+   * A scroll view's content style padded by the side insets plus the readable
+   * gutter. Containers stay full width (backgrounds run edge to edge, under
+   * the Duo's status island and side tab bar); only content is inset.
+   */
   contentStyle: (base?: StyleProp<ViewStyle>) => StyleProp<ViewStyle>;
+  /** Padding that keeps a header's controls inside the safe area. */
+  sidePaddingStyle: ViewStyle | undefined;
 }
 
 export function useReadableLayout(): ReadableLayout {
-  const { width } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  // Inside a split-view pane, measure against the pane, not the window.
+  const pane = usePaneLayout();
+  const width = pane?.width ?? windowWidth;
   const { left, right } = useSafeAreaInsets();
   const available = Math.max(0, width - left - right);
   const gutter = getReadableGutter(available, READABLE_MAX_WIDTH);
   const contentStyle = useCallback(
-    (base?: StyleProp<ViewStyle>) => addHorizontalPadding(base, gutter, gutter),
-    [gutter],
+    (base?: StyleProp<ViewStyle>) => addHorizontalPadding(base, left + gutter, right + gutter),
+    [left, right, gutter],
   );
   return {
     safeLeft: left,
@@ -61,6 +71,7 @@ export function useReadableLayout(): ReadableLayout {
     gutter,
     contentWidth: available - gutter * 2,
     safeAreaStyle: horizontalInsetStyle(left, right),
+    sidePaddingStyle: horizontalInsetStyle(left, right),
     contentStyle,
   };
 }
@@ -69,6 +80,8 @@ export function useReadableLayout(): ReadableLayout {
 export function useTabBarSide(): TabBarSide {
   const { tabBarGlass, windowInsets } = useLiquidGlass();
   const { left, right } = useSafeAreaInsets();
+  const pane = usePaneLayout();
+  if (pane) return pane.tabBarSide;
   return tabBarGlass ? getTabBarSide({ left, right }, windowInsets) : 'bottom';
 }
 

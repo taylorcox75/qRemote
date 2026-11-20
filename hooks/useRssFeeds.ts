@@ -17,7 +17,12 @@ import { useReactiveReconnect } from '@/hooks/useReactiveReconnect';
 
 const QUERY_KEY = ['rss', 'items'];
 
-export function useRssFeeds() {
+/**
+ * `enabled: false` holds the fetch back. The RSS tab mounts at connect under
+ * native tabs, and rss/items?withData=true returns every article of every
+ * feed, so the tab screen passes false until it's first opened.
+ */
+export function useRssFeeds({ enabled = true }: { enabled?: boolean } = {}) {
   const { isConnected } = useServer();
   const queryClient = useQueryClient();
 
@@ -29,7 +34,7 @@ export function useRssFeeds() {
   } = useQuery<RssItemsResponse>({
     queryKey: QUERY_KEY,
     queryFn: () => rssApi.getAllItems(true),
-    enabled: isConnected,
+    enabled: isConnected && enabled,
     staleTime: 10_000,
     retry: 1,
   });

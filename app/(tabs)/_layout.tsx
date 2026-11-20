@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { NativeTabs } from 'expo-router/native-tabs';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,13 +11,33 @@ import { useServer } from '@/context/ServerContext';
 import { applicationApi } from '@/services/api/application';
 import { useLiquidGlass } from '@/context/LiquidGlassContext';
 import { resolveRssTabVisible } from '@/utils/rss-tab';
+import { storageService } from '@/services/storage';
 
 export default function TabsLayout() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { isConnected, isConnecting, isReconnecting, connectedAt } = useServer();
+  const { isConnected, isConnecting, isReconnecting, isLoading, connectedAt } = useServer();
   const [nativeRssTab, setNativeRssTab] = useState(false);
+  // Seed from the last connection so the first native tab bar is built with
+  // the RSS tab already right — flipping it later rebuilds every tab, which
+  // used to happen on every launch with RSS on.
+  const [rssSeedLoaded, setRssSeedLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    storageService
+      .getPreferences()
+      .then((p) => {
+        if (!cancelled && p.lastRssTabVisible === true) setNativeRssTab(true);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setRssSeedLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const preferencesQuery = useQuery({
     queryKey: ['application', 'preferences'],
     queryFn: () => applicationApi.getPreferences(),
@@ -35,11 +55,24 @@ export default function TabsLayout() {
     preferencesQuery.dataUpdatedAt >= connectedAt.getTime();
   const nextNativeRssTab = resolveRssTabVisible(nativeRssTab, {
     isConnected,
-    isTransitioning: isConnecting || isReconnecting,
+    // isLoading also covers launch init / auto-connect, so the seeded value
+    // holds until this connection's preferences arrive.
+    isTransitioning: isConnecting || isReconnecting || isLoading,
     rssEnabled: rssKnownForThisConnection
       ? preferencesQuery.data?.rss_processing_enabled === true
       : undefined,
   });
+  const rssKnownValue = rssKnownForThisConnection
+    ? preferencesQuery.data?.rss_processing_enabled === true
+    : undefined;
+  useEffect(() => {
+    if (rssKnownValue === undefined) return;
+    storageService
+      .updatePreferences((p) =>
+        p.lastRssTabVisible === rssKnownValue ? {} : { lastRssTabVisible: rssKnownValue },
+      )
+      .catch(() => {});
+  }, [rssKnownValue]);
   if (nextNativeRssTab !== nativeRssTab) {
     // Render-time state adjustment (React's "storing information from previous
     // renders" pattern), so the held value never lags a render behind.
@@ -54,7 +87,7 @@ export default function TabsLayout() {
   // Where glass is available, wait the few ms it takes to read the setting so
   // launch never mounts the JS tab bar and then swaps navigators. (Always
   // loaded where glass is unavailable — no wait there.)
-  if (!glassPrefLoaded) {
+  if (!glassPrefLoaded || (tabBarGlass && !rssSeedLoaded)) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 

@@ -161,6 +161,7 @@ function SwipeableServerItem({
                   </Text>
                 </View>
               </View>
+              {/* Centered on the row, like the icon. */}
               <View style={styles.listItemRight}>
                 {isConnectedToThis ? (
                   <TouchableOpacity
@@ -170,9 +171,7 @@ function SwipeableServerItem({
                       onDisconnect();
                     }}
                   >
-                    <Text style={styles.smallButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                      {t('screens.settings.disconnect')}
-                    </Text>
+                    <ConnectButtonLabel showing="disconnect" />
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
@@ -182,7 +181,7 @@ function SwipeableServerItem({
                       onConnect();
                     }}
                   >
-                    <Text style={styles.smallButtonText}>{t('screens.settings.connect')}</Text>
+                    <ConnectButtonLabel showing="connect" />
                   </TouchableOpacity>
                 )}
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -192,6 +191,31 @@ function SwipeableServerItem({
         </Animated.View>
       </View>
       {!isLast && <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />}
+    </View>
+  );
+}
+
+/**
+ * Connect / Disconnect share one width in every row and language: both labels
+ * are laid out in the same cell (the hidden one invisible), so the button is
+ * always as wide as the longer word, with no font scaling.
+ */
+function ConnectButtonLabel({ showing }: { showing: 'connect' | 'disconnect' }) {
+  const { t } = useTranslation();
+  const label = (key: 'connect' | 'disconnect') => (
+    <Text
+      style={[styles.smallButtonText, key !== showing && styles.hiddenLabel]}
+      numberOfLines={1}
+      accessibilityElementsHidden={key !== showing}
+      importantForAccessibility={key !== showing ? 'no-hide-descendants' : 'auto'}
+    >
+      {t(`screens.settings.${key}`)}
+    </Text>
+  );
+  return (
+    <View style={styles.labelStack}>
+      {label('connect')}
+      {label('disconnect')}
     </View>
   );
 }
@@ -554,6 +578,9 @@ export default function ServersSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Both labels share one grid cell: the wider one sets the width.
+  labelStack: { alignItems: 'center' },
+  hiddenLabel: { opacity: 0, height: 0 },
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
@@ -595,15 +622,15 @@ const styles = StyleSheet.create({
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingHint: { fontSize: 12, marginTop: 1 },
   settingTextGroup: { flexShrink: 1 },
-  separator: { height: 1, marginLeft: 50 },
+  separator: { height: 1, marginLeft: spacing.lg + 36 + spacing.md },
   listItem: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   listItemContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   listItemLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
   listItemText: { flex: 1 },
   listItemTitle: { ...typography.bodyMedium },
-  listItemSubtitle: { ...typography.small, marginTop: 1 },
+  listItemSubtitle: { ...typography.small, marginTop: 2 },
   listItemRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  smallButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  smallButton: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6 },
   smallButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   swipeableContainer: { position: 'relative', overflow: 'hidden' },
   swipeableAction: {
@@ -623,5 +650,5 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   swipeableActionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-  swipeableContent: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  swipeableContent: {},
 });

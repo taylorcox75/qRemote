@@ -118,6 +118,31 @@ function trackerStatusColor(
 export default function TorrentDetail() {
   const { hash } = useLocalSearchParams<{ hash: string }>();
   const router = useRouter();
+  // Deep links can land here with nothing to go back to.
+  const close = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }, [router]);
+  return <TorrentDetailView hash={hash} onClose={close} />;
+}
+
+interface TorrentDetailViewProps {
+  hash: string;
+  /** Leave the detail: pop the route, or clear the split view's pane. */
+  onClose: () => void;
+  /** Rendered in the split view's detail pane rather than as its own screen. */
+  embedded?: boolean;
+}
+
+/**
+ * The torrent detail itself. The route above renders it full screen; on wide
+ * windows the Torrents tab also renders it beside the list (split view).
+ */
+export function TorrentDetailView({ hash, onClose, embedded = false }: TorrentDetailViewProps) {
+  const router = useRouter();
   const navigation = useNavigation();
   const { isConnected, isLoading, isReconnecting } = useServer();
   const { features } = useApiFeatures();
@@ -134,11 +159,13 @@ export default function TorrentDetail() {
   const insets = useSafeAreaInsets();
 
   useLayoutEffect(() => {
+    // In the split view's pane this isn't its own screen — leave the list's alone.
+    if (embedded) return;
     navigation.setOptions({
       gestureEnabled: true,
       fullScreenGestureEnabled: true,
     });
-  }, [navigation]);
+  }, [navigation, embedded]);
 
   const [torrent, setTorrent] = useState<TorrentInfo | null>(null);
   const [properties, setProperties] = useState<TorrentProperties | null>(null);
@@ -264,13 +291,8 @@ export default function TorrentDetail() {
       intervalRef.current = null;
     }
     showToast(t('torrentDetail.torrentRemoved'), 'error');
-    // Deep links can land here with nothing to go back to.
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
-  }, [showToast, t, router]);
+    onClose();
+  }, [showToast, t, onClose]);
 
   const loadTorrentData = async () => {
     try {
@@ -482,11 +504,7 @@ export default function TorrentDetail() {
       haptics.success();
       showToast(t('toast.torrentDeleted'), 'success');
       if (wasGone) return; // handleTorrentGone already left the screen
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/');
-      }
+      onClose();
     } catch (error: unknown) {
       torrentGoneRef.current = wasGone;
       showToast(getErrorMessage(error), 'error');
@@ -1543,10 +1561,10 @@ export default function TorrentDetail() {
           <GlassHeaderBackdrop borderOverlap={1} />
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
-            accessibilityLabel={t('common.back')}
+            onPress={onClose}
+            accessibilityLabel={embedded ? t('common.close') : t('common.back')}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
+            <Ionicons name={embedded ? 'close' : 'chevron-back'} size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.topBarActions}>
             <TouchableOpacity

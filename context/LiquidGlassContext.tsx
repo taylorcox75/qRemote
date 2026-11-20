@@ -45,7 +45,6 @@ import { useTheme } from '@/context/ThemeContext';
 import { storageService } from '@/services/storage';
 import { DEFAULT_PREFERENCES } from '@/types/preferences';
 import { getLiquidGlassSupport, isGlassAllowedByAccessibility } from '@/utils/liquidGlass';
-import { horizontalInsetStyle } from '@/utils/glass-layout';
 
 /** Height of the tab bar above the home-indicator inset (UITabBar's 49pt). */
 export const GLASS_TAB_BAR_HEIGHT = 49;
@@ -235,10 +234,8 @@ export function useGlassStackTopInset(): number | undefined {
 export function useGlassStackContentStyle(): ViewStyle {
   const { colors } = useTheme();
   const topInset = useGlassStackTopInset();
-  const { left, right } = useSafeAreaInsets();
   return {
     backgroundColor: colors.background,
     ...(topInset !== undefined && { paddingTop: topInset }),
-    ...horizontalInsetStyle(left, right),
   };
 }

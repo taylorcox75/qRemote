@@ -34,10 +34,15 @@ import { buttonStyles } from '@/constants/buttons';
 import { typography } from '@/constants/typography';
 import { SearchInMode } from '@/types/preferences';
 import {
+  CODEC_LABELS,
+  SEARCH_CODEC_OPTIONS,
+  SEARCH_SOURCE_OPTIONS,
+  SOURCE_LABELS,
+} from '@/utils/release-tags';
+import {
   SEARCH_QUALITY_OPTIONS,
   SEARCH_SIZE_UNITS,
   SearchFilterDraft,
-  SearchQualityOption,
   SearchSizeUnit,
   isDraftDirty,
 } from '@/utils/search-filters';
@@ -61,14 +66,9 @@ function nextUnit(unit: SearchSizeUnit): SearchSizeUnit {
   return SEARCH_SIZE_UNITS[(i + 1) % SEARCH_SIZE_UNITS.length];
 }
 
-/** Adds `quality` to the selection, or removes it if already selected. */
-function toggleQuality(
-  selected: SearchQualityOption[],
-  quality: SearchQualityOption,
-): SearchQualityOption[] {
-  return selected.includes(quality)
-    ? selected.filter((q) => q !== quality)
-    : [...selected, quality];
+/** Adds `value` to the selection, or removes it if already selected. */
+function toggleIn<T>(selected: T[], value: T): T[] {
+  return selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value];
 }
 
 export function SearchFilterPanel({
@@ -179,7 +179,35 @@ export function SearchFilterPanel({
               active={draft.qualities.includes(quality)}
               numberOfLines={1}
               style={styles.flex}
-              onPress={() => onChange({ qualities: toggleQuality(draft.qualities, quality) })}
+              onPress={() => onChange({ qualities: toggleIn(draft.qualities, quality) })}
+            />
+          ))}
+        </View>
+
+        <Text style={labelStyle}>{t('screens.search.videoCodec')}</Text>
+        <View style={styles.row}>
+          {SEARCH_CODEC_OPTIONS.map((codec) => (
+            <FilterChip
+              key={codec}
+              label={CODEC_LABELS[codec]}
+              active={draft.codecs.includes(codec)}
+              numberOfLines={1}
+              style={styles.flex}
+              onPress={() => onChange({ codecs: toggleIn(draft.codecs, codec) })}
+            />
+          ))}
+        </View>
+
+        <Text style={labelStyle}>{t('screens.search.releaseSource')}</Text>
+        <View style={styles.row}>
+          {SEARCH_SOURCE_OPTIONS.map((source) => (
+            <FilterChip
+              key={source}
+              label={SOURCE_LABELS[source]}
+              active={draft.sources.includes(source)}
+              numberOfLines={1}
+              style={styles.flex}
+              onPress={() => onChange({ sources: toggleIn(draft.sources, source) })}
             />
           ))}
         </View>

@@ -4,6 +4,7 @@
  *
  * Key exports: TorrentsScreen (default)
  */
+import { useTorrentSplit } from '@/context/PaneLayoutContext';
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
@@ -98,6 +99,7 @@ const HEADER_BUTTON_HIT_SLOP = { top: 2, bottom: 2, left: 2, right: 2 };
 const SIDE_GUTTER = spacing.xs + spacing.xs / 2;
 
 export default function TorrentsScreen() {
+  const split = useTorrentSplit();
   const { t } = useTranslation();
   const { showToast, setToastTopOffset } = useToast();
   const router = useRouter();
@@ -1527,6 +1529,8 @@ export default function TorrentsScreen() {
             // in normal browsing, by design) when it's an overlay; pinned +
             // overlay together is exactly the overlap this avoids.
             headerPinned && styles.headerContainerPinned,
+            // Full width (glass under the Duo's status island); controls inset.
+            readable.sidePaddingStyle,
             {
               backgroundColor: solidPinnedHeader ? colors.background : 'transparent',
               transform: [{ translateY: headerTranslateY }],
@@ -2150,12 +2154,26 @@ export default function TorrentsScreen() {
                         />
                       </TouchableOpacity>
                     )}
-                    <View style={{ flex: 1 }}>
+                    <View
+                      style={[
+                        { flex: 1 },
+                        // Split view: outline the torrent shown in the detail pane.
+                        split.active &&
+                          split.selectedHash === item.hash && {
+                            borderRadius: borderRadius.large,
+                            borderWidth: 2,
+                            borderColor: colors.primary,
+                          },
+                      ]}
+                    >
                       <TorrentCard
                         torrent={item}
                         onPress={() => {
                           if (selectMode) {
                             toggleSelection(item.hash);
+                          } else if (split.active) {
+                            haptics.light();
+                            split.select(item.hash);
                           } else {
                             router.push(`/torrent/${item.hash}`);
                           }

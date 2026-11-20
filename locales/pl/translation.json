@@ -89,7 +89,8 @@
       "deselectTorrent": "Odznacz torrent",
       "switchServer": "Przełącz serwer",
       "manageServers": "Zarządzaj serwerami",
-      "currentServer": "Bieżący"
+      "currentServer": "Bieżący",
+      "splitPlaceholder": "Wybierz torrent, aby zobaczyć tutaj jego szczegóły"
     },
     "addTorrent": {
       "none": "Brak",
@@ -477,7 +478,8 @@
       "searchAddOpensDialogueHint": "Dotknięcie + przy wyniku wyszukiwania otwiera okno dodawania torrenta zamiast dodawać od razu.",
       "defaultColors": "Domyślne kolory",
       "defaultCategoryColor": "Domyślny kolor kategorii",
-      "defaultTagColor": "Domyślny kolor tagu"
+      "defaultTagColor": "Domyślny kolor tagu",
+      "splitPlaceholder": "Wybierz ustawienie, aby zobaczyć je tutaj"
     },
     "transfer": {
       "title": "Transfer",
@@ -702,7 +704,12 @@
       "cartAccessibility_one": "Kolejka dodawania, {{count}} torrent",
       "cartAccessibility_few": "Kolejka dodawania, {{count}} torrenty",
       "cartAccessibility_many": "Kolejka dodawania, {{count}} torrentów",
-      "cartAccessibility_other": "Kolejka dodawania, {{count}} torrenta"
+      "cartAccessibility_other": "Kolejka dodawania, {{count}} torrenta",
+      "videoCodec": "Kodek wideo",
+      "releaseSource": "Źródło",
+      "defaultMinSeeders": "Domyślna minimalna liczba seedów",
+      "defaultMinSeedersHint": "Każde nowe wyszukiwanie zaczyna się od tego minimum",
+      "noMinimum": "Bez minimum"
     },
     "rss": {
       "feedsTitle": "Kanały RSS",

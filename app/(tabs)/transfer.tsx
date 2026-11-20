@@ -98,6 +98,10 @@ export default function TransferScreen() {
   // is the window width, as before.
   const readable = useReadableLayout();
   const graphWidth = readable.contentWidth - GRAPH_HORIZONTAL_PADDING;
+  // Two-column dashboard once the content column is wide enough for two cards.
+  const dashboard = readable.contentWidth >= DASHBOARD_MIN_WIDTH;
+  // Explicit widths: flex could let a wide child in one column squeeze the other.
+  const dashboardColumnWidth = (readable.contentWidth - spacing.lg) / 2;
   const innerGraphWidth = graphWidth - GRAPH_CARD_PADDING * 2;
   const { showToast } = useToast();
   const router = useRouter();
@@ -634,9 +638,7 @@ export default function TransferScreen() {
   return (
     <>
       <FocusAwareStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View
-        style={[styles.container, { backgroundColor: colors.background }, readable.safeAreaStyle]}
-      >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Custom limit modal */}
         <Modal
           visible={limitModalVisible}
@@ -882,518 +884,558 @@ export default function TransferScreen() {
             </GlassSurface>
           </View>
 
-          {/* ========== SPEED LIMITS ========== */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.transfer.speedLimits')}
-            </Text>
-            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openLimitModal('download')}
-                disabled={settingLimit || isAltSpeedEnabled}
-              >
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.downloadLimit')}
+          {/* Wide windows (iPhone Duo unfolded, iPad): limits and actions on the
+              left, session and connection stats on the right. The same Views
+              wrap them when narrow, so nothing remounts on fold / unfold. */}
+          <View style={dashboard && styles.dashboardColumns}>
+            <View style={dashboard && { width: dashboardColumnWidth }}>
+              {/* ========== SPEED LIMITS ========== */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.speedLimits')}
                 </Text>
-                <View style={styles.rowTrailing}>
-                  {isAltSpeedEnabled && (
-                    <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
-                  )}
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {getDisplayLimit(transferInfo.dl_rate_limit, transferInfo.alt_dl_limit)}
-                  </Text>
-                  <Ionicons
-                    name="pencil"
-                    size={14}
-                    color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openLimitModal('upload')}
-                disabled={settingLimit || isAltSpeedEnabled}
-              >
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.uploadLimit')}
-                </Text>
-                <View style={styles.rowTrailing}>
-                  {isAltSpeedEnabled && (
-                    <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
-                  )}
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {getDisplayLimit(transferInfo.up_rate_limit, transferInfo.alt_up_limit)}
-                  </Text>
-                  <Ionicons
-                    name="pencil"
-                    size={14}
-                    color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              {/* Alt Download Limit — always editable */}
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openAltLimitModal('altDownload')}
-                disabled={settingLimit}
-              >
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.altDownloadLimit')}
-                </Text>
-                <View style={styles.rowTrailing}>
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {transferInfo.alt_dl_limit != null && transferInfo.alt_dl_limit > 0
-                      ? formatSpeed(transferInfo.alt_dl_limit)
-                      : t('common.unlimited')}
-                  </Text>
-                  <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              {/* Alt Upload Limit — always editable */}
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openAltLimitModal('altUpload')}
-                disabled={settingLimit}
-              >
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.altUploadLimit')}
-                </Text>
-                <View style={styles.rowTrailing}>
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {transferInfo.alt_up_limit != null && transferInfo.alt_up_limit > 0
-                      ? formatSpeed(transferInfo.alt_up_limit)
-                      : t('common.unlimited')}
-                  </Text>
-                  <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.alternativeSpeeds')}
-                </Text>
-                <View style={styles.switchHost}>
-                  <Switch
-                    value={isAltSpeedEnabled}
-                    onValueChange={handleToggleAltSpeed}
-                    disabled={actionLoading === 'altSpeed'}
-                    trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                  />
-                </View>
-              </View>
-            </GlassSurface>
-          </View>
-
-          {/* ========== SEEDING LIMITS ========== */}
-          {isConnected && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-                {t('screens.transfer.seedingLimits')}
-              </Text>
-              <GlassSurface
-                glass={false}
-                style={[styles.card, { backgroundColor: colors.surface }]}
-              >
-                <View style={styles.row}>
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.ratioLimitEnabled')}
-                  </Text>
-                  <View style={styles.switchHost}>
-                    <Switch
-                      value={ratioLimitEnabled}
-                      onValueChange={handleRatioSwitch}
-                      trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                    />
-                  </View>
-                </View>
-
-                {ratioLimitEnabled && (
-                  <>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <TouchableOpacity
-                      style={styles.row}
-                      onPress={() => setMaxRatioModalVisible(true)}
-                    >
-                      <Text style={[styles.rowLabel, { color: colors.text }]}>
-                        {t('screens.transfer.maxRatio')}
-                      </Text>
-                      <View style={styles.rowTrailing}>
-                        <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                          {(maxRatio ?? 0).toFixed(2)}
-                        </Text>
-                        <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                      </View>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-                <View style={styles.row}>
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.seedingTimeLimitEnabled')}
-                  </Text>
-                  <View style={styles.switchHost}>
-                    <Switch
-                      value={seedingTimeLimitEnabled}
-                      onValueChange={handleSeedingTimeSwitch}
-                      trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
-                    />
-                  </View>
-                </View>
-
-                {seedingTimeLimitEnabled && (
-                  <>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <TouchableOpacity
-                      style={styles.row}
-                      onPress={() => setMaxSeedingTimeModalVisible(true)}
-                    >
-                      <Text style={[styles.rowLabel, { color: colors.text }]}>
-                        {t('screens.transfer.maxSeedingTime')}
-                      </Text>
-                      <View style={styles.rowTrailing}>
-                        <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                          {formatTime((maxSeedingTime ?? 0) * 60)}
-                        </Text>
-                        <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                      </View>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {(ratioLimitEnabled || seedingTimeLimitEnabled) && (
-                  <>
-                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                    <TouchableOpacity
-                      style={styles.row}
-                      onPress={() => setMaxRatioActPickerVisible(true)}
-                    >
-                      <Text style={[styles.rowLabel, { color: colors.text }]}>
-                        {t('screens.transfer.whenLimitReached')}
-                      </Text>
-                      <View style={styles.rowTrailing}>
-                        <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                          {maxRatioActOptions.find((opt) => opt.value === String(maxRatioAct))
-                            ?.label ?? maxRatioActOptions[0].label}
-                        </Text>
-                        <Ionicons name="pencil" size={14} color={colors.textSecondary} />
-                      </View>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </GlassSurface>
-            </View>
-          )}
-
-          {/* ========== ACTIONS ========== */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.transfer.actions')}
-            </Text>
-            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handleResumeAll}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'resume' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="play" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.resumeAll')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handlePauseAll}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'pause' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="pause" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.pauseAll')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handlePauseAllDownloads}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'pauseDL' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="arrow-down" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.pauseDownloads')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handlePauseAllUploads}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'pauseUL' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="arrow-up" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.pauseUploads')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={handleForceStartAll}
-                disabled={actionLoading !== null}
-              >
-                <View style={styles.rowLeading}>
-                  {actionLoading === 'forceStart' ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Ionicons name="flash" size={20} color={colors.primary} />
-                  )}
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.forceStartAll')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </GlassSurface>
-          </View>
-
-          {/* ========== THIS SESSION ========== */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.transfer.thisSession')}
-            </Text>
-            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.downloaded')}
-                </Text>
-                <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                  {formatSize(transferInfo.dl_info_data)}
-                </Text>
-              </View>
-
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.uploaded')}
-                </Text>
-                <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                  {formatSize(transferInfo.up_info_data)}
-                </Text>
-              </View>
-
-              {connectedAt && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.row}>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => openLimitModal('download')}
+                    disabled={settingLimit || isAltSpeedEnabled}
+                  >
                     <Text style={[styles.rowLabel, { color: colors.text }]}>
-                      {t('screens.transfer.connectedFor')}
+                      {t('screens.transfer.downloadLimit')}
                     </Text>
-                    <View style={styles.valueWithInfo}>
-                      <TouchableOpacity
-                        onPress={() => setInfoTooltip('connectedFor')}
-                        accessibilityLabel={t('common.moreInfo')}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons
-                          name="information-circle-outline"
-                          size={16}
-                          color={colors.textSecondary}
-                        />
-                      </TouchableOpacity>
+                    <View style={styles.rowTrailing}>
+                      {isAltSpeedEnabled && (
+                        <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
+                      )}
                       <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                        {formatTime(Math.max(1, Math.floor((now - connectedAt.getTime()) / 1000)))}
+                        {getDisplayLimit(transferInfo.dl_rate_limit, transferInfo.alt_dl_limit)}
                       </Text>
+                      <Ionicons
+                        name="pencil"
+                        size={14}
+                        color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => openLimitModal('upload')}
+                    disabled={settingLimit || isAltSpeedEnabled}
+                  >
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.uploadLimit')}
+                    </Text>
+                    <View style={styles.rowTrailing}>
+                      {isAltSpeedEnabled && (
+                        <Text style={[styles.altBadge, { color: colors.primary }]}>ALT</Text>
+                      )}
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {getDisplayLimit(transferInfo.up_rate_limit, transferInfo.alt_up_limit)}
+                      </Text>
+                      <Ionicons
+                        name="pencil"
+                        size={14}
+                        color={isAltSpeedEnabled ? colors.surfaceOutline : colors.textSecondary}
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  {/* Alt Download Limit — always editable */}
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => openAltLimitModal('altDownload')}
+                    disabled={settingLimit}
+                  >
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.altDownloadLimit')}
+                    </Text>
+                    <View style={styles.rowTrailing}>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {transferInfo.alt_dl_limit != null && transferInfo.alt_dl_limit > 0
+                          ? formatSpeed(transferInfo.alt_dl_limit)
+                          : t('common.unlimited')}
+                      </Text>
+                      <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  {/* Alt Upload Limit — always editable */}
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => openAltLimitModal('altUpload')}
+                    disabled={settingLimit}
+                  >
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.altUploadLimit')}
+                    </Text>
+                    <View style={styles.rowTrailing}>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {transferInfo.alt_up_limit != null && transferInfo.alt_up_limit > 0
+                          ? formatSpeed(transferInfo.alt_up_limit)
+                          : t('common.unlimited')}
+                      </Text>
+                      <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.alternativeSpeeds')}
+                    </Text>
+                    <View style={styles.switchHost}>
+                      <Switch
+                        value={isAltSpeedEnabled}
+                        onValueChange={handleToggleAltSpeed}
+                        disabled={actionLoading === 'altSpeed'}
+                        trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                      />
                     </View>
                   </View>
-                </>
-              )}
-            </GlassSurface>
-          </View>
-
-          {/* ========== ALL TIME ========== */}
-          {serverState && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-                {t('screens.transfer.allTime')}
-              </Text>
-              <GlassSurface
-                glass={false}
-                style={[styles.card, { backgroundColor: colors.surface }]}
-              >
-                <View style={styles.row}>
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.downloaded')}
-                  </Text>
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {formatSize(serverState.alltime_dl || 0)}
-                  </Text>
-                </View>
-
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-                <View style={styles.row}>
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.uploaded')}
-                  </Text>
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {formatSize(serverState.alltime_ul || 0)}
-                  </Text>
-                </View>
-
-                <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-                <View style={styles.row}>
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.globalRatio')}
-                  </Text>
-                  <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                    {serverState.global_ratio || '0.00'}
-                  </Text>
-                </View>
-              </GlassSurface>
-            </View>
-          )}
-
-          {/* ========== CONNECTION ========== */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
-              {t('screens.transfer.connection')}
-            </Text>
-            <GlassSurface glass={false} style={[styles.card, { backgroundColor: colors.surface }]}>
-              <View style={styles.row}>
-                <View style={styles.rowLeading}>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      {
-                        backgroundColor: getConnectionStatusColor(transferInfo.connection_status),
-                      },
-                    ]}
-                  />
-                  <Text style={[styles.rowLabel, { color: colors.text }]}>
-                    {t('screens.transfer.status')}
-                  </Text>
-                </View>
-                <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                  {transferInfo.connection_status
-                    ? transferInfo.connection_status.charAt(0).toUpperCase() +
-                      transferInfo.connection_status.slice(1)
-                    : '—'}
-                </Text>
+                </GlassSurface>
               </View>
 
-              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-
-              <View style={styles.row}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>
-                  {t('screens.transfer.dhtNodes')}
-                </Text>
-                <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                  {transferInfo.dht_nodes?.toLocaleString() ?? '—'}
-                </Text>
-              </View>
-
-              {serverState && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.row}>
-                    <Text style={[styles.rowLabel, { color: colors.text }]}>
-                      {t('screens.transfer.peers')}
-                    </Text>
-                    <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                      {(serverState.total_peer_connections || 0).toLocaleString()}
-                    </Text>
-                  </View>
-                </>
-              )}
-
-              {diskSpaceInfo && diskSpaceInfo.free > 0 && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.row}>
-                    <Text style={[styles.rowLabel, { color: colors.text }]}>
-                      {t('screens.transfer.freeDiskSpace')}
-                    </Text>
-                    <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                      {formatSize(diskSpaceInfo.free)}
-                    </Text>
-                  </View>
-                </>
-              )}
-
-              {externalIp && (
-                <>
-                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
-                  <View style={styles.row}>
-                    <Text style={[styles.rowLabel, { color: colors.text }]}>
-                      {t('screens.transfer.externalIp')}
-                    </Text>
-                    <View style={styles.valueWithInfo}>
-                      <TouchableOpacity
-                        onPress={() => setInfoTooltip('externalIp')}
-                        accessibilityLabel={t('common.moreInfo')}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons
-                          name="information-circle-outline"
-                          size={16}
-                          color={colors.textSecondary}
+              {/* ========== SEEDING LIMITS ========== */}
+              {isConnected && (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                    {t('screens.transfer.seedingLimits')}
+                  </Text>
+                  <GlassSurface
+                    glass={false}
+                    style={[styles.card, { backgroundColor: colors.surface }]}
+                  >
+                    <View style={styles.row}>
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.ratioLimitEnabled')}
+                      </Text>
+                      <View style={styles.switchHost}>
+                        <Switch
+                          value={ratioLimitEnabled}
+                          onValueChange={handleRatioSwitch}
+                          trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
                         />
-                      </TouchableOpacity>
-                      <Text style={[styles.rowValue, { color: colors.textSecondary }]} selectable>
-                        {externalIp}
+                      </View>
+                    </View>
+
+                    {ratioLimitEnabled && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <TouchableOpacity
+                          style={styles.row}
+                          onPress={() => setMaxRatioModalVisible(true)}
+                        >
+                          <Text style={[styles.rowLabel, { color: colors.text }]}>
+                            {t('screens.transfer.maxRatio')}
+                          </Text>
+                          <View style={styles.rowTrailing}>
+                            <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                              {(maxRatio ?? 0).toFixed(2)}
+                            </Text>
+                            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                          </View>
+                        </TouchableOpacity>
+                      </>
+                    )}
+
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                    <View style={styles.row}>
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.seedingTimeLimitEnabled')}
+                      </Text>
+                      <View style={styles.switchHost}>
+                        <Switch
+                          value={seedingTimeLimitEnabled}
+                          onValueChange={handleSeedingTimeSwitch}
+                          trackColor={{ false: colors.surfaceOutline, true: colors.primary }}
+                        />
+                      </View>
+                    </View>
+
+                    {seedingTimeLimitEnabled && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <TouchableOpacity
+                          style={styles.row}
+                          onPress={() => setMaxSeedingTimeModalVisible(true)}
+                        >
+                          <Text style={[styles.rowLabel, { color: colors.text }]}>
+                            {t('screens.transfer.maxSeedingTime')}
+                          </Text>
+                          <View style={styles.rowTrailing}>
+                            <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                              {formatTime((maxSeedingTime ?? 0) * 60)}
+                            </Text>
+                            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                          </View>
+                        </TouchableOpacity>
+                      </>
+                    )}
+
+                    {(ratioLimitEnabled || seedingTimeLimitEnabled) && (
+                      <>
+                        <View
+                          style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                        />
+                        <TouchableOpacity
+                          style={styles.row}
+                          onPress={() => setMaxRatioActPickerVisible(true)}
+                        >
+                          <Text style={[styles.rowLabel, { color: colors.text }]}>
+                            {t('screens.transfer.whenLimitReached')}
+                          </Text>
+                          <View style={styles.rowTrailing}>
+                            <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                              {maxRatioActOptions.find((opt) => opt.value === String(maxRatioAct))
+                                ?.label ?? maxRatioActOptions[0].label}
+                            </Text>
+                            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+                          </View>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </GlassSurface>
+                </View>
+              )}
+
+              {/* ========== ACTIONS ========== */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.actions')}
+                </Text>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handleResumeAll}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'resume' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="play" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.resumeAll')}
                       </Text>
                     </View>
-                  </View>
-                </>
-              )}
-            </GlassSurface>
-          </View>
+                  </TouchableOpacity>
 
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handlePauseAll}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'pause' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="pause" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.pauseAll')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handlePauseAllDownloads}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'pauseDL' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="arrow-down" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.pauseDownloads')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handlePauseAllUploads}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'pauseUL' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="arrow-up" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.pauseUploads')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={handleForceStartAll}
+                    disabled={actionLoading !== null}
+                  >
+                    <View style={styles.rowLeading}>
+                      {actionLoading === 'forceStart' ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <Ionicons name="flash" size={20} color={colors.primary} />
+                      )}
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.forceStartAll')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </GlassSurface>
+              </View>
+            </View>
+            <View style={dashboard && { width: dashboardColumnWidth }}>
+              {/* ========== THIS SESSION ========== */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.thisSession')}
+                </Text>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
+                  <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.downloaded')}
+                    </Text>
+                    <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                      {formatSize(transferInfo.dl_info_data)}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.uploaded')}
+                    </Text>
+                    <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                      {formatSize(transferInfo.up_info_data)}
+                    </Text>
+                  </View>
+
+                  {connectedAt && (
+                    <>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.row}>
+                        <Text style={[styles.rowLabel, { color: colors.text }]}>
+                          {t('screens.transfer.connectedFor')}
+                        </Text>
+                        <View style={styles.valueWithInfo}>
+                          <TouchableOpacity
+                            onPress={() => setInfoTooltip('connectedFor')}
+                            accessibilityLabel={t('common.moreInfo')}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons
+                              name="information-circle-outline"
+                              size={16}
+                              color={colors.textSecondary}
+                            />
+                          </TouchableOpacity>
+                          <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                            {formatTime(
+                              Math.max(1, Math.floor((now - connectedAt.getTime()) / 1000)),
+                            )}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
+                </GlassSurface>
+              </View>
+
+              {/* ========== ALL TIME ========== */}
+              {serverState && (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                    {t('screens.transfer.allTime')}
+                  </Text>
+                  <GlassSurface
+                    glass={false}
+                    style={[styles.card, { backgroundColor: colors.surface }]}
+                  >
+                    <View style={styles.row}>
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.downloaded')}
+                      </Text>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {formatSize(serverState.alltime_dl || 0)}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                    <View style={styles.row}>
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.uploaded')}
+                      </Text>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {formatSize(serverState.alltime_ul || 0)}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                    <View style={styles.row}>
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.globalRatio')}
+                      </Text>
+                      <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                        {serverState.global_ratio || '0.00'}
+                      </Text>
+                    </View>
+                  </GlassSurface>
+                </View>
+              )}
+
+              {/* ========== CONNECTION ========== */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+                  {t('screens.transfer.connection')}
+                </Text>
+                <GlassSurface
+                  glass={false}
+                  style={[styles.card, { backgroundColor: colors.surface }]}
+                >
+                  <View style={styles.row}>
+                    <View style={styles.rowLeading}>
+                      <View
+                        style={[
+                          styles.statusDot,
+                          {
+                            backgroundColor: getConnectionStatusColor(
+                              transferInfo.connection_status,
+                            ),
+                          },
+                        ]}
+                      />
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {t('screens.transfer.status')}
+                      </Text>
+                    </View>
+                    <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                      {transferInfo.connection_status
+                        ? transferInfo.connection_status.charAt(0).toUpperCase() +
+                          transferInfo.connection_status.slice(1)
+                        : '—'}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+
+                  <View style={styles.row}>
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {t('screens.transfer.dhtNodes')}
+                    </Text>
+                    <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                      {transferInfo.dht_nodes?.toLocaleString() ?? '—'}
+                    </Text>
+                  </View>
+
+                  {serverState && (
+                    <>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.row}>
+                        <Text style={[styles.rowLabel, { color: colors.text }]}>
+                          {t('screens.transfer.peers')}
+                        </Text>
+                        <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                          {(serverState.total_peer_connections || 0).toLocaleString()}
+                        </Text>
+                      </View>
+                    </>
+                  )}
+
+                  {diskSpaceInfo && diskSpaceInfo.free > 0 && (
+                    <>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.row}>
+                        <Text style={[styles.rowLabel, { color: colors.text }]}>
+                          {t('screens.transfer.freeDiskSpace')}
+                        </Text>
+                        <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                          {formatSize(diskSpaceInfo.free)}
+                        </Text>
+                      </View>
+                    </>
+                  )}
+
+                  {externalIp && (
+                    <>
+                      <View
+                        style={[styles.separator, { backgroundColor: colors.surfaceOutline }]}
+                      />
+                      <View style={styles.row}>
+                        <Text style={[styles.rowLabel, { color: colors.text }]}>
+                          {t('screens.transfer.externalIp')}
+                        </Text>
+                        <View style={styles.valueWithInfo}>
+                          <TouchableOpacity
+                            onPress={() => setInfoTooltip('externalIp')}
+                            accessibilityLabel={t('common.moreInfo')}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons
+                              name="information-circle-outline"
+                              size={16}
+                              color={colors.textSecondary}
+                            />
+                          </TouchableOpacity>
+                          <Text
+                            style={[styles.rowValue, { color: colors.textSecondary }]}
+                            selectable
+                          >
+                            {externalIp}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
+                </GlassSurface>
+              </View>
+            </View>
+          </View>
           <View style={{ height: 40 }} />
         </ScrollView>
       </View>
@@ -1401,7 +1443,11 @@ export default function TransferScreen() {
   );
 }
 
+/** Content width at which Transfer switches to its two-column dashboard. */
+const DASHBOARD_MIN_WIDTH = 700;
+
 const styles = StyleSheet.create({
+  dashboardColumns: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
   container: {
     flex: 1,
   },

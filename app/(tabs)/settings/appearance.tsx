@@ -28,6 +28,9 @@ import { spacing, borderRadius } from '@/constants/spacing';
 import { shadows } from '@/constants/shadows';
 import { typography } from '@/constants/typography';
 
+/** Choices for Settings → Appearance → Default minimum seeders (#305). */
+const MIN_SEEDERS_OPTIONS = [0, 1, 2, 5, 10, 25, 50];
+
 export default function AppearanceSettingsScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -43,6 +46,8 @@ export default function AppearanceSettingsScreen() {
   const [searchHistoryPickerVisible, setSearchHistoryPickerVisible] = useState(false);
   const [searchDefaultSort, setSearchDefaultSort] = useState<SearchSortKey>('seeders');
   const [searchSortPickerVisible, setSearchSortPickerVisible] = useState(false);
+  const [searchMinSeeders, setSearchMinSeeders] = useState(0);
+  const [minSeedersPickerVisible, setMinSeedersPickerVisible] = useState(false);
   const [solidPinnedHeader, setSolidPinnedHeader] = useState(false);
   const {
     available: liquidGlassAvailable,
@@ -85,6 +90,12 @@ export default function AppearanceSettingsScreen() {
         typeof prefs.torrentSearchHistoryLimit === 'number'
           ? prefs.torrentSearchHistoryLimit
           : DEFAULT_PREFERENCES.torrentSearchHistoryLimit,
+      );
+      const minSeeders = prefs.searchDefaultMinSeeders;
+      setSearchMinSeeders(
+        typeof minSeeders === 'number' && Number.isFinite(minSeeders) && minSeeders > 0
+          ? Math.floor(minSeeders)
+          : 0,
       );
       const sort = prefs.searchDefaultSort;
       setSearchDefaultSort(
@@ -151,6 +162,15 @@ export default function AppearanceSettingsScreen() {
   const saveLiquidGlass = async (value: boolean) => {
     try {
       await setLiquidGlassPreference(value);
+    } catch {
+      // Ignore save errors
+    }
+  };
+
+  const saveSearchMinSeeders = async (value: number) => {
+    try {
+      await storageService.updatePreferences({ searchDefaultMinSeeders: value });
+      setSearchMinSeeders(value);
     } catch {
       // Ignore save errors
     }
@@ -408,6 +428,31 @@ export default function AppearanceSettingsScreen() {
               <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
+                  <Ionicons name="people-outline" size={22} color={colors.primary} />
+                  <View style={styles.settingTextWrap}>
+                    <Text style={[styles.settingLabel, { color: colors.text }]}>
+                      {t('screens.search.defaultMinSeeders')}
+                    </Text>
+                    <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                      {t('screens.search.defaultMinSeedersHint')}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setMinSeedersPickerVisible(true)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t('screens.search.defaultMinSeeders')}
+                >
+                  <Text style={[styles.pickerText, { color: colors.text }]}>
+                    {searchMinSeeders > 0 ? searchMinSeeders : t('screens.search.noMinimum')}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.separator, { backgroundColor: colors.surfaceOutline }]} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
                   <Ionicons name="refresh-outline" size={22} color={colors.primary} />
                   <View>
                     <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -470,6 +515,21 @@ export default function AppearanceSettingsScreen() {
           setSearchSortPickerVisible(false);
         }}
         onClose={() => setSearchSortPickerVisible(false)}
+      />
+
+      <OptionPicker
+        visible={minSeedersPickerVisible}
+        title={t('screens.search.defaultMinSeeders')}
+        options={MIN_SEEDERS_OPTIONS.map((n) => ({
+          label: n > 0 ? String(n) : t('screens.search.noMinimum'),
+          value: String(n),
+        }))}
+        selectedValue={String(searchMinSeeders)}
+        onSelect={async (value) => {
+          await saveSearchMinSeeders(Number(value));
+          setMinSeedersPickerVisible(false);
+        }}
+        onClose={() => setMinSeedersPickerVisible(false)}
       />
     </>
   );

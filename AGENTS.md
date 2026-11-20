@@ -441,6 +441,7 @@ proxy server incl. auth, IP filtering/banned IPs, I2P (qBit 4.6.1+, WebAPI ≥ 2
   iOS Reduce Transparency / Increase Contrast off), the tab-bar choice fixed at
   launch, and the app's light/dark scheme applied to native system chrome.
   `useGlassStackTopInset()` for headers drawn under the status bar.
+- **`PaneLayoutContext.tsx`** — split view support: `PaneLayout` makes a subtree measure one pane as if it were the window (safe-area insets, `useReadableLayout` width, glass tab bar side); `TorrentSplitContext`/`useTorrentSplit` hold the Torrents split view's selected hash. `app/(tabs)/(torrents)/_layout.tsx` puts the list and `TorrentDetailView` (exported from `torrent/[hash].tsx`, `embedded` + `onClose`) side by side when `utils/split-view.ts` `getSplitLayout` says so (≥ `SPLIT_VIEW_MIN_WIDTH` after insets, list route only); the Stack keeps its place in the tree so fold/unfold never loses history. A pane's right inset is a _margin_ on its container — the detail's glass header is absolutely positioned and ignores padding.
 - **`ApiVersionContext.tsx`** — detected qBittorrent API version → feature gating
   through `utils/apiVersion.ts`.
 - **`SearchCartContext.tsx`** — session-scoped queue of Search results the user
@@ -618,7 +619,7 @@ Thin objects over `apiClient`.
   (`isReconnectableError`).
 - `useGracefulError.ts` — suppresses a transient error until it has persisted
   ~2.5s, so a self-healing poll failure doesn't flash error UI.
-- `useRssFeeds.ts` / `useRssRules.ts` — RSS tree and auto-download rule state.
+- `useRssFeeds.ts` / `useRssRules.ts` — RSS tree and auto-download rule state. `useRssFeeds({ enabled })`: the RSS tab passes false until its first focus, because native tabs mount it at connect and `rss/items?withData=true` is every article of every feed (Search's plugin list waits for first focus the same way).
 - `useSpeedTracker.ts` / `useSpeedHistory.ts` — sampling for `SpeedGraph`.
 - `useGlassTabScreenLayout.ts` — lets a tab screen's content scroll under the
   floating glass chrome: while the glass tab bar is in use the header (or whole
@@ -715,7 +716,7 @@ seeders and size ranges
 (0/unset = no bound, swapped min/max are reordered; unlike the WebUI, unknown
 `-1`/`0` values are _kept_ by a range), and `qualities` (#268 — keep only 720p /
 1080p / 2160p names via `video-quality.ts`; unrecognized quality is hidden while
-one is selected). Also `tokenizeTerms`,
+one is selected), plus `codecs` / `sources` (#304 / #302, via `release-tags.ts`; any tag within a group, groups AND together). `getDefaultSearchFilterDraft(min)` is the draft a new search and "Clear filters" start from — the `searchDefaultMinSeeders` pref (#305, Settings → Appearance). Also `tokenizeTerms`,
 `parseSizeInput`/`parseSeedersInput`, `hasActiveFilters`, and the
 `SearchFilterDraft` ⇄ options helpers behind `SearchFilterPanel`. Runs before
 the sort in `search.tsx`) · `search-grouping.ts` (#267 — pure Search-result
@@ -732,6 +733,7 @@ never reads `x264`/`h264` or a bare `1080`/year as a resolution, and deliberatel
 skips ambiguous "2K". `getVideoQualityLabel(rank)` for display, and
 `compareByQuality(a, b, dir)` — the Search "Quality" sort comparator: unknown
 last in _both_ directions, ties by seeders desc with `-1` as 0 — #268) ·
+`release-tags.ts` (#304 codec / #302 source tags parsed from a release name by whole token after turning separators into spaces — `getReleaseCodecs` (x265/H.265/HEVC, x264/H.264/AVC, AV1) and `getReleaseSources` (BluRay incl. BDRip, REMUX, WEB-DL incl. a bare `WEB`, WEBRip); `SEARCH_CODEC_OPTIONS`/`SEARCH_SOURCE_OPTIONS` and fixed chip labels) ·
 `search-history.ts` (#282 — pure Torrents-tab recent-search lists: `recordQuery` (trim, ignore <2 chars, case-insensitive dedupe keeping latest casing, front, trim to limit, limit 0 = off, never duplicates a pinned entry), `togglePin` (recent ⇄ pinned, max `MAX_PINNED_SEARCHES` = 10, pinned entries don't count toward the limit), `removeQuery`, `clearUnpinned`, `applyHistoryLimit`, `getHistoryEntries` (pinned first); `SEARCH_HISTORY_LIMIT_OPTIONS` backs the Appearance picker) ·
 `search-plugins.ts` (#283 — Search plugin pinning: `orderPluginsWithPins(sortedPlugins, pinned)` moves pinned plugins to the front of the already-sorted list, keeping the incoming enabled-then-name order within each group and ignoring pinned names that aren't installed; `prunePinnedPlugins(pinned, installed)` drops uninstalled and duplicate names; `togglePinnedPlugin(pinned, name, installed)` is the chip-icon tap — unpins a pinned plugin, otherwise pins an installed one — and the result is what the `searchPinnedPlugins` pref saves) ·
 `search-download.ts` (#284 — how a Search result's URL is added through the plugin that produced it. `isAggregatorResult(result)` is true for Jackett/Prowlarr results, detected per result by `engineName` matching `/jackett|prowlarr/i` or an `apikey=` / `jackett_apikey=` query param in the `fileUrl`; it deliberately does not infer this from "all results share one site". `getResultDownloader(result)` returns the result's `engineName` for non-magnet, non-aggregator results with an engine name, and is the single rule shared by `search.tsx`'s instant add, the `sourcePlugin` handoff to both add dialogs, cart items' `downloader`, and `useSearchHashResolver`. `planPluginUrlAdd(downloader, features)` returns `addWithDownloader` (`torrents/add` + `downloader`, WebAPI ≥ 2.13.1, all options kept), `searchDownloadTorrent` (5.0–5.1, default options only) or `plainAdd` (4.x). `getPrefilledDownloader(urls, {url, plugin})` lets the dialogs apply a Search-supplied plugin only while the submitted URLs are still exactly the pre-filled one) ·

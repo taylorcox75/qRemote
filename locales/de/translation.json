@@ -68,7 +68,8 @@
       "deselectTorrent": "Torrent abwählen",
       "switchServer": "Server wechseln",
       "manageServers": "Server verwalten",
-      "currentServer": "Aktuell"
+      "currentServer": "Aktuell",
+      "splitPlaceholder": "Wähle einen Torrent, um hier seine Details zu sehen"
     },
     "addTorrent": {
       "none": "Keiner",
@@ -456,7 +457,8 @@
       "searchAddOpensDialogueHint": "Ein Tippen auf + bei einem Suchergebnis öffnet den Torrent-Hinzufügen-Dialog, statt sofort hinzuzufügen.",
       "defaultColors": "Standardfarben",
       "defaultCategoryColor": "Standardfarbe für Kategorien",
-      "defaultTagColor": "Standardfarbe für Tags"
+      "defaultTagColor": "Standardfarbe für Tags",
+      "splitPlaceholder": "Wähle eine Einstellung, um sie hier zu sehen"
     },
     "transfer": {
       "title": "Übertragung",
@@ -671,7 +673,12 @@
       "cartClearAll": "Alle entfernen",
       "cartCheckout": "Weiter ({{count}})",
       "cartAccessibility_one": "Warteschlange, {{count}} Torrent",
-      "cartAccessibility_other": "Warteschlange, {{count}} Torrents"
+      "cartAccessibility_other": "Warteschlange, {{count}} Torrents",
+      "videoCodec": "Video-Codec",
+      "releaseSource": "Quelle",
+      "defaultMinSeeders": "Standard-Mindestanzahl Seeder",
+      "defaultMinSeedersHint": "Jede neue Suche startet mit diesem Minimum",
+      "noMinimum": "Kein Minimum"
     },
     "rss": {
       "feedsTitle": "RSS-Feeds",

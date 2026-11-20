@@ -89,7 +89,8 @@
       "deselectTorrent": "Снять выбор торрента",
       "switchServer": "Сменить сервер",
       "manageServers": "Управление серверами",
-      "currentServer": "Текущий"
+      "currentServer": "Текущий",
+      "splitPlaceholder": "Выберите торрент, чтобы увидеть здесь подробности"
     },
     "addTorrent": {
       "none": "Нет",
@@ -477,7 +478,8 @@
       "searchAddOpensDialogueHint": "Нажатие + на результате поиска открывает диалог добавления торрента вместо немедленного добавления.",
       "defaultColors": "Цвета по умолчанию",
       "defaultCategoryColor": "Цвет категории по умолчанию",
-      "defaultTagColor": "Цвет тега по умолчанию"
+      "defaultTagColor": "Цвет тега по умолчанию",
+      "splitPlaceholder": "Выберите настройку, чтобы открыть её здесь"
     },
     "transfer": {
       "title": "Передача",
@@ -702,7 +704,12 @@
       "cartAccessibility_one": "Очередь добавления, {{count}} торрент",
       "cartAccessibility_few": "Очередь добавления, {{count}} торрента",
       "cartAccessibility_many": "Очередь добавления, {{count}} торрентов",
-      "cartAccessibility_other": "Очередь добавления, {{count}} торрента"
+      "cartAccessibility_other": "Очередь добавления, {{count}} торрента",
+      "videoCodec": "Видеокодек",
+      "releaseSource": "Источник",
+      "defaultMinSeeders": "Минимум сидов по умолчанию",
+      "defaultMinSeedersHint": "Каждый новый поиск начинается с этого минимума",
+      "noMinimum": "Без минимума"
     },
     "rss": {
       "feedsTitle": "RSS-ленты",

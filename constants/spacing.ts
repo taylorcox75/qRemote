@@ -32,3 +32,11 @@ export const borderRadius = {
  * `getReadableGutter` and hooks/useReadableLayout.ts.
  */
 export const READABLE_MAX_WIDTH = 800;
+
+/**
+ * Torrents split view (iPhone Duo inner screen, iPad): at or above this width
+ * (after side insets) the list and the selected torrent's detail sit side by
+ * side, the list in a column of SPLIT_LIST_WIDTH.
+ */
+export const SPLIT_VIEW_MIN_WIDTH = 760;
+export const SPLIT_LIST_WIDTH = 400;
