@@ -457,7 +457,8 @@
       "searchAddOpensDialogueHint": "Ein Tippen auf + bei einem Suchergebnis öffnet den Torrent-Hinzufügen-Dialog, statt sofort hinzuzufügen.",
       "defaultColors": "Standardfarben",
       "defaultCategoryColor": "Standardfarbe für Kategorien",
-      "defaultTagColor": "Standardfarbe für Tags"
+      "defaultTagColor": "Standardfarbe für Tags",
+      "splitPlaceholder": "Wähle eine Einstellung, um sie hier zu sehen"
     },
     "transfer": {
       "title": "Übertragung",

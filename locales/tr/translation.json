@@ -478,7 +478,8 @@
       "searchAddOpensDialogueHint": "Bir arama sonucundaki + düğmesine dokunmak, torrenti hemen eklemek yerine torrent ekleme penceresini açar.",
       "defaultColors": "Varsayılan Renkler",
       "defaultCategoryColor": "Varsayılan Kategori Rengi",
-      "defaultTagColor": "Varsayılan Etiket Rengi"
+      "defaultTagColor": "Varsayılan Etiket Rengi",
+      "splitPlaceholder": "Burada görmek için bir ayar seçin"
     },
     "transfer": {
       "title": "Aktarım",

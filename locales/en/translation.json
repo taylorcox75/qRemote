@@ -478,7 +478,8 @@
       "searchAddOpensDialogueHint": "Tapping + on a search result opens the add-torrent dialogue instead of adding straight away.",
       "defaultColors": "Default Colors",
       "defaultCategoryColor": "Default Category Color",
-      "defaultTagColor": "Default Tag Color"
+      "defaultTagColor": "Default Tag Color",
+      "splitPlaceholder": "Choose a setting to see it here"
     },
     "transfer": {
       "title": "Transfer",

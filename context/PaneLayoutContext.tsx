@@ -69,3 +69,19 @@ export const TorrentSplitContext = createContext<TorrentSplitValue>({
 export function useTorrentSplit(): TorrentSplitValue {
   return useContext(TorrentSplitContext);
 }
+
+/** Settings two-pane state: the menu stays in a left column on wide windows. */
+interface SettingsSplitValue {
+  active: boolean;
+  /** Current route inside the Settings stack, e.g. '/settings/appearance'. */
+  pathname: string;
+}
+
+export const SettingsSplitContext = createContext<SettingsSplitValue>({
+  active: false,
+  pathname: '',
+});
+
+export function useSettingsSplit(): SettingsSplitValue {
+  return useContext(SettingsSplitContext);
+}

@@ -457,7 +457,8 @@
       "searchAddOpensDialogueHint": "Appuyer sur + sur un résultat de recherche ouvre la boîte de dialogue d'ajout au lieu d'ajouter directement.",
       "defaultColors": "Couleurs par défaut",
       "defaultCategoryColor": "Couleur de catégorie par défaut",
-      "defaultTagColor": "Couleur d'étiquette par défaut"
+      "defaultTagColor": "Couleur d'étiquette par défaut",
+      "splitPlaceholder": "Choisissez un réglage pour l'afficher ici"
     },
     "transfer": {
       "title": "Transfert",

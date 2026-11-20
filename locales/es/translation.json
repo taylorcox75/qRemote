@@ -457,7 +457,8 @@
       "searchAddOpensDialogueHint": "Al tocar + en un resultado de búsqueda se abre el diálogo de añadir torrent en lugar de añadirlo directamente.",
       "defaultColors": "Colores predeterminados",
       "defaultCategoryColor": "Color de categoría predeterminado",
-      "defaultTagColor": "Color de etiqueta predeterminado"
+      "defaultTagColor": "Color de etiqueta predeterminado",
+      "splitPlaceholder": "Elige un ajuste para verlo aquí"
     },
     "transfer": {
       "title": "Transferencia",

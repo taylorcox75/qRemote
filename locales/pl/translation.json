@@ -478,7 +478,8 @@
       "searchAddOpensDialogueHint": "Dotknięcie + przy wyniku wyszukiwania otwiera okno dodawania torrenta zamiast dodawać od razu.",
       "defaultColors": "Domyślne kolory",
       "defaultCategoryColor": "Domyślny kolor kategorii",
-      "defaultTagColor": "Domyślny kolor tagu"
+      "defaultTagColor": "Domyślny kolor tagu",
+      "splitPlaceholder": "Wybierz ustawienie, aby zobaczyć je tutaj"
     },
     "transfer": {
       "title": "Transfer",

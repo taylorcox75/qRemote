@@ -478,7 +478,8 @@
       "searchAddOpensDialogueHint": "Toccando + su un risultato di ricerca si apre la finestra di aggiunta torrent anziché aggiungerlo subito.",
       "defaultColors": "Colori predefiniti",
       "defaultCategoryColor": "Colore predefinito delle categorie",
-      "defaultTagColor": "Colore predefinito dei tag"
+      "defaultTagColor": "Colore predefinito dei tag",
+      "splitPlaceholder": "Scegli un'impostazione per vederla qui"
     },
     "transfer": {
       "title": "Trasferimenti",
