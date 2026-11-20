@@ -55,7 +55,7 @@ describe('useReadableLayout', () => {
     expect(result.current.safeAreaStyle).toEqual({ paddingRight: 60 });
     expect(result.current.gutter).toBe(gutter);
     expect(result.current.contentWidth).toBe(1100 - 60 - gutter * 2);
-    expect(result.current.sidePaddingStyle).toEqual({ paddingRight: 60 });
+    expect(result.current.sidePaddingStyle).toEqual({ paddingRight: 60, minHeight: 110 });
     // Content clears the side inset plus the gutter; the container stays full width.
     expect(result.current.contentStyle(undefined)).toEqual({
       paddingLeft: gutter,
