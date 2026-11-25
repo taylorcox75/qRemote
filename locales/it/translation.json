@@ -89,7 +89,8 @@
       "deselectTorrent": "Deseleziona torrent",
       "switchServer": "Cambia server",
       "manageServers": "Gestisci server",
-      "currentServer": "Attuale"
+      "currentServer": "Server Attuale",
+      "splitPlaceholder": "Seleziona un torrent per vederne qui i dettagli"
     },
     "addTorrent": {
       "none": "Nessuno",
@@ -331,7 +332,7 @@
         "dracula": "Dracula",
         "solarized": "Solarized",
         "highContrast": "Contrasto elevato",
-        "qbittorrentClassic": "qBittorrent Classic"
+        "qbittorrentClassic": "qBittorrent classico"
       },
       "themeDescription": "Personalizza le impostazioni del tema e dei colori",
       "addTorrentDialogue": "Schermata di aggiunta torrent",
@@ -477,7 +478,8 @@
       "searchAddOpensDialogueHint": "Toccando + su un risultato di ricerca si apre la finestra di aggiunta torrent anziché aggiungerlo subito.",
       "defaultColors": "Colori predefiniti",
       "defaultCategoryColor": "Colore predefinito delle categorie",
-      "defaultTagColor": "Colore predefinito dei tag"
+      "defaultTagColor": "Colore predefinito dei tag",
+      "splitPlaceholder": "Scegli un'impostazione per vederla qui"
     },
     "transfer": {
       "title": "Trasferimenti",
@@ -692,7 +694,12 @@
       "cartClearAll": "Cancella tutto",
       "cartCheckout": "Continua ({{count}})",
       "cartAccessibility_one": "Torrent da aggiungere: {{count}} torrent",
-      "cartAccessibility_other": "Torrent da aggiungere: {{count}} torrent"
+      "cartAccessibility_other": "Torrent da aggiungere: {{count}} torrent",
+      "videoCodec": "Codec video",
+      "releaseSource": "Sorgente",
+      "defaultMinSeeders": "Seeder minimi predefiniti",
+      "defaultMinSeedersHint": "Ogni nuova ricerca parte da questo minimo",
+      "noMinimum": "Nessun minimo"
     },
     "rss": {
       "feedsTitle": "Feed RSS",
@@ -1031,7 +1038,7 @@
     "failedToReannounce": "Impossibile riannunciare ai tracker",
     "forceStartToggled": "Avvio forzato {{state}}",
     "failedToToggleForceStart": "Impossibile modificare l'avvio forzato",
-    "superSeedingToggled": "Super seeding {{state}}",
+    "superSeedingToggled": "Modalità super seeding {{state}}",
     "failedToToggleSuperSeeding": "Impossibile modificare il super seeding",
     "sequentialDownloadToggled": "Download sequenziale modificato",
     "failedToToggleSequential": "Impossibile modificare il download sequenziale",
@@ -1231,7 +1238,7 @@
     "uploadLimitSet": "Limite di upload impostato a {{value}}",
     "speedLimitToggled": "Limite di velocità globale {{status}}",
     "forceStartToggled": "Avvio forzato {{status}}",
-    "superSeedingToggled": "Super seeding {{status}}",
+    "superSeedingToggled": "Modalità super seeding {{status}}",
     "sequentialToggled": "Download sequenziale modificato",
     "firstLastPieceSet": "Priorità al primo e all'ultimo pezzo impostata",
     "autoManagementToggled": "Gestione automatica: {{status}}",
@@ -1392,6 +1399,7 @@
     "torrentExistsOrFailed": "Già presente in qBittorrent oppure impossibile da aggiungere.",
     "unknown": "Si è verificato un errore sconosciuto",
     "quiKeyRejected": "qui ha rifiutato la chiave del proxy. Controlla l'URL del proxy.",
-    "quiKeyMissing": "Questo server qui non ha una chiave proxy. Modificalo e incolla nuovamente l'URL del proxy."
+    "quiKeyMissing": "Questo server qui non ha una chiave proxy. Modificalo e incolla nuovamente l'URL del proxy.",
+    "notQbittorrent": "Il server ha risposto, ma non come qBittorrent. Controlla indirizzo, porta e percorso."
   }
 }
